@@ -11,7 +11,7 @@ STARCCM_JOB_TIMEOUT = 600
 STARCCM_LICENCE_SECRET = "starccm-license-secret"
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 64.475, 16: 33.1723, 32: 17.8983}
-PERF_TEST_DIFFERENCE_TOLERANCE = 5
+PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
 
 def get_starccm_secrets(region_name):

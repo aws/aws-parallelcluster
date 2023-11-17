@@ -9,7 +9,7 @@ OPENFOAM_JOB_TIMEOUT = 5400  # Takes long time because during the first time, it
 # builds and installs many things
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 742, 16: 376, 32: 185}
-PERF_TEST_DIFFERENCE_TOLERANCE = 5
+PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
 
 def perf_test_difference(perf_test_result, number_of_nodes):
