@@ -221,7 +221,7 @@ class QueuesStack(NestedStack):
                                 if compute_resource.disable_simultaneous_multithreading_manually
                                 else "false",
                                 "BaseOS": self._config.image.os,
-                                "InternalSharedStorageType": self._config.head_node.internal_shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
+                                "SharedStorageType": self._config.head_node.shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
                                 "EFSIds": get_shared_storage_ids_by_type(
                                     self._shared_storage_infos, SharedStorageType.EFS
                                 ),

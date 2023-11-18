@@ -30,9 +30,11 @@ from tests.storage.test_fsx_lustre import create_file_cache  # noqa  # pylint: d
 
 
 @pytest.mark.parametrize(
-    "storage_type",
-    ["Efs", "FsxLustre", "FsxOpenZfs", "FsxOntap", "Ebs"],
-    # TODO full test ["Efs", "FsxLustre", "FsxOpenZfs", "FsxOntap", "FileCache", "Ebs"]
+    ("storage_type", "shared_storage_type"),
+    [("Efs", "Efs"), ("FsxLustre", "Efs"), ("FsxOpenZfs", "Efs"), ("FsxOntap", "Efs"), ("Ebs", "Efs")],
+    # TODO: Include Ebs as shared_storage_type as well as Efs
+    # Full [("Efs","Ebs"), ("FsxLustre","Ebs"), ("FsxOpenZfs","Ebs"), ("FsxOntap","Efs"), ("Ebs","Ebs"),
+    #      ("Efs","Efs"), ("FsxLustre","Efs"), ("FsxOpenZfs","Efs"), ("FsxOntap","Efs"), ("Ebs","Efs")],
 )
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_shared_home(
@@ -43,6 +45,7 @@ def test_shared_home(
     vpc_stack,
     scheduler_commands_factory,
     storage_type,
+    shared_storage_type,
     fsx_factory,
     svm_factory,
     open_zfs_volume_factory,
@@ -53,38 +56,32 @@ def test_shared_home(
     """Verify the shared /home storage fs is available when set"""
     mount_dir = "/home"
     bucket_name = None
-    if storage_type == "FileCache":
-        bucket_name = s3_bucket_factory()
-        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-        bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
-    file_cache_path = "/slurm/" if storage_type == "FileCache" else None
     if storage_type == "FsxOpenZfs":
         fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
         fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
         cluster_config = pcluster_config_reader(
-            mount_dir=mount_dir, storage_type=storage_type, volume_id=fsx_open_zfs_volume_id
+            mount_dir=mount_dir,
+            storage_type=storage_type,
+            volume_id=fsx_open_zfs_volume_id,
+            shared_storage_type=shared_storage_type,
         )
     elif storage_type == "FsxOntap":
         fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
         fsx_on_tap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
         cluster_config = pcluster_config_reader(
-            mount_dir=mount_dir, storage_type=storage_type, volume_id=fsx_on_tap_volume_id
-        )
-    elif storage_type == "FileCache":
-        file_cache_id = create_file_cache(file_cache_path, bucket_name)
-        cluster_config = pcluster_config_reader(
-            mount_dir=mount_dir, storage_type=storage_type, file_cache_id=file_cache_id
+            mount_dir=mount_dir,
+            storage_type=storage_type,
+            volume_id=fsx_on_tap_volume_id,
+            shared_storage_type=shared_storage_type,
         )
     else:
-        cluster_config = pcluster_config_reader(mount_dir=mount_dir, storage_type=storage_type)
+        cluster_config = pcluster_config_reader(
+            mount_dir=mount_dir, storage_type=storage_type, shared_storage_type=shared_storage_type
+        )
     cluster1 = clusters_factory(cluster_config)
-    _check_shared_home(
-        cluster1, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
-    )
+    _check_shared_home(cluster1, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
     cluster2 = clusters_factory(cluster_config)
-    _check_shared_home(
-        cluster2, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
-    )
+    _check_shared_home(cluster2, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
 
 
 def _check_shared_home(
@@ -102,7 +99,7 @@ def _check_shared_home(
         test_directory_correctly_shared_between_ln_and_hn(
             remote_command_executor, remote_command_executor_login_node, mount_dir, run_sudo=True
         )
-    elif storage_type in ["FsxLustre", "FsxOpenZfs", "FsxOntap", "FileCache"]:
+    elif storage_type in ["FsxLustre", "FsxOpenZfs", "FsxOntap"]:
         check_fsx(
             cluster,
             region,

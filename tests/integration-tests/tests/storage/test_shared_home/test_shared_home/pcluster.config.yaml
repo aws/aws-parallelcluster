@@ -12,6 +12,7 @@ LoginNodes:
       GracetimePeriod: 60
   {% endif %}
 HeadNode:
+  SharedStorageType: {{ shared_storage_type }}
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}

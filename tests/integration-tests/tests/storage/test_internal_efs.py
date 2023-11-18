@@ -26,8 +26,8 @@ def test_internal_efs(
     region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
 ):
     """Verify the internal shared storage fs is available when set to Efs"""
-    compute_shared_dirs = ["/opt/parallelcluster/shared", "/opt/slurm", "/opt/intel"]
-    login_shared_dirs = ["/opt/parallelcluster/shared_login_nodes", "/opt/slurm", "/opt/intel"]
+    compute_shared_dirs = ["/opt/parallelcluster/shared", "/opt/slurm", "/opt/intel", "/home"]
+    login_shared_dirs = ["/opt/parallelcluster/shared_login_nodes", "/opt/slurm", "/opt/intel", "/home"]
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
