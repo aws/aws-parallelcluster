@@ -12,7 +12,7 @@ LoginNodes:
       GracetimePeriod: 60
 {% endif %}
 HeadNode:
-  InternalSharedStorageType: Efs
+  SharedStorageType: Efs
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}

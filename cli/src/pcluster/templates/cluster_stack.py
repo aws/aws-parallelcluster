@@ -263,7 +263,7 @@ class ClusterCdkStack:
         # This FS will be mounted, the shared dirs will be added,
         # then it will be unmounted and the shared dirs will be
         # mounted.  We need to create the additional mount points first.
-        if self.config.head_node.internal_shared_storage_type.lower() == SharedStorageType.EFS.value:
+        if self.config.head_node.shared_storage_type.lower() == SharedStorageType.EFS.value:
             internal_efs_storage_shared = SharedEfs(
                 mount_dir="/opt/parallelcluster/init_shared", name="internal_pcluster_shared", throughput_mode="elastic"
             )
@@ -1245,7 +1245,7 @@ class ClusterCdkStack:
                     ),
                     "base_os": self.config.image.os,
                     "region": self.stack.region,
-                    "internal_shared_storage_type": self.config.head_node.internal_shared_storage_type.lower(),
+                    "shared_storage_type": self.config.head_node.shared_storage_type.lower(),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                     "efs_encryption_in_transits": to_comma_separated_string(

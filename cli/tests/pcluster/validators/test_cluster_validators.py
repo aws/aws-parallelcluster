@@ -71,6 +71,7 @@ from pcluster.validators.cluster_validators import (
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
     SchedulerOsValidator,
+    SharedFileCacheNotHomeValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
@@ -1526,6 +1527,27 @@ def test_shared_storage_name_validator(name, expected_message):
 )
 def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
     actual_failures = SharedStorageMountDirValidator().execute(mount_dir)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "mount_dir, expected_message",
+    [
+        ("my_dir", None),
+        (
+            "home",
+            "Error: FileCache cannot be used to mount the shared storage directory 'home'.  "
+            "Please select a supported filesystem.",
+        ),
+        (
+            "/home",
+            "Error: FileCache cannot be used to mount the shared storage directory '/home'.  "
+            "Please select a supported filesystem.",
+        ),
+    ],
+)
+def test_shared_filecache_not_home_validator(mount_dir, expected_message):
+    actual_failures = SharedFileCacheNotHomeValidator().execute(mount_dir)
     assert_failure_messages(actual_failures, expected_message)
 
 
