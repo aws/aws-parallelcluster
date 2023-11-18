@@ -59,7 +59,8 @@ def api_with_default_settings(
         factory.create_stack(stack)
         yield stack
     finally:
-        factory.delete_all_stacks()
+        if not request.config.getoption("no_delete"):
+            factory.delete_all_stacks()
 
 
 def test_api_infrastructure_with_default_parameters(region, api_with_default_settings):
