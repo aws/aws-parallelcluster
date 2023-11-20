@@ -313,6 +313,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_scaling.py::test_job_level_scaling:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   schedulers:
     test_slurm.py::test_slurm:
       dimensions:
@@ -416,6 +422,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_custom_munge_key.py::test_custom_munge_key:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions
 # because Spot instances are not supported in these regions.
 #  spot:
@@ -496,6 +508,12 @@ test-suites:
       dimensions:
         - regions: {{ REGIONS }}
           instances: ["m5d.xlarge"]
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_shared_home.py::test_shared_home:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
   tags:
