@@ -133,7 +133,7 @@ Globals:
               aws:PrincipalArn: !If
                 - CreateApiUserRoleCondition
                 - !Sub
-                  - arn:${AWS::Partition}:*::${AWS::AccountId}:*/ParallelClusterApiUserRole-${StackIdSuffix}*
+                  - arn:${AWS::Partition}:*::${AWS::AccountId}:*/${IAMRoleAndPolicyPrefix}PCAPIUserRole-${StackIdSuffix}*
                   - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
                 - '*'
     TracingEnabled: True
