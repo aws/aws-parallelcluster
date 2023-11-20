@@ -258,6 +258,7 @@ class Feature(Enum):
     INTEL_HPC_SPECIFICATION_2018 = "Intel HPC Specification 2018"
     INTEL_ONE_API_BASE_TOOLKIT = "Intel OneAPI Base Toolkit"
     INTEL_PYTHON = "Intel Python"
+    CAPACITY_BLOCK = "CAPACITY_BLOCK"
 
 
 UNSUPPORTED_FEATURES_MAP = {
@@ -269,6 +270,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.FSX_OPENZFS: ["us-iso"],
     Feature.SLURM_DATABASE: [],
     Feature.CLUSTER_HEALTH_METRICS: ["us-iso"],
+    Feature.CAPACITY_BLOCK: ["us-iso"],
 }
 
 SUPPORTED_OSES_FOR_FEATURE = {
