@@ -71,6 +71,7 @@ class ExternalSlurmdbdStack(Stack):
             "dbms_password_secret_arn": self.dbms_password_secret_arn_param.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn_param.value_as_string,
             "region": self.stack.region,
+            "stack_name": self.stack.stack_name,
         }
 
         return {
