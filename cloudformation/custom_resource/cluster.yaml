@@ -23,7 +23,7 @@ Parameters:
 Mappings:
   ParallelCluster:
     Constants:
-      Version: 3.8.0b1  # major.minor.patch+alpha/beta_identifier
+      Version: 3.8.0  # major.minor.patch+alpha/beta_identifier
 
 Conditions:
   CustomRoleCondition: !Not [!Equals [!Ref CustomLambdaRole, '']]
@@ -328,8 +328,8 @@ Resources:
                   logger.info(event)
                   if event["ResourceProperties"].get("ClusterConfiguration") or (event.get("OldResourceProperties") and event["OldResourceProperties"].get("ClusterConfiguration")):
                       boto3.client('s3').put_object(
-                          Body=json.dumps(event), 
-                          Bucket="${PclusterCustomResourceBucket}", 
+                          Body=json.dumps(event),
+                          Bucket="${PclusterCustomResourceBucket}",
                           Key=event["ResourceProperties"].get("ClusterName")+"/event.json"
                       )
                       event["ResourceProperties"].pop("ClusterConfiguration", None)
@@ -358,7 +358,7 @@ Resources:
           from botocore.config import Config
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
-          
+
           def _delete_s3_artifacts(event):
               """
               Delete artifacts under the directory that is passed in.
