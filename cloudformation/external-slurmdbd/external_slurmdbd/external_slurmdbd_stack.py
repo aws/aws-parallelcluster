@@ -42,6 +42,9 @@ class ExternalSlurmdbdStack(Stack):
         self.dbms_password_secret_arn = CfnParameter(
             self, "DBMSPasswordSecretArn", type="String", description="Secret ARN for DBMS password."
         )
+        self.dbms_database_name_para = CfnParameter(
+            self, "DBMSDatabaseName", type="String", description="DBMS Database Name for Slurmdbd."
+        )
         self.munge_key_secret_arn = CfnParameter(
             self, "MungeKeySecretArn", type="String", description="Secret ARN for Munge key."
         )
@@ -68,10 +71,13 @@ class ExternalSlurmdbdStack(Stack):
         dna_json_content = {
             "dbms_uri": self.dbms_uri_param.value_as_string,
             "dbms_username": self.dbms_username_param.value_as_string,
+            "dbms_database_name": self.dbms_database_name_para.value_as_string,
             "dbms_password_secret_arn": self.dbms_password_secret_arn_param.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn_param.value_as_string,
             "region": self.stack.region,
             "stack_name": self.stack.stack_name,
+            "nlb_dns_name": self._external_slurmdbd_nlb.load_balancer_dns_name,
+            "if_external_slurmdbd": True,
         }
 
         return {
