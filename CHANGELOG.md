@@ -27,6 +27,14 @@ CHANGELOG
   that can be set using `Scheduling/ScalingStrategy` cluster configuration.
 - Change default EBS volume types in ADC regions from gp2 to gp3, for both the root and additional volumes.
 - The optional permissions boundary for the ParallelCluster API is now applied to every IAM role created by the API infrastructure.
+- Use Open Source NVIDIA GPU drivers (OpenRM) as NVIDIA kernel module for Linux instead of NVIDIA closed source module.
+- Upgrade EFA installer to `1.29.0`.
+  - Efa-driver: `efa-2.6.0-1`
+  - Efa-config: `efa-config-1.15-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.19.0-1`
+  - Rdma-core: `rdma-core-46.0-1`
+  - Open MPI: `openmpi40-aws-4.1.6-1`
 
 **BUG FIXES**
 - Fix inconsistent configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
