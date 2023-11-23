@@ -49,8 +49,8 @@ def test_fabric(
 
     fabtests_report = _execute_fabtests(remote_command_executor, test_datadir, instance)
 
-    num_tests = int(fabtests_report.get("testsuites", {}).get("testsuite", {}).get("@tests", None))
-    num_failures = int(fabtests_report.get("testsuites", {}).get("testsuite", {}).get("@failures", None))
+    num_tests = int(fabtests_report.get("testsuites", {}).get("@tests", None))
+    num_failures = int(fabtests_report.get("testsuites", {}).get("@failures", None))
 
     assert_that(num_tests, description="Cannot read number of tests from Fabtests report").is_not_none()
     assert_that(num_failures, description="Cannot read number of failures from Fabtests report").is_not_none()
@@ -97,4 +97,5 @@ def _execute_fabtests(remote_command_executor, test_datadir, instance):
 
     logging.info("Retrieving Fabtests report")
     report_content = read_remote_file(remote_command_executor, fabtests_report_file)
+    logging.info("Parsing Fabtests report")
     return xmltodict.parse(report_content)
