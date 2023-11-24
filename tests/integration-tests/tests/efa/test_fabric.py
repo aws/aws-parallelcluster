@@ -51,14 +51,17 @@ def test_fabric(
 
     num_tests = int(fabtests_report.get("testsuites", {}).get("@tests", None))
     num_failures = int(fabtests_report.get("testsuites", {}).get("@failures", None))
+    num_errors = int(fabtests_report.get("testsuites", {}).get("@errors", None))
 
     assert_that(num_tests, description="Cannot read number of tests from Fabtests report").is_not_none()
     assert_that(num_failures, description="Cannot read number of failures from Fabtests report").is_not_none()
+    assert_that(num_errors, description="Cannot read number of errors from Fabtests report").is_not_none()
 
-    if num_failures > 0:
+    if num_failures + num_errors > 0:
         logging.info(f"Fabtests report:\n{fabtests_report}")
 
     assert_that(num_failures, description=f"{num_failures}/{num_tests} libfabric tests are failing").is_equal_to(0)
+    assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
