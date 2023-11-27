@@ -34,7 +34,7 @@ from .utils import assert_failure_messages
         (Feature.SLURM_DATABASE, True, None),
         (Feature.SLURM_DATABASE, False, "SLURM Database is not supported in region 'WHATEVER-REGION'"),
         (Feature.CAPACITY_BLOCK, True, None),
-        (Feature.CAPACITY_BLOCK, False, "CAPACITY_BLOCK is not supported in region 'WHATEVER-REGION'"),
+        (Feature.CAPACITY_BLOCK, False, "Capacity Block is not supported in region 'WHATEVER-REGION'"),
         (Feature.CLUSTER_HEALTH_METRICS, True, None),
         (Feature.CLUSTER_HEALTH_METRICS, False, "Cluster Health Metrics is not supported in region 'WHATEVER-REGION'"),
     ],

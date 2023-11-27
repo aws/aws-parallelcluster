@@ -254,7 +254,7 @@ class Feature(Enum):
     FSX_OPENZFS = "FSx OpenZfs"
     SLURM_DATABASE = "SLURM Database"
     CLUSTER_HEALTH_METRICS = "Cluster Health Metrics"
-    CAPACITY_BLOCK = "CAPACITY_BLOCK"
+    CAPACITY_BLOCK = "Capacity Block"
 
 
 UNSUPPORTED_FEATURES_MAP = {
