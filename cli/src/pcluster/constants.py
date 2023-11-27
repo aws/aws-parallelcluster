@@ -258,7 +258,7 @@ class Feature(Enum):
     INTEL_HPC_SPECIFICATION_2018 = "Intel HPC Specification 2018"
     INTEL_ONE_API_BASE_TOOLKIT = "Intel OneAPI Base Toolkit"
     INTEL_PYTHON = "Intel Python"
-    CAPACITY_BLOCK = "CAPACITY_BLOCK"
+    CAPACITY_BLOCK = "Capacity Block"
 
 
 UNSUPPORTED_FEATURES_MAP = {
