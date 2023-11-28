@@ -1,5 +1,6 @@
 import json
 
+import pkg_resources
 from aws_cdk import CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
@@ -8,8 +9,29 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from constructs import Construct
 
-from pcluster.constants import EXTERNAL_SLURMDBD_ASG_SIZE
-from pcluster.templates.cdk_builder_utils import get_user_data_content
+
+def get_user_data_content(user_data_path: str):
+    """Retrieve user data content."""
+    user_data_file_path = pkg_resources.resource_filename(__name__, user_data_path)
+    with open(user_data_file_path, "r", encoding="utf-8") as user_data_file:
+        user_data_content = user_data_file.read()
+    return user_data_content
+
+
+EXTERNAL_SLURMDBD_ASG_SIZE = "1"
+
+
+def get_assume_role_policy_document(service: str):
+    """Return default service assume role policy document."""
+    return iam.PolicyDocument(
+        statements=[
+            iam.PolicyStatement(
+                actions=["sts:AssumeRole"],
+                effect=iam.Effect.ALLOW,
+                principals=[iam.ServicePrincipal(service=service)],
+            )
+        ]
+    )
 
 
 class ExternalSlurmdbdStack(Stack):
@@ -17,11 +39,10 @@ class ExternalSlurmdbdStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        self.stack = Stack(scope=scope, id=construct_id, **kwargs)
 
         # define networking stuff
         self.vpc_id = CfnParameter(
-            self, "VPC_id", type="String", description="The VPC to be used for the Slurmdbd stack."
+            self, "VPCId", type="String", description="The VPC to be used for the Slurmdbd stack."
         )
 
         self.subnet_id = CfnParameter(
@@ -44,7 +65,7 @@ class ExternalSlurmdbdStack(Stack):
         self.dbms_password_secret_arn = CfnParameter(
             self, "DBMSPasswordSecretArn", type="String", description="Secret ARN for DBMS password."
         )
-        self.dbms_database_name_para = CfnParameter(
+        self.dbms_database_name = CfnParameter(
             self, "DBMSDatabaseName", type="String", description="DBMS Database Name for Slurmdbd."
         )
         self.munge_key_secret_arn = CfnParameter(
@@ -60,11 +81,9 @@ class ExternalSlurmdbdStack(Stack):
         # create management security group with SSH access from anywhere (TEMPORARY!)
         self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
 
-        # create Launch Template
-        self._launch_template = self._add_external_slurmdbd_launch_template()
-
-        # define EC2 Auto Scaling Group (ASG)
-        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
+        # create a pair of security groups for the slurm accounting traffic across
+        # between cluster head node and external slurmdbd instance via port 6819
+        self._slurmdbd_server_sg, self._slurmdbd_client_sg = self._add_slurmdbd_accounting_security_groups()
 
         # Create a CloudWatch log group
         self._log_group = self._add_cloudwatch_log_group()
@@ -72,17 +91,25 @@ class ExternalSlurmdbdStack(Stack):
         # define IAM role and necessary IAM policies
         self._role = self._add_iam_role()
 
+        self._instance_profile = self._add_instance_profile(self._role.ref, "ExternalSlurmdbdInstanceProfile")
+
+        # create Launch Template
+        self._launch_template = self._add_external_slurmdbd_launch_template()
+
+        # define EC2 Auto Scaling Group (ASG)
+        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
+
     def _add_cfn_init_config(self):
         dna_json_content = {
-            "dbms_uri": self.dbms_uri_param.value_as_string,
-            "dbms_username": self.dbms_username_param.value_as_string,
-            "dbms_database_name": self.dbms_database_name_para.value_as_string,
-            "dbms_password_secret_arn": self.dbms_password_secret_arn_param.value_as_string,
-            "munge_key_secret_arn": self.munge_key_secret_arn_param.value_as_string,
-            "region": self.stack.region,
-            "stack_name": self.stack.stack_name,
+            "dbms_uri": self.dbms_uri.value_as_string,
+            "dbms_username": self.dbms_username.value_as_string,
+            "dbms_database_name": self.dbms_database_name.value_as_string,
+            "dbms_password_secret_arn": self.dbms_password_secret_arn.value_as_string,
+            "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
+            "region": self.region,
+            "stack_name": self.stack_name,
             "nlb_dns_name": self._external_slurmdbd_nlb.load_balancer_dns_name,
-            "if_external_slurmdbd": True,
+            "is_external_slurmdbd": True,
         }
 
         return {
@@ -90,12 +117,13 @@ class ExternalSlurmdbdStack(Stack):
             "setup": {
                 "files": {
                     "/etc/chef/dna.json": {
-                        "content": Fn.sub(json.dumps(dna_json_content)),
+                        "content": json.dumps(dna_json_content),
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
                     },
                 },
+                # TODO: fix bug that command not executed
                 "chef": {
                     "command": (
                         "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
@@ -106,6 +134,7 @@ class ExternalSlurmdbdStack(Stack):
                     "cwd": "/etc/chef",
                 },
             },
+            # TODO: delete the cfn-hup hook
             "configure": {
                 "files": {
                     "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
@@ -124,8 +153,8 @@ class ExternalSlurmdbdStack(Stack):
                         "content": Fn.sub(
                             "[main]\n" "stack=${StackId}\n" "region=${Region}\n" "interval=2\n",
                             {
-                                "StackId": self.stack.stack_id,
-                                "Region": self.stack.region,
+                                "StackId": self.stack_id,
+                                "Region": self.region,
                             },
                         ),
                         "mode": "000400",
@@ -180,6 +209,42 @@ class ExternalSlurmdbdStack(Stack):
         )
         return server_sg, client_sg
 
+    def _add_slurmdbd_accounting_security_groups(self):
+        slurmdbd_server_sg = ec2.CfnSecurityGroup(
+            self,
+            "SlurmdbdServerSecurityGroup",
+            group_description="Allow Slurm accounting traffic to the slurmdbd instance (server)",
+            vpc_id=self.vpc_id.value_as_string,
+        )
+
+        slurmdbd_client_sg = ec2.CfnSecurityGroup(
+            self,
+            "SlurmdbdClientSecurityGroup",
+            group_description="Allow Slurm accounting traffic from the cluster head node (client)",
+            vpc_id=self.vpc_id.value_as_string,
+        )
+
+        slurmdbd_server_sg.add_ingress_rule(
+            peer=slurmdbd_client_sg,
+            connection=ec2.Port.tcp(6819),
+            description="Allow Slurm accounting traffic from the cluster head node",
+        )
+
+        slurmdbd_client_sg.add_egress_rule(
+            peer=slurmdbd_server_sg,
+            connection=ec2.Port.tcp(6819),
+            description="Allow Slurm accounting traffic to the slurmdbd instance",
+        )
+
+        return slurmdbd_server_sg, slurmdbd_client_sg
+
+    def _add_instance_profile(self, role_ref: str, name: str):
+        return iam.CfnInstanceProfile(
+            self,
+            name,
+            roles=[role_ref],
+        ).ref
+
     def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
@@ -201,17 +266,23 @@ class ExternalSlurmdbdStack(Stack):
             key_name=key_name_param.value_as_string,
             image_id=ami_id_param.value_as_string,
             instance_type=instance_type_param.value_as_string,
-            security_group_ids=[self._ssh_server_sg.security_group_id],
+            security_group_ids=[
+                self._ssh_server_sg.security_group_id,
+                self._slurmdbd_server_sg.security_group_id,
+            ],
             user_data=Fn.base64(
                 Fn.sub(
                     get_user_data_content("../resources/user_data.sh"),
                     {
                         **{
-                            "custom_cookbook_url": self.custom_cookbook_url_param.value_as_string,
+                            "CustomCookbookUrl": self.custom_cookbook_url_param.value_as_string,
+                            "StackName": self.stack_name,
+                            "Region": self.region,
                         },
                     },
                 )
             ),
+            iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
         )
 
         launch_template = ec2.CfnLaunchTemplate(self, "LaunchTemplate", launch_template_data=launch_template_data)
@@ -251,32 +322,37 @@ class ExternalSlurmdbdStack(Stack):
         )
 
     def _add_iam_role(self):
-        role = iam.Role(
+        role = iam.CfnRole(
             self,
             "SlurmdbdInstanceRole",
-            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+            assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
             description="Role for Slurmdbd EC2 instance to access necessary AWS resources",
         )
 
-        role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["secretsmanager:GetSecretValue"],
-                resources=[
-                    self.dbms_password_secret_arn.value_as_string,
-                    self.munge_key_secret_arn.value_as_string,
-                ],
-                effect=iam.Effect.ALLOW,
-                sid="SecretsManagerPolicy",
-            )
-        )
-
-        role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                resources=[self._log_group.log_group_arn],
-                effect=iam.Effect.ALLOW,
-                sid="CloudWatchLogsPolicy",
-            )
+        iam.CfnPolicy(
+            Stack.of(self),
+            "ExternalSlurmdbdPolicies",
+            policy_name="ExternalSlurmdbdPolicies",
+            roles=[role.ref],
+            policy_document=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["secretsmanager:GetSecretValue"],
+                        resources=[
+                            self.dbms_password_secret_arn.value_as_string,
+                            self.munge_key_secret_arn.value_as_string,
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        sid="SecretsManagerPolicy",
+                    ),
+                    iam.PolicyStatement(
+                        actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+                        resources=[self._log_group.log_group_arn],
+                        effect=iam.Effect.ALLOW,
+                        sid="CloudWatchLogsPolicy",
+                    ),
+                ]
+            ),
         )
 
         return role
@@ -286,6 +362,6 @@ class ExternalSlurmdbdStack(Stack):
         return logs.LogGroup(
             self,
             "SlurmdbdLogGroup",
-            log_group_name=f"/aws/slurmdbd/{self.stack.stack_name}",
+            log_group_name=f"/aws/slurmdbd/{self.stack_name}",
             retention=logs.RetentionDays.ONE_WEEK,
         )
