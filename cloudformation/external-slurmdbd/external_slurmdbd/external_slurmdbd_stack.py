@@ -1,6 +1,6 @@
 import json
 
-from aws_cdk import App, CfnParameter, Fn, Stack
+from aws_cdk import CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
@@ -9,9 +9,12 @@ from aws_cdk import aws_logs as logs
 from constructs import Construct
 
 from pcluster.constants import EXTERNAL_SLURMDBD_ASG_SIZE
+from pcluster.templates.cdk_builder_utils import get_user_data_content
 
 
 class ExternalSlurmdbdStack(Stack):
+    """Create the CloudFormation stack template for External Slurmdbd."""
+
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.stack = Stack(scope=scope, id=construct_id, **kwargs)
@@ -46,6 +49,9 @@ class ExternalSlurmdbdStack(Stack):
         )
         self.munge_key_secret_arn = CfnParameter(
             self, "MungeKeySecretArn", type="String", description="Secret ARN for Munge key."
+        )
+        self.custom_cookbook_url_param = CfnParameter(
+            self, "CustomCookbookUrl", type="String", description="URL of the custom Chef Cookbook.", default=""
         )
 
         # use cfn-init and cfn-hup configure instance
@@ -107,7 +113,7 @@ class ExternalSlurmdbdStack(Stack):
                             "[cfn-auto-reloader-hook]\n"
                             "triggers=post.update\n"
                             "path=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
-                            "action=/usr/bin/echo 'I was triggered by a change in AWS::CloudFormation::Init metadata!' > /tmp/cfn_init_metadata_update.log\n"
+                            "action=/usr/bin/echo 'I was triggered by a change in AWS::CloudFormation::Init metadata!' > /tmp/cfn_init_metadata_update.log\n"  # noqa: E501
                             "runas=root\n"
                         ),
                         "mode": "000400",
@@ -196,14 +202,19 @@ class ExternalSlurmdbdStack(Stack):
             image_id=ami_id_param.value_as_string,
             instance_type=instance_type_param.value_as_string,
             security_group_ids=[self._ssh_server_sg.security_group_id],
+            user_data=Fn.base64(
+                Fn.sub(
+                    get_user_data_content("../resources/user_data.sh"),
+                    {
+                        **{
+                            "custom_cookbook_url": self.custom_cookbook_url_param.value_as_string,
+                        },
+                    },
+                )
+            ),
         )
 
-        launch_template = ec2.CfnLaunchTemplate(
-            self,
-            "LaunchTemplate",
-            launch_template_data=launch_template_data,
-        )
-
+        launch_template = ec2.CfnLaunchTemplate(self, "LaunchTemplate", launch_template_data=launch_template_data)
         launch_template.add_metadata("AWS::CloudFormation::Init", self._cfn_init_config)
 
         return launch_template
