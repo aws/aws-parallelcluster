@@ -8,8 +8,9 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from constructs import Construct
 
-from pcluster.constants import EXTERNAL_SLURMDBD_ASG_SIZE
 from pcluster.templates.cdk_builder_utils import get_user_data_content
+
+EXTERNAL_SLURMDBD_ASG_SIZE = "1"
 
 
 class ExternalSlurmdbdStack(Stack):
@@ -46,7 +47,7 @@ class ExternalSlurmdbdStack(Stack):
         self.dbms_password_secret_arn = CfnParameter(
             self, "DBMSPasswordSecretArn", type="String", description="Secret ARN for DBMS password."
         )
-        self.dbms_database_name_para = CfnParameter(
+        self.dbms_database_name = CfnParameter(
             self, "DBMSDatabaseName", type="String", description="DBMS Database Name for Slurmdbd."
         )
         self.munge_key_secret_arn = CfnParameter(
@@ -62,6 +63,10 @@ class ExternalSlurmdbdStack(Stack):
         # create management security group with SSH access from anywhere (TEMPORARY!)
         self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
 
+        # create a pair of security groups for the slurm accounting traffic across
+        # between cluster head node and external slurmdbd instance via port 6819
+        self._slurmdbd_server_sg, self._slurmdbd_client_sg = self._add_slurmdbd_accounting_security_groups()
+
         # create Launch Template
         self._launch_template = self._add_external_slurmdbd_launch_template()
 
@@ -76,15 +81,15 @@ class ExternalSlurmdbdStack(Stack):
 
     def _add_cfn_init_config(self):
         dna_json_content = {
-            "dbms_uri": self.dbms_uri_param.value_as_string,
-            "dbms_username": self.dbms_username_param.value_as_string,
-            "dbms_database_name": self.dbms_database_name_para.value_as_string,
-            "dbms_password_secret_arn": self.dbms_password_secret_arn_param.value_as_string,
-            "munge_key_secret_arn": self.munge_key_secret_arn_param.value_as_string,
+            "dbms_uri": self.dbms_uri.value_as_string,
+            "dbms_username": self.dbms_username.value_as_string,
+            "dbms_database_name": self.dbms_database_name.value_as_string,
+            "dbms_password_secret_arn": self.dbms_password_secret_arn.value_as_string,
+            "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
             "region": self.stack.region,
             "stack_name": self.stack.stack_name,
             "nlb_dns_name": self._external_slurmdbd_nlb.load_balancer_dns_name,
-            "if_external_slurmdbd": True,
+            "is_external_slurmdbd": True,
         }
 
         return {
@@ -174,6 +179,35 @@ class ExternalSlurmdbdStack(Stack):
         )
         return server_sg, client_sg
 
+    def _add_slurmdbd_accounting_security_groups(self):
+        slurmdbd_server_sg = ec2.SecurityGroup(
+            self,
+            "SlurmdbdServerSecurityGroup",
+            description="Allow Slurm accounting traffic to the slurmdbd instance (server)",
+            vpc=self.vpc,
+        )
+
+        slurmdbd_client_sg = ec2.SecurityGroup(
+            self,
+            "SlurmdbdClientSecurityGroup",
+            description="Allow Slurm accounting traffic from the cluster head node (client)",
+            vpc=self.vpc,
+        )
+
+        slurmdbd_server_sg.add_ingress_rule(
+            peer=slurmdbd_client_sg,
+            connection=ec2.Port.tcp(6819),
+            description="Allow Slurm accounting traffic from the cluster head node",
+        )
+
+        slurmdbd_client_sg.add_egress_rule(
+            peer=slurmdbd_server_sg,
+            connection=ec2.Port.tcp(6819),
+            description="Allow Slurm accounting traffic to the slurmdbd instance",
+        )
+
+        return slurmdbd_server_sg, slurmdbd_client_sg
+
     def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
@@ -195,7 +229,10 @@ class ExternalSlurmdbdStack(Stack):
             key_name=key_name_param.value_as_string,
             image_id=ami_id_param.value_as_string,
             instance_type=instance_type_param.value_as_string,
-            security_group_ids=[self._ssh_server_sg.security_group_id],
+            security_group_ids=[
+                self._ssh_server_sg.security_group_id,
+                self._slurmdbd_server_sg.security_group_id,
+            ],
             user_data=Fn.base64(
                 Fn.sub(
                     get_user_data_content("../resources/user_data.sh"),
