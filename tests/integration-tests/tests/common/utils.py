@@ -45,7 +45,7 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     },
     # We need to specify the minor because the most recently created RHEL8 AMI is currently 8.4
     "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
@@ -55,7 +55,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "ubuntu2004": {"name": "Deep Learning Base GPU AMI (Ubuntu 20.04)*", "owners": ["amazon"]},
     # Simple redhat8 to be able to build in remarkable test
     "rhel8": {"name": "RHEL-8.7*_HVM*", "owners": ["309956199498", "841258680906", "219670896067"]},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
 OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
