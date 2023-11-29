@@ -1,4 +1,5 @@
 import json
+import os
 
 from aws_cdk import CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
@@ -7,8 +8,16 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from constructs import Construct
+import pkg_resources
 
-from pcluster.templates.cdk_builder_utils import get_user_data_content
+
+def get_user_data_content(user_data_path: str):
+    """Retrieve user data content."""
+    user_data_file_path = pkg_resources.resource_filename(__name__, user_data_path)
+    with open(user_data_file_path, "r", encoding="utf-8") as user_data_file:
+        user_data_content = user_data_file.read()
+    return user_data_content
+
 
 EXTERNAL_SLURMDBD_ASG_SIZE = "1"
 
@@ -18,13 +27,18 @@ class ExternalSlurmdbdStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        self.stack = Stack(scope=scope, id=construct_id, **kwargs)
 
         # define networking stuff
         self.vpc_id = CfnParameter(
-            self, "VPC_id", type="String", description="The VPC to be used for the Slurmdbd stack."
+            self, "VPCId", type="String", description="The VPC to be used for the Slurmdbd stack."
         )
-        self.vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_id=self.vpc_id.value_as_string)
+
+        self.vpc = ec2.Vpc.from_vpc_attributes(
+            self,
+            "Vpc",
+            vpc_id=self.vpc_id.value_as_string,
+            availability_zones=["us-east-2a", "us-east-2b", "us-east-2c"]
+        )
 
         self.subnet_id = CfnParameter(
             self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack."
@@ -86,8 +100,8 @@ class ExternalSlurmdbdStack(Stack):
             "dbms_database_name": self.dbms_database_name.value_as_string,
             "dbms_password_secret_arn": self.dbms_password_secret_arn.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
-            "region": self.stack.region,
-            "stack_name": self.stack.stack_name,
+            "region": self.region,
+            "stack_name": self.stack_name,
             "nlb_dns_name": self._external_slurmdbd_nlb.load_balancer_dns_name,
             "is_external_slurmdbd": True,
         }
@@ -131,8 +145,8 @@ class ExternalSlurmdbdStack(Stack):
                         "content": Fn.sub(
                             "[main]\n" "stack=${StackId}\n" "region=${Region}\n" "interval=2\n",
                             {
-                                "StackId": self.stack.stack_id,
-                                "Region": self.stack.region,
+                                "StackId": self.stack_id,
+                                "Region": self.region,
                             },
                         ),
                         "mode": "000400",
@@ -317,6 +331,6 @@ class ExternalSlurmdbdStack(Stack):
         return logs.LogGroup(
             self,
             "SlurmdbdLogGroup",
-            log_group_name=f"/aws/slurmdbd/{self.stack.stack_name}",
+            log_group_name=f"/aws/slurmdbd/{self.stack_name}",
             retention=logs.RetentionDays.ONE_WEEK,
         )
