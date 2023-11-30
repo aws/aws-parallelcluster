@@ -45,12 +45,7 @@ class ExternalSlurmdbdStack(Stack):
             self, "VPCId", type="String", description="The VPC to be used for the Slurmdbd stack."
         )
 
-        self.vpc = ec2.Vpc.from_vpc_attributes(
-            self,
-            "Vpc",
-            vpc_id=self.vpc_id.value_as_string,
-            availability_zones=["us-east-2a", "us-east-2b", "us-east-2c"],
-        )
+        self.vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_id=self.vpc_id.value_as_string)
 
         self.subnet_id = CfnParameter(
             self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack."
