@@ -111,12 +111,13 @@ class ExternalSlurmdbdStack(Stack):
             "setup": {
                 "files": {
                     "/etc/chef/dna.json": {
-                        "content": Fn.sub(json.dumps(dna_json_content)),
+                        "content": json.dumps(dna_json_content),
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
                     },
                 },
+                # TODO: fix bug that command not executed
                 "chef": {
                     "command": (
                         "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
@@ -127,6 +128,7 @@ class ExternalSlurmdbdStack(Stack):
                     "cwd": "/etc/chef",
                 },
             },
+            # TODO: delete the cfn-hup hook
             "configure": {
                 "files": {
                     "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
@@ -252,7 +254,9 @@ class ExternalSlurmdbdStack(Stack):
                     get_user_data_content("../resources/user_data.sh"),
                     {
                         **{
-                            "custom_cookbook_url": self.custom_cookbook_url_param.value_as_string,
+                            "CustomCookbookUrl": self.custom_cookbook_url_param.value_as_string,
+                            "StackName": self.stack_name,
+                            "Region": self.region,
                         },
                     },
                 )
