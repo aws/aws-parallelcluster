@@ -1,6 +1,6 @@
 import json
-import os
 
+import pkg_resources
 from aws_cdk import CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
@@ -8,7 +8,6 @@ from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from constructs import Construct
-import pkg_resources
 
 
 def get_user_data_content(user_data_path: str):
@@ -50,7 +49,7 @@ class ExternalSlurmdbdStack(Stack):
             self,
             "Vpc",
             vpc_id=self.vpc_id.value_as_string,
-            availability_zones=["us-east-2a", "us-east-2b", "us-east-2c"]
+            availability_zones=["us-east-2a", "us-east-2b", "us-east-2c"],
         )
 
         self.subnet_id = CfnParameter(
@@ -352,12 +351,10 @@ class ExternalSlurmdbdStack(Stack):
                         resources=[self._log_group.log_group_arn],
                         effect=iam.Effect.ALLOW,
                         sid="CloudWatchLogsPolicy",
-                    )
+                    ),
                 ]
             ),
         )
-
-
 
         return role
 
