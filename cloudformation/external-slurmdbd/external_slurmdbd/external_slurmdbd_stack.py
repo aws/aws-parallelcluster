@@ -22,6 +22,19 @@ def get_user_data_content(user_data_path: str):
 EXTERNAL_SLURMDBD_ASG_SIZE = "1"
 
 
+def get_assume_role_policy_document(service: str):
+    """Return default service assume role policy document."""
+    return iam.PolicyDocument(
+        statements=[
+            iam.PolicyStatement(
+                actions=["sts:AssumeRole"],
+                effect=iam.Effect.ALLOW,
+                principals=[iam.ServicePrincipal(service=service)],
+            )
+        ]
+    )
+
+
 class ExternalSlurmdbdStack(Stack):
     """Create the CloudFormation stack template for External Slurmdbd."""
 
@@ -81,17 +94,19 @@ class ExternalSlurmdbdStack(Stack):
         # between cluster head node and external slurmdbd instance via port 6819
         self._slurmdbd_server_sg, self._slurmdbd_client_sg = self._add_slurmdbd_accounting_security_groups()
 
-        # create Launch Template
-        self._launch_template = self._add_external_slurmdbd_launch_template()
-
-        # define EC2 Auto Scaling Group (ASG)
-        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
-
         # Create a CloudWatch log group
         self._log_group = self._add_cloudwatch_log_group()
 
         # define IAM role and necessary IAM policies
         self._role = self._add_iam_role()
+
+        self._instance_profile = self._add_instance_profile(self._role.ref, "ExternalSlurmdbdInstanceProfile")
+
+        # create Launch Template
+        self._launch_template = self._add_external_slurmdbd_launch_template()
+
+        # define EC2 Auto Scaling Group (ASG)
+        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
 
     def _add_cfn_init_config(self):
         dna_json_content = {
@@ -224,6 +239,13 @@ class ExternalSlurmdbdStack(Stack):
 
         return slurmdbd_server_sg, slurmdbd_client_sg
 
+    def _add_instance_profile(self, role_ref: str, name: str):
+        return iam.CfnInstanceProfile(
+            self,
+            name,
+            roles=[role_ref],
+        ).ref
+
     def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
@@ -261,6 +283,7 @@ class ExternalSlurmdbdStack(Stack):
                     },
                 )
             ),
+            iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
         )
 
         launch_template = ec2.CfnLaunchTemplate(self, "LaunchTemplate", launch_template_data=launch_template_data)
@@ -300,33 +323,41 @@ class ExternalSlurmdbdStack(Stack):
         )
 
     def _add_iam_role(self):
-        role = iam.Role(
+        role = iam.CfnRole(
             self,
             "SlurmdbdInstanceRole",
-            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+            assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
             description="Role for Slurmdbd EC2 instance to access necessary AWS resources",
+            role_name="ExternalSlurmdbdRole",
         )
 
-        role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["secretsmanager:GetSecretValue"],
-                resources=[
-                    self.dbms_password_secret_arn.value_as_string,
-                    self.munge_key_secret_arn.value_as_string,
-                ],
-                effect=iam.Effect.ALLOW,
-                sid="SecretsManagerPolicy",
-            )
+        iam.CfnPolicy(
+            Stack.of(self),
+            "ExternalSlurmdbdPolicies",
+            policy_name="ExternalSlurmdbdPolicies",
+            roles=[role.ref],
+            policy_document=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["secretsmanager:GetSecretValue"],
+                        resources=[
+                            self.dbms_password_secret_arn.value_as_string,
+                            self.munge_key_secret_arn.value_as_string,
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        sid="SecretsManagerPolicy",
+                    ),
+                    iam.PolicyStatement(
+                        actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+                        resources=[self._log_group.log_group_arn],
+                        effect=iam.Effect.ALLOW,
+                        sid="CloudWatchLogsPolicy",
+                    )
+                ]
+            ),
         )
 
-        role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                resources=[self._log_group.log_group_arn],
-                effect=iam.Effect.ALLOW,
-                sid="CloudWatchLogsPolicy",
-            )
-        )
+
 
         return role
 
