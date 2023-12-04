@@ -1,5 +1,9 @@
 {%- import 'common.jinja2' as common with context -%}
+{% if REGIONS  %}
+{%- set REGIONS = [ REGIONS ] -%}
+{% else %}
 {%- set REGIONS = ["us-isob-east-1","us-iso-east-1"] -%}
+{% endif %}
 {%- set INSTANCES = ["c5.xlarge"] -%}
 {%- set OSS = ["alinux2"] -%}
 {%- set SCHEDULERS = ["slurm"] -%}
