@@ -4,5 +4,5 @@ test-suites:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2", "ubuntu2004", "rhel8", "centos7"] # The OpenFOAM version used by the benchmark suite does not support Ubuntu 22.04.
+          oss: ["alinux2", "ubuntu2004", "centos7"] # Ubuntu22.04, RHEL8 and Rocky8 are not supported
           schedulers: ["slurm"]

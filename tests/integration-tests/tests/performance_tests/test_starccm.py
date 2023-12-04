@@ -10,7 +10,14 @@ STARCCM_INSTALLATION_TIMEOUT = 1800
 STARCCM_JOB_TIMEOUT = 600
 STARCCM_LICENCE_SECRET = "starccm-license-secret"
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
-BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 60.0233, 16: 31.3820, 32: 17.2294}
+BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
+    "alinux2": {8: 64.475, 16: 33.173, 32: 17.899},  # v3.1.3
+    "ubuntu2204": {8: 75.502, 16: 36.353, 32: 19.688},  # v3.7.0
+    "ubuntu2004": {8: 67.384, 16: 36.434, 32: 19.449},  # v3.1.3
+    "centos7": {8: 67.838, 16: 36.568, 32: 20.935},  # v3.1.3
+    "rhel8": {8: 66.494, 16: 36.154, 32: 20.347},  # v3.6.0
+    "rocky8": {8: 66.859, 16: 33.173, 32: 17.899},  # v3.8.0
+}
 PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
 
@@ -21,9 +28,8 @@ def get_starccm_secrets(region_name):
     return secrets["podkey"], secrets["licpath"]
 
 
-def perf_test_difference(perf_test_result, number_of_nodes):
-    baseline_result = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[number_of_nodes]
-    percentage_difference = 100 * (perf_test_result - baseline_result) / baseline_result
+def perf_test_difference(observed_value, baseline_value):
+    percentage_difference = 100 * (observed_value - baseline_value) / baseline_value
     return percentage_difference
 
 
@@ -51,8 +57,16 @@ def test_starccm(
     number_of_nodes,
     test_datadir,
     scheduler_commands_factory,
+    s3_bucket_factory,
 ):
-    cluster_config = pcluster_config_reader(number_of_nodes=max(number_of_nodes))
+    # Create S3 bucket for custom actions scripts
+    bucket_name = s3_bucket_factory()
+    s3 = boto3.client("s3")
+    s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
+
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name, install_extra_deps=os in ["rhel8", "rocky8"], number_of_nodes=max(number_of_nodes)
+    )
     cluster = clusters_factory(cluster_config)
     logging.info("Cluster Created")
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -78,15 +92,18 @@ def test_starccm(
         perf_test_result = remote_command_executor.run_remote_script(
             (str(test_datadir / "starccm.results.sh")), args=[job_id], hide=False
         )
-        logging.info(f"The elapsed time for {node} nodes is {perf_test_result.stdout} seconds")
-        baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]
-        percentage_difference = perf_test_difference(float(perf_test_result.stdout), node)
+        observed_value = float(perf_test_result.stdout)
+        logging.info(f"The elapsed time for {node} nodes is {observed_value} seconds")
+        baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
+        percentage_difference = perf_test_difference(observed_value, baseline_value)
         if percentage_difference < 0:
             outcome = "improvement"
+        elif percentage_difference <= PERF_TEST_DIFFERENCE_TOLERANCE:
+            outcome = "degradation (within tolerance)"
         else:
-            outcome = "degradation"
+            outcome = "degradation (above tolerance)"
         logging.info(
-            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {perf_test_result.stdout} seconds, "
+            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
         if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
