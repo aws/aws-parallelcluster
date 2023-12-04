@@ -14,6 +14,14 @@ HeadNode:
       - BucketName: performance-tests-resources-for-parallelcluster
         KeyName: starccm/*
         EnableWriteAccess: false
+{% if install_extra_deps %}
+      - BucketName: {{ bucket_name }}
+        KeyName: scripts/dependencies.install.sh
+        EnableWriteAccess: false
+  CustomActions:
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/scripts/dependencies.install.sh
+{% endif %}
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -35,6 +43,15 @@ Scheduling:
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+{% if install_extra_deps %}
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            KeyName: scripts/dependencies.install.sh
+            EnableWriteAccess: false
+      CustomActions:
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/scripts/dependencies.install.sh
+{% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: shared-fsx
