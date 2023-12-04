@@ -15,7 +15,8 @@ aws-cdk.aws-ssm~=1.164
 aws-cdk.core~=1.164
 aws_cdk.aws-cloudwatch~=1.164
 aws_cdk.aws-lambda~=1.164
-boto3>=1.16.14
+boto3>=1.16.14,<1.33.2
+botocore<1.33.2
 connexion~=2.13.0
 flask>=2.2.5,<2.3
 jinja2~=3.0
@@ -23,5 +24,6 @@ jmespath~=0.10
 jsii==1.85.0
 marshmallow~=3.10
 PyYAML>=5.3.1,!=5.4
+s3transfer<0.8.1
 tabulate>=0.8.8,<=0.8.10
 werkzeug~=2.0
