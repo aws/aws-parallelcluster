@@ -227,7 +227,18 @@ def is_stop_required_for_shared_storage(change):
     return False
 
 
+def is_home_change(change):
+    if change.key == "SharedStorage":
+        if (change.old_value and change.old_value.get("MountDir") in ["home", "/home"]) or (
+            change.new_value and change.new_value.get("MountDir") in ["home", "/home"]
+        ):
+            return True
+    return False
+
+
 def fail_reason_shared_storage_update_policy(change, patch):
+    if is_home_change(change):
+        return "The /home directory cannot be changed during an update"
     if is_awsbatch_scheduler(change, patch):
         return f"Update actions are not currently supported for the '{change.key}' parameter"
     reason = "All login and compute nodes must be stopped"
@@ -318,6 +329,8 @@ def condition_checker_managed_fsx(change, patch):
 
 
 def actions_needed_shared_storage_update(change, patch):
+    if is_home_change(change):
+        return "Please revert any changes to the /home mount"
     if is_awsbatch_scheduler(change, patch):
         return (
             f"Restore '{change.key}' value to '{change.old_value}'"
@@ -352,6 +365,8 @@ def condition_checker_shared_storage_update_policy(change, patch):
     Update for awsbatch scheduler is not supported.
     QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues for slurm scheduler.
     """
+    if is_home_change(change):
+        return False
     if is_awsbatch_scheduler(change, patch):
         return False
     if patch.cluster.has_running_login_nodes():
