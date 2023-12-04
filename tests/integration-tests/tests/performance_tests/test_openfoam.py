@@ -8,13 +8,19 @@ OPENFOAM_INSTALLATION_TIMEOUT = 300
 OPENFOAM_JOB_TIMEOUT = 5400  # Takes long time because during the first time, it's not only execute the job but also
 # builds and installs many things
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
-BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {8: 742, 16: 376, 32: 185}
+BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
+    "alinux2": {8: 754, 16: 366, 32: 182},  # v3.1.3
+    "ubuntu2204": {8: 742, 16: 376, 32: 185},  # v3.7.0 just a placeholder, Ubuntu22.04 not supported
+    "ubuntu2004": {8: 750, 16: 382, 32: 187},  # v3.1.3
+    "centos7": {8: 755, 16: 371, 32: 190},  # v3.1.3
+    "rhel8": {8: 742, 16: 376, 32: 185},  # v3.6.0 just a placeholder, RHEL8 not supported
+    "rocky8": {8: 742, 16: 376, 32: 185},  # v3.8.0 just a placeholder, Rocky8 not supported
+}
 PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
 
-def perf_test_difference(perf_test_result, number_of_nodes):
-    baseline_result = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[number_of_nodes]
-    percentage_difference = 100 * (perf_test_result - baseline_result) / baseline_result
+def perf_test_difference(observed_value, baseline_value):
+    percentage_difference = 100 * (observed_value - baseline_value) / baseline_value
     return percentage_difference
 
 
@@ -65,14 +71,16 @@ def test_openfoam(
             (str(test_datadir / "openfoam.results.sh")), hide=False
         )
         output = perf_test_result.stdout.strip()
-        elapsed_time = output.split("\n")[-1].strip()
-        baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[node]
+        elapsed_time = int(output.split("\n")[-1].strip())
+        baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
         logging.info(f"The elapsed time for {node} nodes is {elapsed_time} seconds")
-        percentage_difference = perf_test_difference(int(elapsed_time), node)
+        percentage_difference = perf_test_difference(elapsed_time, baseline_value)
         if percentage_difference < 0:
             outcome = "improvement"
+        elif percentage_difference <= PERF_TEST_DIFFERENCE_TOLERANCE:
+            outcome = "degradation (within tolerance)"
         else:
-            outcome = "degradation"
+            outcome = "degradation (above tolerance)"
         logging.info(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {elapsed_time} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
