@@ -2002,3 +2002,68 @@ def test_compute_and_login_nodes_stop_policy(
     if not expected_update_allowed:
         assert_that(update_policy.fail_reason(change, patch)).is_equal_to(expected_fail_reason)
         assert_that(update_policy.action_needed(change, patch)).is_equal_to(expected_action_needed)
+
+
+@pytest.mark.parametrize(
+    "old_storage_value, new_storage_value, expected_condition, expected_fail_reason, expected_action_needed",
+    [
+        pytest.param(
+            "/home",
+            "dummy",
+            False,
+            "The /home directory cannot be changed during an update",
+            "Please revert any changes to the /home mount",
+        ),
+        pytest.param(
+            "home",
+            "dummy",
+            False,
+            "The /home directory cannot be changed during an update",
+            "Please revert any changes to the /home mount",
+        ),
+        pytest.param(
+            "dummy",
+            "home",
+            False,
+            "The /home directory cannot be changed during an update",
+            "Please revert any changes to the /home mount",
+        ),
+        pytest.param(
+            "dummy",
+            "/home",
+            False,
+            "The /home directory cannot be changed during an update",
+            "Please revert any changes to the /home mount",
+        ),
+        pytest.param(
+            "dummy",
+            "not_home",
+            True,
+            "All login and compute nodes must be stopped",
+            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+        ),
+    ],
+)
+def test_home_change_policy(
+    mocker, old_storage_value, new_storage_value, expected_condition, expected_fail_reason, expected_action_needed
+):
+    cluster = dummy_cluster()
+    mocker.patch.object(cluster, "has_running_capacity", return_value=False)
+    patch_mock = mocker.MagicMock()
+    change_mock = mocker.MagicMock()
+    change_mock.new_value = {"MountDir": new_storage_value}
+    change_mock.old_value = {"MountDir": old_storage_value}
+    change_mock.key = "SharedStorage"
+
+    patch_mock.cluster = cluster
+    assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.condition_checker(change_mock, patch_mock)).is_equal_to(
+        expected_condition
+    )
+    assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.fail_reason(change_mock, patch_mock)).is_equal_to(
+        expected_fail_reason
+    )
+    assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.action_needed(change_mock, patch_mock)).is_equal_to(
+        expected_action_needed
+    )
