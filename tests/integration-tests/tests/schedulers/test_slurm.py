@@ -1725,7 +1725,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains("TresPerJob=gres:gpu:1", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
+    assert_that(job_info).contains("TresPerJob=gres/gpu:1", f"CpusPerTres=gres/gpu:{cpus_per_gpu}")
 
     gpus_per_instance = _get_num_gpus_on_instance(instance_type_info)
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
@@ -2692,12 +2692,13 @@ def _test_scontrol_reboot_nodes(
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(6))
 def trigger_slurm_reconfigure_race_condition(remote_command_executor):
     # trigger slurmctld restart and scontrol reconfigure until they are executed in the same timestamp second
+    # TODO: This test is obsolete and can be removed.
     remote_command_executor.run_remote_command("sudo -i systemctl restart slurmctld && sudo -i scontrol reconfigure")
     restart_time = _get_latest_timestamp_for_log_entry(
         remote_command_executor, "/var/log/slurmctld.log", "slurmctld version .* started on cluster"
     )
     reconfigure_time = _get_latest_timestamp_for_log_entry(
-        remote_command_executor, "/var/log/slurmctld.log", "reconfigure_slurm: completed"
+        remote_command_executor, "/var/log/slurmctld.log", "Processing Reconfiguration Request"
     )
     assert_that(restart_time.second).is_equal_to(reconfigure_time.second)
     assert_that((reconfigure_time - restart_time).total_seconds()).is_less_than_or_equal_to(1.0)
