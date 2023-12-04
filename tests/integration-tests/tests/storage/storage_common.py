@@ -463,7 +463,7 @@ def assert_subnet_az_relations_from_config(
     # If caller does not expect same az, we expect more availability zones.
     elif region == "us-isob-east-1":
         # us-isob-east-1 provides 2 availability zones.
-        assert_that(len(set(cluster_avail_zones))).is_equal_to(2)
+        assert_that(len(set(cluster_avail_zones))).is_equal_to(3)
     else:
         # For other regions, we impose a strong check to make sure each subnet is in a different availability zone.
         assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
