@@ -17,22 +17,24 @@ Scheduling:
         - Name: queue1-i1
           Instances:
             - InstanceType: c5.xlarge
-          MinCount: 1
+          MinCount: 0
           MaxCount: 2
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeSettings:
-          LocalStorage:
-            RootVolume:
-              Size: {{ updated_compute_root_volume_size }}
+        LocalStorage:
+          RootVolume:
+            Size: {{ updated_compute_root_volume_size }}
     - Name: queue2
       ComputeResources:
         - Name: queue2-i1
           Instances:
             - InstanceType: c5.xlarge
-          MinCount: 1
+          MinCount: 0
           MaxCount: 2
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+      Image:
+        CustomAmi: {{ custom_ami }}

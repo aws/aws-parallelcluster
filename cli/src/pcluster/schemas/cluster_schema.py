@@ -1501,8 +1501,12 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         many=True,
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "InstanceType"},
     )
-    max_count = fields.Int(validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.MAX_COUNT})
-    min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    max_count = fields.Int(
+        validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE}
+    )
+    min_count = fields.Int(
+        validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE}
+    )
     spot_price = fields.Float(
         validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
@@ -1649,7 +1653,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE, "update_key": "Name"},
     )
     networking = fields.Nested(
         SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
@@ -1781,7 +1785,7 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE, "update_key": "Name"},
     )
     # Awsbatch schema:
     aws_batch_queues = fields.Nested(

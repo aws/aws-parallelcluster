@@ -163,7 +163,7 @@ def _compare_changes(changes, expected_changes):
             "MaxCount",
             1,
             2,
-            UpdatePolicy.MAX_COUNT,
+            UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
             False,
             id="change compute resources max count",
         ),
@@ -332,7 +332,7 @@ def _test_compute_resources(base_conf, target_conf):
                 "ComputeResources",
                 {"Name": "compute-removed", "InstanceType": "c5.9xlarge", "MaxCount": 20},
                 None,
-                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
                 is_list=True,
             ),
             Change(
@@ -340,11 +340,11 @@ def _test_compute_resources(base_conf, target_conf):
                 "ComputeResources",
                 None,
                 {"Name": "new-compute", "InstanceType": "c5.large", "MinCount": 1},
-                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
                 is_list=True,
             ),
         ],
-        UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+        UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
     )
 
 
@@ -381,7 +381,7 @@ def _test_queues(base_conf, target_conf):
                     "ComputeResources": {"Name": "compute-removed", "InstanceType": "c5.9xlarge"},
                 },
                 None,
-                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
                 is_list=True,
             ),
             Change(
@@ -393,11 +393,11 @@ def _test_queues(base_conf, target_conf):
                     "Networking": {"SubnetIds": "subnet-987654321"},
                     "ComputeResources": {"Name": "new-compute", "InstanceType": "c5.xlarge"},
                 },
-                UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+                UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
                 is_list=True,
             ),
         ],
-        UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE,
+        UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
     )
 
 
@@ -566,7 +566,7 @@ def _test_less_target_sections(base_conf, target_conf):
                 "MinCount",
                 1,
                 None,
-                UpdatePolicy.COMPUTE_FLEET_STOP,
+                UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
                 is_list=False,
             ),
             Change(
@@ -670,7 +670,7 @@ def _test_more_target_sections(base_conf, target_conf):
                 "MinCount",
                 None,
                 1,
-                UpdatePolicy.COMPUTE_FLEET_STOP,
+                UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
                 is_list=False,
             ),
             Change(
