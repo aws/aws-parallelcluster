@@ -396,7 +396,7 @@ class ExternalSlurmdbdStack(Stack):
                         sid="CloudWatchLogsPolicy",
                     ),
                     iam.PolicyStatement(
-                        actions=["ec2:AssignPrivateIpAddresses", "ec2:DescribeInstances"],
+                        actions=["ec2:AssignPrivateIpAddresses"],
                         resources=["*"],
                         effect=iam.Effect.ALLOW,
                         conditions={"StringLike": {"ec2:Subnet": f"*{self.subnet_id.value_as_string}"}},
