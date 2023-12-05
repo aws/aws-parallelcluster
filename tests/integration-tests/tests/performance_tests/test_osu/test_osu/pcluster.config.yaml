@@ -1,0 +1,37 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ head_node_instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: efa-enabled
+      Networking:
+        PlacementGroup:
+          Enabled: true
+          Name: c5n_capacity_reservation
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: efa-enabled-i1
+          {% if "us-iso" in region %}
+          InstanceType: {{ instance }}
+          {% else %}
+          Instances:
+            - InstanceType: {{ instance }}
+          {% endif %}
+          MaxCount: {{ max_queue_size }}
+          MinCount: {{ max_queue_size }}
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
