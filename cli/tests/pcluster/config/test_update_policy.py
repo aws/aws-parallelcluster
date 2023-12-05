@@ -27,36 +27,6 @@ from tests.pcluster.test_utils import dummy_cluster
 
 
 @pytest.mark.parametrize(
-    "is_fleet_stopped, old_max, new_max, expected_result",
-    [
-        pytest.param(True, 10, 9, True, id="stopped fleet and new_max < old_max"),
-        pytest.param(False, "10", "9", False, id="running fleet and new_max < old_max"),
-        pytest.param(True, 10, 11, True, id="stopped fleet new_max > old_max"),
-        pytest.param(False, 10, 9, False, id="running fleet and new_max < old_max"),
-        pytest.param(False, 10, 11, True, id="running fleet and new_max > old_max"),
-        pytest.param(False, None, 0, False, id="running fleet and new_max < DEFAULT_MAX_COUNT"),
-        pytest.param(False, None, 11, True, id="running fleet and new_max > DEFAULT_MAX_COUNT"),
-        pytest.param(False, 11, None, False, id="running fleet and DEFAULT_MAX_COUNT < old_max"),
-        pytest.param(False, 0, None, True, id="running fleet and DEFAULT_MAX_COUNT > old_max"),
-    ],
-)
-def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_result):
-    cluster = dummy_cluster()
-    cluster_has_running_capacity_mock = mocker.patch.object(
-        cluster, "has_running_capacity", return_value=not is_fleet_stopped
-    )
-
-    patch_mock = mocker.MagicMock()
-    patch_mock.cluster = cluster
-    change_mock = mocker.MagicMock()
-    change_mock.new_value = new_max
-    change_mock.old_value = old_max
-
-    assert_that(UpdatePolicy.MAX_COUNT.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
-    cluster_has_running_capacity_mock.assert_called()
-
-
-@pytest.mark.parametrize(
     "is_fleet_stopped, key, path, old_value, new_value, update_strategy, other_changes, expected_result",
     [
         # tests with fleet stopped

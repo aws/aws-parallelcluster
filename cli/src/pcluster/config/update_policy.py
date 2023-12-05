@@ -516,17 +516,6 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
     <= patch.target_config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"],
 )
 
-# Checks resize of max_count
-UpdatePolicy.MAX_COUNT = UpdatePolicy(
-    name="MAX_COUNT",
-    level=1,
-    fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
-    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: not patch.cluster.has_running_capacity()
-    or (int(change.new_value) if change.new_value is not None else DEFAULT_MAX_COUNT)
-    >= (int(change.old_value) if change.old_value is not None else DEFAULT_MAX_COUNT),
-)
-
 # Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
 UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
     name="QUEUE_UPDATE_STRATEGY",
