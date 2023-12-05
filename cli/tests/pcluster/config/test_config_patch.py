@@ -163,7 +163,7 @@ def _compare_changes(changes, expected_changes):
             "MaxCount",
             1,
             2,
-            UpdatePolicy.MAX_COUNT,
+            UpdatePolicy.SUPPORTED,
             False,
             id="change compute resources max count",
         ),
@@ -566,7 +566,7 @@ def _test_less_target_sections(base_conf, target_conf):
                 "MinCount",
                 1,
                 None,
-                UpdatePolicy.COMPUTE_FLEET_STOP,
+                UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
             Change(
@@ -670,7 +670,7 @@ def _test_more_target_sections(base_conf, target_conf):
                 "MinCount",
                 None,
                 1,
-                UpdatePolicy.COMPUTE_FLEET_STOP,
+                UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
             Change(

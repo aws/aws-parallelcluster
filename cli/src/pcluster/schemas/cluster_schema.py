@@ -1501,8 +1501,8 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         many=True,
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "InstanceType"},
     )
-    max_count = fields.Int(validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.MAX_COUNT})
-    min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    max_count = fields.Int(validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.SUPPORTED})
     spot_price = fields.Float(
         validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )

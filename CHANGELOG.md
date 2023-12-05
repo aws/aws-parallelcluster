@@ -21,6 +21,9 @@ CHANGELOG
 - Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response, 
   instead of looping over `MaximumNetworkCards` range.  
 
+**CHANGES**
+- Change of update policy for `MinCount` and `MaxCount`. The stop of the compute fleet is not required when changing these values through a cluster update.  
+
 3.8.0
 ------
 
