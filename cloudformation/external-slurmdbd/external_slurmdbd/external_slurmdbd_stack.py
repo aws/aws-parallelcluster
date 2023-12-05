@@ -392,7 +392,11 @@ class ExternalSlurmdbdStack(Stack):
                         sid="CloudWatchLogsPolicy",
                     ),
                     iam.PolicyStatement(
-                        actions=["ec2:AssignPrivateIpAddresses", "ec2:DescribeInstances"],
+                        actions=[
+                            "ec2:AssignPrivateIpAddresses",
+                            "ec2:DescribeInstances",
+                            "ec2:DescribeNetworkInterfaces",
+                        ],
                         resources=["*"],
                         effect=iam.Effect.ALLOW,
                         sid="IPAssignmentPolicy",
