@@ -7,6 +7,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
+from aws_cdk import aws_route53 as route53
 from constructs import Construct
 
 
@@ -97,10 +98,19 @@ class ExternalSlurmdbdStack(Stack):
         self._launch_template = self._add_external_slurmdbd_launch_template()
 
         # define EC2 Auto Scaling Group (ASG)
-        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
+        # self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
 
         # define Primary Slurmdbd Instance (not via ASG)
-        # self._primary_slurmdbd_instance = self._add_slurmdbd_primary_instance()
+        self._primary_slurmdbd_instance = self._add_slurmdbd_primary_instance()
+
+        # define external slurmdbd hosted zone
+        self._hosted_zone = self._add_hosted_zone()
+
+        # Add DNS record to hosted zone
+        self._add_instance_to_dns(
+            ip_addr=self._primary_slurmdbd_instance.attr_private_ip,
+            name="slurmdbd",
+        )
 
     def _add_cfn_init_config(self):
         dna_json_content = {
@@ -392,6 +402,15 @@ class ExternalSlurmdbdStack(Stack):
                         conditions={"StringLike": {"ec2:Subnet": f"*{self.subnet_id.value_as_string}"}},
                         sid="IPAssignmentPolicy",
                     ),
+                    # iam.PolicyStatement(
+                    #     actions=[
+                    #         "route53:CreateHostedZone",
+                    #         "route53:DeleteHostedZone",
+                    #     ],
+                    #     resources=[slurmdbd_hosted_zone.value_as_string],
+                    #     effect=iam.Effect.ALLOW,
+                    #     sid="IPAssignmentPolicy",
+                    # ),
                 ]
             ),
         )
@@ -405,4 +424,30 @@ class ExternalSlurmdbdStack(Stack):
             "SlurmdbdLogGroup",
             log_group_name=f"/aws/slurmdbd/{self.stack_name}",
             retention=logs.RetentionDays.ONE_WEEK,
+        )
+
+    def _add_hosted_zone(self):
+        return route53.CfnHostedZone(
+            self,
+            id="ExternalSlurmdbdHostedZone",
+            name="externalslurmdbdhostedzone",
+            vpcs=[
+                route53.CfnHostedZone.VPCProperty(
+                    vpc_id=self.vpc_id.value_as_string,
+                    vpc_region=self.region,
+                )
+            ],
+        )
+
+    def _add_instance_to_dns(self, ip_addr, name):
+        route53.CfnRecordSet(
+            self,
+            "ExternalSlurmdbdRecordSet",
+            name=(name + "." + self._hosted_zone.name),
+            type="A",
+            hosted_zone_id=self._hosted_zone.attr_id,
+            region=self.region,
+            resource_records=[ip_addr],
+            set_identifier="externalslurmdbdsetidentifier",
+            ttl="300",
         )
