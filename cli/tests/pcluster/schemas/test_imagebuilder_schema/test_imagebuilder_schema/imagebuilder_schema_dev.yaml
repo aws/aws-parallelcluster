@@ -52,5 +52,6 @@ DevSettings:
       { "UserIds": ["123456789012", "345678901234"], "UserGroups": ["all"] }
   TerminateInstanceOnFailure: True
   DisableValidateAndTest: True
+  DisableKernelUpdate: True
 
 CustomS3Bucket: bucket-name
