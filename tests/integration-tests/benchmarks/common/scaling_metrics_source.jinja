@@ -1,0 +1,49 @@
+{
+    "metrics": [
+        [ "ParallelCluster/ScalingStressTest", "ComputeNodesCount", "ClusterName", "{{ cluster_name }}" ],
+        [ "ParallelCluster/ScalingStressTest", "EC2NodesCount", "ClusterName", "{{ cluster_name }}" ],
+        [ "ParallelCluster/ScalingStressTest", "PendingJobsCount", "ClusterName", "{{ cluster_name }}", { "yAxis": "right" } ],
+        [ "ParallelCluster/ScalingStressTest", "RunningJobsCount", "ClusterName", "{{ cluster_name }}", { "yAxis": "right" } ]
+    ],
+    "view": "timeSeries",
+    "stacked": false,
+    "stat": "Average",
+    "period": 60,
+    "title": "{{ title }}",
+    "width": 1400,
+    "height": 700,
+    "start": "{{ graph_start_time }}",
+    "end": "{{ graph_end_time }}",
+    "annotations": {
+        "horizontal": [
+            {
+                "label": "Scaling Target",
+                "value": {{ scaling_target }}
+            }
+        ],
+        "vertical": [
+            {
+                "label": "Start Time",
+                "value": "{{ start_time }}"
+            },
+            {
+                "label": "End Time",
+                "value": "{{ end_time }}"
+            },
+            {% if scaling_target_time %}
+            {
+                "label": "Full Capacity ({{ scaling_target }})",
+                "value": "{{ scaling_target_time }}"
+            }
+            {% endif %}
+        ]
+    },
+    "yAxis": {
+        "left": {
+            "label": "NodeCount"
+        },
+        "right": {
+            "label": "JobCount"
+        }
+    }
+}
