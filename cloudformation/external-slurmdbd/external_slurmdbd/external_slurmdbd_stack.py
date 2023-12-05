@@ -99,6 +99,9 @@ class ExternalSlurmdbdStack(Stack):
         # define EC2 Auto Scaling Group (ASG)
         self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
 
+        # define Primary Slurmdbd Instance (not via ASG)
+        # self._primary_slurmdbd_instance = self._add_slurmdbd_primary_instance()
+
     def _add_cfn_init_config(self):
         dna_json_content = {
             "dbms_uri": self.dbms_uri.value_as_string,
@@ -262,14 +265,24 @@ class ExternalSlurmdbdStack(Stack):
             description="The SSH key name to access the instance (for management purposes only)",
         )
 
+        private_ip = CfnParameter(
+            self,
+            "PrivateIp",
+            type="String",
+            description="Static private IP address + prefix to assign to the slurmdbd instance",
+        )
+
+        private_prefix = CfnParameter(
+            self,
+            "PrivatePrefix",
+            type="String",
+            description="Subnet prefix to assign with the private IP to the slurmdbd instance",
+        )
+
         launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
             key_name=key_name_param.value_as_string,
             image_id=ami_id_param.value_as_string,
             instance_type=instance_type_param.value_as_string,
-            security_group_ids=[
-                self._ssh_server_sg.security_group_id,
-                self._slurmdbd_server_sg.security_group_id,
-            ],
             user_data=Fn.base64(
                 Fn.sub(
                     get_user_data_content("../resources/user_data.sh"),
@@ -278,11 +291,23 @@ class ExternalSlurmdbdStack(Stack):
                             "CustomCookbookUrl": self.custom_cookbook_url_param.value_as_string,
                             "StackName": self.stack_name,
                             "Region": self.region,
+                            "PrivateIp": private_ip.value_as_string,
+                            "SubnetPrefix": private_prefix.value_as_string,
                         },
                     },
                 )
             ),
             iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
+            network_interfaces=[
+                ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
+                    device_index=0,
+                    groups=[
+                        self._ssh_server_sg.security_group_id,
+                        self._slurmdbd_server_sg.security_group_id,
+                    ],
+                    subnet_id=self.subnet_id.value_as_string,
+                ),
+            ],
         )
 
         launch_template = ec2.CfnLaunchTemplate(self, "LaunchTemplate", launch_template_data=launch_template_data)
@@ -307,6 +332,15 @@ class ExternalSlurmdbdStack(Stack):
         listener.add_target_groups("External-Slurmdbd-Target", target_group)
 
         return nlb
+
+    def _add_slurmdbd_primary_instance(self):
+        return ec2.CfnInstance(
+            self,
+            id="ExternalSlurmdbdPrimaryInstance",
+            launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
+                version=self._launch_template.attr_latest_version_number, launch_template_id=self._launch_template.ref
+            ),
+        )
 
     def _add_external_slurmdbd_auto_scaling_group(self):
         return autoscaling.CfnAutoScalingGroup(
@@ -350,6 +384,13 @@ class ExternalSlurmdbdStack(Stack):
                         resources=[self._log_group.log_group_arn],
                         effect=iam.Effect.ALLOW,
                         sid="CloudWatchLogsPolicy",
+                    ),
+                    iam.PolicyStatement(
+                        actions=["ec2:AssignPrivateIpAddresses", "ec2:DescribeInstances"],
+                        resources=["*"],
+                        effect=iam.Effect.ALLOW,
+                        conditions={"StringLike": {"ec2:Subnet": f"*{self.subnet_id.value_as_string}"}},
+                        sid="IPAssignmentPolicy",
                     ),
                 ]
             ),
