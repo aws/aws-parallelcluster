@@ -7,21 +7,24 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from utils import describe_cluster_instances
 
-MINIMUM_DATASET_SIZE = 2
+MINIMUM_DATASET_SIZE = 5
 
 
 def evaluate_data(value, data):
     standard_deviation = statistics.stdev(data)
     mean = statistics.mean(data)
+    logging.info(f"Mean: {mean}")
     logging.info(f"Standard deviation: {standard_deviation}")
 
+    distance = abs(mean - value) / standard_deviation
     if value < (mean + 2 * standard_deviation) or value > (mean - 2 * standard_deviation):
-        return False
-    return True
+        return False, distance
+    return True, distance
 
 
-def get_data(dimensions, cw_client):
+def get_data(instance_type, os, cw_client):
     data = []
+    dimensions = [{"Name": "InstanceType", "Value": instance_type}, {"Name": "OS", "Value": os}]
 
     cluster_metrics = cw_client.list_metrics(
         Namespace="ParallelCluster", MetricName="StartupTime", Dimensions=dimensions
@@ -49,8 +52,15 @@ def get_data(dimensions, cw_client):
     return data
 
 
-def get_metric(dimensions, cw_client):
+def get_metric(os, cluster, instance_type, instance_id, cw_client):
     value = None
+
+    dimensions = [
+        {"Name": "OS", "Value": os},
+        {"Name": "InstanceID", "Value": instance_id},
+        {"Name": "ClusterName", "Value": cluster.name},
+        {"Name": "InstanceType", "Value": instance_type},
+    ]
 
     result = cw_client.get_metric_statistics(
         Namespace="ParallelCluster",
@@ -73,7 +83,6 @@ def get_metric(dimensions, cw_client):
 def test_startup_time(pcluster_config_reader, clusters_factory, test_datadir, region, instance, os, scheduler):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
-    logging.info("Cluster Created")
 
     cw_client = boto3.client("cloudwatch", region_name=region)
 
@@ -92,19 +101,11 @@ def test_startup_time(pcluster_config_reader, clusters_factory, test_datadir, re
 
         # get new startup time
 
-        dimensions = [
-            {"Name": "OS", "Value": os},
-            {"Name": "InstanceID", "Value": instance_id},
-            {"Name": "ClusterName", "Value": cluster.name},
-            {"Name": "InstanceType", "Value": instance_type},
-        ]
-
-        value = get_metric(dimensions, cw_client)
+        value = get_metric(os, cluster, instance_type, instance_id, cw_client)
         logging.info(f"Value: {value}")
 
         # get historical data
-        dimensions = [{"Name": "InstanceType", "Value": instance_type}, {"Name": "OS", "Value": os}]
-        data = get_data(dimensions, cw_client)
+        data = get_data(instance_type, os, cw_client)
         if value in data:
             data.remove(value)
 
@@ -112,14 +113,14 @@ def test_startup_time(pcluster_config_reader, clusters_factory, test_datadir, re
 
         # evaluate data
         if len(data) > MINIMUM_DATASET_SIZE and value:
-            degradation = evaluate_data(value, data)
+            degradation, dist = evaluate_data(value, data)
             if degradation:
-                performance_degradation[instance_type] = value
+                performance_degradation[instance_type] = dist
 
     if performance_degradation:
-        degraded_instances = performance_degradation.keys()
-        pytest.fail(
-            f"Performance test results show performance degradation for the following instances: {degraded_instances}"
-        )
+        message = "Performance test results show performance degradation for the following instances: "
+        for instance in performance_degradation.keys():
+            message += f"{instance} ({performance_degradation[instance]} standard deviations from the mean), "
+        pytest.fail(message[:-2])
     else:
         logging.info("Performance test results show no performance degradation")

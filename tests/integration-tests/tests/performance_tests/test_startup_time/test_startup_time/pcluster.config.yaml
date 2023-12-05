@@ -10,7 +10,6 @@ HeadNode:
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
-      - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess # Required to add performance testing widgets to the cluster dashboard
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
