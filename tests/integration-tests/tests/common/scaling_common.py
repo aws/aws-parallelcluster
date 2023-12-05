@@ -50,7 +50,7 @@ def get_scaling_metrics(
         retry_on_result=lambda _: scaling_target_condition(
             ec2_capacity_time_series, compute_nodes_time_series, target_cluster_size
         ),
-        wait_fixed=seconds(20),
+        wait_fixed=seconds(10),
         stop_max_delay=max_monitoring_time,
     )
     def _collect_metrics():

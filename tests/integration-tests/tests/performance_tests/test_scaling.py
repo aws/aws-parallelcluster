@@ -77,7 +77,7 @@ def _get_scaling_time(ec2_capacity_time_series: list, timestamps: list, scaling_
 @pytest.mark.parametrize(
     "scaling_max_time_in_mins, scaling_target, shared_headnode_storage, head_node_instance_type",
     [
-        (10, 2000, None, "c5.24xlarge"),  # TODO: Pass these values from an external source
+        (10, 3000, "Efs", "c5.24xlarge"),  # TODO: Pass these values from an external source
     ],
 )
 def test_scaling_stress_test(
