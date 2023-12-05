@@ -12,9 +12,12 @@
 import datetime
 import logging
 import os
+import pathlib
 from time import sleep
 
 import boto3
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import describe_cluster_instances
@@ -88,7 +91,7 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     def _watch_compute_nodes_allocation():
         try:
             compute_nodes = scheduler_commands.compute_nodes_count()
-            logging.info("Publishing schedueler compute metric: count={0}".format(compute_nodes))
+            logging.info("Publishing scheduler compute metric: count={0}".format(compute_nodes))
             cw_client.put_metric_data(
                 Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
                 MetricData=[{"MetricName": "ComputeNodesCount", "Value": compute_nodes, "Unit": "Count"}],
@@ -130,39 +133,27 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     return compute_nodes_time_series, timestamps, end_time
 
 
-def _publish_metric(region, instance, os, scheduler, state, count):
-    cw_client = boto3.client("cloudwatch", region_name=region)
-    logging.info("Publishing metric: state={0} count={1}".format(state, count))
-    cw_client.put_metric_data(
-        Namespace="parallelcluster/benchmarking/test_scaling_speed/{region}/{instance}/{os}/{scheduler}".format(
-            region=region, instance=instance, os=os, scheduler=scheduler
-        ),
-        MetricData=[
-            {
-                "MetricName": "ComputeNodesCount",
-                "Dimensions": [{"Name": "state", "Value": state}],
-                "Value": count,
-                "Unit": "Count",
-            }
-        ],
-    )
+def generate_metric_widget(**kwargs):
+    config_dir = pathlib.Path(__file__).parent
+    file_loader = FileSystemLoader(config_dir)
+    env = SandboxedEnvironment(loader=file_loader)
+    return env.get_template("scaling_metrics_source.jinja").render(**kwargs)
 
 
 def produce_benchmark_metrics_report(
-    benchmark_params, region, cluster_name, start_time, end_time, scaling_target, request
+    title, region, cluster_name, start_time, end_time, scaling_target, request, scaling_target_time=None
 ):
-    title = ", ".join("{0}={1}".format(key, val) for (key, val) in benchmark_params.items())
-    graph_start_time = _to_datetime(start_time) - datetime.timedelta(minutes=2)
-    graph_end_time = _to_datetime(end_time) + datetime.timedelta(minutes=2)
-    scaling_target = scaling_target
-    widget_metric = METRIC_WIDGET_TEMPLATE.format(
+    graph_start_time = start_time - datetime.timedelta(minutes=2)
+    graph_end_time = end_time + datetime.timedelta(minutes=2)
+    widget_metric = generate_metric_widget(
         cluster_name=cluster_name,
-        start_time=start_time,
-        end_time=end_time,
+        start_time=start_time.isoformat(),
+        end_time=end_time.isoformat(),
         title=title,
-        graph_start_time=graph_start_time,
-        graph_end_time=graph_end_time,
+        graph_start_time=graph_start_time.isoformat(),
+        graph_end_time=graph_end_time.isoformat(),
         scaling_target=scaling_target,
+        scaling_target_time=scaling_target_time.isoformat() if scaling_target_time else "",
     )
     logging.info(widget_metric)
     cw_client = boto3.client("cloudwatch", region_name=region)
@@ -178,7 +169,7 @@ def _write_results_to_outdir(request, image_bytes):
     out_dir = request.config.getoption("output_dir")
     os.makedirs("{out_dir}/benchmarks".format(out_dir=out_dir), exist_ok=True)
     graph_dst = "{out_dir}/benchmarks/{test_name}.png".format(
-        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
+        out_dir=out_dir, test_name=os.path.basename(request.node.nodeid.replace("::", "-"))
     )
     with open(graph_dst, "wb") as image:
         image.write(image_bytes)
