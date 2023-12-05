@@ -40,7 +40,6 @@ from pcluster.constants import (
     DETAILED_MONITORING_ENABLED_DEFAULT,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
-    EBS_VOLUME_TYPE_DEFAULT_US_ISO,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME,
     FEATURE_REQUIRING_ADDITION_SPACE,
@@ -220,7 +219,7 @@ class Ebs(Resource):
         self.encrypted = Resource.init_param(encrypted, default=True)
         self.volume_type = Resource.init_param(
             volume_type,
-            default=EBS_VOLUME_TYPE_DEFAULT_US_ISO if get_region().startswith("us-iso") else EBS_VOLUME_TYPE_DEFAULT,
+            default=EBS_VOLUME_TYPE_DEFAULT,
         )
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
