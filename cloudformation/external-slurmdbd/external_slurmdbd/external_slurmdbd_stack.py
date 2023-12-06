@@ -135,17 +135,18 @@ class ExternalSlurmdbdStack(Stack):
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
-                    },
+                    }
                 },
-                # TODO: fix bug that command not executed
-                "chef": {
-                    "command": (
-                        "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
-                        "--logfile /var/log/chef-client.log --force-formatter --no-color "
-                        "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                        "--override-runlist aws-parallelcluster-entrypoints::external_slurmdbd_config"
-                    ),
-                    "cwd": "/etc/chef",
+                "commands": {
+                    "chef": {
+                        "command": (
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "--logfile /var/log/chef-client.log --force-formatter --no-color "
+                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
+                            "--override-runlist aws-parallelcluster-entrypoints::external_slurmdbd_config"
+                        ),
+                        "cwd": "/etc/chef",
+                    }
                 },
             },
             # TODO: delete the cfn-hup hook
