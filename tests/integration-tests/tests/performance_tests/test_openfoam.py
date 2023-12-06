@@ -71,24 +71,27 @@ def test_openfoam(
             (str(test_datadir / "openfoam.results.sh")), hide=False
         )
         output = perf_test_result.stdout.strip()
-        elapsed_time = int(output.split("\n")[-1].strip())
+        observed_value = int(output.split("\n")[-1].strip())
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
-        logging.info(f"The elapsed time for {node} nodes is {elapsed_time} seconds")
-        percentage_difference = perf_test_difference(elapsed_time, baseline_value)
+        logging.info(f"The elapsed time for {node} nodes is {observed_value} seconds")
+        percentage_difference = perf_test_difference(observed_value, baseline_value)
         if percentage_difference < 0:
             outcome = "improvement"
         elif percentage_difference <= PERF_TEST_DIFFERENCE_TOLERANCE:
             outcome = "degradation (within tolerance)"
         else:
             outcome = "degradation (above tolerance)"
+            performance_degradation[node] = {
+                "baseline": baseline_value,
+                "observed": observed_value,
+                "percentage_difference": percentage_difference,
+            }
         logging.info(
-            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {elapsed_time} seconds, "
+            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
-        if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
-            performance_degradation[node] = perf_test_result.stdout
+
     if performance_degradation:
-        degraded_nodes = list(performance_degradation.keys())
-        pytest.fail(f"Performance test results show performance degradation for the following nodes: {degraded_nodes}")
+        pytest.fail(f"Performance degradation detected: {performance_degradation}")
     else:
         logging.info("Performance test results show no performance degradation")
