@@ -23,7 +23,7 @@ export I_MPI_HYDRA_BOOTSTRAP="slurm"
 
 SHARED_DIR="/shared"
 
-STARCCM="${SHARED_DIR}/STAR-CCM+/16.02.008/STAR-CCM+16.02.008/star/bin/starccm+"
+STARCCM="${SHARED_DIR}/STAR-CCM+/18.02.008/STAR-CCM+18.02.008/star/bin/starccm+"
 SIM_FILE="${SHARED_DIR}/lemans_poly_17m.amg@00500.sim"
 
 podkey="$1"
