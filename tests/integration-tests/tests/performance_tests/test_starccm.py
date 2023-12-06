@@ -102,16 +102,17 @@ def test_starccm(
             outcome = "degradation (within tolerance)"
         else:
             outcome = "degradation (above tolerance)"
+            performance_degradation[node] = {
+                "baseline": baseline_value,
+                "observed": observed_value,
+                "percentage_difference": percentage_difference,
+            }
         logging.info(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
-        if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
-            performance_degradation[node] = perf_test_result.stdout
+
     if performance_degradation:
-        degraded_nodes = performance_degradation.keys()
-        pytest.fail(
-            f"Performance test results show performance degradation for the following nodes:" f"{degraded_nodes}"
-        )
+        pytest.fail(f"Performance degradation detected: {performance_degradation}")
     else:
         logging.info("Performance test results show no performance degradation")
