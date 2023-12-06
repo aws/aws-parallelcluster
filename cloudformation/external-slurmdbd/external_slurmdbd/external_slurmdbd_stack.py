@@ -269,19 +269,20 @@ class ExternalSlurmdbdStack(Stack):
             type="String",
             description="The SSH key name to access the instance (for management purposes only)",
         )
-
         private_ip = CfnParameter(
             self,
             "PrivateIp",
             type="String",
             description="Static private IP address + prefix to assign to the slurmdbd instance",
         )
-
         private_prefix = CfnParameter(
             self,
             "PrivatePrefix",
             type="String",
             description="Subnet prefix to assign with the private IP to the slurmdbd instance",
+        )
+        dbms_client_sg_id = CfnParameter(
+            self, "DBMSClientSG", type="String", description="DBMS Client Security Group Id"
         )
 
         launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
@@ -309,6 +310,7 @@ class ExternalSlurmdbdStack(Stack):
                     groups=[
                         self._ssh_server_sg.security_group_id,
                         self._slurmdbd_server_sg.security_group_id,
+                        dbms_client_sg_id.value_as_string,
                     ],
                     subnet_id=self.subnet_id.value_as_string,
                 ),
