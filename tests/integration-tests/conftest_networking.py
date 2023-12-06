@@ -121,6 +121,18 @@ CIDR_FOR_PRIVATE_SUBNETS = [
     "192.168.144.0/21",
     "192.168.152.0/21",
 ]
+CIDR_FOR_PUBLIC_SUBNETS_SCALING = [
+    "192.168.0.0/20",
+    "192.168.16.0/20",
+    "192.168.32.0/20",
+    "192.168.48.0/20",
+]
+CIDR_FOR_PRIVATE_SUBNETS_SCALING = [
+    "192.168.64.0/20",
+    "192.168.80.0/20",
+    "192.168.96.0/20",
+    "192.168.112.0/20",
+]
 CIDR_FOR_CUSTOM_SUBNETS = [
     "192.168.160.0/21",
     "192.168.168.0/21",
@@ -293,6 +305,15 @@ def vpc_stack(vpc_stacks_shared, region, az_id):
     return local_vpc_stack
 
 
+def _is_scaling_test(tests_config):
+    logging.info(f"Checking any scaling stress tests in {tests_config}")
+    return tests_config.get(
+        "test-suites", {}).get(
+        "performance_tests", {}).get(
+        "test_scaling.py::test_scaling_stress_test"
+    )
+
+
 @xdist_session_fixture(autouse=True)
 def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
     """
@@ -302,6 +323,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
     """
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    is_scaling_test = _is_scaling_test(request.config.getoption("tests_config"))
     credential = request.config.getoption("credential")
 
     vpc_stacks_dict = {}
@@ -329,7 +351,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             subnets.append(
                 SubnetConfig(
                     name=subnet_name(visibility="Private", az_id=az_id),
-                    cidr=CIDR_FOR_PRIVATE_SUBNETS[index],
+                    cidr=CIDR_FOR_PRIVATE_SUBNETS_SCALING[index] if is_scaling_test else CIDR_FOR_PRIVATE_SUBNETS[index],
                     map_public_ip_on_launch=False,
                     has_nat_gateway=False,
                     availability_zone=az_name,
