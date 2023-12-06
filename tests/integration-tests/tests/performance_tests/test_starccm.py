@@ -34,7 +34,7 @@ def perf_test_difference(observed_value, baseline_value):
 
 
 def starccm_installed(headnode):
-    cmd = "/shared/STAR-CCM+/16.02.008/STAR-CCM+16.02.008/star/bin/starccm+ --version"
+    cmd = "/shared/STAR-CCM+/18.02.008/STAR-CCM+18.02.008/star/bin/starccm+ --version"
     try:
         headnode.run_remote_command(cmd)
         return True
