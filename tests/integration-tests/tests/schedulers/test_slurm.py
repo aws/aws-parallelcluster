@@ -1733,11 +1733,11 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": f"--gres=gpu:{gpus_per_instance} --cpus-per-gpu {cpus_per_gpu}",
+            "other_options": f"--gres=gpu/{gpus_per_instance} --cpus-per-gpu {cpus_per_gpu}",
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains(f"TresPerNode=gres:gpu:{gpus_per_instance}", f"CpusPerTres=gres:gpu:{cpus_per_gpu}")
+    assert_that(job_info).contains(f"TresPerNode=gres/gpu:{gpus_per_instance}", f"CpusPerTres=gres/gpu:{cpus_per_gpu}")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
