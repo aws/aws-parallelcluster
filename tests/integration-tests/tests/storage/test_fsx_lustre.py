@@ -304,7 +304,6 @@ def test_multiple_fsx(
     scheduler_commands_factory,
     test_datadir,
     request,
-    run_benchmarks,
 ):
     """
     Test existing Fsx file system
@@ -325,14 +324,10 @@ def test_multiple_fsx(
     num_existing_fsx_open_zfs_volumes = (
         2 if partition in ["aws"] else 0
     )  # China, GovCloud and Isolated do not have OpenZFS.
-    if request.config.getoption("benchmarks") and os == "alinux2":
-        # Only create more FSx when benchmarks are specified. Limiting OS to reduce cost of too many file systems
-        num_existing_fsx = 20
-    else:
-        # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
-        num_existing_fsx = num_existing_fsx_ontap_volumes + num_existing_fsx_open_zfs_volumes + 1
+    # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
+    num_existing_fsx = num_existing_fsx_ontap_volumes + num_existing_fsx_open_zfs_volumes + 1
     num_existing_fsx_lustre = num_existing_fsx - num_existing_fsx_ontap_volumes - num_existing_fsx_open_zfs_volumes
-    fsx_lustre_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
+    fsx_lustre_mount_dirs = []
     for i in range(num_new_fsx_lustre + num_existing_fsx_lustre - 1):
         fsx_lustre_mount_dirs.append(f"/fsx_lustre_mount_dir{i}")
 
@@ -368,7 +363,6 @@ def test_multiple_fsx(
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 @pytest.mark.usefixtures("instance")

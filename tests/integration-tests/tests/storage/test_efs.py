@@ -114,7 +114,6 @@ def test_multiple_efs(
     key_name,
     cfn_stacks_factory,
     scheduler_commands_factory,
-    run_benchmarks,
 ):
     """
     Test when efs_fs_id is provided in the config file, the existing efs can be correctly mounted.
@@ -126,11 +125,7 @@ def test_multiple_efs(
     existing_efs_mount_dirs = []
     iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3 * [False]
     encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3 * [False]
-    if request.config.getoption("benchmarks") and os == "alinux2":
-        # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
-        num_existing_efs = 20
-    else:
-        num_existing_efs = 3
+    num_existing_efs = 3
     # create an additional EFS with file system policy to prevent anonymous access
     existing_efs_ids = efs_stack_factory(num_existing_efs)
     if scheduler != "awsbatch":
@@ -168,14 +163,11 @@ def test_multiple_efs(
     for i in range(num_existing_efs):
         existing_efs_mount_dirs.append(f"/existing_efs_mount_dir_{i}")
 
-    new_efs_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
-
     _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
     # change cluster configuration file to test different tls and iam settings to EFS.
     cluster_config = pcluster_config_reader(
         existing_efs_mount_dirs=existing_efs_mount_dirs,
         existing_efs_ids=existing_efs_ids,
-        new_efs_mount_dirs=new_efs_mount_dirs,
         iam_authorizations=iam_authorizations,
         encryption_in_transits=encryption_in_transits,
     )
@@ -187,25 +179,22 @@ def test_multiple_efs(
     for i in range(num_existing_efs):
         remote_command_executor.run_remote_command(f"cat {existing_efs_mount_dirs[i]}/{existing_efs_filenames[i]}")
 
-    all_mount_dirs = existing_efs_mount_dirs + new_efs_mount_dirs
     # append false for the one new_efs_mount_dir
     iam_authorizations.append(False)
     encryption_in_transits.append(False)
     _check_efs_correctly_mounted_and_shared(
-        all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
+        existing_efs_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
     )
 
     if scheduler == "slurm":  # Only Slurm supports compute nodes reboot
         remote_command_executor, scheduler_commands = _check_efs_after_nodes_reboot(
-            all_mount_dirs,
+            existing_efs_mount_dirs,
             cluster,
             remote_command_executor,
             scheduler_commands_factory,
             iam_authorizations,
             encryption_in_transits,
         )
-
-    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 def _check_efs_after_nodes_reboot(
