@@ -23,12 +23,17 @@ from utils import CWMetric, get_compute_instances_count, publish_metrics_to_clou
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
 
 
-def scaling_target_condition(ec2_capacity_time_series, compute_nodes_time_series, target_cluster_size):
+def scaling_target_condition(
+    ec2_capacity_time_series,
+    compute_nodes_time_series,
+    target_cluster_size, use_ec2_limit=True,  # Stop monitoring after all EC2 instances have been launched
+    use_compute_nodes_limit=True  # Stop monitoring after all nodes have joined the cluster
+):
     return (
-        ec2_capacity_time_series[-1] != target_cluster_size
-        or compute_nodes_time_series[-1] != target_cluster_size
-        or max(ec2_capacity_time_series) == 0
-        or max(compute_nodes_time_series) == 0
+        (use_ec2_limit and ec2_capacity_time_series[-1] != target_cluster_size)
+        or (use_compute_nodes_limit and compute_nodes_time_series[-1] != target_cluster_size)
+        or (use_ec2_limit and max(ec2_capacity_time_series) == 0)
+        or (use_compute_nodes_limit and max(compute_nodes_time_series) == 0)
     )
 
 
@@ -48,7 +53,7 @@ def get_scaling_metrics(
     @retry(
         # Retry until EC2 and Scheduler capacities scale to specified target
         retry_on_result=lambda _: scaling_target_condition(
-            ec2_capacity_time_series, compute_nodes_time_series, target_cluster_size
+            ec2_capacity_time_series, compute_nodes_time_series, target_cluster_size, use_compute_nodes_limit=False
         ),
         wait_fixed=seconds(10),
         stop_max_delay=max_monitoring_time,
