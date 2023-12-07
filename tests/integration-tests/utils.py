@@ -839,3 +839,26 @@ def is_fsx_supported(region: str):
 
 def is_directory_supported(region: str, directory_type: str):
     return False if "us-iso" in region and directory_type == "SimpleAD" else True
+
+
+def set_protected_failure_count(remote_command_executor, protected_failure_count):
+    """Disable protected mode by setting protected_failure_count to -1."""
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/^protected_failure_count /d' {clustermgtd_conf_path}; "
+        + f"echo 'protected_failure_count = {protected_failure_count}' | sudo tee -a {clustermgtd_conf_path}"
+    )
+
+
+def retrieve_clustermgtd_conf_path(remote_command_executor):
+    clustermgtd_conf_path = "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    clustermgtd_conf_path_override = remote_command_executor.run_remote_command(
+        "sudo strings /proc/$(pgrep -f bin/clustermgtd$)/environ | grep CONFIG_FILE= | cut -d '=' -f2"
+    ).stdout
+    if clustermgtd_conf_path_override:
+        clustermgtd_conf_path = clustermgtd_conf_path_override
+    return clustermgtd_conf_path
+
+
+def disable_protected_mode(remote_command_executor):
+    set_protected_failure_count(remote_command_executor, -1)
