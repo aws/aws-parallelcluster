@@ -27,7 +27,7 @@ from utils import (
     get_compute_nodes_instance_ids,
     get_instance_info,
     test_cluster_health_metric,
-    wait_for_computefleet_changed,
+    wait_for_computefleet_changed, set_protected_failure_count, retrieve_clustermgtd_conf_path,
 )
 
 from tests.common.assertions import (
@@ -126,7 +126,7 @@ def test_slurm(
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm")
     # Test compute node bootstrap timeout
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(head_node_command_executor)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(head_node_command_executor)
     _test_compute_node_bootstrap_timeout(
         cluster,
         pcluster_config_reader,
@@ -373,8 +373,8 @@ def test_slurm_custom_partitions(
     scheduler_commands.set_partition_state(custom_partitions[0], "UP")
 
     logging.info("Decreasing protected failure count for quicker enter protected mode...")
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
-    _set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
     failing_partition = "ondemand1"
     logging.info("Testing protected mode is skipped while job running and activated when no jobs are in the queue...")
     pending_job_id = _test_active_job_running(
@@ -493,7 +493,7 @@ def test_slurm_protected_mode(
     cluster_config = pcluster_config_reader(bucket=bucket_name, scaling_strategy=scaling_strategy)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     remote_command_executor.clear_clustermgtd_log()
@@ -506,7 +506,7 @@ def test_slurm_protected_mode(
     # Re-enable protected mode
     _enable_protected_mode(remote_command_executor, clustermgtd_conf_path)
     # Decrease protected failure count for quicker enter protected mode.
-    _set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
 
     partition = "half-broken"
     pending_job_id = _test_active_job_running(
@@ -564,7 +564,7 @@ def test_fast_capacity_failover(
     cluster_config = pcluster_config_reader(scaling_strategy=scaling_strategy)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     setup_ec2_launch_override_to_emulate_ice(
@@ -1385,7 +1385,7 @@ def _test_clustermgtd_down_logic(
         scheduler_commands, num_static_nodes, num_dynamic_nodes, partition
     )
     logging.info("Retrieving clustermgtd config path before killing it.")
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     clustermgtd_heartbeat_file = _retrieve_clustermgtd_heartbeat_file(remote_command_executor, clustermgtd_conf_path)
     logging.info("Killing clustermgtd and rewriting timestamp file to trigger timeout.")
     remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_clustermgtd.sh"), run_as_root=True)
@@ -1913,13 +1913,6 @@ def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader, sca
     _update_and_start_cluster(cluster, updated_config_file)
 
 
-def _set_protected_failure_count(remote_command_executor, protected_failure_count, clustermgtd_conf_path):
-    """Disable protected mode by setting protected_failure_count to -1."""
-    remote_command_executor.run_remote_command(
-        f"sudo sed -i '/^protected_failure_count /d' {clustermgtd_conf_path}; "
-        + f"echo 'protected_failure_count = {protected_failure_count}' | sudo tee -a {clustermgtd_conf_path}"
-    )
-
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
 def _wait_until_protected_mode_failure_count_set(cluster):
@@ -1932,9 +1925,9 @@ def _wait_until_protected_mode_failure_count_set(cluster):
             "ClusterManager Startup",
         ],
     )
-    clustermgtd_conf_path = _retrieve_clustermgtd_conf_path(remote_command_executor)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     assert_that(clustermgtd_conf_path).is_not_empty()
-    _set_protected_failure_count(remote_command_executor, 3, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, 3, clustermgtd_conf_path)
 
     return remote_command_executor
 
@@ -1949,7 +1942,7 @@ def _test_disable_protected_mode(
 ):
     """Test Bootstrap failures have no affect on cluster when protected mode is disabled."""
     # Disable protected_mode by setting protected_failure_count to -1
-    _set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
     _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader, scaling_strategy)
     # wait till the node failed
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
@@ -2145,16 +2138,6 @@ def _test_compute_node_bootstrap_timeout(
 
 def _retrieve_slurm_root_path(remote_command_executor):
     return remote_command_executor.run_remote_command("dirname $(dirname $(which scontrol))").stdout
-
-
-def _retrieve_clustermgtd_conf_path(remote_command_executor):
-    clustermgtd_conf_path = "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
-    clustermgtd_conf_path_override = remote_command_executor.run_remote_command(
-        "sudo strings /proc/$(pgrep -f bin/clustermgtd$)/environ | grep CONFIG_FILE= | cut -d '=' -f2"
-    ).stdout
-    if clustermgtd_conf_path_override:
-        clustermgtd_conf_path = clustermgtd_conf_path_override
-    return clustermgtd_conf_path
 
 
 def _retrieve_clustermgtd_heartbeat_file(remote_command_executor, clustermgtd_conf_path):
