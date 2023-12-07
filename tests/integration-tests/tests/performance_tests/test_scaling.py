@@ -109,7 +109,7 @@ def test_scaling_stress_test(
         # scaling_max_time_in_mins, scaling_target, head_node_instance_type, shared_headnode_storage
         # (15, 1000, "c5.24xlarge", "Efs"),
         # (15, 2000, "c5.24xlarge", "Efs"),
-        (20, 3000, "c5.24xlarge", "Efs", "best-effort"),
+        (20 , 3000, "c5.24xlarge", "Efs", "best-effort"),
         # (15, 4000, "c5.24xlarge", "Efs"),
     ]
 
