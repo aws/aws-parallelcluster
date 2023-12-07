@@ -158,18 +158,20 @@ def produce_benchmark_metrics_report(
     logging.info(widget_metric)
     cw_client = boto3.client("cloudwatch", region_name=region)
     response = cw_client.get_metric_widget_image(MetricWidget=widget_metric)
-    _write_results_to_outdir(request, response["MetricWidgetImage"])
+    _write_results_to_outdir(request, response["MetricWidgetImage"], image_name_prefix=f"{scaling_target}-nodes")
 
 
 def _to_datetime(timestamp):
     return datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
 
 
-def _write_results_to_outdir(request, image_bytes):
+def _write_results_to_outdir(request, image_bytes, image_name_prefix):
     out_dir = request.config.getoption("output_dir")
     os.makedirs("{out_dir}/benchmarks".format(out_dir=out_dir), exist_ok=True)
-    graph_dst = "{out_dir}/benchmarks/{test_name}.png".format(
-        out_dir=out_dir, test_name=os.path.basename(request.node.nodeid.replace("::", "-"))
+    graph_dst = "{out_dir}/benchmarks/{test_name}-{image_name_prefix}.png".format(
+        out_dir=out_dir,
+        test_name=os.path.basename(request.node.nodeid.replace("::", "-")),
+        image_name_prefix=image_name_prefix,
     )
     with open(graph_dst, "wb") as image:
         image.write(image_bytes)
