@@ -9,6 +9,7 @@ from time_utils import minutes
 
 from tests.common.assertions import assert_no_msg_in_logs
 from tests.common.scaling_common import get_scaling_metrics
+from utils import disable_protected_mode
 
 
 @pytest.mark.parametrize(
@@ -128,6 +129,9 @@ def test_scaling_stress_test(
         cluster = clusters_factory(cluster_config)
         remote_command_executor = RemoteCommandExecutor(cluster)
         scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+        # Disable protected mode since bootstrap errors are likely to occur given the large cluster sizes
+        disable_protected_mode(remote_command_executor)
 
         # Submit a simple job to trigger the launch all compute nodes
         scaling_job = {
