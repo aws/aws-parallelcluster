@@ -11,6 +11,7 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
+  ScalingStrategy: {{ scaling_strategy }}
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
   SlurmQueues:

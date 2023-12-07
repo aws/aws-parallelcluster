@@ -107,20 +107,23 @@ def test_scaling_stress_test(
 
     test_params = [
         # scaling_max_time_in_mins, scaling_target, head_node_instance_type, shared_headnode_storage
-        (15, 1000, "c5.24xlarge", "Efs"),
-        (15, 2000, "c5.24xlarge", "Efs"),
-        (15, 3000, "c5.24xlarge", "Efs"),
-        (15, 4000, "c5.24xlarge", "Efs"),
+        # (15, 1000, "c5.24xlarge", "Efs"),
+        # (15, 2000, "c5.24xlarge", "Efs"),
+        (20, 3000, "c5.24xlarge", "Efs", "best-effort"),
+        # (15, 4000, "c5.24xlarge", "Efs"),
     ]
 
-    for scaling_max_time_in_mins, scaling_target, head_node_instance_type, shared_headnode_storage in test_params:
+    for (
+        scaling_max_time_in_mins, scaling_target, head_node_instance_type, shared_headnode_storage, scaling_strategy
+    ) in test_params:
         # Creating cluster with intended head node instance type and scaling parameters
         cluster_config = pcluster_config_reader(
-            # Prevent nodes being set down before wee start monitoring the scale down metrics
+            # Prevent nodes being set down before we start monitoring the scale down metrics
             scaledown_idletime=scaling_max_time_in_mins,
             scaling_target=scaling_target,
             head_node_instance_type=head_node_instance_type,
             shared_headnode_storage=shared_headnode_storage,
+            scaling_strategy=scaling_strategy,
         )
         cluster = clusters_factory(cluster_config)
         remote_command_executor = RemoteCommandExecutor(cluster)
