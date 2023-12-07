@@ -26,8 +26,10 @@ from utils import (
     check_status,
     get_compute_nodes_instance_ids,
     get_instance_info,
+    retrieve_clustermgtd_conf_path,
+    set_protected_failure_count,
     test_cluster_health_metric,
-    wait_for_computefleet_changed, set_protected_failure_count, retrieve_clustermgtd_conf_path,
+    wait_for_computefleet_changed,
 )
 
 from tests.common.assertions import (
@@ -1911,7 +1913,6 @@ def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader, sca
         config_file="pcluster.config.broken.yaml", bucket=bucket_name, scaling_strategy=scaling_strategy
     )
     _update_and_start_cluster(cluster, updated_config_file)
-
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
