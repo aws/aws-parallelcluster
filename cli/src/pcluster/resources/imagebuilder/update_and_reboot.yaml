@@ -206,12 +206,22 @@ phases:
                   elif [[ ${!OS} == "rhel8" ]] ; then
                     yum versionlock redhat-release
                   fi
+                  echo "Kernel version locked"
               
                 elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                  apt-mark hold linux-aws linux-headers-aws linux-image-aws
-                  apt-mark showhold | grep "linux-image-aws" || exit 1
+                  DEBIAN_FRONTEND=noninteractive apt-get -y update
+
+                  # Install LTS kernel packages
+                  # linux-aws-lts-22.04 depends on linux-image-aws-lts-22.04 and linux-headers-aws-lts-22.04
+                  # linux-image-aws-lts-22.04 depends on linux-image-5.15.0-10xx-aws, that depends on linux-modules-5.15.0-10xx-aws
+                  # linux-headers-aws-lts-22.04 depends on linux-headers-5.15.0-10xx-aws
+                  UBUNTU_VERSION=$(lsb_release -sr)
+                  DEBIAN_FRONTEND=noninteractive apt-get -y install linux-aws-lts-${!UBUNTU_VERSION}
+
+                  # remove not updated meta-packages
+                  apt-get -y remove linux-image-aws linux-aws linux-headers-aws
+                  echo "Kernel updated to LTS version"
                 fi
-                echo "Kernel version is locked"
               fi
 
       - name: UpdateOS
@@ -247,10 +257,14 @@ phases:
                 # Install kernel-devel during OS update, so that headers are aligned with new kernel. 
                 # The same is done for Debian through `apt-get -y install linux-aws`
                 yum -y install kernel-devel
+
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade && apt-get --purge autoremove -y
+                DEBIAN_FRONTEND=noninteractive apt-get -y update
+                DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade
+                apt-get --purge autoremove -y
+
                 if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
-                   # If an undesirable situation, such as changing a held package then apt-get will abort
+                   # already installed to LTS version
                    apt-get -y install linux-aws linux-headers-aws linux-image-aws
                 fi
               fi
@@ -266,26 +280,21 @@ phases:
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
               
               # Remove kernel version lock
-              if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
-                if [[ ${!PLATFORM} == RHEL ]]; then
-                  yum versionlock delete kernel kernel-core kernel-modules
-                  
-                  if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] ; then
-                    yum versionlock delete kernel-abi-whitelists
-                  else
-                    yum versionlock delete kernel-abi-stablelists
-                  fi
-              
-                  if [[ ${!OS} == "rocky8" ]] ; then
-                    yum versionlock delete rocky-release
-                  elif [[ ${!OS} == "rhel8" ]] ; then
-                    yum versionlock delete redhat-release
-                  fi
-              
-                elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                  apt-mark unhold linux-aws linux-headers-aws linux-image-aws
+              if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
+                yum versionlock delete kernel kernel-core kernel-modules
+                
+                if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] ; then
+                  yum versionlock delete kernel-abi-whitelists
+                else
+                  yum versionlock delete kernel-abi-stablelists
                 fi
-              echo "Kernel version unlocked"
+            
+                if [[ ${!OS} == "rocky8" ]] ; then
+                  yum versionlock delete rocky-release
+                elif [[ ${!OS} == "rhel8" ]] ; then
+                  yum versionlock delete redhat-release
+                fi
+                echo "Kernel version unlocked"
               fi
 
       - name: KeepSSM
