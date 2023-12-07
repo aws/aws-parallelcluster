@@ -6,10 +6,10 @@ from assertpy import assert_that
 from benchmarks.common.metrics_reporter import produce_benchmark_metrics_report
 from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
+from utils import disable_protected_mode
 
 from tests.common.assertions import assert_no_msg_in_logs
 from tests.common.scaling_common import get_scaling_metrics
-from utils import disable_protected_mode
 
 
 @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ def _get_scaling_time(ec2_capacity_time_series: list, timestamps: list, scaling_
 
 
 @pytest.mark.parametrize(
-    "scaling_max_time_in_mins, scaling_target, shared_headnode_storage, head_node_instance_type, scaling_strategy",
+    "max_monitoring_time_in_mins, scaling_target, shared_headnode_storage, head_node_instance_type, scaling_strategy",
     [
         (20, 1000, "Efs", "c5.24xlarge", "best-effort"),  # TODO: Pass these values from an external source
         (20, 2000, "Efs", "c5.24xlarge", "best-effort"),
@@ -93,7 +93,7 @@ def test_scaling_stress_test(
     pcluster_config_reader,
     scheduler_commands_factory,
     clusters_factory,
-    scaling_max_time_in_mins,
+    max_monitoring_time_in_mins,
     scaling_target,
     shared_headnode_storage,
     head_node_instance_type,
@@ -116,13 +116,12 @@ def test_scaling_stress_test(
     # Creating cluster with intended head node instance type and scaling parameters
     cluster_config = pcluster_config_reader(
         # Prevent nodes being set down before we start monitoring the scale down metrics
-        scaledown_idletime=scaling_max_time_in_mins,
+        scaledown_idletime=max_monitoring_time_in_mins,
         scaling_target=scaling_target,
         head_node_instance_type=head_node_instance_type,
         shared_headnode_storage=shared_headnode_storage,
         scaling_strategy=scaling_strategy,
     )
-    logging.info(f"Cluster config: {cluster_config}")
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -133,7 +132,7 @@ def test_scaling_stress_test(
     # Submit a simple job to trigger the launch all compute nodes
     scaling_job = {
         # Keep job running until we explicitly cancel it and start monitoring scale down
-        "command": f"srun sleep {minutes(scaling_max_time_in_mins) // 1000}",
+        "command": f"srun sleep {minutes(max_monitoring_time_in_mins) // 1000}",
         "nodes": scaling_target,
     }
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(scaling_job)
@@ -144,7 +143,7 @@ def test_scaling_stress_test(
     # Monitor the cluster during scale up
     ec2_capacity_time_series, compute_nodes_time_series, timestamps, end_time = get_scaling_metrics(
         remote_command_executor,
-        max_monitoring_time=minutes(scaling_max_time_in_mins),
+        max_monitoring_time=minutes(max_monitoring_time_in_mins),
         region=region,
         cluster_name=cluster.name,
         publish_metrics=True,
@@ -155,7 +154,7 @@ def test_scaling_stress_test(
         ec2_capacity_time_series, timestamps, scaling_target, start_time
     )
 
-    # Cancel the running job and scale dow the cluster using the update-compute-fleet command
+    # Cancel the running job and scale down the cluster using the update-compute-fleet command
     scheduler_commands.cancel_job(job_id)
     cluster.stop()
 
@@ -163,7 +162,7 @@ def test_scaling_stress_test(
     scale_down_start_timestamp = _datetime_to_minute_granularity(datetime.datetime.now(tz=datetime.timezone.utc))
     ec2_capacity_time_series, compute_nodes_time_series, timestamps, end_time = get_scaling_metrics(
         remote_command_executor,
-        max_monitoring_time=minutes(scaling_max_time_in_mins),
+        max_monitoring_time=minutes(max_monitoring_time_in_mins),
         region=region,
         cluster_name=cluster.name,
         publish_metrics=True,

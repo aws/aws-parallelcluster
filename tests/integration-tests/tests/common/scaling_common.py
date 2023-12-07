@@ -26,8 +26,9 @@ SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
 def scaling_target_condition(
     ec2_capacity_time_series,
     compute_nodes_time_series,
-    target_cluster_size, use_ec2_limit=True,  # Stop monitoring after all EC2 instances have been launched
-    use_compute_nodes_limit=True  # Stop monitoring after all nodes have joined the cluster
+    target_cluster_size,
+    use_ec2_limit=True,  # Stop monitoring after all EC2 instances have been launched
+    use_compute_nodes_limit=True,  # Stop monitoring after all nodes have joined the cluster
 ):
     return (
         (use_ec2_limit and ec2_capacity_time_series[-1] != target_cluster_size)
