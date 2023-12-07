@@ -307,10 +307,10 @@ def vpc_stack(vpc_stacks_shared, region, az_id):
 
 def _is_scaling_test(tests_config):
     logging.info(f"Checking any scaling stress tests in {tests_config}")
-    return tests_config.get(
-        "test-suites", {}).get(
-        "performance_tests", {}).get(
-        "test_scaling.py::test_scaling_stress_test"
+    return (
+        tests_config.get("test-suites", {})
+        .get("performance_tests", {})
+        .get("test_scaling.py::test_scaling_stress_test")
     )
 
 
@@ -351,7 +351,9 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             subnets.append(
                 SubnetConfig(
                     name=subnet_name(visibility="Private", az_id=az_id),
-                    cidr=CIDR_FOR_PRIVATE_SUBNETS_SCALING[index] if is_scaling_test else CIDR_FOR_PRIVATE_SUBNETS[index],
+                    cidr=CIDR_FOR_PRIVATE_SUBNETS_SCALING[index]
+                    if is_scaling_test
+                    else CIDR_FOR_PRIVATE_SUBNETS[index],
                     map_public_ip_on_launch=False,
                     has_nat_gateway=False,
                     availability_zone=az_name,
