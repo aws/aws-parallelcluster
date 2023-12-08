@@ -327,7 +327,7 @@ def test_multiple_fsx(
     # Minimal total existing FSx is the number of Ontap and OpenZFS plus one existing FSx Lustre
     num_existing_fsx = num_existing_fsx_ontap_volumes + num_existing_fsx_open_zfs_volumes + 1
     num_existing_fsx_lustre = num_existing_fsx - num_existing_fsx_ontap_volumes - num_existing_fsx_open_zfs_volumes
-    fsx_lustre_mount_dirs = []
+    fsx_lustre_mount_dirs = ["/shared"]
     for i in range(num_new_fsx_lustre + num_existing_fsx_lustre - 1):
         fsx_lustre_mount_dirs.append(f"/fsx_lustre_mount_dir{i}")
 
@@ -360,9 +360,6 @@ def test_multiple_fsx(
         fsx_lustre_mount_dirs + fsx_open_zfs_mount_dirs + fsx_ontap_mount_dirs,
         bucket_name,
     )
-
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
 
 @pytest.mark.usefixtures("instance")
