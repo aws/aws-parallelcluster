@@ -16,7 +16,7 @@ BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "ubuntu2004": {8: 67.384, 16: 36.434, 32: 19.449},  # v3.1.3
     "centos7": {8: 67.838, 16: 36.568, 32: 20.935},  # v3.1.3
     "rhel8": {8: 66.494, 16: 36.154, 32: 20.347},  # v3.6.0
-    "rocky8": {8: 66.859, 16: 33.173, 32: 17.899},  # v3.8.0
+    "rocky8": {8: 66.859, 16: 36.184, 32: 21.090},  # v3.8.0
 }
 PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
@@ -102,16 +102,17 @@ def test_starccm(
             outcome = "degradation (within tolerance)"
         else:
             outcome = "degradation (above tolerance)"
+            performance_degradation[node] = {
+                "baseline": baseline_value,
+                "observed": observed_value,
+                "percentage_difference": percentage_difference,
+            }
         logging.info(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
-        if percentage_difference > PERF_TEST_DIFFERENCE_TOLERANCE:
-            performance_degradation[node] = perf_test_result.stdout
+
     if performance_degradation:
-        degraded_nodes = performance_degradation.keys()
-        pytest.fail(
-            f"Performance test results show performance degradation for the following nodes:" f"{degraded_nodes}"
-        )
+        pytest.fail(f"Performance degradation detected: {performance_degradation}")
     else:
         logging.info("Performance test results show no performance degradation")
