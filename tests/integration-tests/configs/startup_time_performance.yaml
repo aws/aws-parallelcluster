@@ -1,0 +1,7 @@
+test-suites:
+  performance_tests:
+    test_startup_time.py::test_startup_time:
+      dimensions:
+        - regions: ["us-east-1"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]

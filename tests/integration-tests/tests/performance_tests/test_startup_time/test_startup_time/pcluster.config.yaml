@@ -1,0 +1,56 @@
+Region: {{ region }}
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: c5n.xlarge
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q1
+      ComputeResources:
+        - Name: q1
+          InstanceType: c5.large
+          MinCount: 1
+          MaxCount: 5
+          DisableSimultaneousMultithreading: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+    - Name: q2
+      ComputeResources:
+        - Name: q2
+          InstanceType: g4dn.xlarge
+          MinCount: 1
+          MaxCount: 5
+          DisableSimultaneousMultithreading: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+    - Name: q3
+      ComputeResources:
+        - Name: q3
+          InstanceType: m5.12xlarge
+          MinCount: 1
+          MaxCount: 5
+          DisableSimultaneousMultithreading: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+DevSettings:
+  ComputeStartupTimeMetricEnabled: true

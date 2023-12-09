@@ -155,7 +155,7 @@ write_files:
         if test -f "$slurm_node_path"; then
             INSTANCE_ID=$(cat $slurm_node_path | jq -r .instance_id)
             INSTANCE_TYPE=$(cat $slurm_node_path | jq -r .'compute."instance-type"')
-            aws cloudwatch put-metric-data --namespace "ParallelCluster" --metric-name "StartupTime" --value $(($end_time-$start_time)) --dimensions "InstanceID=${!INSTANCE_ID},InstanceType=${!INSTANCE_TYPE},ClusterName=${ClusterName}" --region "${AWS::Region}"
+            aws cloudwatch put-metric-data --namespace "ParallelCluster" --metric-name "StartupTime" --value $(($end_time-$start_time)) --dimensions "InstanceID=${!INSTANCE_ID},InstanceType=${!INSTANCE_TYPE},ClusterName=${ClusterName},OS=${BaseOS}" --region "${AWS::Region}"
         fi
       }
 
