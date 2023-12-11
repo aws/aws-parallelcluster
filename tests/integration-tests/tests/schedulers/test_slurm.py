@@ -1642,7 +1642,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "other_options": "-G 1 --cpus-per-gpu 32 --cpus-per-task 20",
             "raise_on_error": False,
         },
-        reason="sbatch: error: --cpus-per-gpu is mutually exclusive with --cpus-per-task",
+        reason="sbatch: fatal: --cpus-per-task, --tres-per-task=cpu:#, and --cpus-per-gpu are mutually exclusive",
     )
 
     # Commands below should be correctly submitted
@@ -1733,7 +1733,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": f"--gres=gpu/{gpus_per_instance} --cpus-per-gpu {cpus_per_gpu}",
+            "other_options": f"--gres=gpu:{gpus_per_instance} --cpus-per-gpu {cpus_per_gpu}",
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
