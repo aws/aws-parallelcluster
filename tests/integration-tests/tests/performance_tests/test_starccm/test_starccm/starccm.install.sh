@@ -7,8 +7,6 @@ SHARED_DIR="/shared" # /shared or whatever you named the SharedStorage MountDir
 STARCCM_PACKAGE="${SHARED_DIR}/STAR-CCM+18.02.008_01_linux-x86_64.tar.gz"
 SIM_FILE="${SHARED_DIR}/lemans_poly_17m.amg@00500.sim"
 
-mkdir -p "${TARGET_USER_DIR}"
-
 OLD_PWD=$(pwd)
 
 cd "${SHARED_DIR}"
