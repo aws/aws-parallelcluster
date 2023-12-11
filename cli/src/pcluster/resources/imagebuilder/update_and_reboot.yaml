@@ -120,6 +120,7 @@ phases:
                 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done
                 flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
                 sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
+                DEBIAN_FRONTEND=noninteractive apt-get -y update
               fi
 
       - name: InstallEfiBootManager
@@ -132,7 +133,7 @@ phases:
               ARCH=$(uname -m)
               if [[ `echo ${!ARCH}` == 'aarch64' ]] && [[ ${!PLATFORM} == DEBIAN ]]; then
                 # temporary workaround to solve https://bugs.launchpad.net/ubuntu/+source/grub2-signed/+bug/1936857
-                DEBIAN_FRONTEND=noninteractive apt-get -y update && apt-get -y install efibootmgr
+                apt-get -y install efibootmgr
               fi
 
       - name: InstallPrerequisites
@@ -150,7 +151,7 @@ phases:
                 fi
                 yum -y install jq
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                DEBIAN_FRONTEND=noninteractive apt-get -y update && apt-get -y install jq
+                apt-get -y install jq
               fi
 
       # Get AWS Region
@@ -209,8 +210,6 @@ phases:
                   echo "Kernel version locked"
               
                 elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                  DEBIAN_FRONTEND=noninteractive apt-get -y update
-
                   # Install LTS kernel packages
                   # linux-aws-lts-22.04 depends on linux-image-aws-lts-22.04 and linux-headers-aws-lts-22.04
                   # linux-image-aws-lts-22.04 depends on linux-image-5.15.0-10xx-aws, that depends on linux-modules-5.15.0-10xx-aws
