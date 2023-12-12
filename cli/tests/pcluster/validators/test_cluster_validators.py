@@ -217,11 +217,10 @@ def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, shoul
         ),
         (
             "Fails when custom settings at SlurmConf level are in the deny_list, invalid parameters are reported",
-            [{"SlurmctldParameters": "SubPar1,Subpar2=1"}, {"CommunicationParameters": "SubPar1"}],
+            [{"SlurmctldParameters": "SubPar1,Subpar2=1"}],
             SLURM_SETTINGS_DENY_LIST["SlurmConf"]["Global"],  # keep the deny-list lowercase
             CustomSlurmSettingLevel.SLURM_CONF,
-            "Using the following custom Slurm settings at SlurmConf level is not allowed: "
-            "CommunicationParameters,SlurmctldParameters",
+            "Using the following custom Slurm settings at SlurmConf level is not allowed: SlurmctldParameters",
         ),
         (
             "When defining custom partitions or nodelists with parameters that exist also at global level and are"

@@ -19,7 +19,6 @@ from pcluster.validators.common import FailureLevel, Validator
 SLURM_SETTINGS_DENY_LIST = {
     "SlurmConf": {
         "Global": [
-            "communicationparameters",
             "epilog",
             "grestypes",
             "launchparameters",

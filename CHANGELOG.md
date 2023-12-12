@@ -11,6 +11,10 @@ CHANGELOG
   - Intel Python: 2023.2.0
   - Critical Update for Intel oneAPI DPC++/C++ Compiler: 2023.2.1
   - Critical Update for Intel Fortran Compiler & Intel® Fortran Compiler Classic: 2023.2.1
+  - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
+
+**CHANGES**
+- Upgrade Slurm to 23.11.1.
 
 3.8.0
 ------
