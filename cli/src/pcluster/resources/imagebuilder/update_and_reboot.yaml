@@ -234,7 +234,6 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
@@ -256,15 +255,29 @@ phases:
                 else
                   package-cleanup -y --oldkernels --count=1
                 fi
-                # Install kernel-devel during OS update, so that headers are aligned with new kernel. 
-                # The same is done for Debian through `apt-get -y install linux-aws`
-                yum -y install kernel-devel
 
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 DEBIAN_FRONTEND=noninteractive apt-get -y update
                 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade
                 apt-get --purge autoremove -y
+              fi
 
+      - name: InstallUpdatedHeaders
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                # Install kernel-devel during OS update, so that headers are aligned with new kernel. 
+                # The same is done for Debian through `apt-get -y install linux-aws`
+                yum -y install kernel-devel
+              
+              elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
                    # already installed to LTS version
                    apt-get -y install linux-aws linux-headers-aws linux-image-aws
