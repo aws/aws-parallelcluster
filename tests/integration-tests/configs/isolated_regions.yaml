@@ -578,36 +578,38 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-  custom_resource:
-    test_cluster_custom_resource.py::test_cluster_create:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_create_invalid:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_update:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_update_invalid:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_update_tag_propagation:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_delete_retain:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
-    test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
-      dimensions:
-        - oss: {{ OSS }}
-          regions: {{ REGIONS }}
+# These tests cannot be executed in US isolated regions
+# because the feature Custom Resource is not supported in these regions.
+#  custom_resource:
+#    test_cluster_custom_resource.py::test_cluster_create:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_create_invalid:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_update:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_update_invalid:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_update_tag_propagation:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_delete_out_of_band:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_delete_retain:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
+#    test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
+#      dimensions:
+#        - oss: {{ OSS }}
+#          regions: {{ REGIONS }}
