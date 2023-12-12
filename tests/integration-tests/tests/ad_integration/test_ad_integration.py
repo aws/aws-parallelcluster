@@ -670,12 +670,8 @@ def test_ad_integration(
     if not is_directory_supported(region, directory_type):
         pytest.skip(f"Skipping the test because directory type {directory_type} is not supported in region {region}")
 
-    head_node_instance_type = "c5.xlarge"
-    compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     fsx_supported = is_fsx_supported(region)
     config_params = {
-        "compute_instance_type": compute_instance_type_info.get("name"),
-        "head_node_instance_type": head_node_instance_type,
         "fsx_supported": fsx_supported,
     }
     directory_stack_name, nlb_stack_name = directory_factory(
@@ -826,12 +822,6 @@ def test_ad_integration_on_login_nodes(
     2. SSH key for AD users is created when the property GenerateSshKeysForUsers is true;
     3. AD users can submit workloads;
     """
-    head_node_instance_type = "c5.xlarge"
-    compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
-    config_params = {
-        "compute_instance_type": compute_instance_type_info.get("name"),
-        "head_node_instance_type": head_node_instance_type,
-    }
     directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
         request.config.getoption("ldaps_nlb_stack_name"),
@@ -846,16 +836,14 @@ def test_ad_integration_on_login_nodes(
     )
     nlb_stack_parameters = get_infra_stack_parameters(nlb_stack_name)
     ldap_tls_ca_cert = "/opt/parallelcluster/shared_login_nodes/directory_service/certificate.crt"
-    config_params.update(
-        get_ad_config_param_vals(
-            directory_stack_outputs,
-            nlb_stack_parameters,
-            password_secret_arn,
-            ldap_tls_ca_cert,
-            directory_type,
-            directory_protocol,
-            directory_certificate_verification,
-        )
+    config_params = get_ad_config_param_vals(
+        directory_stack_outputs,
+        nlb_stack_parameters,
+        password_secret_arn,
+        ldap_tls_ca_cert,
+        directory_type,
+        directory_protocol,
+        directory_certificate_verification,
     )
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)

@@ -39,16 +39,13 @@ def test_efa(
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-
-    max_queue_size = 2
-
     if architecture == "x86_64":
         head_node_instance = "c5.18xlarge"
     else:
         head_node_instance = "c6g.16xlarge"
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
+    cluster_config = pcluster_config_reader(head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)

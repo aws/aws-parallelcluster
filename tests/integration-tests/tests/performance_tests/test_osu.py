@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
 # You may not use this file except in compliance with the License.
@@ -21,6 +21,9 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.utils import fetch_instance_slots, get_installed_parallelcluster_version, run_system_analyzer
 
+# We collected OSU benchmarks results for c5n.18xlarge only.
+OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge"]
+
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
 def test_osu(
@@ -37,14 +40,11 @@ def test_osu(
     scheduler_commands_factory,
     request,
 ):
-    # We collected OSU benchmarks results for c5n.18xlarge only.
-    osu_benchmarks_instances = ["c5n.18xlarge"]
-
-    if instance not in osu_benchmarks_instances:
-        raise Exception(f"OSU benchmarks can't be run on instance {instance}.")
-
-    # 32 instances are required to see performance differences in collective OSU benchmarks.
-    max_queue_size = 32
+    if instance not in OSU_BENCHMARKS_INSTANCES:
+        raise Exception(
+            f"OSU benchmarks can't be run on instance {instance}. "
+            f"Only these instances are supported: {OSU_BENCHMARKS_INSTANCES}"
+        )
 
     if architecture == "x86_64":
         head_node_instance = "c5.18xlarge"
@@ -52,7 +52,7 @@ def test_osu(
         head_node_instance = "c6g.16xlarge"
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
+    cluster_config = pcluster_config_reader(head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -83,7 +83,7 @@ def test_osu(
                 test_datadir,
                 os,
                 instance,
-                num_instances=max_queue_size,
+                num_instances=32,
                 slots_per_instance=slots_per_instance,
                 partition="efa-enabled",
             )

@@ -27,8 +27,8 @@ Scheduling:
           Instances:
             - InstanceType: {{ instance }}
           {% endif %}
-          MaxCount: {{ max_queue_size }}
-          MinCount: {{ max_queue_size }}
+          MaxCount: 2
+          MinCount: 2
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true

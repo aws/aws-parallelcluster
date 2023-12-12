@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ head_node_instance_type }}
+  InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -15,7 +15,7 @@ Scheduling:
       ComputeResources:
         - Name: cit
           Instances:
-            - InstanceType: {{ compute_instance_type }}
+            - InstanceType: {{ instance }}
           MinCount: 2
           MaxCount: 150
       Networking:
