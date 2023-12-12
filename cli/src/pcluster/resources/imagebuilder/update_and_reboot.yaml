@@ -206,7 +206,7 @@ phases:
                   fi
               
                   if [[ ${!OS} == "rocky8" ]] ; then
-                    yum versionlock rocky-release
+                    yum versionlock rocky-release rocky-repos
                   elif [[ ${!OS} == "rhel8" ]] ; then
                     yum versionlock redhat-release
                   fi
