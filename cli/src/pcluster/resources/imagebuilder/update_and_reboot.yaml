@@ -262,7 +262,7 @@ phases:
                 apt-get --purge autoremove -y
               fi
 
-      - name: InstallUpdatedHeaders
+      - name: InstallAdditionalKernelPackages
         action: ExecuteBash
         inputs:
           commands:
@@ -275,7 +275,22 @@ phases:
               if [[ ${!PLATFORM} == RHEL ]]; then
                 # Install kernel-devel during OS update, so that headers are aligned with new kernel. 
                 # The same is done for Debian through `apt-get -y install linux-aws`
-                yum -y install kernel-devel
+                if [[ ${!OS} == "rocky8" ]]; then
+                  PACKAGE="kernel-devel-$(uname -r)"
+                  RELEASE_VERSION=$(source /etc/os-release && echo ${!VERSION_ID})
+              
+                  # try to install kernel source for a specific release version
+                  yum install -y ${!PACKAGE} --releasever ${!RELEASE_VERSION}
+                  if [ $? -ne 0 ]; then
+                    yum install -y wget
+                    # Previous releases are moved into a vault area once a new minor release version is available for at least a week.
+                    # https://wiki.rockylinux.org/rocky/repo/#notes-on-devel
+                    wget https://dl.rockylinux.org/vault/rocky/${!RELEASE_VERSION}/BaseOS/$(uname -m)/os/Packages/k/${!PACKAGE}.rpm
+                    yum install -y ./${!PACKAGE}.rpm
+                  fi
+                else
+                  yum -y install kernel-devel
+                fi
               
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
