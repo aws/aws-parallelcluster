@@ -198,6 +198,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         terminate_instance_on_failure: bool = None,
         disable_validate_and_test: bool = None,
         cinc_installer_url: str = None,
+        disable_kernel_update: bool = None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -206,6 +207,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
         self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=True)
         self.cinc_installer_url = Resource.init_param(cinc_installer_url, default="")
+        self.disable_kernel_update = Resource.init_param(disable_kernel_update, default=False)
 
 
 # ---------------------- ImageBuilder ---------------------- #
@@ -276,6 +278,7 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.custom_node_package = None
         self.custom_awsbatchcli_package = None
         self.base_os = None
+        self.disable_kernel_update = None
         self._set_default(dev_settings)
 
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
@@ -287,6 +290,7 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
             dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
         )
         self.base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
+        self.disable_kernel_update = "true" if dev_settings and dev_settings.disable_kernel_update else "false"
         for key, value in self.__dict__.items():
             if not key.startswith("_") and key not in self._cluster_attributes:
                 self._cluster_attributes.update({key: value})

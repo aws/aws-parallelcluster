@@ -107,6 +107,25 @@ phases:
                 update-grub
               fi
 
+      - name: DisableUnattendedUpgrades
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+
+              if [[ ${!PLATFORM} == DEBIAN ]]; then
+                # wait for completion of os updates performed by cloud-init
+                while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done
+                # disable apt-daily.timer to avoid dpkg lock
+                flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
+                # disable unattended upgrades
+                sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
+                # update package index
+                DEBIAN_FRONTEND=noninteractive apt-get -y update
+              fi
+
       - name: InstallEfiBootManager
         action: ExecuteBash
         inputs:
@@ -117,7 +136,94 @@ phases:
               ARCH=$(uname -m)
               if [[ `echo ${!ARCH}` == 'aarch64' ]] && [[ ${!PLATFORM} == DEBIAN ]]; then
                 # temporary workaround to solve https://bugs.launchpad.net/ubuntu/+source/grub2-signed/+bug/1936857
-                apt-get -y update && apt-get -y install efibootmgr
+                apt-get -y install efibootmgr
+              fi
+
+      - name: InstallPrerequisites
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                if [[ ${!OS} == centos7 ]]; then
+                  yum -y install epel-release
+                fi
+                yum -y install jq
+              elif [[ ${!PLATFORM} == DEBIAN ]]; then
+                apt-get -y install jq
+              fi
+
+      # Get AWS Region
+      - name: AWSRegion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              echo ${AWS::Region}
+
+      - name: CreatingJsonFile
+        action: CreateFile
+        inputs:
+          - path: /etc/parallelcluster/image_dna.json
+            content: |
+              ${CfnParamChefDnaJson}
+            overwrite: true
+
+      - name: DisableKernelUpdate
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              DISABLE_KERNEL_UPDATE=$(cat /etc/parallelcluster/image_dna.json | jq -r '.cluster.disable_kernel_update')
+              echo "${!DISABLE_KERNEL_UPDATE}"
+
+      - name: PinKernelVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              
+              if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
+                if [[ ${!PLATFORM} == RHEL ]]; then
+                  yum install -y yum-plugin-versionlock
+                  # listing all the packages because wildcard does not work as expected
+                  yum versionlock kernel kernel-core kernel-modules
+              
+                  if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] ; then
+                    yum versionlock kernel-abi-whitelists
+                  else
+                    yum versionlock kernel-abi-stablelists
+                  fi
+              
+                  if [[ ${!OS} == "rocky8" ]] ; then
+                    yum versionlock rocky-release
+                  elif [[ ${!OS} == "rhel8" ]] ; then
+                    yum versionlock redhat-release
+                  fi
+                  echo "Kernel version locked"
+              
+                elif [[ ${!PLATFORM} == DEBIAN ]]; then
+                  # Install LTS kernel packages
+                  # linux-aws-lts-22.04 depends on linux-image-aws-lts-22.04 and linux-headers-aws-lts-22.04
+                  # linux-image-aws-lts-22.04 depends on linux-image-5.15.0-10xx-aws, that depends on linux-modules-5.15.0-10xx-aws
+                  # linux-headers-aws-lts-22.04 depends on linux-headers-5.15.0-10xx-aws
+                  UBUNTU_VERSION=$(lsb_release -sr)
+                  DEBIAN_FRONTEND=noninteractive apt-get -y install linux-aws-lts-${!UBUNTU_VERSION}
+
+                  # remove not updated meta-packages
+                  apt-get -y remove linux-image-aws linux-aws linux-headers-aws
+                  echo "Kernel updated to LTS version"
+                fi
               fi
 
       - name: UpdateOS
@@ -128,6 +234,7 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
@@ -149,13 +256,47 @@ phases:
                 else
                   package-cleanup -y --oldkernels --count=1
                 fi
+                # Install kernel-devel during OS update, so that headers are aligned with new kernel. 
+                # The same is done for Debian through `apt-get -y install linux-aws`
                 yum -y install kernel-devel
+
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done
-                flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
-                sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
-                DEBIAN_FRONTEND=noninteractive apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade && apt-get --purge autoremove -y
-                apt-get -y install linux-aws linux-headers-aws linux-image-aws
+                DEBIAN_FRONTEND=noninteractive apt-get -y update
+                DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade
+                apt-get --purge autoremove -y
+
+                if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
+                   # already installed to LTS version
+                   apt-get -y install linux-aws linux-headers-aws linux-image-aws
+                fi
+              fi
+
+      - name: RemoveKernelPin
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              
+              # Remove kernel version lock
+              if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
+                yum versionlock delete kernel kernel-core kernel-modules
+                
+                if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] ; then
+                  yum versionlock delete kernel-abi-whitelists
+                else
+                  yum versionlock delete kernel-abi-stablelists
+                fi
+            
+                if [[ ${!OS} == "rocky8" ]] ; then
+                  yum versionlock delete rocky-release
+                elif [[ ${!OS} == "rhel8" ]] ; then
+                  yum versionlock delete redhat-release
+                fi
+                echo "Kernel version unlocked"
               fi
 
       - name: KeepSSM
