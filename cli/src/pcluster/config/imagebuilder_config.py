@@ -199,6 +199,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         disable_validate_and_test: bool = None,
         cinc_installer_url: str = None,
         disable_kernel_update: bool = None,
+        slurm_patches_s3_archive: str = None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -208,6 +209,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=True)
         self.cinc_installer_url = Resource.init_param(cinc_installer_url, default="")
         self.disable_kernel_update = Resource.init_param(disable_kernel_update, default=False)
+        self.slurm_patches_s3_archive = Resource.init_param(slurm_patches_s3_archive, default="")
 
 
 # ---------------------- ImageBuilder ---------------------- #
@@ -279,6 +281,7 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.custom_awsbatchcli_package = None
         self.base_os = None
         self.disable_kernel_update = None
+        self.slurm_patches_s3_archive = None
         self._set_default(dev_settings)
 
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
@@ -288,6 +291,9 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.custom_awsbatchcli_package = (
             dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
+        )
+        self.slurm_patches_s3_archive = (
+            dev_settings.slurm_patches_s3_archive if dev_settings and dev_settings.slurm_patches_s3_archive else ""
         )
         self.base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
         self.disable_kernel_update = "true" if dev_settings and dev_settings.disable_kernel_update else "false"

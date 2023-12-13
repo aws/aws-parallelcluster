@@ -176,6 +176,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "no"},
                     "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "slurm_patches_s3_archive": "",
                 }
             },
         ),
@@ -199,6 +200,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "yes"},
                     "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "slurm_patches_s3_archive": "",
                 }
             },
         ),
@@ -223,6 +225,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "yes"},
                     "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "slurm_patches_s3_archive": "",
                 },
                 "nfs": "true",
             },
@@ -246,8 +249,35 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "true",
                     "nvidia": {"enabled": "no"},
                     "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "slurm_patches_s3_archive": "",
                 },
                 "nfs": "true",
+            },
+        ),
+        # Test case with URL for Slurm patches from S3
+        (
+            {
+                "dev_settings": {
+                    "cookbook": {
+                        "extra_chef_attributes": "{"
+                        '"cluster": {'
+                        '"slurm_patches_s3_archive": "s3://example-s3-bucket/example-archive.tgz"'
+                        "}"
+                        "}"
+                    },
+                },
+            },
+            {
+                "cluster": {
+                    "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
+                    "custom_awsbatchcli_package": "",
+                    "custom_node_package": "",
+                    "disable_kernel_update": "false",
+                    "is_official_ami_build": "false",
+                    "nvidia": {"enabled": "no"},
+                    "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "slurm_patches_s3_archive": "s3://example-s3-bucket/example-archive.tgz",
+                }
             },
         ),
     ],
