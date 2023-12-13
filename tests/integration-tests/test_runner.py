@@ -549,6 +549,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     if "html" in args.reports:
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
         pytest_args.append("--self-contained-html")
+        pytest_args.append("--capture=tee-sys")
 
     _set_custom_packages_args(args, pytest_args)
     _set_ami_args(args, pytest_args)
