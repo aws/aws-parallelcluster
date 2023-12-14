@@ -20,6 +20,7 @@ CHANGELOG
 - Add possibility to specify a permissions boundary to be applied for IAM roles and policies created by ParallelCluster API.
 
 **CHANGES**
+- Upgrade Slurm to 23.02.7 (from 23.02.6).
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
 - Add head node alarms to cluster dashboard.
 - Add support for Python 3.10 in aws-parallelcluster-batch-cli.
