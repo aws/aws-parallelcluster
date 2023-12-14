@@ -24,7 +24,7 @@ Scheduling:
         - Name: ondemand1-i2
           Instances:
             - InstanceType: c5.xlarge
-            - InstanceType: c5a.xlarge
+            - InstanceType: m5.xlarge
             - InstanceType: c5d.xlarge
           MinCount: 1
         - Name: ondemand1-i3
