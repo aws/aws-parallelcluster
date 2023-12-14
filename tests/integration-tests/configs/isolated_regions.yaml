@@ -559,11 +559,14 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-    test_update.py::test_multi_az_create_and_update:
-      dimensions:
-        - regions: {{ REGIONS }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# This test cannot be executed in US isolated regions
+# because it uses CloudFormation resources that are not available in the regions:
+# CapacityReservation and ResourceGroup.
+#    test_update.py::test_multi_az_create_and_update:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
   log_rotation:
     test_log_rotation.py::test_log_rotation:
       dimensions:
