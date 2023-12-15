@@ -9,7 +9,7 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
     S3Access:
       - BucketName: performance-tests-resources-for-parallelcluster
         KeyName: starccm/*
@@ -42,7 +42,7 @@ Scheduling:
           {% if instance == "c5n.18xlarge" %}Name: c5n_capacity_reservation{% endif %}
       Iam:
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+          - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
 {% if install_extra_deps %}
         S3Access:
           - BucketName: {{ bucket_name }}
