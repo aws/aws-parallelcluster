@@ -8,8 +8,8 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
-      - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess # Required to add performance testing widgets to the cluster dashboard
+      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+      - Policy: arn:{{partition}}:iam::aws:policy/CloudWatchFullAccess # Required to add performance testing widgets to the cluster dashboard
     S3Access:
       - BucketName: {{ bucket_bootstrap_scripts }}
         KeyName: {{ bucket_bootstrap_scripts_prefix }}/*
@@ -35,7 +35,7 @@ Scheduling:
           - {{ private_subnet_id }}
       Iam:
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+          - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
         S3Access:
           - BucketName: {{ bucket_bootstrap_scripts }}
             KeyName: {{ bucket_bootstrap_scripts_prefix }}/*
