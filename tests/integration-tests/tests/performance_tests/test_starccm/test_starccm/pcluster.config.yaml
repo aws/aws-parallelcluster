@@ -34,6 +34,10 @@ Scheduling:
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
+          {% if instance == "c5n.18xlarge" %}
+          CapacityReservationTarget:
+            CapacityReservationResourceGroupArn: arn:aws:resource-groups:eu-west-1:447714826191:group/EC2CRGroup
+          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
