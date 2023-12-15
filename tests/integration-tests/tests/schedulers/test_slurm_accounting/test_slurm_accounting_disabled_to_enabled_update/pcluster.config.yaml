@@ -6,7 +6,7 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -26,7 +26,7 @@ Scheduling:
           - {{ private_subnet_id }}
       Iam:
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+          - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
 Monitoring:
   Logs:
     CloudWatch:
