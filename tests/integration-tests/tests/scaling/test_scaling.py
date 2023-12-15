@@ -71,11 +71,14 @@ def test_multiple_jobs_submission(
     remote_command_executor.run_remote_script(test_datadir / "cluster-check.sh", args=["submit", scheduler])
 
     logging.info("Monitoring ec2 capacity and compute nodes")
+    monitoring_buffer_minutes = 10 if "us-iso" in region else 5
     ec2_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
         scheduler_commands=scheduler_commands,
         region=region,
         stack_name=cluster.cfn_name,
-        max_monitoring_time=minutes(max_jobs_execution_time) + minutes(scaledown_idletime) + minutes(5),
+        max_monitoring_time=minutes(max_jobs_execution_time)
+        + minutes(scaledown_idletime)
+        + minutes(monitoring_buffer_minutes),
     )
 
     logging.info("Verifying test jobs completed successfully and in the expected time")

@@ -56,6 +56,8 @@ AVAILABLE_AVAILABILITY_ZONE = {
     "eu-central-1": ["euc1-az2", "euc1-az3"],
     # FSx not available in cnn1-az4
     "cn-north-1": ["cnn1-az1", "cnn1-az2"],
+    # Should only consider supported AZs
+    "us-isob-east-1": ["us-isob-east-1b", "us-isob-east-1c"],
 }
 
 # used to map a ZoneId to the corresponding region
