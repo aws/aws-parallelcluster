@@ -21,31 +21,46 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add support for EC2 Capacity Blocks for ML.
-- Add support for Data Repository Associations when using PERSISTENT_2 as DeploymentType for a managed FSx for Lustre.
-- Add `Scheduling/SlurmSettings/Database/DatabaseName` parameter to allow users to specify a custom name for the database on the database server to be used for Slurm accounting.
-- Add `Monitoring/Alarms/Enabled` parameter to toggle Amazon CloudWatch Alarms for the cluster.
-- Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node.
-- Add the option to use EFS storage instead of NFS exports from the head node root volume for intra-cluster shared ParallelCluster, Intel, Slurm, login node, and /home data.
-- Allow for mounting `home` as an EFS or FSx external shared storage via the `SharedStorage` section of the config file.
-- Add support for Rocky Linux 8, only using a `CustomAmi` created through `build-image` process. No official Rocky8 Linux AMIs will be published.
-- Make `InstanceType` an optional configuration parameter when configuring `CapacityReservationTarget/CapacityReservationId` in the compute resource.
-- Add `Scheduling/ScalingStrategy` parameter to control job-level scaling strategy for node to be resumed by Slurm.
+- Add support for Rocky Linux 8 as `CustomAmi` created through `build-image` process. No public official ParallelCluster Rocky8 Linux AMI is made available at this time.
+- Add `Scheduling/ScalingStrategy` parameter to control the cluster scaling strategy to use when launching EC2 instances for Slurm compute nodes.
   Possible values are `all-or-nothing`, `greedy-all-or-nothing`, `best-effort`, with `all-or-nothing` being the default.
+- Add `HeadNode/SharedStorageType` parameter to use EFS storage instead of NFS exports from the head node root volume
+  for intra-cluster shared file system resources: ParallelCluster, Intel, Slurm, and `/home` data. This enhancement reduces the load on the head node networking.
+- Allow for mounting `home` as an EFS or FSx external shared storage via the `SharedStorage` section of the config file.
+- Add new parameter `SlurmSettings/MungeKeySecretArn` to permit to use an external user-defined MUNGE key from AWS Secrets Manager.
+- Add `Monitoring/Alarms/Enabled` parameter to toggle Amazon CloudWatch Alarms for the cluster.
+- Add head node alarms to monitor EC2 health checks, CPU utilization and the overall status of the head node, and add them to the CloudWatch Dashboard created with the cluster.
+- Add support for Data Repository Associations when using `PERSISTENT_2` as `DeploymentType` for a managed FSx for Lustre.
+- Add `Scheduling/SlurmSettings/Database/DatabaseName` parameter to allow users to specify a custom name for the database on the database server to be used for Slurm accounting.
+- Make `InstanceType` an optional configuration parameter when configuring `CapacityReservationTarget/CapacityReservationId` in the compute resource.
 - Add possibility to specify a prefix for IAM roles and policies created by ParallelCluster API.
 - Add possibility to specify a permissions boundary to be applied for IAM roles and policies created by ParallelCluster API.
 
 **CHANGES**
 - Upgrade Slurm to 23.02.7 (from 23.02.6).
+- Upgrade NVIDIA driver to version 535.129.03.
+- Upgrade CUDA Toolkit to version 12.2.2.
+- Use Open Source NVIDIA GPU drivers (OpenRM) as NVIDIA kernel module for Linux instead of NVIDIA closed source module.
+- Remove support of `all_or_nothing_batch` configuration parameter in the Slurm resume program, in favor of the new `Scheduling/ScalingStrategy` cluster configuration.
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
-- Add head node alarms to cluster dashboard.
-- Add support for Python 3.10 in aws-parallelcluster-batch-cli.
-- Remove `all_or_nothing_batch` resume configuration parameter, in favor of the new `scaling_strategy` parameter
-  that can be set using `Scheduling/ScalingStrategy` cluster configuration.
-- Change default EBS volume types in ADC regions from gp2 to gp3, for both the root and additional volumes.
+- Change default EBS volume types in ADC regions from `gp2` to `gp3`, for both the root and additional volumes.
 - The optional permissions boundary for the ParallelCluster API is now applied to every IAM role created by the API infrastructure.
+- Upgrade EFA installer to `1.29.0`.
+  - Efa-driver: `efa-2.6.0-1`
+  - Efa-config: `efa-config-1.15-1`
+  - Efa-profile: `efa-profile-1.5-1`
+  - Libfabric-aws: `libfabric-aws-1.19.0-1`
+  - Rdma-core: `rdma-core-46.0-1`
+  - Open MPI: `openmpi40-aws-4.1.6-1`
+- Upgrade GDRCopy to version 2.4 in all supported OSes, except for Centos 7 where version 2.3.1 is used.
+- Upgrade `aws-cfn-bootstrap` to version 2.0-28.
+- Add support for Python 3.10 in aws-parallelcluster-batch-cli.
 
 **BUG FIXES**
-- Fix inconsistent configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
+- Fix inconsistent scaling configuration after cluster update rollback when modifying the list of instance types declared in the Compute Resources.
+- Fix users SSH keys generation when switching users without root privilege in clusters integrated with an external LDAP server through cluster configuration files.
+- Fix disabling Slurm power save mode when setting `ScaledownIdletime = -1`.
+- Fix hard-coded path to Slurm installation dir in `update_slurm_database_password.sh` script for Slurm Accounting.
 
 3.7.2
 ------
@@ -821,7 +836,7 @@ CHANGELOG
   graphical services, such as x/gdm, when they are not required.
 - Download Intel MPI and HPC packages from S3 rather than Intel yum repos.
 - Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type
-    (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
+  (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
 - Enable support for p4d as head node instance type (p4d was already supported as compute node in 2.10.0).
 - Pull Amazon Linux Docker images from public ECR when building docker image for `awsbatch` scheduler.
 - Increase max retry attempts when registering Slurm nodes in Route53.
@@ -1365,12 +1380,12 @@ CHANGELOG
 - Add support for FSx Lustre with Amazon Linux. In case of custom AMI,
   The kernel will need to be ``>= 4.14.104-78.84.amzn1.x86_64``
 - Slurm
-   - set compute nodes to DRAIN state before removing them from cluster. This prevents the scheduler from submitting a job to a node that is being terminated.
-   - dynamically adjust max cluster size based on ASG settings
-   - dynamically change the number of configured FUTURE nodes based on the actual nodes that join the cluster. The max size of the cluster seen by the scheduler always matches the max capacity of the ASG.
-   - process nodes added to or removed from the cluster in batches. This speeds up cluster scaling which is able to react with a delay of less than 1 minute to variations in the ASG capacity.
-   - add support for job dependencies and pending reasons. The cluster won't scale up if the job cannot start due to an unsatisfied dependency.
-   - set ``ReturnToService=1`` in scheduler config in order to recover instances that were initially marked as down due to a transient issue.
+  - set compute nodes to DRAIN state before removing them from cluster. This prevents the scheduler from submitting a job to a node that is being terminated.
+  - dynamically adjust max cluster size based on ASG settings
+  - dynamically change the number of configured FUTURE nodes based on the actual nodes that join the cluster. The max size of the cluster seen by the scheduler always matches the max capacity of the ASG.
+  - process nodes added to or removed from the cluster in batches. This speeds up cluster scaling which is able to react with a delay of less than 1 minute to variations in the ASG capacity.
+  - add support for job dependencies and pending reasons. The cluster won't scale up if the job cannot start due to an unsatisfied dependency.
+  - set ``ReturnToService=1`` in scheduler config in order to recover instances that were initially marked as down due to a transient issue.
 - Validate FSx parameters. Fixes [#896](https://github.com/aws/aws-parallelcluster/issues/896).
 
 **CHANGES**
