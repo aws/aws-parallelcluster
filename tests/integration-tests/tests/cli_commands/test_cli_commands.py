@@ -23,6 +23,8 @@ from assertpy import assert_that
 from dateutil.parser import parse as date_parse
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
 from utils import (
     check_pcluster_list_cluster_log_streams,
     check_status,
@@ -325,10 +327,12 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
     boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
     # test with a prefix and an output file
     bucket_prefix = "test_prefix"
-    _test_export_log_files_are_expected(cluster, bucket_name, instance_ids, bucket_prefix)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(_test_export_log_files_are_expected)(
+        cluster, bucket_name, instance_ids, bucket_prefix
+    )
 
     # test export-cluster-logs with filter option
-    _test_export_log_files_are_expected(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(_test_export_log_files_are_expected)(
         cluster, bucket_name, headnode_instance_id, bucket_prefix, filters="Name=node-type,Values=HeadNode"
     )
 
