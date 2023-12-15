@@ -647,7 +647,7 @@ def test_fast_capacity_failover(
         exception_multi_static_nodes,
         exception_multi_dynamic_nodes,
         target_compute_resource="exception-cr-multiple",
-        expected_error_code="InvalidParameterValue",
+        expected_error_code="InvalidParameter" if "us-iso" in region else "InvalidParameterValue",
     )
 
 
