@@ -338,9 +338,28 @@ def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, sch
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
 
+    result = remote_command_executor.run_remote_command("cat /shared/nccl_tests.out")
+    logging.info(f"Test result is: {result}")
+
+    # Expected output with NCCL_BENCHMARKS_VERSION='2.10.0', NCCL_VERSION='2.7.8-1' and OFI_NCCL_VERSION='1.1.1':
+    #                                                       out-of-place                       in-place
+    #       size         count      type   redop     time   algbw   busbw  error     time   algbw   busbw  error
+    #        (B)    (elements)                       (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
+    # ...
+    # 1073741824     268435456     float     sum    79531   13.50   26.58  2e-06    79371   13.53   26.63  2e-06
+    #
+    # --------
+    # Expected output with NCCL_BENCHMARKS_VERSION='2.13.8', NCCL_VERSION='2.19.4-1' and OFI_NCCL_VERSION='1.7.4-aws':
+    #                                                              out-of-place                       in-place
+    #       size         count      type   redop    root     time   algbw   busbw #wrong     time   algbw   busbw #wrong
+    #        (B)    (elements)                               (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
+    # ...
+    # 1073741824     268435456     float     sum      -1    44023   24.39   45.73      0    43947   24.43   45.81      0
+
+    # We are looking for packet size 1073741824, 268435456 elements and in-place busbw (GB/s).
     max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/nccl_tests.out | tail -4 | head -1 | awk '{print $11}'"
+        "cat /shared/nccl_tests.out | grep -E '1073741824\\s+268435456' | awk '{print $12}'"
     ).stdout
 
-    # Expected bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
+    # Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
     assert_that(float(max_bandwidth)).is_greater_than(26.0)
