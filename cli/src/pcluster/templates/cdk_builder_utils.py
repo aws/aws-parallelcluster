@@ -15,6 +15,7 @@ from hashlib import sha1, sha256
 from typing import List, Union
 
 import pkg_resources
+import yaml
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
@@ -36,6 +37,7 @@ from pcluster.config.cluster_config import (
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    DISABLE_SUDO_ACCESS_FOR_DEFAULT_USER_CONFIG,
     IAM_ROLE_PATH,
     LAMBDA_VPC_ACCESS_MANAGED_POLICY,
     PCLUSTER_CLUSTER_NAME_TAG,
@@ -128,6 +130,11 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
         if directory_service
         else {}
     )
+
+
+def get_cloud_config_for_default_user(disable_sudo_access_default_user: bool):
+    """Return Cloud-Init Section (cloud-config) in YAML format if DisableSudoAccessForDefaultUser is enabled."""
+    return yaml.dump(DISABLE_SUDO_ACCESS_FOR_DEFAULT_USER_CONFIG) if disable_sudo_access_default_user else ""
 
 
 def to_comma_separated_string(list, use_lower_case=False):

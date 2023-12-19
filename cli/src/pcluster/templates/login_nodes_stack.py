@@ -18,6 +18,7 @@ from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
     _get_resource_combination_name,
+    get_cloud_config_for_default_user,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
@@ -206,6 +207,9 @@ class Pool(Construct):
                                 "AutoScalingGroupName": f"{self._login_nodes_stack_id}-AutoScalingGroup",
                                 "LaunchingLifecycleHookName": (
                                     f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook"
+                                ),
+                                "DisableSudoAccessForDefaultUserConfig": get_cloud_config_for_default_user(
+                                    self._config.disable_sudo_access_default_user
                                 ),
                             },
                             **get_common_user_data_env(self._pool, self._config),

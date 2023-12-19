@@ -55,6 +55,9 @@ package_upgrade: false
 repo_upgrade: none
 
 datasource_list: [ Ec2, None ]
+
+${DisableSudoAccessForDefaultUserConfig}
+
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
 write_files:

@@ -1557,7 +1557,7 @@ class BaseClusterConfig(Resource):
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
         self._set_default_head_node_root_volume_size()
-        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
+        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user, default=False)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -2027,11 +2027,6 @@ class BaseClusterConfig(Resource):
     def get_instance_types_data(self) -> dict:
         """Get instance type infos for all instance types used in the configuration file."""
         return {}
-
-    @property
-    def is_default_user_sudo_access_enabled(self):
-        """Return True if DisableSudoAccessForDefaultUser is True."""
-        return bool(self.disable_sudo_access_default_user)
 
 
 class AwsBatchComputeResource(BaseComputeResource):
