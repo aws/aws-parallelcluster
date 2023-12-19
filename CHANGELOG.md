@@ -20,6 +20,7 @@ CHANGELOG
 - Make `InstanceType` an optional configuration parameter when configuring `CapacityReservationTarget/CapacityReservationId` in the compute resource.
 - Add possibility to specify a prefix for IAM roles and policies created by ParallelCluster API.
 - Add possibility to specify a permissions boundary to be applied for IAM roles and policies created by ParallelCluster API.
+- Add support for il-central-1 region.
 
 **CHANGES**
 - Upgrade Slurm to 23.02.7 (from 23.02.6).
