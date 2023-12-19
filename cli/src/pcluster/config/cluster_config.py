@@ -1522,6 +1522,7 @@ class BaseClusterConfig(Resource):
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
         deployment_settings: DeploymentSettings = None,
+        disable_sudo_access_default_user: bool = None,
     ):
         super().__init__()
         self.__region = None
@@ -1556,6 +1557,7 @@ class BaseClusterConfig(Resource):
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
         self._set_default_head_node_root_volume_size()
+        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1598,21 +1600,13 @@ class BaseClusterConfig(Resource):
                 os=self.image.os,
                 architecture=self.head_node.architecture,
             )
-        feature_requiring_additional_space = []
-        if self.additional_packages and self.additional_packages.intel_software:
-            if self.additional_packages.intel_software.intel_hpc_platform:
-                self._register_validator(IntelHpc2018OsValidator, os=self.image.os)
-                self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
-            if (
-                self.additional_packages.intel_software.one_api
-                and self.additional_packages.intel_software.one_api.base_toolkit
-            ):
-                feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-                self._register_validator(IntelOneApiToolkitsOsValidator, os=self.image.os)
-                self._register_validator(IntelOneApiToolkitsBootstrapTimeValidator)
-            if self.additional_packages.intel_software.python:
-                self._register_validator(IntelPythonOsValidator, os=self.image.os)
-
+        if (
+            self.additional_packages
+            and self.additional_packages.intel_software
+            and self.additional_packages.intel_software.intel_hpc_platform
+        ):
+            self._register_validator(IntelHpcOsValidator, os=self.image.os)
+            self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
@@ -1630,7 +1624,6 @@ class BaseClusterConfig(Resource):
             RootVolumeSizeValidator,
             root_volume_size=root_volume_size,
             ami_volume_size=ami_volume_size,
-            additional_space=self._additional_space_for_features(),
         )
         self._register_validator(
             EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
@@ -1789,44 +1782,6 @@ class BaseClusterConfig(Resource):
         if volume_ids:
             AWSApi.instance().fsx.describe_volumes(volume_ids)
 
-    def _set_default_head_node_root_volume_size(self):
-        root_volume = self.head_node.local_storage.root_volume
-        if root_volume.size is None:
-            root_volume.size = Resource.init_param(
-                None,
-                default=AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
-                + self._additional_space_for_features(),
-            )
-
-    def _additional_space_for_features(self):
-        feature_requiring_additional_space = []
-        if (
-            self.additional_packages
-            and self.additional_packages.intel_software
-            and self.additional_packages.intel_software.one_api
-            and self.additional_packages.intel_software.one_api.base_toolkit
-        ):
-            feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-        additional_space = 0
-        for feature in feature_requiring_additional_space:
-            additional_space += FEATURE_REQUIRING_ADDITION_SPACE[feature]
-        return additional_space
-
-    def additional_bootstrap_time_for_features(self):
-        """Calculate total additional bootstrap time for enabled features."""
-        feature_requiring_additional_bootstrap_time = []
-        if (
-            self.additional_packages
-            and self.additional_packages.intel_software
-            and self.additional_packages.intel_software.one_api
-            and self.additional_packages.intel_software.one_api.base_toolkit
-        ):
-            feature_requiring_additional_bootstrap_time.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-        additional_bootstrap_time = 0
-        for feature in feature_requiring_additional_bootstrap_time:
-            additional_bootstrap_time += FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME[feature]
-        return additional_bootstrap_time
-
     @property
     def region(self):
         """Retrieve region from environment if not set."""
@@ -1979,11 +1934,6 @@ class BaseClusterConfig(Resource):
         )
 
     @property
-    def are_alarms_enabled(self):
-        """Return False if Monitoring/Alarms/Enabled is False. True otherwise."""
-        return self.monitoring.alarms.enabled if self.monitoring and self.monitoring.alarms else True
-
-    @property
     def is_detailed_monitoring_enabled(self):
         """Return True if Detailed Monitoring is enabled."""
         return self.monitoring.detailed_monitoring
@@ -2077,6 +2027,11 @@ class BaseClusterConfig(Resource):
     def get_instance_types_data(self) -> dict:
         """Get instance type infos for all instance types used in the configuration file."""
         return {}
+
+    @property
+    def is_default_user_sudo_access_enabled(self):
+        """Return True if DisableSudoAccessForDefaultUser is True."""
+        return bool(self.disable_sudo_access_default_user)
 
 
 class AwsBatchComputeResource(BaseComputeResource):
@@ -2223,11 +2178,6 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
 
-    @abstractmethod
-    def is_flexible(self) -> bool:
-        """Return True if the ComputeResource can contain multiple instance types, False otherwise."""
-        pass
-
     @staticmethod
     def fetch_instance_type_info(instance_type) -> InstanceTypeInfo:
         """Return instance type information."""
@@ -2298,7 +2248,11 @@ class FlexibleInstanceType(Resource):
 class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with Multiple Instance Types."""
 
-    def __init__(self, instances: List[FlexibleInstanceType], **kwargs):
+    def __init__(
+        self,
+        instances: List[FlexibleInstanceType],
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.instances = Resource.init_param(instances)
 
@@ -2324,10 +2278,6 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             ec2memory=min_memory,
             instance_type=smallest_type,
         )
-
-    def is_flexible(self):
-        """Return True because the ComputeResource can contain multiple instance types."""
-        return True
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
@@ -2373,23 +2323,28 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
 class SlurmComputeResource(_BaseSlurmComputeResource):
     """Represents a Slurm Compute Resource with a Single Instance Type."""
 
-    def __init__(self, instance_type=None, **kwargs):
+    def __init__(
+        self,
+        instance_type,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
-        _instance_type = instance_type if instance_type else self._instance_type_from_capacity_reservation()
-        self.instance_type = Resource.init_param(_instance_type)
+        self.instance_type = Resource.init_param(instance_type)
         self.__instance_type_info = None
-
-    def is_flexible(self):
-        """Return False because the ComputeResource can not contain multiple instance types."""
-        return False
 
     @property
     def instance_types(self) -> List[str]:
         """List of instance types under this compute resource."""
         return [self.instance_type]
 
+    @property
+    def instance_type_info(self) -> InstanceTypeInfo:
+        """Return instance type information."""
+        return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
+        self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
             SchedulableMemoryValidator,
             schedulable_memory=self.schedulable_memory,
@@ -2427,19 +2382,7 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and self._instance_type_info.default_threads_per_core() > 1
-
-    def _instance_type_from_capacity_reservation(self):
-        """Return the instance type from the configured CapacityReservationId, if any."""
-        instance_type = None
-        capacity_reservation_id = (
-            self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
-        )
-        if capacity_reservation_id:
-            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
-            if capacity_reservations:
-                instance_type = capacity_reservations[0].instance_type()
-        return instance_type
+        return self.disable_simultaneous_multithreading and self.instance_type_info.default_threads_per_core() > 1
 
 
 class _CommonQueue(BaseQueue):
@@ -2540,7 +2483,7 @@ class _CommonQueue(BaseQueue):
             if isinstance(compute_resource, SlurmComputeResource):
                 self._register_validator(
                     EfaValidator,
-                    instance_type=compute_resource.instance_types[0],
+                    instance_type=compute_resource.instance_type,
                     efa_enabled=compute_resource.efa.enabled,
                     gdr_support=compute_resource.efa.gdr_support,
                     multiaz_enabled=self.multi_az_enabled,
@@ -2582,11 +2525,10 @@ class SlurmQueue(_CommonQueue):
         if any(
             isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
-            default_allocation_strategy = None if self.is_capacity_block() else AllocationStrategy.LOWEST_PRICE
             self.allocation_strategy = (
                 AllocationStrategy[to_snake_case(allocation_strategy).upper()]
                 if allocation_strategy
-                else default_allocation_strategy
+                else AllocationStrategy.LOWEST_PRICE
             )
 
     @property
@@ -2663,12 +2605,6 @@ class SlurmQueue(_CommonQueue):
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
             )
-            self._register_validator(
-                ComputeResourceSizeValidator,
-                min_count=compute_resource.min_count,
-                max_count=compute_resource.max_count,
-                capacity_type=self.capacity_type,
-            )
             if compute_resource.custom_slurm_settings:
                 self._register_validator(
                     CustomSlurmSettingsValidator,
@@ -2677,14 +2613,11 @@ class SlurmQueue(_CommonQueue):
                     settings_level=CustomSlurmSettingLevel.COMPUTE_RESOURCE,
                 )
             for instance_type in compute_resource.instance_types:
-                cr_target = compute_resource.capacity_reservation_target or self.capacity_reservation_target
                 self._register_validator(
                     CapacityTypeValidator,
                     capacity_type=self.capacity_type,
                     instance_type=instance_type,
-                    capacity_reservation_id=cr_target.capacity_reservation_id if cr_target else None,
                 )
-                self._register_validator(FeatureRegionValidator, feature=self.capacity_type, region=None)
 
 
 class Dns(Resource):
@@ -2707,14 +2640,12 @@ class Database(Resource):
         uri: str = None,
         user_name: str = None,
         password_secret_arn: str = None,
-        database_name: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.uri = Resource.init_param(uri)
         self.user_name = Resource.init_param(user_name)
         self.password_secret_arn = Resource.init_param(password_secret_arn)
-        self.database_name = Resource.init_param(database_name)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         region = get_region()
@@ -2741,7 +2672,6 @@ class SlurmSettings(Resource):
         database: Database = None,
         custom_slurm_settings: List[Dict] = None,
         custom_slurm_settings_include_file: str = None,
-        munge_key_secret_arn: str = None,
         **kwargs,
     ):
         super().__init__()
@@ -2754,7 +2684,6 @@ class SlurmSettings(Resource):
         self.database = database
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
         self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
-        self.munge_key_secret_arn = Resource.init_param(munge_key_secret_arn)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2780,18 +2709,6 @@ class SlurmSettings(Resource):
                 custom_settings=self.custom_slurm_settings,
                 include_file_url=self.custom_slurm_settings_include_file,
             )
-        if self.munge_key_secret_arn:
-            self._register_validator(
-                ArnServiceAndResourceValidator,
-                arn=self.munge_key_secret_arn,
-                region=get_region(),
-                expected_service="secretsmanager",
-                expected_resource="secret",
-            )
-            self._register_validator(
-                MungeKeySecretSizeAndBase64Validator,
-                munge_key_secret_arn=self.munge_key_secret_arn,
-            )
 
 
 class QueueUpdateStrategy(Enum):
@@ -2805,10 +2722,9 @@ class QueueUpdateStrategy(Enum):
 class SlurmScheduling(Resource):
     """Represent a slurm Scheduling resource."""
 
-    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None, scaling_strategy: str = None):
+    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None):
         super().__init__()
         self.scheduler = "slurm"
-        self.scaling_strategy = Resource.init_param(scaling_strategy, default="all-or-nothing")
         self.queues = queues
         self.settings = settings or SlurmSettings(implied=True)
 
@@ -2972,7 +2888,6 @@ class SlurmClusterConfig(BaseClusterConfig):
         instance_types_data = self.get_instance_types_data()
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
-        capacity_reservation_id_max_count_map = {}
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
             if index == 0:
@@ -3005,7 +2920,6 @@ class SlurmClusterConfig(BaseClusterConfig):
             if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
-
             for compute_resource in queue.compute_resources:
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
@@ -3022,22 +2936,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                 # to make sure the subnet APIs are cached by previous validations.
                 cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
                 if cr_target:
-                    if cr_target.capacity_reservation_id:
-                        # increment counter of number of instances used for a given capacity reservation
-                        # to verify to not exceed instance count when considering all the configured compute resources
-                        num_of_instances_in_capacity_reservation = capacity_reservation_id_max_count_map.get(
-                            cr_target.capacity_reservation_id, 0
-                        )
-                        capacity_reservation_id_max_count_map[cr_target.capacity_reservation_id] = (
-                            num_of_instances_in_capacity_reservation + compute_resource.max_count
-                        )
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
-                        instance_types=compute_resource.instance_types,
-                        is_flexible=compute_resource.is_flexible(),
+                        instance_type=getattr(compute_resource, "instance_type", None),
                         subnet=queue.networking.subnet_ids[0],
-                        capacity_type=queue.capacity_type,
                     )
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
@@ -3113,13 +3016,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                     compute_resource_tags=compute_resource.get_tags(),
                 )
 
-        for capacity_reservation_id, num_of_instances in capacity_reservation_id_max_count_map.items():
-            self._register_validator(
-                CapacityReservationSizeValidator,
-                capacity_reservation_id=capacity_reservation_id,
-                num_of_instances=num_of_instances,
-            )
-
     @property
     def image_dict(self):
         """Return image dict of queues, key is queue name, value is image id."""
@@ -3157,7 +3053,7 @@ class SlurmClusterConfig(BaseClusterConfig):
     def capacity_reservation_arns(self):
         """Return a list of capacity reservation ARNs specified in the config."""
         return [
-            capacity_reservation.capacity_reservation_arn()
+            capacity_reservation["CapacityReservationArn"]
             for capacity_reservation in AWSApi.instance().ec2.describe_capacity_reservations(
                 self.capacity_reservation_ids
             )
