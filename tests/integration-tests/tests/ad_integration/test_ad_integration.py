@@ -39,7 +39,6 @@ from utils import (
 )
 
 from tests.ad_integration.cluster_user import ClusterUser
-from tests.common.osu_common import compile_osu
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, run_system_analyzer
 from tests.storage.test_fsx_lustre import create_fsx_ontap, create_fsx_open_zfs
 
@@ -427,8 +426,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
             _delete_certificate(certificate_arn=certificate_arn, region=region)
 
 
-def _run_user_workloads(users, test_datadir, remote_command_executor, shared_storage_mount_dirs):
-    compile_osu("openmpi", remote_command_executor)
+def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
     _check_whoami(users)
     _check_files_permissions(users, shared_storage_mount_dirs)
     job_submission_outputs = [
@@ -659,8 +657,6 @@ def test_ad_integration(
     request,
     store_secret_in_secret_manager,
     clusters_factory,
-    run_benchmarks,
-    benchmarks,
 ):
     """
     Verify AD integration works as expected.
@@ -670,18 +666,12 @@ def test_ad_integration(
     3. SSH key for AD users is created when the property GenerateSshKeysForUsers is true;
     4. AD users can submit workloads;
     5. AD users filter out by LdapAccessFilter cannot access to the head node.
-
-    Optionally, it executes performance tests using OSU benchmarks.
     """
     if not is_directory_supported(region, directory_type):
         pytest.skip(f"Skipping the test because directory type {directory_type} is not supported in region {region}")
 
-    head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
-    compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     fsx_supported = is_fsx_supported(region)
     config_params = {
-        "compute_instance_type": compute_instance_type_info.get("name"),
-        "head_node_instance_type": head_node_instance_type,
         "fsx_supported": fsx_supported,
     }
     directory_stack_name, nlb_stack_name = directory_factory(
@@ -711,7 +701,7 @@ def test_ad_integration(
     )
     if fsx_supported:
         config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
-    cluster_config = pcluster_config_reader(benchmarks=benchmarks, **config_params)
+    cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 
     certificate_secret_arn = nlb_stack_parameters.get("CertificateSecretArn")
@@ -758,14 +748,12 @@ def test_ad_integration(
     shared_storage_mount_dirs = ["/shared", "/efs"]
     if fsx_supported:
         shared_storage_mount_dirs.extend(["/fsxlustre", "/fsxontap", "/fsxopenzfs"])
-    _run_user_workloads(users, test_datadir, remote_command_executor, shared_storage_mount_dirs)
+    _run_user_workloads(users, test_datadir, shared_storage_mount_dirs)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)
 
     # Verify access control with ldap access provider.
-    updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml", benchmarks=benchmarks, **config_params
-    )
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
     cluster.update(str(updated_config_file), force_update="true")
     # Reset stateful connection variables after the cluster update
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -779,9 +767,7 @@ def test_ad_integration(
 
     # Verify access control with simple access provider.
     # With this test we also verify that AdditionalSssdConfigs is working properly.
-    updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update2.yaml", benchmarks=benchmarks, **config_params
-    )
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update2.yaml", **config_params)
     cluster.update(str(updated_config_file), force_update="true")
     # Reset stateful connection variables after the cluster update
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -794,7 +780,6 @@ def test_ad_integration(
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser0")
 
     run_system_analyzer(cluster, scheduler_commands_factory, request)
-    run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
 
 
 def _check_ssh_auth(user, expect_success=True):
@@ -837,12 +822,6 @@ def test_ad_integration_on_login_nodes(
     2. SSH key for AD users is created when the property GenerateSshKeysForUsers is true;
     3. AD users can submit workloads;
     """
-    head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
-    compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
-    config_params = {
-        "compute_instance_type": compute_instance_type_info.get("name"),
-        "head_node_instance_type": head_node_instance_type,
-    }
     directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
         request.config.getoption("ldaps_nlb_stack_name"),
@@ -857,16 +836,14 @@ def test_ad_integration_on_login_nodes(
     )
     nlb_stack_parameters = get_infra_stack_parameters(nlb_stack_name)
     ldap_tls_ca_cert = "/opt/parallelcluster/shared_login_nodes/directory_service/certificate.crt"
-    config_params.update(
-        get_ad_config_param_vals(
-            directory_stack_outputs,
-            nlb_stack_parameters,
-            password_secret_arn,
-            ldap_tls_ca_cert,
-            directory_type,
-            directory_protocol,
-            directory_certificate_verification,
-        )
+    config_params = get_ad_config_param_vals(
+        directory_stack_outputs,
+        nlb_stack_parameters,
+        password_secret_arn,
+        ldap_tls_ca_cert,
+        directory_type,
+        directory_protocol,
+        directory_certificate_verification,
     )
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)

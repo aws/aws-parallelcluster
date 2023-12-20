@@ -16,12 +16,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-          benchmarks:
-            - mpi_variants: [ "openmpi", "intelmpi" ]
-              num_instances: [ 4 ]
-              slots_per_instance: 2
-              osu_benchmarks:
-                collective: [ "osu_alltoall" ]
   arm_pl:
     test_arm_pl.py::test_arm_pl:
       dimensions:
@@ -100,12 +94,6 @@ test-suites:
           instances: ["m4.xlarge"]
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-          benchmarks:
-            - mpi_variants: [ "openmpi", "intelmpi" ]
-              num_instances: [ 4 ]
-              slots_per_instance: 2
-              osu_benchmarks:
-                collective: [ "osu_alltoall" ]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -237,12 +225,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-          benchmarks:
-            - mpi_variants: [ "openmpi", "intelmpi" ]
-              num_instances: [ 4 ]
-              slots_per_instance: 2
-              osu_benchmarks:
-                collective: [ "osu_alltoall" ]
     test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
         - regions: ["us-east-2"]
@@ -261,12 +243,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
-          benchmarks:
-            - mpi_variants: [ "openmpi", "intelmpi" ]
-              num_instances: [ 4 ]
-              slots_per_instance: 2
-              osu_benchmarks:
-                collective: [ "osu_alltoall" ]
     test_raid.py::test_raid_performance_mode:
       dimensions:
         - regions: ["ap-south-1"]

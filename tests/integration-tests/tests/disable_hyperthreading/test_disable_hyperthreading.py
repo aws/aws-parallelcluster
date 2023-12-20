@@ -28,14 +28,12 @@ def test_hit_disable_hyperthreading(
     pcluster_config_reader,
     clusters_factory,
     default_threads_per_core,
-    run_benchmarks,
-    benchmarks,
     scheduler_commands_factory,
     request,
 ):
     """Test Disable Hyperthreading for HIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader(benchmarks=benchmarks)
+    cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -60,7 +58,6 @@ def test_hit_disable_hyperthreading(
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     run_system_analyzer(cluster, scheduler_commands_factory, request)
-    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 def _test_disable_hyperthreading_settings(
