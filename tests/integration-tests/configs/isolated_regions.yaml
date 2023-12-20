@@ -16,11 +16,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-          benchmarks:
-            - mpi_variants: ["openmpi"]
-              num_instances: [5]
-              osu_benchmarks:
-                collective: ["osu_alltoall"]
 # This test cannot be executed in US isolated regions because it relies on a CloudFormation stack using resources
 # that are not supported by CloudFormation in ADC, i.e. CapacityReservation and ResourceGroup.
 #  capacity_reservations:
@@ -153,13 +148,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-          benchmarks:
-            - mpi_variants: ["openmpi", "intelmpi"]
-              num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
-              slots_per_instance: 2
-              partition: "ht-disabled"
-              osu_benchmarks:
-                collective: ["osu_allreduce", "osu_alltoall"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -460,12 +448,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-          benchmarks:
-            - mpi_variants: ["openmpi", "intelmpi"]
-              num_instances: [20] # Change the head node instance type if you'd test more than 30 instances
-              slots_per_instance: 2
-              osu_benchmarks:
-                collective: ["osu_allreduce", "osu_alltoall"]
     test_raid.py::test_raid_fault_tolerance_mode:
       dimensions:
         - regions: {{ REGIONS }}

@@ -114,7 +114,6 @@ def test_multiple_efs(
     key_name,
     cfn_stacks_factory,
     scheduler_commands_factory,
-    run_benchmarks,
 ):
     """
     Test when efs_fs_id is provided in the config file, the existing efs can be correctly mounted.
@@ -126,11 +125,7 @@ def test_multiple_efs(
     existing_efs_mount_dirs = []
     iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3 * [False]
     encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3 * [False]
-    if request.config.getoption("benchmarks") and os == "alinux2":
-        # Only create more EFS when benchmarks are specified. Limiting OS to reduce cost of too many file systems
-        num_existing_efs = 20
-    else:
-        num_existing_efs = 3
+    num_existing_efs = 3
     # create an additional EFS with file system policy to prevent anonymous access
     existing_efs_ids = efs_stack_factory(num_existing_efs)
     if scheduler != "awsbatch":
@@ -168,7 +163,7 @@ def test_multiple_efs(
     for i in range(num_existing_efs):
         existing_efs_mount_dirs.append(f"/existing_efs_mount_dir_{i}")
 
-    new_efs_mount_dirs = ["/shared"]  # OSU benchmark relies on /shared directory
+    new_efs_mount_dirs = ["/shared"]
 
     _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az=False)
     # change cluster configuration file to test different tls and iam settings to EFS.
@@ -204,8 +199,6 @@ def test_multiple_efs(
             iam_authorizations,
             encryption_in_transits,
         )
-
-    run_benchmarks(remote_command_executor, scheduler_commands)
 
 
 def _check_efs_after_nodes_reboot(
