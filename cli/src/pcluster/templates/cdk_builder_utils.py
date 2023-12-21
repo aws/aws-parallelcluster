@@ -133,7 +133,7 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
 
 
 def get_cloud_config_for_default_user(disable_sudo_access_default_user: bool):
-    """Return Cloud-Init Section (cloud-config) in YAML format if DisableSudoAccessForDefaultUser is enabled."""
+    """Return Cloud-Init Section (cloud-config) in YAML format if DisableSudoAccessForDefaultUser is True."""
     return yaml.dump(DISABLE_SUDO_ACCESS_FOR_DEFAULT_USER_CONFIG) if disable_sudo_access_default_user else ""
 
 

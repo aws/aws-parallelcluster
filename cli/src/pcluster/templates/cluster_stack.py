@@ -1217,6 +1217,10 @@ class ClusterCdkStack:
                                 "DisableSudoAccessForDefaultUserConfig": get_cloud_config_for_default_user(
                                     self.config.disable_sudo_access_default_user
                                 ),
+                                "OSUser": OS_MAPPING[self.config.image.os]["user"],
+                                "DisableSudoAccessForDefault": "true"
+                                if self.config.disable_sudo_access_default_user
+                                else "false",
                             },
                             **get_common_user_data_env(head_node, self.config),
                         },

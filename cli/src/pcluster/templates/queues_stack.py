@@ -308,6 +308,9 @@ class QueuesStack(NestedStack):
                                 "DisableSudoAccessForDefaultUserConfig": get_cloud_config_for_default_user(
                                     self._config.disable_sudo_access_default_user
                                 ),
+                                "DisableSudoAccessForDefault": "true"
+                                if self._config.disable_sudo_access_default_user
+                                else "false",
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
