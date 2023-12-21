@@ -58,8 +58,8 @@ def test_efa(
 
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
-    if instance == "p4d.24xlarge" and os != "centos7":
-        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
+    if instance in ["p4d.24xlarge", "p5.48xlarge"] and os != "centos7":
+        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands, instance)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
@@ -102,7 +102,7 @@ def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, p
     assert_that(result.stdout).does_not_contain("SHM transfer will be disabled because of ptrace protection")
 
 
-def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, scheduler_commands):
+def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, scheduler_commands, instance):
     logging.info("Running NCCL benchmarks")
     remote_command_executor.run_remote_script(
         str(test_datadir / "nccl_benchmarks" / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True, timeout=600
@@ -139,5 +139,15 @@ def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, sch
         "cat /shared/nccl_tests.out | grep -E '1073741824\\s+268435456' | awk '{print $12}'"
     ).stdout
 
-    # Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
-    assert_that(float(max_bandwidth)).is_greater_than(26.0)
+    instance_bandwidth_dict = {
+        # p4d.24xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
+        "p4d.24xlarge": 26.0,
+        # p5.48xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 250GB/s
+        "p5.48xlarge": 250.0,
+    }
+
+    expected_bandwidth = instance_bandwidth_dict.get(instance)
+    if expected_bandwidth is None:
+        pytest.fail(f"Instance {instance} is not valid for multiple bandwidth tests")
+
+    assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
