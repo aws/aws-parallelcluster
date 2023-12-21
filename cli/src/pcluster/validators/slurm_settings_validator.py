@@ -99,7 +99,7 @@ class CustomSlurmSettingsValidator(Validator):
         if len(denied_settings) > 0:
             settings = ",".join(sorted(denied_settings))
             self._add_failure(
-                f"Using the following custom Slurm settings at {settings_level} level is not allowed: {settings}",
+                f"Using the following custom Slurm settings at {settings_level.value} level is not allowed: {settings}",
                 FailureLevel.ERROR,
             )
 

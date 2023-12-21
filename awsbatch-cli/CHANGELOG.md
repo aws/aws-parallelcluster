@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+1.3.0
+------
+
+**CHANGES**
+
+- Add support for Python 3.11, Python 3.12.
+
 1.2.0
 ------
 

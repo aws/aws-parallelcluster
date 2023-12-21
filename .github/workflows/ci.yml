@@ -42,6 +42,8 @@ jobs:
           - Python 3.8 Tests
           - Python 3.9 Tests
           - Python 3.10 Tests
+          - Python 3.11 Tests
+          - Python 3.12 Tests
           - Python 3.10 Tests Coverage
           - Code Checks
           - CLI CloudFormation Templates Checks
@@ -64,6 +66,14 @@ jobs:
             python: '3.10'
             toxdir: cli
             toxenv: py310-nocov
+          - name: Python 3.11 Tests
+            python: '3.11'
+            toxdir: cli
+            toxenv: py311-nocov
+          - name: Python 3.12 Tests
+            python: '3.12'
+            toxdir: cli
+            toxenv: py312-nocov
           - name: Python 3.10 Tests Coverage
             python: '3.10'
             toxdir: cli
@@ -113,6 +123,8 @@ jobs:
           - Python 3.8 AWS Batch CLI Tests
           - Python 3.9 AWS Batch CLI Tests
           - Python 3.10 AWS Batch CLI Tests
+          - Python 3.11 AWS Batch CLI Tests
+          - Python 3.12 AWS Batch CLI Tests
           - Python 3.10 AWS Batch CLI Tests Coverage
           - Code Checks AWS Batch CLI
         include:
@@ -132,6 +144,14 @@ jobs:
             python: '3.10'
             toxdir: awsbatch-cli
             toxenv: py310-nocov
+          - name: Python 3.11 AWS Batch CLI Tests
+            python: '3.11'
+            toxdir: awsbatch-cli
+            toxenv: py311-nocov
+          - name: Python 3.12 AWS Batch CLI Tests
+            python: '3.12'
+            toxdir: awsbatch-cli
+            toxenv: py312-nocov
           - name: Python 3.10 AWS Batch CLI Tests Coverage
             python: '3.10'
             toxdir: awsbatch-cli
