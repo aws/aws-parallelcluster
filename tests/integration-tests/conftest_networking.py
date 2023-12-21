@@ -223,6 +223,9 @@ def get_availability_zones(region, credential):
 def get_az_setup_for_region(region: str, credential: list):
     """Return a default AZ ID and its name, the list of all AZ IDs and names."""
     az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+    if "us-isob-east-1" in region:
+        # Removing One of the Az's from Isolated regions
+        az_id_to_az_name_map.pop("usibe1-az1", "")
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
     default_az_id = random.choice(AVAILABLE_AVAILABILITY_ZONE.get(region, az_ids))
     default_az_name = az_id_to_az_name_map.get(default_az_id)
