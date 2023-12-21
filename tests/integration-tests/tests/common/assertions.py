@@ -36,7 +36,11 @@ def assert_instance_replaced_or_terminating(instance_id, region):
 def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False, ignore_patterns=None):
     __tracebackhide__ = True
 
-    ice_patterns = ["InsufficientInstanceCapacity", "Failed to launch instances due to limited EC2 capacity"]
+    ice_patterns = [
+        "InsufficientInstanceCapacity",
+        "Insufficient capacity",
+        "Failed to launch instances due to limited EC2 capacity",
+    ]
 
     patterns_to_ignore = []
     if skip_ice:
