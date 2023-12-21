@@ -14,10 +14,16 @@ from typing import List, Union
 
 import boto3
 from assertpy import assert_that, soft_assertions
+from constants import NodeType
 from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import minutes, seconds
-from utils import get_cfn_resources, get_compute_nodes_count, get_compute_nodes_instance_ids
+from utils import (
+    get_cfn_resources,
+    get_compute_nodes_count,
+    get_compute_nodes_instance_ids,
+    get_compute_nodes_instance_ips,
+)
 
 from tests.common.scaling_common import get_compute_nodes_allocation
 
@@ -251,6 +257,35 @@ def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_comm
         logging.info(f"user={user} and result.failed={result.failed}")
         logging.info(f"user={user} and result.stdout={result.stdout}")
         assert_that(result.failed).is_equal_to(not allowed)
+
+
+def assert_default_user_has_desired_sudo_access(
+    cluster,
+    node_type,
+    region,
+    disable_sudo_access_default_user,
+):
+    remote_command_executors = []
+    logging.info(
+        f"Asserting sudo access is {'disabled' if disable_sudo_access_default_user else 'enabled'} "
+        + f"for default user in node {node_type.value}"
+    )
+    if node_type == NodeType.HEAD_NODE:
+        remote_command_executors.append(RemoteCommandExecutor(cluster))
+    elif node_type == NodeType.COMPUTE_NODES:
+        for compute_node_ip in get_compute_nodes_instance_ips(cluster.name, region):
+            remote_command_executors.append(RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip))
+    elif node_type == NodeType.LOGIN_NODES:
+        remote_command_executors.append(RemoteCommandExecutor(cluster, use_login_node=True))
+
+    command = "sudo -n cat /etc/sudoers.d/90-cloud-init-users"
+    for node_index, remote_command_executor in enumerate(remote_command_executors):
+        result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
+        logging.info(f"Default user in {node_type} number {node_index} and result.failed={result.failed}")
+        logging.info(f"Default user in {node_type}  number {node_index} and result.stdout={result.stdout}")
+        if disable_sudo_access_default_user:
+            assert_that(result.stdout).contains("a password is required")
+        assert_that(result.failed).is_equal_to(disable_sudo_access_default_user)
 
 
 def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):

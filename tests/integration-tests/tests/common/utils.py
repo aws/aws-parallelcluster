@@ -272,10 +272,42 @@ def reboot_head_node(cluster, remote_command_executor=None):
     logging.info(f"Rebooted head node for cluster: {cluster.name}")
 
 
+def reboot_login_node(cluster, remote_command_executor=None):
+    logging.info(f"Rebooting login node for cluster: {cluster.name}")
+    if not remote_command_executor:
+        remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
+    command = "sudo reboot"
+    result = remote_command_executor.run_remote_command(command, raise_on_error=False)
+    logging.info(f"result.failed={result.failed}")
+    logging.info(f"result.stdout={result.stdout}")
+    wait_login_node_running(cluster)
+    wait_login_node_status_ok(cluster)
+    # Wait time is required for the login node to complete the reboot.
+    # We observed that loginnode in US isolated regions may take more time to reboot.
+    time.sleep(240 if "us-iso" in cluster.region else 120)
+    logging.info(f"Rebooted login node for cluster: {cluster.name}")
+
+
 def wait_head_node_running(cluster):
     logging.info(f"Waiting for head node to be running for cluster: {cluster.name}")
     boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
         InstanceIds=cluster.get_cluster_instance_ids(node_type="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+    )
+
+
+def wait_login_node_running(cluster):
+    logging.info(f"Waiting for login node to be running for cluster: {cluster.name}")
+    boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
+        InstanceIds=cluster.get_cluster_instance_ids(node_type="LoginNode"),
+        WaiterConfig={"Delay": 60, "MaxAttempts": 5},
+    )
+
+
+def wait_login_node_status_ok(cluster):
+    logging.info(f"Waiting for login node's Status to be Ok for cluster: {cluster.name}")
+    boto3.client("ec2", region_name=cluster.region).get_waiter("instance_status_ok").wait(
+        InstanceIds=cluster.get_cluster_instance_ids(node_type="LoginNode"),
+        WaiterConfig={"Delay": 60, "MaxAttempts": 5},
     )
 
 

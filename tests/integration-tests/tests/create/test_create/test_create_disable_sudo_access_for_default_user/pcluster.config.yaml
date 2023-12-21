@@ -1,0 +1,33 @@
+Image:
+  Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: t2.micro
+      Count: 1
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Ssh:
+        KeyName: {{ key_name }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: compute
+      ComputeResources:
+        - Name: compute-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+DisableSudoAccessForDefaultUser: {{ disable_sudo_access_default_user }}

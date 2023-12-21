@@ -14,12 +14,14 @@ import logging
 import boto3
 import pytest
 from assertpy import assert_that
+from constants import NodeType
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_username_for_os
 
 from tests.common.assertions import (
     assert_aws_identity_access_is_correct,
     assert_cluster_imds_v2_requirement_status,
+    assert_default_user_has_desired_sudo_access,
     assert_head_node_is_running,
     assert_lines_in_logs,
 )
@@ -115,6 +117,25 @@ def test_create_imds_secured(
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
     assert_cluster_imds_v2_requirement_status(region, cluster, status)
+
+
+# FIXME: Move in tests_update after update policy is changed
+@pytest.mark.usefixtures("instance", "scheduler")
+def test_create_disable_sudo_access_for_default_user(
+    region, os, pcluster_config_reader, clusters_factory, architecture
+):
+    """
+    Verify that the cluster removes the Sudo access for default user
+    in all the nodes of the Cluster if the DisableSudoAccessForDefaultUser is enabled.
+    """
+    disable_sudo_access_default_user = True
+    cluster_config = pcluster_config_reader(disable_sudo_access_default_user=disable_sudo_access_default_user)
+    cluster = clusters_factory(cluster_config)
+
+    logging.info("Checking default user has disabled sudo access after cluster creation")
+    assert_head_node_is_running(region, cluster)
+    for node_type in NodeType:
+        assert_default_user_has_desired_sudo_access(cluster, node_type, region, disable_sudo_access_default_user)
 
 
 @pytest.mark.usefixtures("instance", "os", "scheduler")
