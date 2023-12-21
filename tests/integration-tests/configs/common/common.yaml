@@ -151,6 +151,12 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         schedulers: ["slurm"]
         oss: ["ubuntu2004"]
+  test_create.py::test_create_disable_sudo_access_for_default_user:
+    dimensions:
+      - regions: [ "ap-northeast-2" ]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        schedulers: ["slurm"]
+        oss: [ "rocky8", "ubuntu2204" ]
 createami:
   test_createami.py::test_invalid_config:
     dimensions:
