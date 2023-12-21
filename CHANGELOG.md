@@ -15,6 +15,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Slurm to 23.11.1.
+- Add support for Python 3.11, 3.12 in pcluster CLI and aws-parallelcluster-batch-cli.
 
 3.8.0
 ------
