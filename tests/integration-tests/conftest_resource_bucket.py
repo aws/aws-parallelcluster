@@ -30,7 +30,7 @@ from framework.fixture_utils import xdist_session_fixture
 from tests.common.utils import get_installed_parallelcluster_version
 
 logger = logging.getLogger()
-NODE_VERSION = "v16.19.0"  # maintenance version compatible with alinux2's GLIBC
+NODE_VERSION = "v18.18.2"
 
 
 def install_pc(basepath, pc_version):

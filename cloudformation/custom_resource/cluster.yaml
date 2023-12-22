@@ -45,7 +45,7 @@ Resources:
         - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
         - { Version: !FindInMap [ParallelCluster, Constants, Version] }
       CompatibleRuntimes:
-        - python3.9
+        - python3.12
 
   PclusterPolicies:
     Condition: UsePCPolicies
@@ -340,7 +340,7 @@ Resources:
               helper(event, context)
 
       Handler: index.handler
-      Runtime: python3.9
+      Runtime: python3.12
       Role: !If [CustomRoleCondition, !Ref CustomLambdaRole, !GetAtt PclusterLambdaRole.Arn]
       Layers:
         - !Ref PclusterLayer
@@ -394,7 +394,7 @@ Resources:
                   reason = str(e)
               cfnresponse.send(event, context, response_status, {}, event.get('PhysicalResourceId', 'CleanupS3bucketCustomResource'), reason)
       Handler: index.handler
-      Runtime: python3.9
+      Runtime: python3.12
       Role: !If [CustomRoleCondition, !Ref CustomLambdaRole, !GetAtt PclusterLambdaRole.Arn]
 
   CleanupS3bucketCustomResource:
