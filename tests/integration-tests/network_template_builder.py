@@ -249,6 +249,24 @@ class NetworkTemplateBuilder:
                 enable_private_dns=True,
             ),
             VPCEndpointConfig(
+                name="SystemsManagerEndpoint",
+                service_name=f"com.amazonaws.{region}.ssm",
+                type=VPCEndpointConfig.EndpointType.INTERFACE,
+                enable_private_dns=True,
+            ),
+            VPCEndpointConfig(
+                name="SystemsManagerMessagesEndpoint",
+                service_name=f"com.amazonaws.{region}.ssmmessages",
+                type=VPCEndpointConfig.EndpointType.INTERFACE,
+                enable_private_dns=True,
+            ),
+            VPCEndpointConfig(
+                name="EC2MessagesEndpoint",
+                service_name=f"com.amazonaws.{region}.ec2messages",
+                type=VPCEndpointConfig.EndpointType.INTERFACE,
+                enable_private_dns=True,
+            ),
+            VPCEndpointConfig(
                 name="S3Endpoint",
                 service_name=f"com.amazonaws.{region}.s3",
                 type=VPCEndpointConfig.EndpointType.GATEWAY,
