@@ -1649,7 +1649,7 @@ class SlurmQueueSchema(_CommonQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Name"},
     )
     networking = fields.Nested(
         SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
@@ -1781,7 +1781,7 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP_ON_REMOVE, "update_key": "Name"},
+        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Name"},
     )
     # Awsbatch schema:
     aws_batch_queues = fields.Nested(
