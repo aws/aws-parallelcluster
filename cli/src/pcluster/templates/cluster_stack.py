@@ -1434,7 +1434,8 @@ class ClusterCdkStack:
                 "commands": {
                     "chef": {
                         "command": (
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb "
+                            f"--log_level {self.config.dev_settings.debug_level} "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster-entrypoints::init"
@@ -1450,7 +1451,8 @@ class ClusterCdkStack:
                 "commands": {
                     "chef": {
                         "command": (
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb "
+                            f"--log_level {self.config.dev_settings.debug_level} "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster-entrypoints::config"
@@ -1466,7 +1468,8 @@ class ClusterCdkStack:
                 "commands": {
                     "chef": {
                         "command": (
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb "
+                            f"--log_level {self.config.dev_settings.debug_level} "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster-entrypoints::finalize"
@@ -1486,7 +1489,8 @@ class ClusterCdkStack:
                     "chef": {
                         "command": (
                             ". /etc/profile.d/pcluster.sh; "
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
+                            "cinc-client --local-mode --config /etc/chef/client.rb "
+                            f"--log_level {self.config.dev_settings.debug_level}"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
                             " --override-runlist aws-parallelcluster-entrypoints::update &&"

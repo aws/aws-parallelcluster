@@ -197,7 +197,9 @@ class QueuesStack(NestedStack):
                 instance_market_options=self._launch_template_builder.get_instance_market_options(
                     queue, compute_resource
                 ),
-                instance_initiated_shutdown_behavior="terminate",
+                instance_initiated_shutdown_behavior="stop"
+                if self._config.dev_settings.debug_level != "info"
+                else "terminate",
                 capacity_reservation_specification=self._launch_template_builder.get_capacity_reservation(
                     queue,
                     compute_resource,
