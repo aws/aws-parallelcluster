@@ -192,6 +192,7 @@ def test_custom_ami_validator(custom_ami, expected_message):
     "retention_in_days, expected_message",
     [
         # right value
+        (0, None),
         (1, None),
         (14, None),
         (180, None),

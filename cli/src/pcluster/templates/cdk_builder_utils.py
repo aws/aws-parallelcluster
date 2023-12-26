@@ -229,6 +229,8 @@ def get_cloud_watch_logs_policy_statement(resource: str) -> iam.PolicyStatement:
 
 def get_cloud_watch_logs_retention_days(config: BaseClusterConfig) -> int:
     """Return value to use for CloudWatch logs retention days."""
+    if config.monitoring.logs.cloud_watch.retention_in_days == 0:
+        return None
     return (
         config.monitoring.logs.cloud_watch.retention_in_days
         if config.is_cw_logging_enabled

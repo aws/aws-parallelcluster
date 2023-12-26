@@ -816,7 +816,7 @@ class CloudWatchLogsSchema(BaseSchema):
 
     enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     retention_in_days = fields.Int(
-        validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
+        validate=validate.OneOf([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     deletion_policy = fields.Str(
