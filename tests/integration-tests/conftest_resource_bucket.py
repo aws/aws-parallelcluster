@@ -40,7 +40,9 @@ def install_pc(basepath, pc_version):
     cli_dir = root / "cli"
     try:
         logger.info("installing ParallelCluster packages...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{cli_dir}[awslambda]", "-t", tempdir])
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "jsonschema==4.17.3", f"{cli_dir}[awslambda]", "-t", tempdir]
+        )
         # The following are provided by the lambda runtime
         shutil.rmtree(tempdir / "botocore")
         shutil.rmtree(tempdir / "boto3")
