@@ -307,7 +307,7 @@ intel_hpc:
 networking:
   test_cluster_networking.py::test_cluster_in_private_subnet:
     dimensions:
-      - regions: ["me-south-1"]
+      - regions: ["il-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -756,7 +756,7 @@ resource_bucket:
 log_rotation:
   test_log_rotation.py::test_log_rotation:
     dimensions:
-      - regions: ["ap-south-1"]
+      - regions: ["il-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
