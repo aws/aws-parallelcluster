@@ -19,6 +19,10 @@
     {
       "name": "rhel8",
       "description": "Red Hat Enterprise Linux 8"
+    },
+    {
+      "name": "rhel9",
+      "description": "Red Hat Enterprise Linux 9"
     }
   ]
 }
