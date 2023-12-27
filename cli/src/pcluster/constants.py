@@ -23,7 +23,7 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -42,6 +42,8 @@ OS_MAPPING = {
     "ubuntu2204": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
     "rocky8": {"user": "rocky"},
+    "rhel9": {"user": "ec2-user"},
+    "rocky9": {"user": "rocky"},
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
@@ -51,6 +53,8 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "ubuntu2204": "ubuntu-2204-lts-hvm",
     "rhel8": "rhel8-hvm",
     "rocky8": "rocky8-hvm",
+    "rhel9": "rhel9-hvm",
+    "rocky9": "rocky9-hvm",
 }
 # We do not publicly publish/release Parallelcluster AMI of below OSSes
 PRIVATE_OSES = ["rocky8"]

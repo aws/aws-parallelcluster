@@ -46,6 +46,10 @@ phases:
                 OS='rhel8'
               elif [ `echo "${RELEASE}" | grep '^rocky\.8'` ]; then
                 OS='rocky8'
+              elif [ `echo "${RELEASE}" | grep '^rhel\.9'` ]; then
+                OS='rhel9'
+              elif [ `echo "${RELEASE}" | grep '^rocky\.9'` ]; then
+                OS='rocky9'
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
               fi
@@ -126,7 +130,7 @@ phases:
               set -v
               ARCHITECTURE='{{ validate.OperatingSystemArchitecture.outputs.stdout }}'
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux2|rhel8|rocky8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux2|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"
