@@ -582,9 +582,14 @@ class CloudWatchLoggingTestRunner:
         if not self.enabled or (cluster_has_been_deleted and not self.logs_persist_after_delete):
             return
         log_group = next((group for group in log_groups if group.get("logGroupName") == self.log_group_name), None)
-        assert_that(log_group).is_not_none().is_equal_to(
-            {"retentionInDays": self.retention_days}, include="retentionInDays"
-        )
+
+        if self.retention_days == 0:
+            # If retention days is 0, the log group shouldn't have a retentionInDays setting (since it uses the default)
+            assert_that(log_group).is_not_none().does_not_contain("retentionInDays")
+        else:
+            assert_that(log_group).is_not_none().is_equal_to(
+                {"retentionInDays": self.retention_days}, include="retentionInDays"
+            )
 
     def verify_agent_status(self, logs_state):
         """Verify CloudWatch agent is running on the head node (or not if not enabled)."""
@@ -651,7 +656,7 @@ def get_config_param_vals():
     retention_days = int(
         environ.get(
             "CW_LOGGING_RETENTION_DAYS",
-            random.choice([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
+            random.choice([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
         )
     )
     queue_size = int(environ.get("CW_LOGGING_QUEUE_SIZE", 1))
