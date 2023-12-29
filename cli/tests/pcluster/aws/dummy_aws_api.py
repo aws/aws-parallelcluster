@@ -37,7 +37,8 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
         self,
         instance_type,
         gpu_count=0,
-        interfaces_count=1,
+        cards_count=1,
+        cards_index_list=None,
         vcpus=1,
         supported_architectures=None,
         efa_supported=False,
@@ -46,7 +47,8 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
     ):
         super().__init__(instance_type_data={})
         self._gpu_count = gpu_count
-        self._max_network_interface_count = interfaces_count
+        self._max_network_card_count = cards_count
+        self._network_cards_index_list = cards_index_list if cards_index_list else []
         self._vcpus = vcpus
         self._supported_architectures = supported_architectures if supported_architectures else ["x86_64"]
         self._efa_supported = efa_supported
@@ -57,8 +59,11 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
     def gpu_count(self):
         return self._gpu_count
 
-    def max_network_interface_count(self):
-        return self._max_network_interface_count
+    def max_network_cards(self):
+        return self._max_network_card_count
+
+    def network_cards_index_list(self):
+        return self._network_cards_index_list
 
     def default_threads_per_core(self):
         # There are more instance types, but for the simplicity of the mock,

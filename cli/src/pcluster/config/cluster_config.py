@@ -1425,9 +1425,14 @@ class HeadNode(Resource):
         return self.instance_type_info.is_ebs_optimized()
 
     @property
-    def max_network_interface_count(self) -> int:
+    def max_network_cards(self) -> int:
         """Return max number of NICs for the instance."""
-        return self.instance_type_info.max_network_interface_count()
+        return self.instance_type_info.max_network_cards()
+
+    @property
+    def network_cards_index_list(self) -> list:
+        """List of NIC indexes for the instance."""
+        return self.instance_type_info.network_cards_index_list()
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -2258,8 +2263,13 @@ class _BaseSlurmComputeResource(BaseComputeResource):
 
     @property
     @abstractmethod
-    def max_network_interface_count(self) -> int:
-        pass
+    def max_network_cards(self) -> int:
+        """Return max number of NICs for the instance."""
+
+    @property
+    @abstractmethod
+    def network_cards_index_list(self) -> list:
+        """List of NIC indexes for the instance."""
 
     @property
     def is_ebs_optimized(self) -> bool:
@@ -2325,20 +2335,39 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
         return self.disable_simultaneous_multithreading
 
     @property
-    def max_network_interface_count(self) -> int:
+    def max_network_cards(self) -> int:
         """Return max number of NICs for the compute resource.
 
         In this case the Compute Resource may have multiple instance types, hence the instance-type with
-        the least MaxNetworkInterfaceCards value will be considered.
+        the least MaxNetworkCards value will be considered.
         """
-        least_max_nics = self.instance_type_info_map[self.instance_types[0]].max_network_interface_count()
+        least_max_nics = self.instance_type_info_map[self.instance_types[0]].max_network_cards()
+
         if len(self.instance_types) > 1:
             for instance_type in self.instance_types[1:]:
                 instance_type_info = self.instance_type_info_map[instance_type]
-                max_nics = instance_type_info.max_network_interface_count()
+                max_nics = instance_type_info.max_network_cards()
                 if max_nics < least_max_nics:
                     least_max_nics = max_nics
         return least_max_nics
+
+    @property
+    def network_cards_index_list(self) -> list:
+        """Return the list of NIC indexes for the compute resource.
+
+        In this case the Compute Resource may have multiple instance types, hence the instance-type with
+        the least MaxNetworkCards value will be considered.
+        """
+        least_max_nics = self.instance_type_info_map[self.instance_types[0]].max_network_cards()
+        least_network_cards_index_list = self.instance_type_info_map[self.instance_types[0]].network_cards_index_list()
+        if len(self.instance_types) > 1:
+            for instance_type in self.instance_types[1:]:
+                instance_type_info = self.instance_type_info_map[instance_type]
+                max_nics = instance_type_info.max_network_cards()
+                if max_nics < least_max_nics:
+                    least_max_nics = max_nics
+                    least_network_cards_index_list = instance_type_info.network_cards_index_list()
+        return least_network_cards_index_list
 
 
 class SlurmComputeResource(_BaseSlurmComputeResource):
@@ -2379,9 +2408,14 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         return self._instance_type_info.is_ebs_optimized()
 
     @property
-    def max_network_interface_count(self) -> int:
+    def max_network_cards(self) -> int:
         """Return max number of NICs for the instance."""
-        return self._instance_type_info.max_network_interface_count()
+        return self._instance_type_info.max_network_cards()
+
+    @property
+    def network_cards_index_list(self) -> list:
+        """List of NIC indexes for the instance."""
+        return self._instance_type_info.network_cards_index_list()
 
     @property
     def _instance_type_info(self) -> InstanceTypeInfo:

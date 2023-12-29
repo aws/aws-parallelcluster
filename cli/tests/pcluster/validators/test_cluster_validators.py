@@ -624,7 +624,10 @@ def test_efa_validator(
             {
                 "InstanceType": instance_type,
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                "NetworkInfo": {"EfaSupported": instance_type == "c5n.18xlarge"},
+                "NetworkInfo": {
+                    "EfaSupported": instance_type == "c5n.18xlarge",
+                    "NetworkCards": [{"NetworkCardIndex": 0}],
+                },
             }
         ),
     )
@@ -1749,10 +1752,10 @@ def test_generate_tag_specifications(input_tags):
 
 
 @pytest.mark.parametrize(
-    "network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips, expected_result",
+    "network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips, expected_result",
     [
         [
-            1,
+            [0],
             False,
             "sg-1",
             "subnet-1",
@@ -1768,7 +1771,23 @@ def test_generate_tag_specifications(input_tags):
             ],
         ],
         [
-            4,
+            [1],
+            False,
+            "sg-1",
+            "subnet-1",
+            False,
+            [
+                {
+                    "DeviceIndex": 0,
+                    "NetworkCardIndex": 1,
+                    "InterfaceType": "interface",
+                    "Groups": "sg-1",
+                    "SubnetId": "subnet-1",
+                }
+            ],
+        ],
+        [
+            [0, 1, 2, 3],
             True,
             "sg-2",
             "subnet-2",
@@ -1808,11 +1827,11 @@ def test_generate_tag_specifications(input_tags):
     ],
 )
 def test_build_launch_network_interfaces(
-    network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips, expected_result
+    network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips, expected_result
 ):
     """Verify function to build network interfaces for dry runs of RunInstances works as expected."""
     lt_network_interfaces = _LaunchTemplateValidator._build_launch_network_interfaces(
-        network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips
+        network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips
     )
     assert_that(lt_network_interfaces).is_equal_to(expected_result)
 
@@ -3320,8 +3339,11 @@ def test_root_volume_encryption_consistency_validator(
 def test_multi_network_interfaces_instances_validator(
     aws_api_mock, num_cards, assign_public_ip, public_ip_subnets, expected_error_messages
 ):
+    network_cards_list = []
+    for card in range(num_cards):
+        network_cards_list.append({"NetworkCardIndex": card})
     aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
-        {"NetworkInfo": {"MaximumNetworkCards": num_cards}}
+        {"NetworkInfo": {"MaximumNetworkCards": num_cards, "NetworkCards": network_cards_list}}
     )
     aws_api_mock.ec2.describe_subnets.return_value = public_ip_subnets
 

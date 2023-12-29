@@ -71,6 +71,122 @@ mock_compute_resources = [
     ),
 ]
 
+network_test_parameters = [
+    (
+        [
+            {"MaximumNetworkCards": 1, "NetworkCards": [{"NetworkCardIndex": 0}]},
+            {"MaximumNetworkCards": 1, "NetworkCards": [{"NetworkCardIndex": 0}]},
+        ],
+        1,
+        [0],
+        1,
+        [0],
+    ),
+    (
+        [
+            {"MaximumNetworkCards": 0, "NetworkCards": [{"NetworkCardIndex": 0}]},
+            {"MaximumNetworkCards": 0, "NetworkCards": [{"NetworkCardIndex": 0}]},
+        ],
+        1,
+        [0],
+        1,
+        [0],
+    ),
+    (
+        [
+            {"MaximumNetworkCards": 0, "NetworkCards": [{"NetworkCardIndex": 1}, {"NetworkCardIndex": 0}]},
+            {
+                "MaximumNetworkCards": 3,
+                "NetworkCards": [{"NetworkCardIndex": 3}, {"NetworkCardIndex": 2}, {"NetworkCardIndex": 1}],
+            },
+        ],
+        2,
+        [1, 0],
+        2,
+        [1, 0],
+    ),
+    (
+        [
+            {
+                "MaximumNetworkCards": 3,
+                "NetworkCards": [{"NetworkCardIndex": 2}, {"NetworkCardIndex": 0}, {"NetworkCardIndex": 1}],
+            },
+            {
+                "MaximumNetworkCards": 5,
+                "NetworkCards": [
+                    {"NetworkCardIndex": 0},
+                    {"NetworkCardIndex": 1},
+                    {"NetworkCardIndex": 2},
+                    {"NetworkCardIndex": 3},
+                    {"NetworkCardIndex": 4},
+                ],
+            },
+        ],
+        3,
+        [2, 0, 1],
+        3,
+        [2, 0, 1],
+    ),
+    (
+        [
+            {
+                "MaximumNetworkCards": 3,
+                "NetworkCards": [{"NetworkCardIndex": 0}, {"NetworkCardIndex": 3}, {"NetworkCardIndex": 5}],
+            },
+            {
+                "MaximumNetworkCards": 4,
+                "NetworkCards": [
+                    {"NetworkCardIndex": 0},
+                    {"NetworkCardIndex": 1},
+                    {"NetworkCardIndex": 2},
+                    {"NetworkCardIndex": 3},
+                ],
+            },
+        ],
+        3,
+        [0, 3, 5],
+        3,
+        [0, 3, 5],
+    ),
+    (
+        [
+            {
+                "MaximumNetworkCards": 4,
+                "NetworkCards": [
+                    {"NetworkCardIndex": 7},
+                    {"NetworkCardIndex": 3},
+                    {"NetworkCardIndex": 5},
+                    {"NetworkCardIndex": 0},
+                ],
+            },
+            {
+                "MaximumNetworkCards": 3,
+                "NetworkCards": [{"NetworkCardIndex": 0}, {"NetworkCardIndex": 3}, {"NetworkCardIndex": 5}],
+            },
+        ],
+        4,
+        [7, 3, 5, 0],
+        3,
+        [0, 3, 5],
+    ),
+]
+
+
+@pytest.fixture
+def instance_type_info_networking_mock(aws_api_mock, network_info):
+    aws_api_mock.ec2.get_instance_type_info.side_effect = [
+        InstanceTypeInfo(
+            {
+                "NetworkInfo": network_info[0],
+            }
+        ),
+        InstanceTypeInfo(
+            {
+                "NetworkInfo": network_info[1],
+            }
+        ),
+    ]
+
 
 @pytest.fixture
 def get_region(mocker):
@@ -84,7 +200,7 @@ def instance_type_info_mock(aws_api_mock):
             "InstanceType": "g4ad.16xlarge",
             "VCpuInfo": {"DefaultVCpus": 64},
             "GpuInfo": {"Gpus": [{"Name": "*", "Manufacturer": "AMD", "Count": 4}]},
-            "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+            "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1, "NetworkCards": [{"NetworkCardIndex": 0}]},
             "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
         }
     )
@@ -187,6 +303,20 @@ class TestSlurmComputeResource:
             describe_capacity_res_mock.assert_called()
         else:
             describe_capacity_res_mock.assert_not_called()
+
+    @pytest.mark.usefixtures("instance_type_info_networking_mock")
+    @pytest.mark.usefixtures(
+        "get_region", "expected_max_network_cards_flexible", "expected_network_cards_index_list_flexible"
+    )
+    @pytest.mark.parametrize(
+        "network_info, expected_max_network_cards, expected_network_cards_index_list, "
+        "expected_max_network_cards_flexible, expected_network_cards_index_list_flexible",
+        network_test_parameters,
+    )
+    def test_network_cards(self, expected_max_network_cards, expected_network_cards_index_list):
+        compute_resource = SlurmComputeResource(name="compute_resource")
+        assert_that(compute_resource.max_network_cards).is_equal_to(expected_max_network_cards)
+        assert_that(compute_resource.network_cards_index_list).is_equal_to(expected_network_cards_index_list)
 
 
 @pytest.mark.usefixtures("instance_type_info_mock")
@@ -755,3 +885,36 @@ class TestEbs:
         ebs = Ebs()
 
         assert_that(ebs.volume_type).is_equal_to(expected_volume_type)
+
+
+class TestHeadNode:
+    @pytest.mark.usefixtures("instance_type_info_networking_mock")
+    @pytest.mark.usefixtures(
+        "get_region", "expected_max_network_cards_flexible", "expected_network_cards_index_list_flexible"
+    )
+    @pytest.mark.parametrize(
+        "network_info, expected_max_network_cards, expected_network_cards_index_list, "
+        "expected_max_network_cards_flexible, expected_network_cards_index_list_flexible",
+        network_test_parameters,
+    )
+    def test_network_cards(self, expected_max_network_cards, expected_network_cards_index_list):
+        head_node = HeadNode("c5.xlarge", HeadNodeNetworking("subnet"))
+        assert_that(head_node.max_network_cards).is_equal_to(expected_max_network_cards)
+        assert_that(head_node.network_cards_index_list).is_equal_to(expected_network_cards_index_list)
+
+
+class TestSlurmFlexibleComputeResource:
+    @pytest.mark.usefixtures("instance_type_info_networking_mock")
+    @pytest.mark.usefixtures("get_region", "expected_max_network_cards", "expected_network_cards_index_list")
+    @pytest.mark.parametrize(
+        "network_info, expected_max_network_cards, expected_network_cards_index_list, "
+        "expected_max_network_cards_flexible, expected_network_cards_index_list_flexible",
+        network_test_parameters,
+    )
+    def test_network_cards(self, expected_max_network_cards_flexible, expected_network_cards_index_list_flexible):
+        compute_resource = SlurmFlexibleComputeResource(
+            [FlexibleInstanceType(instance_type="type_1"), FlexibleInstanceType(instance_type="type_2")],
+            name="compute_resource",
+        )
+        assert_that(compute_resource.max_network_cards).is_equal_to(expected_max_network_cards_flexible)
+        assert_that(compute_resource.network_cards_index_list).is_equal_to(expected_network_cards_index_list_flexible)

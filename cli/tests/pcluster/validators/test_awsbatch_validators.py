@@ -59,7 +59,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
             {
                 "InstanceType": instance_type,
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                "NetworkInfo": {"EfaSupported": False},
+                "NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]},
             }
         ),
     )
