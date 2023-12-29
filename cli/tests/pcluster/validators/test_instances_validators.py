@@ -337,9 +337,15 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
+                "t2.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": True, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
             },
             True,
             False,
@@ -349,8 +355,12 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "c5n.9xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
-                "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
+                "c5n.9xlarge": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": True, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": True, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
             },
             True,
             False,
@@ -360,9 +370,15 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
+                "t2.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": True, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
             },
             False,
             False,
@@ -377,9 +393,15 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "c5n.18xlarge": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": True}}),
+                "t2.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": True, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
             },
             False,
             True,
@@ -389,8 +411,12 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"EfaSupported": False}}),
+                "t3.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
+                "t2.micro": InstanceTypeInfo(
+                    {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
+                ),
             },
             True,
             False,
@@ -420,8 +446,30 @@ def test_instances_efa_validator(
             "TestQueue10",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 2}}),
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 2, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 3, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 2,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
             },
             False,
             "Compute Resource TestComputeResource has instance types with varying numbers of network cards (Min: 2, "
@@ -431,8 +479,32 @@ def test_instances_efa_validator(
             "TestQueue10",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 2, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 3, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 2, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 3, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
             },
             False,
             "",
@@ -443,8 +515,32 @@ def test_instances_efa_validator(
             "TestQueue11",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
-                "t3.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 2, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 3, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
+                "t3.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 2, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 3, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
             },
             True,
             "Enabling placement groups for queue: TestQueue11 may result in Insufficient Capacity Errors due to the "
@@ -455,7 +551,19 @@ def test_instances_efa_validator(
             "TestQueue11",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"NetworkInfo": {"MaximumNetworkCards": 4}}),
+                "t2.micro": InstanceTypeInfo(
+                    {
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 1, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 2, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                                {"NetworkCardIndex": 3, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 4},
+                            ],
+                        }
+                    }
+                ),
             },
             True,
             "",

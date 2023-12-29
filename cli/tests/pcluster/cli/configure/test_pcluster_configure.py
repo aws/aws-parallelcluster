@@ -32,7 +32,7 @@ def _mock_instance_type_info(mocker, instance_type="t2.micro"):
             {
                 "InstanceType": instance_type,
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                "NetworkInfo": {"EfaSupported": False},
+                "NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]},
             }
         ),
     )
@@ -314,7 +314,7 @@ def _mock_aws_api_required_calls(mocker):
                 {
                     "InstanceType": instance_type,
                     "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                    "NetworkInfo": {"EfaSupported": False},
+                    "NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]},
                 }
             )
             for instance_type in supported_instance_types

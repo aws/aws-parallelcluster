@@ -194,7 +194,7 @@ class InstancesNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMix
         have a varying number of 'maximum network interface cards', the smallest one is used  in the  launch template.
         """
         unique_maximum_nic_counts = {
-            instance_type_info.max_network_interface_count()
+            instance_type_info.max_network_cards()
             for instance_type_name, instance_type_info in instance_types_info.items()
         }
 

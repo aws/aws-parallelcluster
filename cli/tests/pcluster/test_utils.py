@@ -185,7 +185,11 @@ def test_init_from_instance_type(mocker, caplog):
                     "ValidCores": [1, 2],
                     "ValidThreadsPerCore": [1, 2],
                 },
-                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+                "NetworkInfo": {
+                    "EfaSupported": False,
+                    "MaximumNetworkCards": 1,
+                    "NetworkCards": [{"NetworkCardIndex": 0}],
+                },
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ),
@@ -193,7 +197,8 @@ def test_init_from_instance_type(mocker, caplog):
     c4_instance_info = AWSApi.instance().ec2.get_instance_type_info("c4.xlarge")
     assert_that(c4_instance_info.gpu_count()).is_equal_to(0)
     assert_that(caplog.text).is_empty()
-    assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
+    assert_that(c4_instance_info.max_network_cards()).is_equal_to(1)
+    assert_that(c4_instance_info.network_cards_index_list()).is_equal_to([0])
     assert_that(c4_instance_info.cores_count()).is_equal_to(2)
     assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
     assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
@@ -207,7 +212,16 @@ def test_init_from_instance_type(mocker, caplog):
                 "InstanceType": "g4dn.metal",
                 "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
-                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
+                "NetworkInfo": {
+                    "EfaSupported": True,
+                    "MaximumNetworkCards": 4,
+                    "NetworkCards": [
+                        {"NetworkCardIndex": 0},
+                        {"NetworkCardIndex": 1},
+                        {"NetworkCardIndex": 2},
+                        {"NetworkCardIndex": 3},
+                    ],
+                },
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ),
@@ -215,7 +229,8 @@ def test_init_from_instance_type(mocker, caplog):
     g4dn_instance_info = AWSApi.instance().ec2.get_instance_type_info("g4dn.metal")
     assert_that(g4dn_instance_info.gpu_count()).is_equal_to(8)
     assert_that(caplog.text).is_empty()
-    assert_that(g4dn_instance_info.max_network_interface_count()).is_equal_to(4)
+    assert_that(g4dn_instance_info.max_network_cards()).is_equal_to(4)
+    assert_that(g4dn_instance_info.network_cards_index_list()).is_equal_to([0, 1, 2, 3])
     assert_that(g4dn_instance_info.default_threads_per_core()).is_equal_to(2)
     assert_that(g4dn_instance_info.vcpus_count()).is_equal_to(96)
     assert_that(g4dn_instance_info.supported_architecture()).is_equal_to(["x86_64"])
@@ -234,7 +249,11 @@ def test_init_from_instance_type(mocker, caplog):
                     "ValidThreadsPerCore": [1, 2],
                 },
                 "GpuInfo": {"Gpus": [{"Name": "*", "Manufacturer": "AMD", "Count": 4}]},
-                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+                "NetworkInfo": {
+                    "EfaSupported": False,
+                    "MaximumNetworkCards": 1,
+                    "NetworkCards": [{"NetworkCardIndex": 0}],
+                },
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ),
@@ -242,7 +261,8 @@ def test_init_from_instance_type(mocker, caplog):
     g4ad_instance_info = AWSApi.instance().ec2.get_instance_type_info("g4ad.16xlarge")
     assert_that(g4ad_instance_info.gpu_count()).is_equal_to(0)
     assert_that(g4ad_instance_info.gpu_manufacturer()).is_equal_to("AMD")
-    assert_that(g4ad_instance_info.max_network_interface_count()).is_equal_to(1)
+    assert_that(g4ad_instance_info.max_network_cards()).is_equal_to(1)
+    assert_that(g4ad_instance_info.network_cards_index_list()).is_equal_to([0])
     assert_that(g4ad_instance_info.default_threads_per_core()).is_equal_to(2)
     assert_that(g4ad_instance_info.vcpus_count()).is_equal_to(64)
     assert_that(g4ad_instance_info.supported_architecture()).is_equal_to(["x86_64"])

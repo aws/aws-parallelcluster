@@ -254,7 +254,15 @@ def _mock_instance_type_info(instance_type):
                     "ValidThreadsPerCore": [1, 2],
                 },
                 "EbsInfo": {"EbsOptimizedSupport": "default"},
-                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 3},
+                "NetworkInfo": {
+                    "EfaSupported": False,
+                    "MaximumNetworkCards": 3,
+                    "NetworkCards": [
+                        {"NetworkCardIndex": 0},
+                        {"NetworkCardIndex": 1},
+                        {"NetworkCardIndex": 2},
+                    ],
+                },
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ),
@@ -269,7 +277,14 @@ def _mock_instance_type_info(instance_type):
                     "ValidThreadsPerCore": [1, 2],
                 },
                 "EbsInfo": {"EbsOptimizedSupport": "unsupported"},
-                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 2},
+                "NetworkInfo": {
+                    "EfaSupported": False,
+                    "MaximumNetworkCards": 2,
+                    "NetworkCards": [
+                        {"NetworkCardIndex": 0},
+                        {"NetworkCardIndex": 1},
+                    ],
+                },
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ),

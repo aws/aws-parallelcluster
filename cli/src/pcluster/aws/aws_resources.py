@@ -232,9 +232,17 @@ class InstanceTypeInfo:
 
         return cores
 
-    def max_network_interface_count(self) -> int:
+    def max_network_cards(self) -> int:
         """Max number of NICs for the instance."""
-        return int(self.instance_type_data.get("NetworkInfo", {}).get("MaximumNetworkCards", 1))
+        return len(self.instance_type_data.get("NetworkInfo", {}).get("NetworkCards"))
+
+    def network_cards_index_list(self) -> list:
+        """List of NIC indexes for the instance."""
+        return [
+            int(nic.get("NetworkCardIndex"))
+            for nic in self.instance_type_data.get("NetworkInfo", {}).get("NetworkCards")
+            if nic.get("NetworkCardIndex") is not None
+        ]
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""

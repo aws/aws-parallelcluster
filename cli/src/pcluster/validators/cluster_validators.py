@@ -1167,15 +1167,15 @@ class _LaunchTemplateValidator(Validator):
 
     @staticmethod
     def _build_launch_network_interfaces(
-        network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
+        network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
-        for network_interface_index in range(network_interfaces_count):
+        for network_card_index in network_cards_index_list:
             network_interfaces.append(
                 {
                     "DeviceIndex": 0,
-                    "NetworkCardIndex": network_interface_index,
+                    "NetworkCardIndex": network_card_index,
                     "InterfaceType": "efa" if use_efa else "interface",
                     "Groups": security_group_ids,
                     "SubnetId": subnet,
@@ -1183,7 +1183,7 @@ class _LaunchTemplateValidator(Validator):
             )
 
         # If instance types has multiple Network Interfaces we also check for
-        if network_interfaces_count > 1 and use_public_ips:
+        if len(network_cards_index_list) > 1 and use_public_ips:
             network_interfaces[0]["AssociatePublicIpAddress"] = True
         return network_interfaces
 
@@ -1265,7 +1265,7 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 head_node_security_groups.extend(head_node.networking.additional_security_groups)
 
             head_node_network_interfaces = self._build_launch_network_interfaces(
-                network_interfaces_count=head_node.max_network_interface_count,
+                network_cards_index_list=head_node.network_cards_index_list,
                 use_efa=False,  # EFA is not supported on head node
                 security_group_ids=head_node_security_groups,
                 subnet=head_node.networking.subnet_id,
@@ -1334,7 +1334,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             # Resources with multiple NICs are preferred among others.
             # Temporarily limiting dryrun tests to 1 per queue to save boto3 calls.
             dry_run_compute_resource = next(
-                (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
+                (compute_res for compute_res in queue.compute_resources if compute_res.max_network_cards > 1),
                 queue.compute_resources[0],
             )
             compute_resource_placement_group = (
@@ -1375,11 +1375,11 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
-            compute_resource.max_network_interface_count,
-            compute_resource.efa.enabled,
-            security_groups_ids,
-            subnet_id,
-            use_public_ips,
+            network_cards_index_list=compute_resource.network_cards_index_list,
+            use_efa=compute_resource.efa.enabled,
+            security_group_ids=security_groups_ids,
+            subnet=subnet_id,
+            use_public_ips=use_public_ips,
         )
         self._ec2_run_instance(
             availability_zone=AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id),
@@ -1534,7 +1534,7 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
             queue
             for queue in queues
             for compute_resource in queue.compute_resources
-            if compute_resource.max_network_interface_count > 1
+            if compute_resource.max_network_cards > 1
         ]
 
         all_subnets_with_public_ips = {
