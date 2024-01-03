@@ -31,6 +31,8 @@ LOGGER = logging.getLogger(__name__)
 
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
 
+RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
+
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
@@ -46,9 +48,11 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     # FIXME: unpin once Lustre client is available for RHEL8.9
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
-    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": ["309956199498", "841258680906", "219670896067"]},
+    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
     # FIXME: unpin once Lustre client is available for Rocky 8.9
     "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rhel9": {"name": "RHEL-9.3*_HVM-*", "owners": RHEL_OWNERS},
+    "rocky9": {"name": "Rocky-9-EC2-Base-9.3*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
@@ -60,9 +64,11 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     # FIXME: unpin once Lustre client is available for RHEL8.9
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
-    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": ["309956199498", "841258680906", "219670896067"]},
+    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
     # FIXME: unpin once Lustre client is available for Rocky 8.9
     "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rhel9": {"name": "RHEL-9.3*_HVM-*", "owners": RHEL_OWNERS},
+    "rocky9": {"name": "Rocky-9-EC2-Base-9.3*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
 OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
@@ -79,6 +85,8 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rhel8": {"name": "rhel8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rocky8": {"name": "rocky8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "rhel9": {"name": "rhel9-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "rocky9": {"name": "rocky9-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
 }
 
 AMI_TYPE_DICT = {

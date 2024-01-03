@@ -150,9 +150,9 @@ class CloudWatchLoggingClusterState:
         # cookbooks/aws-parallelcluster-config/files/default/cloudwatch the configurations refers to:
         # * "alinux2" as platform "amazon"
         # * "rhel8" as platform "redhat"
-        if base_os == "alinux2":
+        if "alinux" in base_os:
             return "amazon"
-        elif base_os == "rhel8":
+        elif "rhel" in base_os:
             return "redhat"
         else:
             return base_os.rstrip(string.digits)
