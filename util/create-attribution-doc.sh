@@ -42,7 +42,7 @@ function create_attribution_doc() {
   
   # install pcluster via source
   
-  pip3 install -e $(dirname $ATTR_SCRIPT_DIR )/cli
+  pip3 install -e "$(dirname $ATTR_SCRIPT_DIR )/cli"
   #pip3 install -r requirements.txt
   
   final_license_file=$(dirname $ATTR_SCRIPT_DIR )/THIRD-PARTY-LICENSES.txt
@@ -103,7 +103,8 @@ _error_exit() {
 }
 
 _help() {
-    local -- _cmd=$(basename "$0")
+    local -- _cmd
+    _cmd=$(basename "$0")
 
     cat <<EOF
   This script will create the THIRD_PARTY_LICENSE.txt file assuming you have already installed Pyenv
