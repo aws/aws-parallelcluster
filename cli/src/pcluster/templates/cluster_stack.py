@@ -86,6 +86,7 @@ from pcluster.templates.cdk_builder_utils import (
     apply_permissions_boundary,
     convert_deletion_policy,
     create_hash_suffix,
+    get_cloud_config_for_default_user,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
     get_common_user_data_env,
@@ -1213,6 +1214,13 @@ class ClusterCdkStack:
                                 if head_node.disable_simultaneous_multithreading_manually
                                 else "false",
                                 "CloudFormationUrl": cloudformation_url,
+                                "DisableSudoAccessForDefaultUserConfig": get_cloud_config_for_default_user(
+                                    self.config.disable_sudo_access_default_user
+                                ),
+                                "OSUser": OS_MAPPING[self.config.image.os]["user"],
+                                "DisableSudoAccessForDefault": "true"
+                                if self.config.disable_sudo_access_default_user
+                                else "false",
                             },
                             **get_common_user_data_env(head_node, self.config),
                         },

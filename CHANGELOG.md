@@ -12,6 +12,7 @@ CHANGELOG
   - Critical Update for Intel oneAPI DPC++/C++ Compiler: 2023.2.1
   - Critical Update for Intel Fortran Compiler & Intel® Fortran Compiler Classic: 2023.2.1
   - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
+  - Add `DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
 
 **CHANGES**
 - Upgrade Slurm to 23.11.1.

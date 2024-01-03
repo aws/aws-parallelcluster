@@ -125,6 +125,21 @@ class RegionValidator(Validator):
             )
 
 
+class SchedulerDisableSudoAccessForDefaultUserValidator(Validator):
+    """
+    Validator for DisableSudoAccessForDefaultUser and AWS Batch Scheduler.
+
+    Fail if using AWS Batch and DisableSudoAccessForDefaultUser is not supported.
+    """
+
+    def _validate(self, scheduler):
+        if scheduler == "awsbatch":
+            self._add_failure(
+                "DisableSudoAccessForDefaultUser is not supported when using AWS Batch as scheduler.",
+                FailureLevel.ERROR,
+            )
+
+
 class SchedulerOsValidator(Validator):
     """
     scheduler - os validator.

@@ -70,6 +70,7 @@ from pcluster.validators.cluster_validators import (
     RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
+    SchedulerDisableSudoAccessForDefaultUserValidator,
     SchedulerOsValidator,
     SharedFileCacheNotHomeValidator,
     SharedStorageMountDirValidator,
@@ -482,6 +483,23 @@ def test_region_validator(region, expected_message):
 def test_scheduler_os_validator(os, scheduler, expected_message):
     actual_failures = SchedulerOsValidator().execute(os, scheduler)
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "scheduler, expected_message, expected_failure_level",
+    [
+        ("slurm", None, None),
+        (
+            "awsbatch",
+            "DisableSudoAccessForDefaultUser is not supported when using AWS Batch as scheduler.",
+            FailureLevel.ERROR,
+        ),
+    ],
+)
+def test_scheduler_disable_sudo_access_for_default_user_validator(scheduler, expected_message, expected_failure_level):
+    actual_failures = SchedulerDisableSudoAccessForDefaultUserValidator().execute(scheduler)
+    assert_failure_messages(actual_failures, expected_message)
+    assert_failure_level(actual_failures, expected_failure_level)
 
 
 @pytest.mark.parametrize(

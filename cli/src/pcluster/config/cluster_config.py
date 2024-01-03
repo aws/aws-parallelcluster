@@ -103,6 +103,7 @@ from pcluster.validators.cluster_validators import (
     RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
+    SchedulerDisableSudoAccessForDefaultUserValidator,
     SchedulerOsValidator,
     SchedulerValidator,
     SharedFileCacheNotHomeValidator,
@@ -1522,6 +1523,7 @@ class BaseClusterConfig(Resource):
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
         deployment_settings: DeploymentSettings = None,
+        disable_sudo_access_default_user: bool = None,
     ):
         super().__init__()
         self.__region = None
@@ -1556,6 +1558,7 @@ class BaseClusterConfig(Resource):
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
         self._set_default_head_node_root_volume_size()
+        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1642,6 +1645,7 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
+        self._register_validator(SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler)
 
     def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
