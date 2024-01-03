@@ -551,6 +551,8 @@ def get_username_for_os(os):
         "ubuntu2204": "ubuntu",
         "rhel8": "ec2-user",
         "rocky8": "rocky",
+        "rhel9": "ec2-user",
+        "rocky9": "rocky",
     }
     return usernames.get(os)
 
