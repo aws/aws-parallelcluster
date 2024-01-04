@@ -913,8 +913,12 @@ Outputs:
     Value: !Ref DomainCertificateSecret
   DomainReadOnlyUser:
     Value: !Sub
-      - cn=ReadOnlyUser,ou=Users,ou=${ou},dc=${dc}
-      - { dc: !Join [",dc=", !Split [".", !Ref DomainName ]], ou: !GetAtt Prep.DomainShortName }
+      - cn=ReadOnlyUser,${type}=Users${ou}${dsn},dc=${dc}
+      - { type: !If [UseMicrosoftAD, "ou", "cn" ],
+          dc: !Join [",dc=", !Split [".", !Ref DomainName ]],
+          ou: !If [UseMicrosoftAD, ",ou=", "" ],
+          dsn: !If [UseMicrosoftAD, !GetAtt Prep.DomainShortName, "" ]
+      }
   DomainAddrLdap:
     Value: !Sub
       - ldap://${address}
