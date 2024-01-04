@@ -34,6 +34,13 @@ Parameters:
     MaxLength: 64
     AllowedPattern: (?=^.{8,64}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=.*[a-z])|(?=.*[^A-Za-z0-9\s])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]))^.*
     NoEcho: true
+  DirectoryType:
+    Description: Type of directory to use
+    Type: String
+    Default: MicrosoftAD
+    AllowedValues:
+      - MicrosoftAD
+      - SimpleAD
 
   Keypair:
     Description: EC2 Keypair to access management instance.
@@ -68,6 +75,10 @@ Conditions:
   CreateVPC: !Equals [!Ref Vpc, '']
   # CreateAD: !Equals [!Ref Ad, '']
   CreateAD: !Equals ['', '']
+  MicrosoftAD:
+    !Equals [ !Ref DirectoryType, MicrosoftAD ]
+  SimpleAD:
+    !Equals [ !Ref DirectoryType, SimpleAD ]
 
 Resources:
   DisableImdsv1LaunchTemplate:
@@ -263,9 +274,9 @@ Resources:
                   physical_resource_id = event['PhysicalResourceId']
               cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
 
-  Directory:
+  MicrosoftDirectory:
     Type: AWS::DirectoryService::MicrosoftAD
-    Condition: CreateAD
+    Condition: MicrosoftAD
     Properties:
       Name: !Ref DomainName
       Password: !Ref AdminPassword
@@ -276,6 +287,19 @@ Resources:
           - !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
         VpcId: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
 
+  SimpleDirectory:
+    Type: AWS::DirectoryService::SimpleAD
+    Condition: SimpleAD
+    Properties:
+      Name: !Ref DomainName
+      Password: !Ref AdminPassword
+      Size: Small
+      VpcSettings:
+        SubnetIds:
+          - !If [ CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
+          - !If [ CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
+        VpcId: !If [ CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
+
   Prep:
     Type: Custom::PrepLambda
     Properties:
@@ -284,8 +308,8 @@ Resources:
       Vpc: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
       PrivateSubnetOne: !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
       PrivateSubnetTwo: !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
-      # DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ]
-      DirectoryId: !Ref Directory
+      DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ]
+      # DirectoryId: !Ref Directory
 
   AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -326,7 +350,7 @@ Resources:
                 Resource: !Sub
                   - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
                   # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
-                  - { DirectoryId: !Ref Directory }
+                  - { DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ] }
           PolicyName: ResetUserPassword
         - PolicyDocument:
             Statement:
@@ -402,13 +426,14 @@ Resources:
               sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
               chattr +i /etc/resolv.conf
               ADMIN_PW="${AdminPassword}"
-              echo "$ADMIN_PW" | sudo realm join -U Admin "${DirectoryDomain}"
+              echo "${Admin}"
+              echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}"
               sleep 10
               echo "Registering ReadOnlyUser..."
-              echo "$ADMIN_PW" | adcli create-user -x -U Admin --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
+              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
               sleep 0.5
               echo "Registering User..."
-              echo "$ADMIN_PW" | adcli create-user -x -U Admin --domain="${DirectoryDomain}" --display-name="${UserName}" "${UserName}"
+              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="${UserName}" "${UserName}"
 
               echo "Creating domain certificate..."
               PRIVATE_KEY="${DirectoryDomain}.key"
@@ -433,6 +458,7 @@ Resources:
                 DnsIp2: !GetAtt Prep.DnsIpAddress2,
                 DomainCertificateSecretArn: !Ref DomainCertificateSecret,
                 DomainPrivateKeySecretArn: !Ref DomainPrivateKeySecret,
+                Admin: !If [MicrosoftAD, "Admin", "Administrator" ]
             }
 
   PostRole:
@@ -468,7 +494,7 @@ Resources:
                 Resource: !Sub
                   - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
                   # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
-                  - { DirectoryId: !Ref Directory }
+                  - { DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ] }
         - PolicyName: StopInstances
           PolicyDocument:
             Version: 2012-10-17
@@ -527,6 +553,7 @@ Resources:
               user_name = event['ResourceProperties']['UserName']
               user_password = event['ResourceProperties']['UserPassword']
               admin_password = event['ResourceProperties']['AdminPassword']
+              admin = event['ResourceProperties']['Admin']
 
               response_data = {}
               reason = None
@@ -537,7 +564,7 @@ Resources:
                   physical_resource_id = create_physical_resource_id()
                   ds.reset_user_password(DirectoryId=directory_id, UserName='ReadOnlyUser', NewPassword=read_only_password)
                   ds.reset_user_password(DirectoryId=directory_id, UserName=user_name, NewPassword=user_password)
-                  ds.reset_user_password(DirectoryId=directory_id, UserName='Admin', NewPassword=admin_password)
+                  ds.reset_user_password(DirectoryId=directory_id, UserName=admin, NewPassword=admin_password)
                   ec2.stop_instances(InstanceIds=[instance_id])
 
               else:
@@ -550,11 +577,12 @@ Resources:
       ServiceToken: !GetAtt PostLambda.Arn
       AdminNodeInstanceId: !Ref AdDomainAdminNode
       # DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ]
-      DirectoryId: !Ref Directory
+      DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ]
       UserName: !Ref UserName
       UserPassword: !Ref UserPassword
       AdminPassword: !Ref AdminPassword
       ReadOnlyPassword: !Ref ReadOnlyPassword
+      Admin: !If [MicrosoftAD, "Admin", "Administrator" ]
 
   PasswordSecret:
     Type: AWS::SecretsManager::Secret
