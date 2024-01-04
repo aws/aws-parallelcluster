@@ -165,7 +165,7 @@ test-suites:
     test_efa.py::test_efa:
       dimensions:
         - regions: {{ REGIONS }}
-          instances: ["c5n.18xlarge"]
+          instances: ["c5n.9xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions
