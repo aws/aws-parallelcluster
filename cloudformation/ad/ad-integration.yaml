@@ -75,9 +75,9 @@ Conditions:
   CreateVPC: !Equals [!Ref Vpc, '']
   # CreateAD: !Equals [!Ref Ad, '']
   CreateAD: !Equals ['', '']
-  MicrosoftAD:
+  UseMicrosoftAD:
     !Equals [ !Ref DirectoryType, MicrosoftAD ]
-  SimpleAD:
+  UseSimpleAD:
     !Equals [ !Ref DirectoryType, SimpleAD ]
 
 Resources:
@@ -274,9 +274,9 @@ Resources:
                   physical_resource_id = event['PhysicalResourceId']
               cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
 
-  MicrosoftDirectory:
+  MicrosoftADDirectory:
     Type: AWS::DirectoryService::MicrosoftAD
-    Condition: MicrosoftAD
+    Condition: UseMicrosoftAD
     Properties:
       Name: !Ref DomainName
       Password: !Ref AdminPassword
@@ -287,9 +287,9 @@ Resources:
           - !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
         VpcId: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
 
-  SimpleDirectory:
+  SimpleADDirectory:
     Type: AWS::DirectoryService::SimpleAD
-    Condition: SimpleAD
+    Condition: UseSimpleAD
     Properties:
       Name: !Ref DomainName
       Password: !Ref AdminPassword
@@ -308,8 +308,7 @@ Resources:
       Vpc: !If [CreateVPC, !Ref PclusterVpc, !Ref Vpc ]
       PrivateSubnetOne: !If [CreateVPC, !Ref PclusterVpcSubnet1, !Ref PrivateSubnetOne ]
       PrivateSubnetTwo: !If [CreateVPC, !Ref PclusterVpcSubnet2, !Ref PrivateSubnetTwo ]
-      DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ]
-      # DirectoryId: !Ref Directory
+      DirectoryId: !If [UseMicrosoftAD, !Ref MicrosoftADDirectory, !Ref SimpleADDirectory ]
 
   AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -350,7 +349,7 @@ Resources:
                 Resource: !Sub
                   - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
                   # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
-                  - { DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ] }
+                  - { DirectoryId: !If [UseMicrosoftAD, !Ref MicrosoftADDirectory, !Ref SimpleADDirectory ] }
           PolicyName: ResetUserPassword
         - PolicyDocument:
             Statement:
@@ -426,7 +425,6 @@ Resources:
               sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
               chattr +i /etc/resolv.conf
               ADMIN_PW="${AdminPassword}"
-              echo "${Admin}"
               echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}"
               sleep 10
               echo "Registering ReadOnlyUser..."
@@ -458,7 +456,7 @@ Resources:
                 DnsIp2: !GetAtt Prep.DnsIpAddress2,
                 DomainCertificateSecretArn: !Ref DomainCertificateSecret,
                 DomainPrivateKeySecretArn: !Ref DomainPrivateKeySecret,
-                Admin: !If [MicrosoftAD, "Admin", "Administrator" ]
+                Admin: !If [UseMicrosoftAD, "Admin", "Administrator" ]
             }
 
   PostRole:
@@ -494,7 +492,7 @@ Resources:
                 Resource: !Sub
                   - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
                   # - { DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ] }
-                  - { DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ] }
+                  - { DirectoryId: !If [UseMicrosoftAD, !Ref MicrosoftADDirectory, !Ref SimpleADDirectory ] }
         - PolicyName: StopInstances
           PolicyDocument:
             Version: 2012-10-17
@@ -577,12 +575,12 @@ Resources:
       ServiceToken: !GetAtt PostLambda.Arn
       AdminNodeInstanceId: !Ref AdDomainAdminNode
       # DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ]
-      DirectoryId: !If [MicrosoftAD, !Ref MicrosoftDirectory, !Ref SimpleDirectory ]
+      DirectoryId: !If [UseMicrosoftAD, !Ref MicrosoftADDirectory, !Ref SimpleADDirectory ]
       UserName: !Ref UserName
       UserPassword: !Ref UserPassword
       AdminPassword: !Ref AdminPassword
       ReadOnlyPassword: !Ref ReadOnlyPassword
-      Admin: !If [MicrosoftAD, "Admin", "Administrator" ]
+      Admin: !If [UseMicrosoftAD, "Admin", "Administrator" ]
 
   PasswordSecret:
     Type: AWS::SecretsManager::Secret
