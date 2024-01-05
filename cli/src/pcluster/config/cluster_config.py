@@ -1645,7 +1645,13 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
-        self._register_validator(SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler)
+        self._register_additional_validator()
+
+    def _register_additional_validators():
+        if self.disable_sudo_access_default_user:
+            self._register_validator(
+                SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler
+            )
 
     def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
