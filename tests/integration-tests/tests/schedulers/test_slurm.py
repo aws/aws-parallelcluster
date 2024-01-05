@@ -2619,7 +2619,7 @@ def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_j
         submit_command_args={
             "nodes": 1,
             "slots": 1,
-            "command": "srun ./a.out 3000000000 300",
+            "command": "srun ./a.out 3000000000 390",
             "other_options": "-w queue1-st-ondemand1-i1-1",
             "raise_on_error": False,
         }
