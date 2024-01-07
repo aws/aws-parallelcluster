@@ -22,12 +22,12 @@ Parameters:
     AllowedPattern: (?=^.{8,64}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=.*[a-z])|(?=.*[^A-Za-z0-9\s])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]))^.*
     NoEcho: true
   UserNames:
-    Description: Comma separated cluster users that are created in the Active Directory.
+    Description: Comma separated cluster users to create in the Active Directory.
     Type: String
     Default: user000
     MinLength: 3
   UserPassword:
-    Description: Cluster user Password for all users.
+    Description: Cluster user Password for all the users specified in 'Users'.
     Type: String
     MinLength: 8
     MaxLength: 64
@@ -430,11 +430,11 @@ Resources:
               echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
               sleep 0.5
               echo "Registering User..."
-              NAMES="${UserNames}"
-              for name in $(echo $NAMES | sed "s/,/ /g")
+              USERNAMES="${UserNames}"
+              for username in $(echo $USERNAMES | sed "s/,/ /g")
               do
-                echo "Registering user: $name"
-                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="$name" "$name"
+                echo "Registering user: $username"
+                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="$username" "$username"
               done
               
               echo "Creating domain certificate..."
@@ -566,6 +566,7 @@ Resources:
                   physical_resource_id = create_physical_resource_id()
                   ds.reset_user_password(DirectoryId=directory_id, UserName='ReadOnlyUser', NewPassword=read_only_password)
                   for name in user_names.split(","):
+                    name = name.strip()
                     ds.reset_user_password(DirectoryId=directory_id, UserName=name, NewPassword=user_password)
                   ds.reset_user_password(DirectoryId=directory_id, UserName=admin, NewPassword=admin_password)
                   ec2.stop_instances(InstanceIds=[instance_id])
