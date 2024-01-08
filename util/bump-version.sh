@@ -14,7 +14,8 @@ _error_exit() {
 }
 
 _help() {
-    local -- _cmd=$(basename "$0")
+    local -- _cmd
+    _cmd=$(basename "$0")
 
     cat <<EOF
 

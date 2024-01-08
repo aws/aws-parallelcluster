@@ -6,7 +6,7 @@ echo "Initializing the environment..."
 
 # Starting ssh agents
 echo "Starting ssh agents..."
-eval $(ssh-agent -s) && ssh-add ${SSHDIR}/id_rsa
+eval "$(ssh-agent -s)" && ssh-add ${SSHDIR}/id_rsa
 /usr/sbin/sshd -f /root/.ssh/sshd_config -h /root/.ssh/ssh_host_rsa_key
 
 # mount nfs
@@ -30,8 +30,6 @@ do
     /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_HEAD_NODE_IP}" "${ebs_shared_dir}"
   fi
 done
-
-ebs_arr=($ebs_shared_dirs)
 
 # mount EFS via nfs
 IFS=',' read -r -a efs_ids <<< "${PCLUSTER_EFS_FS_IDS}"

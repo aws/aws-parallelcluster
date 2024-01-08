@@ -17,7 +17,7 @@ push_docker_image() {
 }
 
 if [ -z "${IMAGE}" ]; then
-    for file in $(find `pwd` -type f -name Dockerfile); do
+    find "$(pwd)" -type f -name Dockerfile -print0 | while read -d $'\0' file; do
         IMAGE_TAG=$(dirname "${file}" | xargs basename)
         push_docker_image "${IMAGE_TAG}"
     done

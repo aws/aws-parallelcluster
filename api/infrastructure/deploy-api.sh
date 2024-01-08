@@ -71,7 +71,6 @@ if [ -z "${S3_BUCKET}" ] || [ -z "${AWS_DEFAULT_REGION}" ] ; then
     exit 1
 fi
 
-ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 S3_UPLOAD_URI="s3://${S3_BUCKET}/api/ParallelCluster.openapi.yaml"
 POLICIES_S3_URI="s3://${S3_BUCKET}/stacks/parallelcluster-policies.yaml"
 POLICIES_TEMPLATE_URI="http://${S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.amazonaws.com/stacks/parallelcluster-policies.yaml"
