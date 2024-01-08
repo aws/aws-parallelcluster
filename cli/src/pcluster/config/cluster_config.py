@@ -1601,21 +1601,7 @@ class BaseClusterConfig(Resource):
                 os=self.image.os,
                 architecture=self.head_node.architecture,
             )
-        feature_requiring_additional_space = []
-        if self.additional_packages and self.additional_packages.intel_software:
-            if self.additional_packages.intel_software.intel_hpc_platform:
-                self._register_validator(IntelHpc2018OsValidator, os=self.image.os)
-                self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
-            if (
-                self.additional_packages.intel_software.one_api
-                and self.additional_packages.intel_software.one_api.base_toolkit
-            ):
-                feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-                self._register_validator(IntelOneApiToolkitsOsValidator, os=self.image.os)
-                self._register_validator(IntelOneApiToolkitsBootstrapTimeValidator)
-            if self.additional_packages.intel_software.python:
-                self._register_validator(IntelPythonOsValidator, os=self.image.os)
-
+        self._register_additional_package_validator()
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
@@ -1645,7 +1631,26 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
-        self._register_validator(SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler)
+        if self.disable_sudo_access_default_user:
+            self._register_validator(
+                SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler
+            )
+
+    def _register_additional_package_validator(self):
+        feature_requiring_additional_space = []
+        if self.additional_packages and self.additional_packages.intel_software:
+            if self.additional_packages.intel_software.intel_hpc_platform:
+                self._register_validator(IntelHpc2018OsValidator, os=self.image.os)
+                self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
+            if (
+                self.additional_packages.intel_software.one_api
+                and self.additional_packages.intel_software.one_api.base_toolkit
+            ):
+                feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
+                self._register_validator(IntelOneApiToolkitsOsValidator, os=self.image.os)
+                self._register_validator(IntelOneApiToolkitsBootstrapTimeValidator)
+            if self.additional_packages.intel_software.python:
+                self._register_validator(IntelPythonOsValidator, os=self.image.os)
 
     def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
