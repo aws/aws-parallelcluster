@@ -21,14 +21,13 @@ Parameters:
     MaxLength: 64
     AllowedPattern: (?=^.{8,64}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=.*[a-z])|(?=.*[^A-Za-z0-9\s])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]))^.*
     NoEcho: true
-  UserName:
-    Description: Cluster user that is created in the Active Directory.
+  UserNames:
+    Description: Comma separated cluster users to create in the Active Directory.
     Type: String
     Default: user000
     MinLength: 3
-    MaxLength: 64
   UserPassword:
-    Description: Cluster user Password.
+    Description: Cluster user Password for all the users specified in 'Users'.
     Type: String
     MinLength: 8
     MaxLength: 64
@@ -431,8 +430,13 @@ Resources:
               echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
               sleep 0.5
               echo "Registering User..."
-              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="${UserName}" "${UserName}"
-
+              USERNAMES="${UserNames}"
+              for username in $(echo $USERNAMES | sed "s/,/ /g")
+              do
+                echo "Registering user: $username"
+                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="$username" "$username"
+              done
+              
               echo "Creating domain certificate..."
               PRIVATE_KEY="${DirectoryDomain}.key"
               CERTIFICATE="${DirectoryDomain}.crt"
@@ -451,7 +455,7 @@ Resources:
 
             - { DirectoryDomain: !GetAtt Prep.DomainName,
                 AdminPassword: !Ref AdminPassword,
-                UserName: !Ref UserName,
+                UserNames: !Ref UserNames,
                 DnsIp1: !GetAtt Prep.DnsIpAddress1,
                 DnsIp2: !GetAtt Prep.DnsIpAddress2,
                 DomainCertificateSecretArn: !Ref DomainCertificateSecret,
@@ -548,7 +552,7 @@ Resources:
               instance_id = event['ResourceProperties']['AdminNodeInstanceId']
 
               read_only_password = event['ResourceProperties']['ReadOnlyPassword']
-              user_name = event['ResourceProperties']['UserName']
+              user_names = event['ResourceProperties']['UserNames']
               user_password = event['ResourceProperties']['UserPassword']
               admin_password = event['ResourceProperties']['AdminPassword']
               admin = event['ResourceProperties']['Admin']
@@ -561,7 +565,9 @@ Resources:
                   response_data['Message'] = 'Resource creation successful!'
                   physical_resource_id = create_physical_resource_id()
                   ds.reset_user_password(DirectoryId=directory_id, UserName='ReadOnlyUser', NewPassword=read_only_password)
-                  ds.reset_user_password(DirectoryId=directory_id, UserName=user_name, NewPassword=user_password)
+                  for name in user_names.split(","):
+                    name = name.strip()
+                    ds.reset_user_password(DirectoryId=directory_id, UserName=name, NewPassword=user_password)
                   ds.reset_user_password(DirectoryId=directory_id, UserName=admin, NewPassword=admin_password)
                   ec2.stop_instances(InstanceIds=[instance_id])
 
@@ -576,7 +582,7 @@ Resources:
       AdminNodeInstanceId: !Ref AdDomainAdminNode
       # DirectoryId: !If [CreateAD, !Ref Directory, !Ref Ad ]
       DirectoryId: !If [UseMicrosoftAD, !Ref MicrosoftADDirectory, !Ref SimpleADDirectory ]
-      UserName: !Ref UserName
+      UserNames: !Ref UserNames
       UserPassword: !Ref UserPassword
       AdminPassword: !Ref AdminPassword
       ReadOnlyPassword: !Ref ReadOnlyPassword
