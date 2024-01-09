@@ -541,7 +541,7 @@ def test_custom_image(region, api_client, build_image, os, request, pcluster_con
     _test_describe_image(region, client, image_id, "BUILD_COMPLETE")
     _test_list_images(region, client, image_id, "AVAILABLE")
 
-    _delete_image(region, client, image_id)
+    # _delete_image(region, client, image_id)
 
 
 def _test_build_image(client, build_image, image_id, config):
