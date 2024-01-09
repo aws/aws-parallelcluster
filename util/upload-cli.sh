@@ -10,7 +10,8 @@ _info() {
 }
 
 _help() {
-    local -- _cmd=$(basename "$0")
+    local -- _cmd
+    _cmd=$(basename "$0")
 
     cat <<EOF
 
@@ -90,10 +91,10 @@ main() {
 
     # Create archive
     _cwd=$(pwd)
-    pushd "${_srcdir}" > /dev/null
+    pushd "${_srcdir}" > /dev/null || exit
     _stashName=$(git stash create)
     git archive --format tar --prefix="aws-parallelcluster-${_pcluster_version}/" "${_stashName:-HEAD}" | gzip > "${_cwd}/aws-parallelcluster-${_pcluster_version}.tgz"
-    popd > /dev/null
+    popd > /dev/null || exit
 
     # upload package
     _key_path="parallelcluster/${_pcluster_version}/cli"

@@ -206,5 +206,6 @@ jobs:
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
-          severity: error
+          severity: warning
+          ignore_paths: tests
           ignore_names: user_data.sh
