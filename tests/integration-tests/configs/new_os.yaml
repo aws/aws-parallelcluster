@@ -201,16 +201,6 @@ test-suites:
           schedulers: ["slurm"]
   storage:
     # Commercial regions that can't test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
-    test_fsx_lustre.py::test_fsx_lustre:
-      dimensions:
-        - regions: ["eu-west-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
     # The checks performed in test_multiple_fsx is the same as test_fsx_lustre.
     # We should consider this when assigning dimensions to each test.
     test_fsx_lustre.py::test_multiple_fsx:
