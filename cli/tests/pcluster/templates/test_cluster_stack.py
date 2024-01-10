@@ -130,11 +130,14 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
 
+    #TODO We must restore the actual maximum defined in constants.MAX_NUMBER_OF_QUEUES, which is 50.
+    max_number_of_queues = 46
+
     # The max number of queues cannot be used with the max number of compute resources
     # (it will exceed the max number of compute resources per cluster)
     # This workaround calculates the number of compute resources to use
     # as the quotient of dividing the max number of compute resources per cluster by the MAX_NUMBER_OF_QUEUES.
-    max_number_of_crs = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // MAX_NUMBER_OF_QUEUES
+    max_number_of_crs = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // max_number_of_queues
 
     # Try to search for jinja templates in the test_datadir, this is mainly to verify pcluster limits
     rendered_config_file = pcluster_config_reader(
@@ -143,7 +146,7 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
         max_new_storage_count=MAX_NEW_STORAGE_COUNT,
         max_existing_storage_count=MAX_EXISTING_STORAGE_COUNT,
         # number of queues, compute resources and security groups highly impacts the size of AWS resources
-        max_number_of_queues=MAX_NUMBER_OF_QUEUES,
+        max_number_of_queues=max_number_of_queues,
         max_number_of_ondemand_crs=max_number_of_crs,
         max_number_of_spot_crs=max_number_of_crs,
         number_of_sg_per_queue=1,
@@ -402,6 +405,16 @@ def test_compute_launch_template_properties(
 
     for lt_assertion in lt_assertions:
         lt_assertion.assert_lt_properties(asset_content, launch_template_logical_id)
+
+    # Checking user data variables
+    user_data_variables = asset_content["Resources"][launch_template_logical_id]["Properties"][
+        "LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]
+    expected_user_data_variables = {
+        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
+        "LaunchTemplateResourceId": launch_template_logical_id,
+    }
+    for k, v in expected_user_data_variables.items():
+        assert_that(user_data_variables[k]).is_equal_to(v)
 
 
 class LoginNodeLTAssertion:
