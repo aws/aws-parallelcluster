@@ -52,11 +52,11 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
-    # test_api.py::test_custom_image:
-    #   dimensions:
-    #     - regions: ["sa-east-1"]
-    #       instances: {{ common.INSTANCES_DEFAULT_X86 }}
-    #       oss: ["alinux2"]
+    test_api.py::test_custom_image:
+      dimensions:
+        - regions: ["sa-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
     test_api.py::test_login_nodes:
       dimensions:
         - regions: ["sa-east-1"]
