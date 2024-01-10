@@ -59,66 +59,29 @@ datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
 write_files:
-  - path: /tmp/dna.json
-    permissions: '0644'
-    owner: root:root
-    content: |
-      {
-        "cluster": {
-          "cluster_name": "${ClusterName}",
-          "stack_name": "${AWS::StackName}",
-          "stack_arn": "${AWS::StackId}",
-          "enable_efa": "${EnableEfa}",
-          "raid_shared_dir": "${RAIDSharedDir}",
-          "raid_type": "${RAIDType}",
-          "base_os": "${BaseOS}",
-          "region": "${AWS::Region}",
-          "shared_storage_type": "${SharedStorageType}",
-          "efs_fs_ids": "${EFSIds}",
-          "efs_shared_dirs": "${EFSSharedDirs}",
-          "efs_encryption_in_transits": "${EFSEncryptionInTransits}",
-          "efs_iam_authorizations": "${EFSIamAuthorizations}",
-          "fsx_fs_ids": "${FSXIds}",
-          "fsx_mount_names": "${FSXMountNames}",
-          "fsx_dns_names": "${FSXDNSNames}",
-          "fsx_volume_junction_paths": "${FSXVolumeJunctionPaths}",
-          "fsx_fs_types": "${FSXFileSystemTypes}",
-          "fsx_shared_dirs": "${FSXSharedDirs}",
-          "scheduler": "${Scheduler}",
-          "ephemeral_dir": "${EphemeralDir}",
-          "ebs_shared_dirs": "${EbsSharedDirs}",
-          "proxy": "${ProxyServer}",
-          "slurm_ddb_table": "${SlurmDynamoDBTable}",
-          "log_group_name": "${LogGroupName}",
-          "dns_domain": "${ClusterDNSDomain}",
-          "hosted_zone": "${ClusterHostedZone}",
-          "node_type": "ComputeFleet",
-          "cluster_user": "${OSUser}",
-          "enable_intel_hpc_platform": "${IntelHPCPlatform}",
-          "cw_logging_enabled": "${CWLoggingEnabled}",
-          "log_rotation_enabled": "${LogRotationEnabled}",
-          "scheduler_queue_name": "${QueueName}",
-          "scheduler_compute_resource_name": "${ComputeResourceName}",
-          "enable_efa_gdr": "${EnableEfaGdr}",
-          "custom_node_package": "${CustomNodePackage}",
-          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
-          "use_private_hostname": "${UsePrivateHostname}",
-          "head_node_private_ip": "${HeadNodePrivateIp}",
-          "directory_service": {
-            "enabled": "${DirectoryServiceEnabled}"
-          },
-          "disable_sudo_access_for_default_user":"${DisableSudoAccessForDefault}"
-        }
-      }
   - path: /etc/chef/client.rb
     permissions: '0644'
     owner: root:root
     content: cookbook_path ['/etc/chef/cookbooks']
-  - path: /tmp/extra.json
-    permissions: '0644'
+  - path: /etc/cfn/cfn-hup.conf
+    permissions: '0400'
     owner: root:root
     content: |
-      ${ExtraJson}
+      [main]
+      stack=${AWS::StackId}
+      region=${AWS::Region}
+      url=${CloudFormationUrl}
+      role=${CfnInitRole}
+      interval=2
+  - path: /etc/cfn/hooks.d/parallelcluster-update.conf
+    permissions: '0400'
+    owner: root:root
+    content: |
+      [parallelcluster-update]
+      triggers=post.update
+      path=Resources.${LaunchTemplateResourceId}.Metadata.AWS::CloudFormation::Init
+      action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; . /etc/profile.d/pcluster.sh; cfn-init -v --stack ${AWS::StackName} --resource ${LaunchTemplateResourceId} --configsets update --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole}
+      runas=root
   - path: /tmp/bootstrap.sh
     permissions: '0744'
     owner: root:root
@@ -161,6 +124,10 @@ write_files:
         fi
       }
 
+      export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
+
+      cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the compute node. Please check /var/log/cfn-init.log in the compute node, or check the cfn-init.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
+
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
       # Configure AWS CLI using the expected overrides, if any.
@@ -187,7 +154,6 @@ write_files:
           cookbook_url=${!custom_cookbook}
         fi
       fi
-      export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
       export parallelcluster_version=aws-parallelcluster-${ParallelClusterVersion}
       export cookbook_version=${CookbookVersion}
       export chef_version=${ChefVersion}
@@ -208,13 +174,9 @@ write_files:
       fi
       cd /tmp
 
-      mkdir -p /etc/chef/ohai/hints
-      touch /etc/chef/ohai/hints/ec2.json
-
       # measure start time
       start=$(date +%s)
 
-      jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' > /etc/chef/dna.json || ( echo "jq not installed or invalid extra_json"; cp /tmp/dna.json /etc/chef/dna.json)
       {
         pushd /etc/chef &&
         cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::init &&

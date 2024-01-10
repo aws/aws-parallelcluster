@@ -967,6 +967,16 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
                     )
                 ],
             ),
+            iam.PolicyStatement(
+                sid="CloudFormation",
+                actions=[
+                    "cloudformation:DescribeStackResource",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(service="cloudformation", resource=f"stack/{Stack.of(self).stack_name}-*/*"),
+                ],
+            ),
         ]
 
 

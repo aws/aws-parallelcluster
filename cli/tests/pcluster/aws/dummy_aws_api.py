@@ -326,6 +326,27 @@ class _DummyIamClient(IamClient):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
+    def get_instance_profile(self, instance_profile_name):
+        return {
+            "InstanceProfile": {
+                "InstanceProfileId": "XXXXXXXXXX",
+                "Roles": [
+                    {
+                        "AssumeRolePolicyDocument": "<URL-encoded-JSON>",
+                        "RoleId": "XXXXXXXXXX",
+                        "CreateDate": "2024-01-10T06:33:26Z",
+                        "RoleName": "Mocked-RoleName",
+                        "Path": "/",
+                        "Arn": "arn:aws:iam::XXXXXXXXXXXX:role/Mocked-RoleName"
+                    }
+                ],
+                "CreateDate": "2024-01-10T06:33:26Z",
+                "InstanceProfileName": instance_profile_name,
+                "Path": "/",
+                "Arn": "arn:aws:iam::XXXXXXXXXXXX:instance-profile/instance_profile_name"
+            }
+        }
+
 
 class _DummyDynamoResource(DynamoResource):
     def __init__(self):

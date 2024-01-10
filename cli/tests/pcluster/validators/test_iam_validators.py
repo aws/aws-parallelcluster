@@ -73,7 +73,6 @@ def test_role_validator(mocker, role_arn, side_effect, expected_message):
     ],
 )
 def test_instance_profile_validator(mocker, instance_profile_arn, side_effect, expected_message):
-    mock_aws_api(mocker)
     mocker.patch("pcluster.aws.iam.IamClient.get_instance_profile", side_effect=side_effect)
 
     actual_failures = InstanceProfileValidator().execute(instance_profile_arn=instance_profile_arn)
