@@ -14,6 +14,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
@@ -52,6 +53,7 @@ class QueuesStack(NestedStack):
         cluster_hosted_zone,
         dynamodb_table,
         head_eni,
+        cluster_bucket,
     ):
         super().__init__(scope, id)
         self._queues = queues
@@ -65,6 +67,7 @@ class QueuesStack(NestedStack):
         self._cluster_hosted_zone = cluster_hosted_zone
         self._dynamodb_table = dynamodb_table
         self._head_eni = head_eni
+        self._cluster_bucket = cluster_bucket
         self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._add_resources()
 
@@ -283,6 +286,11 @@ class QueuesStack(NestedStack):
                     "cluster_name": self.stack_name,
                     "stack_name": self.stack_name,
                     "stack_arn": self.stack_id,
+                    "cluster_s3_bucket": self._cluster_bucket.name,
+                    "cluster_config_s3_key": "{0}/configs/{1}".format(
+                        self._cluster_bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
+                    ),
+                    "cluster_config_version": self._config.config_version,
                     "enable_efa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
                     "raid_shared_dir": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.RAID]

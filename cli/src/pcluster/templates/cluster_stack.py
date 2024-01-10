@@ -449,6 +449,7 @@ class ClusterCdkStack:
                 dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
                 head_eni=self._head_eni,
                 slurm_construct=self.scheduler_resources,
+                cluster_bucket=self.bucket,
             )
 
     def _add_login_nodes_resources(self):
