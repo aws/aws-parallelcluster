@@ -736,7 +736,10 @@ def test_login_nodes_traffic_management_resources_values_properties(
 @pytest.mark.parametrize(
     "config_file_name, expected_head_node_dna_json_fields",
     [
-        ("slurm-imds-secured-true.yaml", {"scheduler": "slurm", "head_node_imds_secured": "true"}),
+        (
+            "slurm-imds-secured-true.yaml",
+            {"scheduler": "slurm", "head_node_imds_secured": "true", "disable_sudo_access_for_default_user": "true"},
+        ),
         (
             "slurm-imds-secured-false.yaml",
             {"scheduler": "slurm", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1000},
@@ -809,6 +812,7 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
                 "node_type": "LoginNode",
                 '"proxy"': "NONE",
                 "scheduler": "slurm",
+                "disable_sudo_access_for_default_user": "true",
             },
         ),
         (
@@ -816,6 +820,7 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
             {
                 "domain_read_only_user": "cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=sirena,dc=com",
                 "generate_ssh_keys_for_users": "true",
+                "disable_sudo_access_for_default_user": "false",
             },
         ),
     ],
