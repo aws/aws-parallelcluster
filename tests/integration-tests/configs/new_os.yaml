@@ -285,3 +285,4 @@ test-suites:
         - regions: [ "eu-west-2" ]
           schedulers: [ "slurm" ]
           oss: {{ NEW_OS }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}

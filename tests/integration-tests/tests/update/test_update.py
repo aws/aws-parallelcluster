@@ -1536,7 +1536,7 @@ def _test_shared_storage_rollback(
             boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)
 
 
-@pytest.mark.usefixtures("os")
+@pytest.mark.usefixtures("os", "instance")
 def test_multi_az_create_and_update(
     region, pcluster_config_reader, clusters_factory, odcr_stack, scheduler_commands_factory, test_datadir
 ):
