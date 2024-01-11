@@ -40,4 +40,3 @@ Scheduling:
     Networking:
       SubnetIds:
       - subnet-12345678
-DisableSudoAccessForDefaultUser: {{ disable_sudo_access_default_user }}
