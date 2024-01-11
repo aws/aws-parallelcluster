@@ -525,6 +525,7 @@ def _create_fsx_lustre_volume_ids(num_existing_fsx_lustre, fsx_factory, import_p
             DeploymentType="PERSISTENT_1",
             PerUnitStorageThroughput=200,
         ),
+        FileSystemTypeVersion="2.12",
     )
 
 
