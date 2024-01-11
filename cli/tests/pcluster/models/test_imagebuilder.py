@@ -68,6 +68,7 @@ from tests.pcluster.test_utils import FAKE_NAME
                         },
                     }
                 ],
+                "Description": "AWS ParallelCluster AMI for alinux2",
             },
             None,
             [

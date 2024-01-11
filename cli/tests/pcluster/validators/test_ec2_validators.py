@@ -240,6 +240,7 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
             {
                 "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
+                "Description": "AWS ParallelCluster AMI",
                 "BlockDeviceMappings": [
                     {
                         "DeviceName": "/dev/xvda",
@@ -266,6 +267,7 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
             {
                 "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
+                "Description": "AWS ParallelCluster AMI",
                 "BlockDeviceMappings": [
                     {
                         "DeviceName": "/dev/xvda",
@@ -299,6 +301,7 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
             {
                 "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
+                "Description": "AWS ParallelCluster AMI",
                 "BlockDeviceMappings": [
                     {
                         "DeviceName": "/dev/xvda",
@@ -316,6 +319,56 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
             ["m6g.xlarge", "c5.xlarge"],
             [],
         ),
+        (
+                "p3.2xlarge",
+                "ami-0185634c5a8a37250",
+                "The instance type 'p3.2xlarge' is not supported by OpenRM drivers. A custom AMI must be used.",
+                {
+                    "ImageId": "ami-0185634c5a8a37250",
+                    "Architecture": "x86_64",
+                    "Description": "AWS ParallelCluster AMI",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-0a20b6671bc5e3ead",
+                                "VolumeSize": 25,
+                                "VolumeType": "gp2",
+                                "Encrypted": False,
+                            },
+                        }
+                    ],
+                },
+                None,
+                ["p3.2xlarge", "c5.xlarge"],
+                ["x86_64"],
+        ),
+        (
+                "p3.2xlarge",
+                "ami-0185634c5a8a37250",
+                None,
+                {
+                    "ImageId": "ami-0185634c5a8a37250",
+                    "Architecture": "x86_64",
+                    "Description": "Custom AMI",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-0a20b6671bc5e3ead",
+                                "VolumeSize": 25,
+                                "VolumeType": "gp2",
+                                "Encrypted": False,
+                            },
+                        }
+                    ],
+                },
+                None,
+                ["p3.2xlarge", "c5.xlarge"],
+                ["x86_64"],
+        )
     ],
 )
 def test_instance_type_base_ami_compatible_validator(
