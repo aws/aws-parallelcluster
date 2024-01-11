@@ -147,7 +147,11 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
                     FailureLevel.ERROR,
                 )
         unsupported = ["p3", "p2", "g3", "g2"]
-        if image_info and "AWS ParallelCluster AMI" in image_info.description and instance_type.split(".")[0] in unsupported:
+        if (
+            image_info
+            and "AWS ParallelCluster AMI" in image_info.description
+            and instance_type.split(".")[0] in unsupported
+        ):
             self._add_failure(
                 f"The instance type '{instance_type}' is not supported by OpenRM drivers. "
                 f"A custom AMI must be used.",
