@@ -218,11 +218,10 @@ class ExternalSlurmdbdStack(Stack):
             source_security_group_id=client_sg.ref,
             group_id=server_sg.ref,
         )
-        client_sg.add_egress_rule(
-            peer=server_sg, connection=ec2.Port.tcp(22), description="Allow SSH access to server SG"
-        )
+
         return server_sg, client_sg
 
+    # FIXME: make the ingress rules more configurable
     def _add_slurmdbd_accounting_security_groups(self):
         slurmdbd_server_sg = ec2.CfnSecurityGroup(
             self,
@@ -244,10 +243,14 @@ class ExternalSlurmdbdStack(Stack):
             description="Allow Slurm accounting traffic from the cluster head node",
         )
 
-        slurmdbd_client_sg.add_egress_rule(
-            peer=slurmdbd_server_sg,
-            connection=ec2.Port.tcp(6819),
-            description="Allow Slurm accounting traffic to the slurmdbd instance",
+        ec2.CfnSecurityGroupIngress(
+            self,
+            "Allow traffic coming from slurmdbd instance",
+            ip_protocol="tcp",
+            from_port=6820,
+            to_port=6829,
+            source_security_group_id=slurmdbd_server_sg.ref,
+            group_id=slurmdbd_client_sg.ref,
         )
 
         return slurmdbd_server_sg, slurmdbd_client_sg
