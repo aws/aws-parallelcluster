@@ -316,6 +316,9 @@ class ExternalSlurmdbdStack(Stack):
                     subnet_id=self.subnet_id.value_as_string,
                 ),
             ],
+            metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
+                http_tokens="required",
+            ),
         )
 
         launch_template = ec2.CfnLaunchTemplate(self, "LaunchTemplate", launch_template_data=launch_template_data)
