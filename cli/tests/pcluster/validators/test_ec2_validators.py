@@ -322,7 +322,10 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
         (
             "p3.2xlarge",
             "ami-0185634c5a8a37250",
-            "The instance type 'p3.2xlarge' is not supported by OpenRM drivers. A custom AMI must be used.",
+            "The instance type 'p3.2xlarge' is not supported by NVIDIA OpenRM drivers. "
+            "OpenRM can only be used on any Turing or later GPU architectures. "
+            "Please consider using a different instance type or building a custom AMI "
+            "with closed source NVIDIA drivers.",
             {
                 "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
