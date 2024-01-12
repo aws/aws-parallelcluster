@@ -52,6 +52,7 @@ from pcluster.config.cluster_config import (
     ExistingFileCache,
     ExistingFsxOntap,
     ExistingFsxOpenZfs,
+    ExternalSlurmdbd,
     FlexibleInstanceType,
     GpuHealthCheck,
     HeadNode,
@@ -1709,7 +1710,7 @@ class DnsSchema(BaseSchema):
 
 
 class DatabaseSchema(BaseSchema):
-    """Represent the schema of the DirectoryService."""
+    """Represent the schema of the Slurm Accounting settings."""
 
     uri = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     user_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
@@ -1733,6 +1734,18 @@ class DatabaseSchema(BaseSchema):
         return Database(**data)
 
 
+class ExternalSlurmdbdSchema(BaseSchema):
+    """Represent the schema of the External Slurmdbd settings."""
+
+    host = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    port = fields.Int(required=False, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ExternalSlurmdbd(**data)
+
+
 class SlurmSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
@@ -1750,6 +1763,7 @@ class SlurmSettingsSchema(BaseSchema):
     custom_slurm_settings = fields.List(fields.Dict, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     custom_slurm_settings_include_file = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     munge_key_secret_arn = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP})
+    external_slurmdbd = fields.Nested(ExternalSlurmdbdSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
