@@ -194,6 +194,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    ExternalSlurmdbdVsDatabaseIncompatibility,
     SlurmNodePrioritiesWarningValidator,
 )
 from pcluster.validators.tags_validators import ComputeResourceTagsValidator
@@ -2755,6 +2756,7 @@ class SlurmSettings(Resource):
         custom_slurm_settings: List[Dict] = None,
         custom_slurm_settings_include_file: str = None,
         munge_key_secret_arn: str = None,
+        external_slurmdbd: str = None,
         **kwargs,
     ):
         super().__init__()
@@ -2768,6 +2770,7 @@ class SlurmSettings(Resource):
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
         self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
         self.munge_key_secret_arn = Resource.init_param(munge_key_secret_arn)
+        self.external_slurmdbd = Resource.init_param(external_slurmdbd)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2805,6 +2808,11 @@ class SlurmSettings(Resource):
                 MungeKeySecretSizeAndBase64Validator,
                 munge_key_secret_arn=self.munge_key_secret_arn,
             )
+        self._register_validator(
+            ExternalSlurmdbdVsDatabaseIncompatibility,
+            database=self.database,
+            external_slurmdbd=self.external_slurmdbd,
+        )
 
 
 class QueueUpdateStrategy(Enum):
