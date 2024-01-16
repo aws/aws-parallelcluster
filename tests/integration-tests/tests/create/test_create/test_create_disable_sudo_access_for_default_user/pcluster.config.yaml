@@ -4,7 +4,7 @@ LoginNodes:
   Pools:
     - Name: login
       InstanceType: t2.micro
-      Count: 1
+      Count: {{ login_node_count }}
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
@@ -30,3 +30,4 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+DisableSudoAccessForDefaultUser: {{ disable_sudo_access_default_user }}

@@ -1919,7 +1919,7 @@ class ClusterSchema(BaseSchema):
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     deployment_settings = fields.Nested(DeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     disable_sudo_access_default_user = fields.Bool(
-        data_key="DisableSudoAccessForDefaultUser", default=False, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        data_key="DisableSudoAccessForDefaultUser", default=False, metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
 
     def __init__(self, cluster_name: str):
