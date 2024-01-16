@@ -16,7 +16,7 @@ import pytest
 from assertpy import assert_that
 from constants import NodeType
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_username_for_os
+from utils import get_username_for_os, wait_for_computefleet_changed
 
 from tests.common.assertions import (
     assert_aws_identity_access_is_correct,
@@ -128,12 +128,41 @@ def test_create_disable_sudo_access_for_default_user(
     Verify that the cluster removes the Sudo access for default user
     in all the nodes of the Cluster if the DisableSudoAccessForDefaultUser is enabled.
     """
+    login_node_count = 1
     disable_sudo_access_default_user = True
-    cluster_config = pcluster_config_reader(disable_sudo_access_default_user=disable_sudo_access_default_user)
+    cluster_config = pcluster_config_reader(
+        disable_sudo_access_default_user=disable_sudo_access_default_user, login_node_count=login_node_count
+    )
     cluster = clusters_factory(cluster_config)
 
     logging.info("Checking default user has disabled sudo access after cluster creation")
     assert_head_node_is_running(region, cluster)
+    for node_type in NodeType:
+        assert_default_user_has_desired_sudo_access(cluster, node_type, region, disable_sudo_access_default_user)
+
+    logging.info("Updating Cluster to enable sudo access")
+    # Compute fleet shutdown
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    # Login node stop
+    login_node_count = 0
+    disable_sudo_access_default_user = not disable_sudo_access_default_user
+    updated_config_file = pcluster_config_reader(
+        disable_sudo_access_default_user=disable_sudo_access_default_user, login_node_count=login_node_count
+    )
+    cluster.update(str(updated_config_file), force_update="true")
+    # Start Login Node
+    login_node_count = 1
+    updated_config_file = pcluster_config_reader(
+        disable_sudo_access_default_user=disable_sudo_access_default_user,
+        login_node_count=login_node_count,
+    )
+    cluster.update(str(updated_config_file), force_update="true")
+    # Compute fleet Start
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+
+    logging.info("Checking default user's sudo access after cluster Update")
     for node_type in NodeType:
         assert_default_user_has_desired_sudo_access(cluster, node_type, region, disable_sudo_access_default_user)
 
