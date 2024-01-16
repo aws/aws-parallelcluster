@@ -27,20 +27,437 @@ from tests.pcluster.test_utils import dummy_cluster
 
 
 @pytest.mark.parametrize(
-    "is_fleet_stopped, old_max, new_max, expected_result",
+    "is_fleet_stopped, key, path, old_value, new_value, update_strategy, other_changes, expected_result",
     [
-        pytest.param(True, 10, 9, True, id="stopped fleet and new_max < old_max"),
-        pytest.param(False, "10", "9", False, id="running fleet and new_max < old_max"),
-        pytest.param(True, 10, 11, True, id="stopped fleet new_max > old_max"),
-        pytest.param(False, 10, 9, False, id="running fleet and new_max < old_max"),
-        pytest.param(False, 10, 11, True, id="running fleet and new_max > old_max"),
-        pytest.param(False, None, 0, False, id="running fleet and new_max < DEFAULT_MAX_COUNT"),
-        pytest.param(False, None, 11, True, id="running fleet and new_max > DEFAULT_MAX_COUNT"),
-        pytest.param(False, 11, None, False, id="running fleet and DEFAULT_MAX_COUNT < old_max"),
-        pytest.param(False, 0, None, True, id="running fleet and DEFAULT_MAX_COUNT > old_max"),
+        # tests with fleet stopped
+        pytest.param(
+            True,
+            "SlurmQueues",
+            ["Scheduling"],
+            None,
+            {
+                "Name": "queue-added",
+                "Networking": {"SubnetIds": "subnet-12345678"},
+                "ComputeResources": {"Name": "compute-added", "InstanceType": "c5.9xlarge"},
+            },
+            None,
+            [],
+            True,
+            id="stopped fleet and queue is added",
+        ),
+        pytest.param(
+            True,
+            "SlurmQueues",
+            ["Scheduling"],
+            {
+                "Name": "queue-to-remove",
+                "Networking": {"SubnetIds": "subnet-12345678"},
+                "ComputeResources": {"Name": "compute-to-remove", "InstanceType": "c5.9xlarge"},
+            },
+            None,
+            None,
+            [],
+            True,
+            id="stopped fleet and queue is removed",
+        ),
+        pytest.param(
+            True,
+            "ComputeResources",
+            ["Scheduling", "SlurmQueues[queue1]"],
+            None,
+            {"Name": "compute-added", "InstanceType": "c5.large", "MinCount": 1},
+            None,
+            [],
+            True,
+            id="stopped fleet and compute is added",
+        ),
+        pytest.param(
+            True,
+            "ComputeResources",
+            ["Scheduling", "SlurmQueues[queue1]"],
+            {"Name": "compute-to-remove", "InstanceType": "c5.large", "MinCount": 1},
+            None,
+            None,
+            [],
+            True,
+            id="stopped fleet and compute is removed",
+        ),
+        pytest.param(
+            True,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            None,
+            [],
+            True,
+            id="stopped fleet and min count is decreased",
+        ),
+        pytest.param(
+            True,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [],
+            True,
+            id="stopped fleet and min count is increased",
+        ),
+        pytest.param(
+            True,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            None,
+            [],
+            True,
+            id="stopped fleet and max count is decreased",
+        ),
+        pytest.param(
+            True,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [],
+            True,
+            id="stopped fleet and max count is increased",
+        ),
+        # tests with fleet running
+        pytest.param(
+            False,
+            "SlurmQueues",
+            ["Scheduling"],
+            None,
+            {
+                "Name": "queue-added",
+                "Networking": {"SubnetIds": "subnet-12345678"},
+                "ComputeResources": {"Name": "compute-added", "InstanceType": "c5.9xlarge"},
+            },
+            None,
+            [],
+            True,
+            id="running fleet and queue is added",
+        ),
+        pytest.param(
+            False,
+            "SlurmQueues",
+            ["Scheduling"],
+            {
+                "Name": "queue-to-remove",
+                "Networking": {"SubnetIds": "subnet-12345678"},
+                "ComputeResources": {"Name": "compute-to-remove", "InstanceType": "c5.9xlarge"},
+            },
+            None,
+            None,
+            [],
+            False,
+            id="running fleet and queue is removed wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "SlurmQueues",
+            ["Scheduling"],
+            {
+                "Name": "queue-to-remove",
+                "Networking": {"SubnetIds": "subnet-12345678"},
+                "ComputeResources": {"Name": "compute-to-remove", "InstanceType": "c5.9xlarge"},
+            },
+            None,
+            QueueUpdateStrategy.TERMINATE.value,
+            [],
+            True,
+            id="running fleet and queue is removed with TERMINATE update strategy",
+        ),
+        pytest.param(
+            False,
+            "SlurmQueues",
+            ["Scheduling"],
+            {
+                "Name": "queue-to-remove",
+                "Networking": {"SubnetIds": "subnet-12345678"},
+                "ComputeResources": {"Name": "compute-to-remove", "InstanceType": "c5.9xlarge"},
+            },
+            None,
+            QueueUpdateStrategy.DRAIN.value,
+            [],
+            False,
+            id="running fleet and queue is removed with DRAIN update strategy",
+        ),
+        pytest.param(
+            False,
+            "ComputeResources",
+            ["Scheduling", "SlurmQueues[queue1]"],
+            None,
+            {"Name": "compute-added", "InstanceType": "c5.large", "MinCount": 1},
+            None,
+            [],
+            True,
+            id="running fleet and compute is added",
+        ),
+        pytest.param(
+            False,
+            "ComputeResources",
+            ["Scheduling", "SlurmQueues[queue1]"],
+            {"Name": "compute-to-remove", "InstanceType": "c5.large", "MinCount": 1},
+            None,
+            None,
+            [],
+            False,
+            id="running fleet and compute is removed wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "ComputeResources",
+            ["Scheduling", "SlurmQueues[queue1]"],
+            {"Name": "compute-to-remove", "InstanceType": "c5.large", "MinCount": 1},
+            None,
+            QueueUpdateStrategy.TERMINATE.value,
+            [],
+            True,
+            id="running fleet and compute is removed with TERMINATE update strategy",
+        ),
+        pytest.param(
+            False,
+            "ComputeResources",
+            ["Scheduling", "SlurmQueues[queue1]"],
+            {"Name": "compute-to-remove", "InstanceType": "c5.large", "MinCount": 1},
+            None,
+            QueueUpdateStrategy.DRAIN.value,
+            [],
+            False,
+            id="running fleet and compute is removed with DRAIN update strategy",
+        ),
+        pytest.param(
+            False,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            None,
+            [],
+            False,
+            id="running fleet and max count is decreased wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            QueueUpdateStrategy.TERMINATE.value,
+            [],
+            True,
+            id="running fleet and max count is decreased with TERMINATE update strategy",
+        ),
+        pytest.param(
+            False,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            QueueUpdateStrategy.DRAIN.value,
+            [],
+            False,
+            id="running fleet and max count is decreased with DRAIN update strategy",
+        ),
+        pytest.param(
+            False,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [],
+            True,
+            id="running fleet and max count is increased",
+        ),
+        pytest.param(
+            False,
+            "MaxCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            None,
+            10,
+            None,
+            [],
+            True,
+            id="running fleet and max count is increased (initial value was not set)",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            None,
+            [],
+            False,
+            id="running fleet and min count is decreased wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            QueueUpdateStrategy.TERMINATE.value,
+            [],
+            True,
+            id="running fleet and  min count is decreased with TERMINATE update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            10,
+            0,
+            QueueUpdateStrategy.DRAIN.value,
+            [],
+            False,
+            id="running fleet and  min count is decreased with DRAIN update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [],
+            False,
+            id="running fleet and  min count is increased wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            QueueUpdateStrategy.TERMINATE.value,
+            [],
+            True,
+            id="running fleet and min count is increased with TERMINATE update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            QueueUpdateStrategy.DRAIN.value,
+            [],
+            False,
+            id="running fleet and  min count is increased with DRAIN update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [
+                Change(
+                    path=["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+                    key="MaxCount",
+                    old_value="0",
+                    new_value="1",
+                    update_policy={},
+                    is_list=False,
+                )
+            ],
+            False,
+            id="running fleet and  min > max count are increased wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [
+                Change(
+                    path=["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+                    key="MaxCount",
+                    old_value=None,
+                    new_value="1",
+                    update_policy={},
+                    is_list=False,
+                )
+            ],
+            False,
+            id="running fleet and  min > max count are increased wo update strategy (max count old value not set)",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [
+                Change(
+                    path=["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+                    key="MaxCount",
+                    old_value="0",
+                    new_value="10",
+                    update_policy={},
+                    is_list=False,
+                )
+            ],
+            True,
+            id="running fleet and  min = max count are increased wo update strategy",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            None,
+            10,
+            None,
+            [
+                Change(
+                    path=["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+                    key="MaxCount",
+                    old_value=None,
+                    new_value="10",
+                    update_policy={},
+                    is_list=False,
+                )
+            ],
+            True,
+            id="running fleet and  min = max count are increased wo update strategy "
+            "(both min and max count old value not set)",
+        ),
+        pytest.param(
+            False,
+            "MinCount",
+            ["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+            0,
+            10,
+            None,
+            [
+                Change(
+                    path=["Scheduling", "SlurmQueues[queue1], ComputeResources[compute1]"],
+                    key="MaxCount",
+                    old_value="0",
+                    new_value="20",
+                    update_policy={},
+                    is_list=False,
+                )
+            ],
+            True,
+            id="running fleet and  min < max count are increased wo update strategy",
+        ),
     ],
 )
-def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_result):
+def test_condition_checker_resize_update_strategy_on_remove(
+    mocker, is_fleet_stopped, key, path, old_value, new_value, update_strategy, other_changes, expected_result
+):
     cluster = dummy_cluster()
     cluster_has_running_capacity_mock = mocker.patch.object(
         cluster, "has_running_capacity", return_value=not is_fleet_stopped
@@ -48,11 +465,31 @@ def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_r
 
     patch_mock = mocker.MagicMock()
     patch_mock.cluster = cluster
+    patch_mock.target_config = (
+        {"Scheduling": {"SlurmSettings": {"QueueUpdateStrategy": update_strategy}}}
+        if update_strategy
+        else {"Scheduling": {"SlurmSettings": {}}}
+    )
+    if [other_changes]:
+        patch_mock.changes = other_changes
     change_mock = mocker.MagicMock()
-    change_mock.new_value = new_max
-    change_mock.old_value = old_max
+    change_mock.path = path
+    change_mock.key = key
+    change_mock.old_value = old_value
+    change_mock.new_value = new_value
 
-    assert_that(UpdatePolicy.MAX_COUNT.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
+    assert_that(UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE.condition_checker(change_mock, patch_mock)).is_equal_to(
+        expected_result
+    )
+    assert_that(UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE.fail_reason(change_mock, patch_mock)).is_equal_to(
+        "All compute nodes must be stopped or QueueUpdateStrategy must be set to TERMINATE"
+    )
+    assert_that(UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE.action_needed(change_mock, patch_mock)).is_equal_to(
+        "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy to "
+        "TERMINATE in the configuration used for the 'update-cluster' operation. Be aware that this update will remove "
+        "nodes from the scheduler and terminates the EC2 instances associated. Jobs running on the removed nodes will "
+        "terminate"
+    )
     cluster_has_running_capacity_mock.assert_called()
 
 
@@ -303,95 +740,43 @@ def test_queue_update_strategy_condition_checker(
     [
         pytest.param(
             True,
-            "SlurmQueues",
-            ["Scheduling"],
+            "Instances",
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
             None,
-            {
-                "Name": "queue-added",
-                "Networking": {"SubnetIds": "subnet-12345678"},
-                "ComputeResources": {"Name": "compute-added", "InstanceType": "c5.9xlarge"},
-            },
+            {"InstanceType": "c5.9xlarge"},
             True,
-            id="stopped fleet and queue is added",
+            id="stopped fleet and instance type is added",
         ),
         pytest.param(
             True,
-            "SlurmQueues",
-            ["Scheduling"],
-            {
-                "Name": "queue-removed",
-                "Networking": {"SubnetIds": "subnet-12345678"},
-                "ComputeResources": {"Name": "compute-removed", "InstanceType": "c5.9xlarge"},
-            },
+            "Instances",
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
+            {"InstanceType": "c5.9xlarge"},
             None,
             True,
-            id="stopped fleet and queue is removed",
-        ),
-        pytest.param(
-            True,
-            "ComputeResources",
-            ["Scheduling", "SlurmQueues[queue1]"],
-            None,
-            {"Name": "compute-added", "InstanceType": "c5.large", "MinCount": 1},
-            True,
-            id="stopped fleet and compute is added",
-        ),
-        pytest.param(
-            True,
-            "ComputeResources",
-            ["Scheduling", "SlurmQueues[queue1]"],
-            {"Name": "compute-removed", "InstanceType": "c5.large", "MinCount": 1},
-            None,
-            True,
-            id="stopped fleet and compute is removed",
+            id="stopped fleet and instance type is removed",
         ),
         pytest.param(
             False,
-            "SlurmQueues",
-            ["Scheduling"],
+            "Instances",
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
             None,
-            {
-                "Name": "queue-added",
-                "Networking": {"SubnetIds": "subnet-12345678"},
-                "ComputeResources": {"Name": "compute-added", "InstanceType": "c5.9xlarge"},
-            },
+            {"InstanceType": "c5.9xlarge"},
             True,
-            id="running fleet and queue is added",
+            id="running fleet and instance type is added",
         ),
         pytest.param(
             False,
-            "SlurmQueues",
-            ["Scheduling"],
-            {
-                "Name": "queue-removed",
-                "Networking": {"SubnetIds": "subnet-12345678"},
-                "ComputeResources": {"Name": "compute-removed", "InstanceType": "c5.9xlarge"},
-            },
+            "Instances",
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
+            {"InstanceType": "c5.9xlarge"},
             None,
             False,
-            id="running fleet and queue is removed",
-        ),
-        pytest.param(
-            False,
-            "ComputeResources",
-            ["Scheduling", "SlurmQueues[queue1]"],
-            None,
-            {"Name": "compute-added", "InstanceType": "c5.large", "MinCount": 1},
-            True,
-            id="running fleet and compute is added",
-        ),
-        pytest.param(
-            False,
-            "ComputeResources",
-            ["Scheduling", "SlurmQueues[queue1]"],
-            {"Name": "compute-removed", "InstanceType": "c5.large", "MinCount": 1},
-            None,
-            False,
-            id="running fleet and compute is removed",
+            id="running fleet and instance type is removed",
         ),
     ],
 )
-def test_compute_fleet_stop_on_remove_condition_checker(
+def test_condition_checker_compute_fleet_stop_on_remove(
     mocker, is_fleet_stopped, key, path, old_value, new_value, expected_result
 ):
     cluster = dummy_cluster()
@@ -456,9 +841,9 @@ def test_queue_update_strategy_fail_reason_and_actions_needed(
             "SlurmQueues",
             ["Scheduling"],
             {
-                "Name": "queue-removed",
+                "Name": "queue-to-remove",
                 "Networking": {"SubnetIds": "subnet-12345678"},
-                "ComputeResources": {"Name": "compute-removed", "InstanceType": "c5.9xlarge"},
+                "ComputeResources": {"Name": "compute-to-remove", "InstanceType": "c5.9xlarge"},
             },
             None,
             "All compute nodes must be stopped",

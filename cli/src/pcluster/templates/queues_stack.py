@@ -19,7 +19,6 @@ from pcluster.templates.cdk_builder_utils import (
     ComputeNodeIamResources,
     create_hash_suffix,
     dict_to_cfn_tags,
-    get_cloud_config_for_default_user,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
@@ -304,9 +303,6 @@ class QueuesStack(NestedStack):
                                         "dev_settings.compute_startup_time_metric_enabled",
                                         default=False,
                                     )
-                                ),
-                                "DisableSudoAccessForDefaultUserConfig": get_cloud_config_for_default_user(
-                                    self._config.disable_sudo_access_default_user
                                 ),
                                 "DisableSudoAccessForDefault": "true"
                                 if self._config.disable_sudo_access_default_user

@@ -12,7 +12,7 @@ import re
 from enum import Enum
 
 from pcluster.config.cluster_config import QueueUpdateStrategy
-from pcluster.constants import AWSBATCH, DEFAULT_MAX_COUNT, SLURM
+from pcluster.constants import AWSBATCH, DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SLURM
 
 
 class UpdatePolicy:
@@ -111,6 +111,15 @@ def actions_needed_queue_update_strategy(change, _):
         actions += ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
 
     return actions
+
+
+def actions_needed_resize_update_strategy_on_remove(*_):
+    return (
+        "Stop the compute fleet with the pcluster update-compute-fleet command, "
+        "or set QueueUpdateStrategy to TERMINATE in the configuration used for the 'update-cluster' operation. "
+        "Be aware that this update will remove nodes from the scheduler and terminates the EC2 instances "
+        "associated. Jobs running on the removed nodes will terminate"
+    )
 
 
 def actions_needed_managed_placement_group(change, patch):
@@ -258,6 +267,10 @@ def fail_reason_queue_update_strategy(change, _):
     return reason
 
 
+def fail_reason_resize_update_strategy_on_remove(*_):
+    return "All compute nodes must be stopped or QueueUpdateStrategy must be set to TERMINATE"
+
+
 def fail_reason_managed_placement_group(change, patch):
     if is_managed_placement_group_deletion(change, patch):
         reason = "All compute nodes must be stopped for a managed placement group deletion"
@@ -287,6 +300,16 @@ def is_queue_update_strategy_set(patch):
     )
 
 
+def is_resize_update_strategy_terminate(patch):
+    # Return true if the update strategy is set to TERMINATE
+    update_strategy = (
+        patch.target_config.get("Scheduling")
+        .get("SlurmSettings", {})
+        .get("QueueUpdateStrategy", QueueUpdateStrategy.COMPUTE_FLEET_STOP.value)
+    )
+    return update_strategy == QueueUpdateStrategy.TERMINATE.value
+
+
 def condition_checker_queue_update_strategy(change, patch):
     result = not patch.cluster.has_running_capacity()
     # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
@@ -294,6 +317,46 @@ def condition_checker_queue_update_strategy(change, patch):
         result = result or is_queue_update_strategy_set(patch)
 
     return result
+
+
+def condition_checker_resize_update_strategy_on_remove(change, patch):
+    # Check if fleet is stopped
+    result = not patch.cluster.has_running_capacity()
+
+    # Check if the change is inside a Queue section
+    if not result and (is_slurm_queues_change(change) or change.key == "SlurmQueues"):
+        # Check if QueueUpdateStrategy is TERMINATE
+        result = is_resize_update_strategy_terminate(patch)
+
+        # Queue or ComputeResource can be added
+        if not result and change.is_list:
+            result = change.old_value is None and change.new_value is not None
+
+    # Check if MaxCount is increased
+    if not result and change.key == "MaxCount":
+        result = convert_value_to_int(change.new_value, DEFAULT_MAX_COUNT) >= convert_value_to_int(
+            change.old_value, DEFAULT_MAX_COUNT
+        )
+
+    # Check if MinCount is increased and MaxCount is increased of at least the same amount
+    if not result and change.key == "MinCount":
+        path = change.path
+        for other_change in patch.changes:
+            # Check the value of MaxCount next to MinCount.
+            # MinCount and MaxCount next to each other have the same path
+            if path == other_change.path and other_change.key == "MaxCount":
+                other_change_new_value = convert_value_to_int(other_change.new_value, DEFAULT_MAX_COUNT)
+                other_change_old_value = convert_value_to_int(other_change.old_value, DEFAULT_MAX_COUNT)
+                change_new_value = convert_value_to_int(change.new_value, DEFAULT_MIN_COUNT)
+                change_old_value = convert_value_to_int(change.old_value, DEFAULT_MIN_COUNT)
+                result = (other_change_new_value - other_change_old_value) >= (change_new_value - change_old_value)
+                break
+
+    return result
+
+
+def convert_value_to_int(value, default):
+    return int(value) if value is not None else default
 
 
 def condition_checker_queue_update_strategy_on_remove(change, patch):
@@ -414,6 +477,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
     ),
     "pcluster_stop": lambda change, patch: "Stop the compute fleet with the pcluster update-compute-fleet command",
     "pcluster_stop_conditional": actions_needed_queue_update_strategy,
+    "pcluster_resize_conditional": actions_needed_resize_update_strategy_on_remove,
     "managed_placement_group": actions_needed_managed_placement_group,
     "shared_storage_update_conditional": actions_needed_shared_storage_update,
     "managed_fsx": actions_needed_managed_fsx,
@@ -452,17 +516,6 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
     <= patch.target_config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"],
 )
 
-# Checks resize of max_count
-UpdatePolicy.MAX_COUNT = UpdatePolicy(
-    name="MAX_COUNT",
-    level=1,
-    fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
-    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: not patch.cluster.has_running_capacity()
-    or (int(change.new_value) if change.new_value is not None else DEFAULT_MAX_COUNT)
-    >= (int(change.old_value) if change.old_value is not None else DEFAULT_MAX_COUNT),
-)
-
 # Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
 UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
     name="QUEUE_UPDATE_STRATEGY",
@@ -470,6 +523,15 @@ UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
     fail_reason=fail_reason_queue_update_strategy,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop_conditional"],
     condition_checker=condition_checker_queue_update_strategy,
+)
+
+# Update supported with fleet stopped or with replacement policy set to TERMINATE
+UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE = UpdatePolicy(
+    name="RESIZE_UPDATE_STRATEGY_ON_REMOVE",
+    level=5,
+    fail_reason=fail_reason_resize_update_strategy_on_remove,
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_resize_conditional"],
+    condition_checker=condition_checker_resize_update_strategy_on_remove,
 )
 
 # We must force COMPUTE_FLEET_STOP for the deletion of managed groups, otherwise fall back to QUEUE_UPDATE_STRATEGY

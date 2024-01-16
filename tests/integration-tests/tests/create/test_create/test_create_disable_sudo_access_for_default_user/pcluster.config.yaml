@@ -30,4 +30,3 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-DisableSudoAccessForDefaultUser: {{ disable_sudo_access_default_user }}

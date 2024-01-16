@@ -35,10 +35,6 @@ export NO_PROXY="localhost,127.0.0.1,169.254.169.254"
 PROXY
 fi
 
-if [ "${DisableSudoAccessForDefault}" == "true" ]; then
-  sed -n -i "/"${OSUser}" ALL=(ALL) NOPASSWD:ALL/d" /etc/sudoers
-fi
-
 --==BOUNDARY==
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
@@ -48,8 +44,6 @@ package_upgrade: false
 repo_upgrade: none
 
 datasource_list: [ Ec2, None ]
-
-${DisableSudoAccessForDefaultUserConfig}
 
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
@@ -98,7 +92,8 @@ write_files:
           "scheduler": "${Scheduler}",
           "stack_name": "${AWS::StackName}",
           "stack_arn": "${AWS::StackId}",
-          "use_private_hostname": "${UsePrivateHostname}"
+          "use_private_hostname": "${UsePrivateHostname}",
+          "disable_sudo_access_for_default_user":"${DisableSudoAccessForDefault}"
         }
       }
   - path: /etc/chef/client.rb

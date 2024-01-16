@@ -5,6 +5,10 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Permit to update `MinCount`, `MaxCount`, `Queue` and `ComputeResource` configuration parameters without the need to
+  stop the compute fleet. It's now possible to update them by setting `Scheduling/SlurmSettings/QueueUpdateStrategy`
+  to TERMINATE. ParallelCluster will terminate only the nodes removed during a resize of the cluster capacity
+  performed through a cluster update.
 - Add support for installing Intel OneAPI Base Toolkit and HPC Toolkit, and Intel Python.
   - Intel OneAPI Base Toolkits: 2023.2.0
   - Intel OneAPI HPC Toolkits: 2023.2.0

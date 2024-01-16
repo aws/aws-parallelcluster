@@ -1,3 +1,4 @@
+DisableSudoAccessForDefaultUser: True
 Image:
   Os: alinux2
 LoginNodes:

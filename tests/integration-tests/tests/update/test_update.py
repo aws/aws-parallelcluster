@@ -37,7 +37,12 @@ from utils import (
 )
 
 from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
-from tests.common.hit_common import assert_compute_node_states, assert_initial_conditions, wait_for_compute_nodes_states
+from tests.common.hit_common import (
+    assert_compute_node_states,
+    assert_initial_conditions,
+    get_partition_nodes,
+    wait_for_compute_nodes_states,
+)
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.storage.assertions import assert_storage_existence
@@ -749,6 +754,16 @@ def test_queue_parameters_update(
         queue_update_strategy,
     )
 
+    _test_update_resize(
+        scheduler_commands,
+        pcluster_config_reader,
+        pcluster_ami_id,
+        pcluster_copy_ami_id,
+        updated_compute_root_volume_size,
+        cluster,
+        queue_update_strategy,
+    )
+
     # assert queue drain strategy doesn't trigger protected mode
     assert_no_msg_in_logs(
         remote_command_executor,
@@ -794,7 +809,7 @@ def _test_update_queue_strategy_without_running_job(
 ):
     """Test queue parameter update with drain stragegy without running job in the queue."""
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.update_drain_without_running_job.yaml",
+        config_file="pcluster.config.update_without_running_job.yaml",
         global_custom_ami=pcluster_ami_id,
         updated_compute_root_volume_size=updated_compute_root_volume_size,
         queue_update_strategy=queue_update_strategy,
@@ -853,7 +868,7 @@ def _test_update_queue_strategy_with_running_job(
     scheduler_commands.wait_job_running(queue2_job_id)
 
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update_drain.yaml",
+        config_file="pcluster.config.update_with_running_job.yaml",
         global_custom_ami=pcluster_ami_id,
         custom_ami=pcluster_copy_ami_id,
         updated_compute_root_volume_size=updated_compute_root_volume_size,
@@ -903,6 +918,56 @@ def _test_update_queue_strategy_with_running_job(
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
     _check_queue_ami(cluster, ec2, pcluster_copy_ami_id, "queue2")
     assert_compute_node_states(scheduler_commands, queue1_nodes, "idle")
+
+
+def _test_update_resize(
+    scheduler_commands,
+    pcluster_config_reader,
+    pcluster_ami_id,
+    pcluster_copy_ami_id,
+    updated_compute_root_volume_size,
+    cluster,
+    queue_update_strategy,
+):
+    # Submit job in static node, eventually removed with TERMINATE strategy
+    queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "srun sleep 3000",
+            "nodes": 1,
+            "partition": "queue1",
+        }
+    )
+    # Wait for the job to run
+    scheduler_commands.wait_job_running(queue1_job_id)
+
+    # prepare new cluster config with static nodes removed from all queues
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update_resize.yaml",
+        global_custom_ami=pcluster_ami_id,
+        custom_ami=pcluster_copy_ami_id,
+        updated_compute_root_volume_size=updated_compute_root_volume_size,
+        queue_update_strategy=queue_update_strategy,
+    )
+
+    if queue_update_strategy == "DRAIN":
+        """Test update resize doesn't support DRAIN strategy, update will fail."""
+        response = cluster.update(str(updated_config_file), raise_on_error=False)
+        assert_that(response["message"]).is_equal_to("Update failure")
+        assert_that(response.get("updateValidationErrors")[0].get("message")).contains(
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set"
+        )
+        # assert that job running on static nodes not removed stays running
+        scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
+    elif queue_update_strategy == "TERMINATE":
+        """Test update resize with TERMINATE strategy, static nodes removed."""
+        cluster.update(str(updated_config_file))
+        # assert that static nodes are removed
+        nodes_in_scheduler = scheduler_commands.get_compute_nodes(all_nodes=True)
+        static_nodes, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+        assert_that(len(static_nodes)).is_equal_to(0)
+        assert_that(len(dynamic_nodes)).is_equal_to(4)
+        # assert that job running on static nodes removed with the update is re-queued
+        scheduler_commands.assert_job_state(queue1_job_id, "PENDING")
 
 
 @pytest.fixture
