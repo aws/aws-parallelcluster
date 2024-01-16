@@ -23,7 +23,8 @@ CHANGELOG
 - Add support for Python 3.11, 3.12 in pcluster CLI and aws-parallelcluster-batch-cli.
 - Upgrade Python to version 3.12 and NodeJS to version 18 in ParallelCluster Lambda Layer.
 - Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response, 
-  instead of looping over `MaximumNetworkCards` range.
+  instead of looping over `MaximumNetworkCards` range. 
+- Fail cluster creation when using instance types P3, G3, P2 and G2 because their GPU architecture is not compatible with Open Source Nvidia Drivers (OpenRM) introduced as part of 3.8.0 release.
 
 3.8.0
 ------
@@ -51,6 +52,7 @@ CHANGELOG
 - Upgrade NVIDIA driver to version 535.129.03.
 - Upgrade CUDA Toolkit to version 12.2.2.
 - Use Open Source NVIDIA GPU drivers (OpenRM) as NVIDIA kernel module for Linux instead of NVIDIA closed source module.
+  - This change removes support for P3, G3, P2 and G2 instances with GPU architecture not supported by OpenRM. The Open Source Nvidia only works on platforms that have the GSP (GPU System Processor).
 - Remove support of `all_or_nothing_batch` configuration parameter in the Slurm resume program, in favor of the new `Scheduling/ScalingStrategy` cluster configuration.
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
 - Change default EBS volume types in ADC regions from `gp2` to `gp3`, for both the root and additional volumes.
