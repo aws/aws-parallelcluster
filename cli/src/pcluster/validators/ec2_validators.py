@@ -18,6 +18,7 @@ from pcluster.aws.aws_api import AWSApi, KeyPairInfo
 from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.common import CapacityType
+from pcluster.constants import NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES
 from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -146,6 +147,19 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
                     ),
                     FailureLevel.ERROR,
                 )
+
+        if (
+            image_info
+            and "AWS ParallelCluster AMI" in image_info.description
+            and instance_type.split(".")[0] in NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES
+        ):
+            self._add_failure(
+                f"The instance type '{instance_type}' is not supported by NVIDIA OpenRM drivers. "
+                f"OpenRM can only be used on any Turing or later GPU architectures. "
+                f"Please consider using a different instance type or building a custom AMI "
+                f"with closed source NVIDIA drivers.",
+                FailureLevel.ERROR,
+            )
 
     def _validate_base_ami(self, image: str):
         try:
