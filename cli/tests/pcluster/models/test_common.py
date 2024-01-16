@@ -74,7 +74,7 @@ class TestLogGrouptimeFiltersParser:
         )
 
         for attr in expected_attrs:
-            assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
+            assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))  # noqa: B038
 
     @pytest.mark.parametrize(
         "attrs, event_in_window, log_stream_prefix, expected_error",

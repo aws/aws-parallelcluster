@@ -62,7 +62,7 @@ class TestClusterLogsFiltersParser:
         logs_filters = ClusterLogsFiltersParser(mock_head_node, filters)
 
         for attr in expected_attrs:
-            assert_that(getattr(logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
+            assert_that(getattr(logs_filters, attr)).is_equal_to(expected_attrs.get(attr))  # noqa: B038
         assert_that(expected_filters_size).is_equal_to(len(logs_filters.filters_list))
 
     @pytest.mark.parametrize(
@@ -149,7 +149,7 @@ class TestExportClusterLogsFiltersParser:
         )
 
         for attr in expected_attrs:
-            assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
+            assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))  # noqa: B038
 
     @pytest.mark.parametrize(
         "attrs, event_in_window, expected_error",

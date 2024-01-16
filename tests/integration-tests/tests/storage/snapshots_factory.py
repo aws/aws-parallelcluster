@@ -157,7 +157,7 @@ class EBSSnapshotsFactory:
                 )
                 ssh_conn.open()
                 tries = 0
-            except BaseException:
+            except BaseException:  # noqa: B036
                 logging.info("SSH connection error - retrying...")
                 tries -= 1
                 time.sleep(20)
