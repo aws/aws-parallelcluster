@@ -288,6 +288,23 @@ def assert_default_user_has_desired_sudo_access(
         assert_that(result.failed).is_equal_to(disable_sudo_access_default_user)
 
 
+def assert_login_node_update(cluster, login_nodes_count):
+    # Describe cluster, verify the response has the login node section, but it contains only the lb information
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    assert_that(cluster_info["loginNodes"]).contains("address")
+    assert_that(cluster_info["loginNodes"]["address"]).is_not_none()
+    if login_nodes_count >= 1:
+        assert_that(
+            cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]
+        ).is_equal_to(login_nodes_count)
+
+    # Describe cluster instances
+    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(login_nodes_count)
+
+
 def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):
     logging.info("Checking the cleanup lambda VPC config")
 

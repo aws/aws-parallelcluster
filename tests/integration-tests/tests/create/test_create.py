@@ -24,6 +24,7 @@ from tests.common.assertions import (
     assert_default_user_has_desired_sudo_access,
     assert_head_node_is_running,
     assert_lines_in_logs,
+    assert_login_node_update,
 )
 from tests.common.utils import get_installed_parallelcluster_version, reboot_head_node, retrieve_latest_ami
 
@@ -119,7 +120,6 @@ def test_create_imds_secured(
     assert_cluster_imds_v2_requirement_status(region, cluster, status)
 
 
-# FIXME: Move in tests_update after update policy is changed
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_create_disable_sudo_access_for_default_user(
     region, os, pcluster_config_reader, clusters_factory, architecture
@@ -128,15 +128,17 @@ def test_create_disable_sudo_access_for_default_user(
     Verify that the cluster removes the Sudo access for default user
     in all the nodes of the Cluster if the DisableSudoAccessForDefaultUser is enabled.
     """
-    login_node_count = 1
+    login_nodes_count = 1
     disable_sudo_access_default_user = True
     cluster_config = pcluster_config_reader(
-        disable_sudo_access_default_user=disable_sudo_access_default_user, login_node_count=login_node_count
+        disable_sudo_access_default_user=disable_sudo_access_default_user, login_nodes_count=login_nodes_count
     )
     cluster = clusters_factory(cluster_config)
 
     logging.info("Checking default user has disabled sudo access after cluster creation")
     assert_head_node_is_running(region, cluster)
+    wait_for_computefleet_changed(cluster, "RUNNING")
+    # assert_login_node_update(cluster, login_nodes_count)
     for node_type in NodeType:
         assert_default_user_has_desired_sudo_access(cluster, node_type, region, disable_sudo_access_default_user)
 
@@ -144,20 +146,31 @@ def test_create_disable_sudo_access_for_default_user(
     # Compute fleet shutdown
     cluster.stop()
     wait_for_computefleet_changed(cluster, "STOPPED")
-    # Login node stop
-    login_node_count = 0
+    # Login node stop by updating the cluster with count to 0
+    login_nodes_count = 0
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster_update_login_nodes_count_to_0.config.yaml",
+        output_file="pcluster_update_login_nodes_count_to_0.yaml",
+        disable_sudo_access_default_user=disable_sudo_access_default_user,
+        login_nodes_count=login_nodes_count,
+    )
+    cluster.update(str(updated_config_file))
+
+    # assert_login_node_update(cluster, login_nodes_count)
+
+    # Start Login Node by updating the count to 1 and update the value of DisableSudoAccessForDefaultUser
+    login_nodes_count = 1
     disable_sudo_access_default_user = not disable_sudo_access_default_user
     updated_config_file = pcluster_config_reader(
-        disable_sudo_access_default_user=disable_sudo_access_default_user, login_node_count=login_node_count
-    )
-    cluster.update(str(updated_config_file), force_update="true")
-    # Start Login Node
-    login_node_count = 1
-    updated_config_file = pcluster_config_reader(
+        config_file="pcluster_update_login_nodes_count_to_1.config.yaml",
+        output_file="pcluster_update_login_nodes_count_to_1.config.yaml",
         disable_sudo_access_default_user=disable_sudo_access_default_user,
-        login_node_count=login_node_count,
+        login_nodes_count=login_nodes_count,
     )
-    cluster.update(str(updated_config_file), force_update="true")
+    cluster.update(str(updated_config_file))
+
+    # assert_login_node_update(cluster, login_nodes_count)
+
     # Compute fleet Start
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
