@@ -159,6 +159,9 @@ Resources:
             Statement:
               - Action:
                   - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
                 Effect: Allow
               - Action: s3:GetObject
@@ -168,6 +171,10 @@ Resources:
               - Action: ec2:DescribeInstanceAttribute
                 Effect: Allow
                 Resource: '*'
+              - Action: cloudformation:DescribeStackResource
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*/*
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 
