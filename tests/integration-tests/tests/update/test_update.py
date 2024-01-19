@@ -36,7 +36,7 @@ from utils import (
     wait_for_computefleet_changed,
 )
 
-from tests.common.assertions import assert_lines_in_logs, assert_no_msg_in_logs
+from tests.common.assertions import assert_instance_config_version_on_ddb, assert_lines_in_logs, assert_no_msg_in_logs
 from tests.common.hit_common import (
     assert_compute_node_states,
     assert_initial_conditions,
@@ -47,7 +47,7 @@ from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.storage.assertions import assert_storage_existence
 from tests.common.storage.constants import StorageType
-from tests.common.utils import generate_random_string, retrieve_latest_ami
+from tests.common.utils import generate_random_string, get_deployed_config_version, retrieve_latest_ami
 from tests.storage.storage_common import (
     check_fsx,
     test_ebs_correctly_mounted,
@@ -78,11 +78,17 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
 
+    # Verify that compute nodes stored the deployed config version on DDB
+    assert_instance_config_version_on_ddb(cluster, get_deployed_config_version(cluster))
+
     # Check update hook is NOT executed at cluster creation time
     assert_that(os_path.exists("/tmp/postupdate_out.txt")).is_false()
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
     cluster.update(str(init_config_file), force_update="true")
+
+    # Verify that compute nodes stored the deployed config version on DDB
+    assert_instance_config_version_on_ddb(cluster, get_deployed_config_version(cluster))
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)

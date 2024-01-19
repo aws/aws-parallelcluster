@@ -26,6 +26,7 @@ from utils import (
 )
 
 from tests.common.scaling_common import get_compute_nodes_allocation
+from tests.common.utils import get_ddb_item
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -341,3 +342,25 @@ def _assert_slurm_rebooted_nodes(compute_nodes, remote_command_executor):
             "/var/log/slurmctld.log",
             f"node {node} returned to service",
         )
+
+
+def assert_instance_config_version_on_ddb(cluster, expected_cluster_config_version: str):
+    """Verifies that every compute node stored on DynamoDB the expected cluster config version."""
+    compute_nodes = cluster.describe_cluster_instances(node_type="Compute")
+    n_compute_nodes = len(compute_nodes)
+    logging.info(
+        f"Verifying that all {n_compute_nodes} compute nodes stored the expected config version on DDB: "
+        f"{expected_cluster_config_version}"
+    )
+    for compute_node in compute_nodes:
+        instance_id = compute_node["instanceId"]
+        table_name = f"parallelcluster-{cluster.name}"
+        item_id = f"CLUSTER_CONFIG.{instance_id}"
+        item = get_ddb_item(cluster.region, table_name, {"Id": item_id})
+        assert_that(item).is_not_none()
+        cluster_config_version_on_ddb = item["Data"]["cluster_config_version"]
+        assert_that(cluster_config_version_on_ddb).is_equal_to(expected_cluster_config_version)
+    logging.info(
+        f"Verified that all {n_compute_nodes} compute nodes stored the expected config version on DDB: "
+        f"{expected_cluster_config_version}"
+    )
