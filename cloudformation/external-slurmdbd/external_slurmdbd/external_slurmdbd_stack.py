@@ -71,9 +71,6 @@ class ExternalSlurmdbdStack(Stack):
             self, "CustomCookbookUrl", type="String", description="URL of the custom Chef Cookbook.", default=""
         )
 
-        # use cfn-init and cfn-hup configure instance
-        self._cfn_init_config = self._add_cfn_init_config()
-
         # create management security group with SSH access from anywhere (TEMPORARY!)
         self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
 
@@ -109,6 +106,7 @@ class ExternalSlurmdbdStack(Stack):
 
     def _add_cfn_init_config(self):
         dna_json_content = {
+            "slurmdbd_ip": self.slurmdbd_private_ip.value_as_string,
             "dbms_uri": self.dbms_uri.value_as_string,
             "dbms_username": self.dbms_username.value_as_string,
             "dbms_database_name": self.dbms_database_name.value_as_string,
@@ -247,13 +245,13 @@ class ExternalSlurmdbdStack(Stack):
             type="String",
             description="The SSH key name to access the instance (for management purposes only)",
         )
-        private_ip = CfnParameter(
+        self.slurmdbd_private_ip = CfnParameter(
             self,
             "PrivateIp",
             type="String",
             description="Static private IP address + prefix to assign to the slurmdbd instance",
         )
-        private_prefix = CfnParameter(
+        self.slurmdbd_private_prefix = CfnParameter(
             self,
             "PrivatePrefix",
             type="String",
@@ -275,8 +273,8 @@ class ExternalSlurmdbdStack(Stack):
                             "CustomCookbookUrl": self.custom_cookbook_url_param.value_as_string,
                             "StackName": self.stack_name,
                             "Region": self.region,
-                            "PrivateIp": private_ip.value_as_string,
-                            "SubnetPrefix": private_prefix.value_as_string,
+                            "PrivateIp": self.slurmdbd_private_ip.value_as_string,
+                            "SubnetPrefix": self.slurmdbd_private_prefix.value_as_string,
                         },
                     },
                 )
@@ -299,6 +297,8 @@ class ExternalSlurmdbdStack(Stack):
         )
 
         launch_template = ec2.CfnLaunchTemplate(self, "LaunchTemplate", launch_template_data=launch_template_data)
+
+        self._cfn_init_config = self._add_cfn_init_config()
         launch_template.add_metadata("AWS::CloudFormation::Init", self._cfn_init_config)
 
         return launch_template
