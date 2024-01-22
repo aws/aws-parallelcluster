@@ -9,6 +9,7 @@ from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
+from pcluster.config.common import DefaultUserHomeType
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
@@ -211,6 +212,14 @@ class Pool(Construct):
                         "generate_ssh_keys_for_users": ds_generate_keys,
                     },
                     "shared_storage_type": self._config.head_node.shared_storage_type.lower(),
+                    "default_user_home": (
+                        self._config.deployment_settings.default_user_home.lower()
+                        if (
+                            self._config.deployment_settings is not None
+                            and self._config.deployment_settings.default_user_home is not None
+                        )
+                        else DefaultUserHomeType.SHARED.value.lower()
+                    ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
                     ),

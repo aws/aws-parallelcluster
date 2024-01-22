@@ -5,6 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Add the configuration parameter `DeploymentSettings/DefaultUserHome` to allow users to move the default user's home directory to `/local/home` instead of `/home` (default).
 - Permit to update `MinCount`, `MaxCount`, `Queue` and `ComputeResource` configuration parameters without the need to
   stop the compute fleet. It's now possible to update them by setting `Scheduling/SlurmSettings/QueueUpdateStrategy`
   to TERMINATE. ParallelCluster will terminate only the nodes removed during a resize of the cluster capacity
