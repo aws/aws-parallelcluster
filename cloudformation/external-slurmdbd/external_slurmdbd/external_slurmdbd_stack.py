@@ -4,7 +4,6 @@ import pkg_resources
 from aws_cdk import CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
@@ -48,14 +47,6 @@ class ExternalSlurmdbdStack(Stack):
 
         self.subnet_id = CfnParameter(
             self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack."
-        )
-
-        # define Target Group
-        self._external_slurmdbd_target_group = self._add_external_slurmdbd_target_group()
-
-        # define Network Load Balancer (NLB)
-        self._external_slurmdbd_nlb = self._add_external_slurmdbd_load_balancer(
-            target_group=self._external_slurmdbd_target_group
         )
 
         # Define additional CloudFormation parameters for dna.json to pass to cookbook
@@ -121,7 +112,6 @@ class ExternalSlurmdbdStack(Stack):
             "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
             "region": self.region,
             "stack_name": self.stack_name,
-            "nlb_dns_name": self._external_slurmdbd_nlb.load_balancer_dns_name,
             "is_external_slurmdbd": True,
         }
 
@@ -178,21 +168,6 @@ class ExternalSlurmdbdStack(Stack):
                 }
             },
         }
-
-    def _add_external_slurmdbd_target_group(self):
-        return elbv2.NetworkTargetGroup(
-            self,
-            # TODO: add resource name!
-            "External-Slurmdbd-TG",
-            health_check=elbv2.HealthCheck(
-                port="6819",
-                protocol=elbv2.Protocol.TCP,
-            ),
-            port=6819,
-            protocol=elbv2.Protocol.TCP,
-            target_type=elbv2.TargetType.INSTANCE,
-            vpc=self.vpc,
-        )
 
     def _add_management_security_groups(self):
         server_sg = ec2.CfnSecurityGroup(
@@ -333,24 +308,6 @@ class ExternalSlurmdbdStack(Stack):
         launch_template.add_metadata("AWS::CloudFormation::Init", self._cfn_init_config)
 
         return launch_template
-
-    def _add_external_slurmdbd_load_balancer(
-        self,
-        target_group,
-    ):
-        nlb = elbv2.NetworkLoadBalancer(
-            self,
-            "External-Slurmdbd-NLB",
-            vpc=self.vpc,
-            vpc_subnets=ec2.SubnetSelection(subnets=[self.subnet]),
-            internet_facing=False,
-        )
-
-        # add listener to NLB
-        listener = nlb.add_listener("External-Slurmdbd-Listener", port=6819)
-        listener.add_target_groups("External-Slurmdbd-Target", target_group)
-
-        return nlb
 
     def _add_slurmdbd_primary_instance(self):
         return ec2.CfnInstance(
