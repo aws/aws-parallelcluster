@@ -194,7 +194,9 @@ def test_scaling_stress_test(
         request=request,
         scaling_target_time=_datetime_to_minute_granularity(scaling_target_time) + datetime.timedelta(minutes=1),
     )
-    # Verify that there was no over-scaling
-    # assert_that(max(compute_nodes_time_series)).is_equal_to(scaling_target)
+    # Verify that there was no EC2 over-scaling
     assert_that(max(ec2_capacity_time_series)).is_equal_to(scaling_target)
-    # assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
+    # Verify that there was no Slurm nodes over-scaling
+    assert_that(max(compute_nodes_time_series)).is_equal_to(scaling_target)
+    # Verify all Slurm nodes were removed on scale down
+    assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
