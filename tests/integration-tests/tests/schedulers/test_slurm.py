@@ -375,8 +375,7 @@ def test_slurm_custom_partitions(
     scheduler_commands.set_partition_state(custom_partitions[0], "UP")
 
     logging.info("Decreasing protected failure count for quicker enter protected mode...")
-    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
-    set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, 2)
     failing_partition = "ondemand1"
     logging.info("Testing protected mode is skipped while job running and activated when no jobs are in the queue...")
     pending_job_id = _test_active_job_running(
@@ -495,20 +494,19 @@ def test_slurm_protected_mode(
     cluster_config = pcluster_config_reader(bucket=bucket_name, scaling_strategy=scaling_strategy)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     remote_command_executor.clear_clustermgtd_log()
     remote_command_executor.clear_slurm_resume_log()
 
     _test_disable_protected_mode(
-        remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path, scaling_strategy
+        remote_command_executor, cluster, bucket_name, pcluster_config_reader, scaling_strategy
     )
 
     # Re-enable protected mode
-    _enable_protected_mode(remote_command_executor, clustermgtd_conf_path)
+    _enable_protected_mode(remote_command_executor)
     # Decrease protected failure count for quicker enter protected mode.
-    set_protected_failure_count(remote_command_executor, 2, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, 2)
 
     partition = "half-broken"
     pending_job_id = _test_active_job_running(
@@ -1926,24 +1924,23 @@ def _wait_until_protected_mode_failure_count_set(cluster):
             "ClusterManager Startup",
         ],
     )
-    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
-    assert_that(clustermgtd_conf_path).is_not_empty()
-    set_protected_failure_count(remote_command_executor, 3, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, 3)
 
     return remote_command_executor
 
 
-def _enable_protected_mode(remote_command_executor, clustermgtd_conf_path):
+def _enable_protected_mode(remote_command_executor):
     """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     remote_command_executor.run_remote_command(f"sudo sed -i '/'protected_failure_count'/d' {clustermgtd_conf_path}")
 
 
 def _test_disable_protected_mode(
-    remote_command_executor, cluster, bucket_name, pcluster_config_reader, clustermgtd_conf_path, scaling_strategy
+    remote_command_executor, cluster, bucket_name, pcluster_config_reader, scaling_strategy
 ):
     """Test Bootstrap failures have no affect on cluster when protected mode is disabled."""
     # Disable protected_mode by setting protected_failure_count to -1
-    set_protected_failure_count(remote_command_executor, -1, clustermgtd_conf_path)
+    set_protected_failure_count(remote_command_executor, -1)
     _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader, scaling_strategy)
     # wait till the node failed
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_lines_in_logs)(
