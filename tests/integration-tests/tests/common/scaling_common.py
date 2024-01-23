@@ -86,7 +86,6 @@ def get_scaling_metrics(
             publish_metrics_to_cloudwatch(
                 namespace="ParallelCluster/ScalingStressTest",
                 cw_client=cw_client,
-                cluster_name=cluster_name,
                 cw_metrics=scaling_metrics,
             )
 
