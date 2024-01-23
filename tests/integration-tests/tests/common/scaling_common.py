@@ -18,7 +18,7 @@ import boto3
 from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import seconds
-from utils import CWMetric, get_compute_instances_count, publish_metrics_to_cloudwatch
+from utils import CWMetric, get_compute_nodes_instance_count, publish_metrics_to_cloudwatch
 
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
 
@@ -70,7 +70,7 @@ def get_scaling_metrics(
         compute_node_count = int(headnode_metrics.get("NodeCount"))
         pending_jobs_count = int(headnode_metrics.get("PendingJobsCount"))
         running_jobs_count = int(headnode_metrics.get("RunningJobsCount"))
-        ec2_capacity = get_compute_instances_count(cluster_name, region)
+        ec2_capacity = get_compute_nodes_instance_count(cluster_name, region)
         if publish_metrics:
             # Use the cluster name as a dimension for each scaling metric
             scaling_metrics = [
@@ -148,7 +148,7 @@ def get_compute_nodes_allocation(
     )
     def _watch_compute_nodes_allocation():
         compute_nodes = len(scheduler_commands.get_unique_static_nodes())
-        ec2_capacity = get_compute_instances_count(stack_name, region)
+        ec2_capacity = get_compute_nodes_instance_count(stack_name, region)
         timestamp = time.time()
 
         # add values only if there is a transition.

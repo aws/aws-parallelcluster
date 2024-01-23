@@ -369,7 +369,7 @@ def get_substacks(stack_name, region=None, sub_stack_name=None):
     return [r.get("PhysicalResourceId") for r in stacks]
 
 
-def get_compute_instances_count(stack_name, region, instance_types=None):
+def get_compute_nodes_instance_count(stack_name, region, instance_types=None):
     return len(get_compute_nodes_instance_ids(stack_name, region, instance_types=instance_types))
 
 
@@ -857,6 +857,7 @@ def retrieve_clustermgtd_conf_path(remote_command_executor):
     ).stdout
     if clustermgtd_conf_path_override:
         clustermgtd_conf_path = clustermgtd_conf_path_override
+    assert_that(clustermgtd_conf_path).is_not_empty()
     return clustermgtd_conf_path
 
 
