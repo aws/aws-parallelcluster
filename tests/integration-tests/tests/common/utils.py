@@ -446,3 +446,42 @@ def get_ddb_item(region_name: str, table_name: str, item_key: dict):
     """
     table = boto3.resource("dynamodb", region_name=region_name).Table(table_name)
     return table.get_item(Key=item_key).get("Item")
+
+
+def get_compute_ip_to_num_files(remote_command_executor, slurm_commands):
+    """Gets a mapping of compute node instance ip to its current number of open files."""
+    logging.info("Checking the number of file descriptors...")
+
+    # Submit job to the test nodes
+    compute_node_names = slurm_commands.get_compute_nodes(all_nodes=True)
+    for name in compute_node_names:
+        slurm_commands.submit_command_and_assert_job_accepted(
+            submit_command_args={"command": "srun sleep 1", "host": name}
+        )
+    # Wait for all jobs to be completed
+    slurm_commands.wait_job_queue_empty()
+
+    # Get the number of open files on all the nodes
+    instance_ip_to_num_files = {}
+    for node_name in compute_node_names:
+        compute_node_instance_ip = slurm_commands.get_node_addr(node_name)
+        lsof_cmd = f"ssh -q {compute_node_instance_ip} 'sudo lsof -p $(pgrep computemgtd) | wc -l'"
+        num_files = remote_command_executor.run_remote_command(lsof_cmd).stdout
+        instance_ip_to_num_files[compute_node_instance_ip] = num_files
+
+    logging.info(f"Mapping from instance ip to number of open files in computemgtd: {instance_ip_to_num_files}")
+    return instance_ip_to_num_files
+
+
+def assert_no_file_handler_leak(init_compute_ip_to_num_files, remote_command_executor, slurm_commands):
+    """Asserts that the current number of open files for each compute node is the same as the given map"""
+    current_compute_ip_to_num_files = get_compute_ip_to_num_files(remote_command_executor, slurm_commands)
+    logging.info(
+        f"Asserting that the number of open files in computemgtd hasn't grown from "
+        f"{init_compute_ip_to_num_files} to {current_compute_ip_to_num_files}."
+    )
+    for compute_ip in current_compute_ip_to_num_files:
+        if compute_ip in init_compute_ip_to_num_files:
+            assert_that(current_compute_ip_to_num_files[compute_ip]).is_equal_to(
+                init_compute_ip_to_num_files[compute_ip]
+            )
