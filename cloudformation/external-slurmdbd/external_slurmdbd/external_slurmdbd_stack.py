@@ -49,7 +49,7 @@ class ExternalSlurmdbdStack(Stack):
         self.vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_id=self.vpc_id.value_as_string)
 
         self.subnet_id = CfnParameter(
-            self, "SubnetId", type="String", description="The Subnet to be used for the Slurmdbd stack."
+            self, "SubnetId", type="AWS::EC2::Subnet::Id", description="The Subnet to be used for the Slurmdbd stack."
         )
         self.subnet = ec2.Subnet.from_subnet_id(self, "subnet", subnet_id=self.subnet_id.value_as_string)
 
@@ -232,7 +232,9 @@ class ExternalSlurmdbdStack(Stack):
     def _add_external_slurmdbd_launch_template(self):
         # Define a CfnParameter for the AMI ID
         # This AMI should be Parallel Cluster AMI, which has installed Slurm and related software
-        ami_id_param = CfnParameter(self, "AmiId", type="String", description="The AMI id for the EC2 instance.")
+        ami_id_param = CfnParameter(
+            self, "AmiId", type="AWS::EC2::Image::Id", description="The AMI id for the EC2 instance."
+        )
         instance_type_param = CfnParameter(
             self,
             "InstanceType",
@@ -242,7 +244,7 @@ class ExternalSlurmdbdStack(Stack):
         key_name_param = CfnParameter(
             self,
             "KeyName",
-            type="String",
+            type="AWS::EC2::KeyPair::KeyName",
             description="The SSH key name to access the instance (for management purposes only)",
         )
         self.slurmdbd_private_ip = CfnParameter(
@@ -258,7 +260,7 @@ class ExternalSlurmdbdStack(Stack):
             description="Subnet prefix to assign with the private IP to the slurmdbd instance",
         )
         dbms_client_sg_id = CfnParameter(
-            self, "DBMSClientSG", type="String", description="DBMS Client Security Group Id"
+            self, "DBMSClientSG", type="AWS::EC2::SecurityGroup::Id", description="DBMS Client Security Group Id"
         )
 
         launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
