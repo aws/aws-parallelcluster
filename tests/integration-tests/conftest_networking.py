@@ -92,40 +92,26 @@ ZONE_ID_MAPPING = {
 }
 
 
-# Split the VPC address space into 32 subnets of 2046 (/21) addresses
-# to ensure that each subnets has enough IP addresses to support enough tests parallelism.
-# The first 10 are used for public subnets
-# The second 10 are used for private subnets
-# The remaining 12 are left for custom subnets
+# Split the VPC address space into 16 subnets of 4,096 (/20) addresses
+# to ensure that each subnets has enough IP addresses to support enough tests parallelism and scaling tests.
+# The first 6 are used for public subnets
+# The second 6 are used for private subnets
+# The remaining 4 are left for custom subnets
 CIDR_FOR_PUBLIC_SUBNETS = [
-    "192.168.0.0/21",
-    "192.168.8.0/21",
-    "192.168.16.0/21",
-    "192.168.24.0/21",
-    "192.168.32.0/21",
-    "192.168.40.0/21",
-    "192.168.48.0/21",
-    "192.168.56.0/21",
-    "192.168.64.0/21",
-    "192.168.72.0/21",
-]
-CIDR_FOR_PRIVATE_SUBNETS = [
-    "192.168.80.0/21",
-    "192.168.88.0/21",
-    "192.168.96.0/21",
-    "192.168.104.0/21",
-    "192.168.112.0/21",
-    "192.168.120.0/21",
-    "192.168.128.0/21",
-    "192.168.136.0/21",
-    "192.168.144.0/21",
-    "192.168.152.0/21",
-]
-CIDR_FOR_PUBLIC_SUBNETS_SCALING = [
     "192.168.0.0/20",
     "192.168.16.0/20",
     "192.168.32.0/20",
     "192.168.48.0/20",
+    "192.168.64.0/20",
+    "192.168.80.0/20",
+]
+CIDR_FOR_PRIVATE_SUBNETS = [
+    "192.168.96.0/20",
+    "192.168.112.0/20",
+    "192.168.128.0/20",
+    "192.168.144.0/20",
+    "192.168.160.0/20",
+    "192.168.176.0/20",
 ]
 CIDR_FOR_PRIVATE_SUBNETS_SCALING = [
     "192.168.64.0/20",
@@ -134,18 +120,10 @@ CIDR_FOR_PRIVATE_SUBNETS_SCALING = [
     "192.168.112.0/20",
 ]
 CIDR_FOR_CUSTOM_SUBNETS = [
-    "192.168.160.0/21",
-    "192.168.168.0/21",
-    "192.168.176.0/21",
-    "192.168.184.0/21",
-    "192.168.192.0/21",
-    "192.168.200.0/21",
-    "192.168.208.0/21",
-    "192.168.216.0/21",
-    "192.168.224.0/21",
-    "192.168.232.0/21",
-    "192.168.240.0/21",
-    "192.168.248.0/21",
+    "192.168.192.0/20",
+    "192.168.208.0/20",
+    "192.168.224.0/20",
+    "192.168.240.0/20",
 ]
 
 
@@ -305,15 +283,6 @@ def vpc_stack(vpc_stacks_shared, region, az_id):
     return local_vpc_stack
 
 
-def _is_scaling_test(tests_config):
-    logging.info(f"Checking any scaling stress tests in {tests_config}")
-    return (
-        tests_config.get("test-suites", {})
-        .get("performance_tests", {})
-        .get("test_scaling.py::test_scaling_stress_test")
-    )
-
-
 @xdist_session_fixture(autouse=True)
 def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
     """
@@ -323,7 +292,6 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
     """
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    is_scaling_test = _is_scaling_test(request.config.getoption("tests_config"))
     credential = request.config.getoption("credential")
 
     vpc_stacks_dict = {}
@@ -351,9 +319,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
             subnets.append(
                 SubnetConfig(
                     name=subnet_name(visibility="Private", az_id=az_id),
-                    cidr=CIDR_FOR_PRIVATE_SUBNETS_SCALING[index]
-                    if is_scaling_test
-                    else CIDR_FOR_PRIVATE_SUBNETS[index],
+                    cidr=CIDR_FOR_PRIVATE_SUBNETS[index],
                     map_public_ip_on_launch=False,
                     has_nat_gateway=False,
                     availability_zone=az_name,
