@@ -76,7 +76,8 @@ def _get_scaling_time(ec2_capacity_time_series: list, timestamps: list, scaling_
 
 
 @pytest.mark.parametrize(
-    "max_monitoring_time_in_mins, scaling_target, shared_headnode_storage, head_node_instance_type, scaling_strategy",
+    "max_monitoring_time_in_mins, scaling_target, shared_headnode_storage_type, head_node_instance_type, "
+    "scaling_strategy",
     [
         (20, 1000, "Efs", "c5.24xlarge", "best-effort"),  # TODO: Pass these values from an external source
         (20, 2000, "Efs", "c5.24xlarge", "best-effort"),
@@ -95,7 +96,7 @@ def test_scaling_stress_test(
     clusters_factory,
     max_monitoring_time_in_mins,
     scaling_target,
-    shared_headnode_storage,
+    shared_headnode_storage_type,
     head_node_instance_type,
     scaling_strategy,
 ):
@@ -119,7 +120,7 @@ def test_scaling_stress_test(
         scaledown_idletime=max_monitoring_time_in_mins,
         scaling_target=scaling_target,
         head_node_instance_type=head_node_instance_type,
-        shared_headnode_storage=shared_headnode_storage,
+        shared_headnode_storage_type=shared_headnode_storage_type,
         scaling_strategy=scaling_strategy,
     )
     cluster = clusters_factory(cluster_config)
