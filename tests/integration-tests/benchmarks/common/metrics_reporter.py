@@ -22,54 +22,6 @@ from retrying import RetryError, retry
 from time_utils import seconds
 from utils import describe_cluster_instances
 
-METRIC_WIDGET_TEMPLATE = """
-    {{
-        "metrics": [
-            [ "ParallelCluster/benchmarking/{cluster_name}", "ComputeNodesCount", {{ "stat": "Maximum", "label": \
-"ComputeNodesCount Max" }} ],
-            [ "...", {{ "stat": "Minimum", "label": "ComputeNodesCount Min" }} ],
-            [ "ParallelCluster/benchmarking/{cluster_name}", "EC2NodesCount", {{ "stat": "Maximum", "label": \
-"EC2NodesCount Max" }} ],
-            [ "...", {{ "stat": "Minimum", "label": "EC2NodesCount Min" }} ]
-        ],
-        "view": "timeSeries",
-        "stacked": false,
-        "stat": "Maximum",
-        "period": 1,
-        "title": "{title}",
-        "width": 1400,
-        "height": 700,
-        "start": "{graph_start_time}",
-        "end": "{graph_end_time}",
-        "annotations": {{
-            "horizontal": [
-                {{
-                    "label": "Scaling Target",
-                    "value": {scaling_target}
-                }}
-            ],
-            "vertical": [
-                {{
-                    "label": "Start Time",
-                    "value": "{start_time}"
-                }},
-                {{
-                    "label": "End Time",
-                    "value": "{end_time}"
-                }}
-            ]
-        }},
-        "yAxis": {{
-            "left": {{
-                "showUnits": false,
-                "label": "Count"
-            }},
-            "right": {{
-                "showUnits": true
-            }}
-        }}
-    }}"""
-
 
 def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region, cluster_name):
     logging.info("Monitoring scheduler status and publishing metrics")
