@@ -108,6 +108,7 @@ def _terminate_cluster_nodes(event):
         completed_successfully = False
         while not completed_successfully:
             completed_successfully = True
+            # TODO use utils.ec2_utils.list_cluster_instance_ids_iterator to reduce code duplication.
             for instance_ids in _describe_instance_ids_iterator(stack_name):
                 logger.info("Terminating instances %s", instance_ids)
                 if instance_ids:
