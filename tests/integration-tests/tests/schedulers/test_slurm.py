@@ -2727,6 +2727,8 @@ def test_slurm_reconfigure_race_condition(
     slurmctld daemon and immediately performs a scontrol reconfigure.
 
     See https://bugs.schedmd.com/show_bug.cgi?id=13953
+
+    Note: This test is no longer executed because the issue has been fixed in the release 22.05.7.
     """
 
     scale_down_idle_time_mins = 1

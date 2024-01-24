@@ -125,7 +125,7 @@ test-suites:
           oss: ["alinux2"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_reconfigure_race_condition:
-       dimensions:
+      dimensions:
         - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
