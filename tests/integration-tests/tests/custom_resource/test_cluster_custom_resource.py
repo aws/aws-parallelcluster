@@ -108,7 +108,7 @@ def test_cluster_create_invalid(cluster_custom_resource_factory, pcluster_config
 @pytest.mark.parametrize("external_update", [False, True])
 # pylint: disable=too-many-locals
 def test_cluster_update(cluster_custom_resource_factory, external_update, pcluster_config_reader):
-    """Perform crud validation on cluster."""
+    """Test update basic behaviours."""
     validation_message = "KeyPairValidator"
     max_count = 3
     cluster_config_path = pcluster_config_reader(no_of_queues=50, max_count=max_count)
@@ -151,7 +151,7 @@ def test_cluster_update(cluster_custom_resource_factory, external_update, pclust
 def test_cluster_update_invalid(
     cluster_custom_resource_factory, pcluster_config_reader, cluster_custom_resource_template
 ):
-    """Perform crud validation on cluster."""
+    """Try to update cluster with invalid values, assert validators errors and ensure the cluster is not updated."""
     stack = cluster_custom_resource_factory(pcluster_config_reader())
     cluster_name = _stack_parameter(stack, "ClusterName")
     old_cluster_status = pc().describe_cluster(cluster_name=cluster_name)
@@ -206,7 +206,7 @@ def test_cluster_update_invalid(
 def test_cluster_update_tag_propagation(
     cluster_custom_resource_factory, config_parameter_change, pcluster_config_reader
 ):
-    """Perform crud validation on cluster."""
+    """Verify tags are properly updated ."""
     max_count = 16
     cluster_config = pcluster_config_reader(max_count=max_count)
     stack = cluster_custom_resource_factory(cluster_config)
