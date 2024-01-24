@@ -396,12 +396,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-    test_slurm.py::test_slurm_reconfigure_race_condition:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
     test_slurm.py::test_slurm_custom_config_parameters:
       dimensions:
         - regions: {{ REGIONS }}

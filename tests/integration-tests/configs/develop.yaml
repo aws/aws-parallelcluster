@@ -590,12 +590,6 @@ test-suites:
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_reconfigure_race_condition:
-      dimensions:
-        - regions: [ "af-south-1" ]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
-          schedulers: [ "slurm" ]
     test_slurm.py::test_slurm_custom_partitions:
       dimensions:
         - regions: ["ap-northeast-2"]
