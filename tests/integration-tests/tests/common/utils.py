@@ -20,7 +20,7 @@ import boto3
 import pkg_resources
 from assertpy import assert_that
 from botocore.exceptions import ClientError
-from remote_command_executor import RemoteCommandExecutor
+from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
 from utils import get_instance_info, run_command
@@ -401,3 +401,87 @@ def wait_process_completion(remote_command_executor, pid):
         raise Exception("The process is still running")
     else:
         return result.stdout.strip()
+
+
+def get_deployed_config_version(cluster, compute_node_ip: str = None):
+    """Retrieves the cluster config version deployed on the cluster node from its dna.json
+    If 'compute_node_ip' is specified, the config version will be retrieved from the compute node;
+    otherwise, it will be retrieved from the head node.
+    """
+    dna_json = get_deployed_dna_json(cluster, compute_node_ip)
+
+    return dna_json["cluster"]["cluster_config_version"]
+
+
+def get_deployed_dna_json(cluster, compute_node_ip: str = None):
+    """Retrieves the dna.json from the cluster node
+    If 'compute_node_ip' is specified, it will be retrieved from the compute node;
+    otherwise, it will be retrieved from the head node.
+    """
+    command = "sudo cat /etc/chef/dna.json"
+    rce = (
+        RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip)
+        if compute_node_ip
+        else RemoteCommandExecutor(cluster)
+    )
+
+    try:
+        result = rce.run_remote_command(command).stdout
+        dna_json = json.loads(result)
+    except RemoteCommandExecutionError as e:
+        raise RuntimeError(f"Cannot retrieve dna.json from cluster node ({rce.target}): {e}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Returned value should be a dna.json, but it's not a valid JSON: {e}")
+
+    if "cluster" not in dna_json:
+        raise ValueError("Returned value should be a dna.json, but it does not contain the expected 'cluster' key")
+
+    return dna_json
+
+
+@retry(wait_fixed=seconds(3), stop_max_delay=seconds(15))
+def get_ddb_item(region_name: str, table_name: str, item_key: dict):
+    """Retrieves the item from the specified DynamoDB table and region by key.
+    It returns None if the item does not exist.
+    """
+    table = boto3.resource("dynamodb", region_name=region_name).Table(table_name)
+    return table.get_item(Key=item_key).get("Item")
+
+
+def get_compute_ip_to_num_files(remote_command_executor, slurm_commands):
+    """Gets a mapping of compute node instance ip to its current number of open files."""
+    logging.info("Checking the number of file descriptors...")
+
+    # Submit job to the test nodes
+    compute_node_names = slurm_commands.get_compute_nodes(all_nodes=True)
+    for name in compute_node_names:
+        slurm_commands.submit_command_and_assert_job_accepted(
+            submit_command_args={"command": "srun sleep 1", "host": name}
+        )
+    # Wait for all jobs to be completed
+    slurm_commands.wait_job_queue_empty()
+
+    # Get the number of open files on all the nodes
+    instance_ip_to_num_files = {}
+    for node_name in compute_node_names:
+        compute_node_instance_ip = slurm_commands.get_node_addr(node_name)
+        lsof_cmd = f"ssh -q {compute_node_instance_ip} 'sudo lsof -p $(pgrep computemgtd) | wc -l'"
+        num_files = remote_command_executor.run_remote_command(lsof_cmd).stdout
+        instance_ip_to_num_files[compute_node_instance_ip] = num_files
+
+    logging.info(f"Mapping from instance ip to number of open files in computemgtd: {instance_ip_to_num_files}")
+    return instance_ip_to_num_files
+
+
+def assert_no_file_handler_leak(init_compute_ip_to_num_files, remote_command_executor, slurm_commands):
+    """Asserts that the current number of open files for each compute node is the same as the given map"""
+    current_compute_ip_to_num_files = get_compute_ip_to_num_files(remote_command_executor, slurm_commands)
+    logging.info(
+        f"Asserting that the number of open files in computemgtd hasn't grown from "
+        f"{init_compute_ip_to_num_files} to {current_compute_ip_to_num_files}."
+    )
+    for compute_ip in current_compute_ip_to_num_files:
+        if compute_ip in init_compute_ip_to_num_files:
+            assert_that(current_compute_ip_to_num_files[compute_ip]).is_equal_to(
+                init_compute_ip_to_num_files[compute_ip]
+            )

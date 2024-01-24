@@ -5,6 +5,8 @@ import boto3
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
+from tests.common.utils import assert_no_file_handler_leak, get_compute_ip_to_num_files
+
 # timeout in seconds
 STARCCM_INSTALLATION_TIMEOUT = 1800
 STARCCM_JOB_TIMEOUT = 600
@@ -70,13 +72,15 @@ def test_starccm(
     cluster = clusters_factory(cluster_config)
     logging.info("Cluster Created")
     remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    init_num_files = get_compute_ip_to_num_files(remote_command_executor, scheduler_commands)
+
     if not starccm_installed(remote_command_executor):
         logging.info("Installing StarCCM+")
         remote_command_executor.run_remote_script(
             str(test_datadir / "starccm.install.sh"), timeout=STARCCM_INSTALLATION_TIMEOUT, hide=False
         )
     logging.info("StarCCM+ Installed")
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
     podkey, licpath = get_starccm_secrets(region)
     performance_degradation = {}
     for node in number_of_nodes:
@@ -111,6 +115,8 @@ def test_starccm(
             f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
             f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
         )
+
+    assert_no_file_handler_leak(init_num_files, remote_command_executor, scheduler_commands)
 
     if performance_degradation:
         pytest.fail(f"Performance degradation detected: {performance_degradation}")
