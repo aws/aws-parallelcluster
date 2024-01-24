@@ -659,7 +659,7 @@ def get_metadata(metadata_path, raise_error=True):
         if token.status_code == requests.codes.ok:
             headers["X-aws-ec2-metadata-token"] = token.content
         elif token.status_code >= 300:
-            raise Exception("Imds not reachable")
+            raise Exception("Imds not reachable. Is test running on EC2 Instance?")
         metadata_value = requests.get(f"{metadata_base_url}/meta-data/{metadata_path}", headers=headers).text
     except Exception as e:
         error_msg = f"Unable to get {metadata_path} metadata. Failed with exception: {e}"
