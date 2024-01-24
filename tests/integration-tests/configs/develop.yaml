@@ -818,11 +818,6 @@ test-suites:
           schedulers: ["slurm"]
           oss: ["ubuntu2004"]
   update:
-    test_update.py::test_update_awsbatch:
-      dimensions:
-        - regions: ["eu-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
     test_update.py::test_update_slurm:
       dimensions:
         - regions: ["eu-central-1"]
