@@ -384,12 +384,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-    test_slurm.py::test_scontrol_update_nodelist_sorting:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
     test_slurm_accounting.py::test_slurm_accounting:
       dimensions:
         - regions: {{ REGIONS }}

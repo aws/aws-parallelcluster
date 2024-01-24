@@ -996,6 +996,8 @@ def test_scontrol_update_nodelist_sorting(
     nodenames and the assigned addresses.
 
     See https://bugs.schedmd.com/show_bug.cgi?id=15731
+
+    Note: This test is no longer executed because the issue in Slurm has been fixed in 23.05 release.
     """
 
     max_count_cr1 = max_count_cr2 = 4
