@@ -175,6 +175,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     )
     cluster.update(str(updated_config_file), force_update="true")
 
+    # Verify that compute nodes stored the deployed config version on DDB
+    last_cluster_config_version = get_deployed_config_version(cluster)
+    assert_instance_config_version_on_ddb(cluster, last_cluster_config_version)
+
     # Here is the expected list of nodes.
     # the cluster:
     # queue1-st-c5xlarge-1
@@ -315,6 +319,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         postupdate_script="failed_postupdate.sh",
     )
     cluster.update(str(failed_update_config_file), raise_on_error=False, log_error=False)
+
+    # Verify that compute nodes stored the deployed config version on DDB
+    assert_instance_config_version_on_ddb(cluster, last_cluster_config_version)
 
     _check_rollback_with_expected_error_message(region, cluster)
 
