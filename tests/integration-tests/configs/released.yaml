@@ -1,10 +1,190 @@
 {%- import 'common.jinja2' as common with context -%}
 ---
 test-suites:
-{% filter indent(2) %}
-{% include 'common/common.yaml' %}
-{% endfilter %}
-  # need to duplicate api section because test_official_images works only after release
+  ad_integration:
+    test_ad_integration.py::test_ad_integration:
+      dimensions:
+        - regions: [ "ap-southeast-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+  capacity_reservations:
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: ["us-west-2"]
+          oss: ["alinux2"]
+  cfn-init:
+    test_cfn_init.py::test_replace_compute_on_failure:
+      dimensions:
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+    test_cfn_init.py::test_install_args_quotes:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: ["ap-northeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+    test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_compute_console_output_logging.py::test_custom_action_error:
+      dimensions:
+        - regions: ["ap-east-1"]
+          oss: ["rhel8"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          schedulers: ["slurm"]
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: ["ap-southeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  create:
+    test_create.py::test_create_wrong_os:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]  # os must be different from ubuntu2004 to test os validation logic when wrong os is provided
+          schedulers: ["slurm"]
+    test_create.py::test_create_wrong_pcluster_version:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_create.py::test_create_imds_secured:
+      dimensions:
+        - regions: ["eu-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{common.OSS_COMMERCIAL_X86}}
+          schedulers: ["slurm"]
+  createami:
+    test_createami.py::test_invalid_config:
+      dimensions:
+        - regions: ["eu-west-3"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+    test_createami.py::test_build_image:
+      dimensions:
+        - regions: ["eu-west-3"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204", "rhel8"]
+        - regions: ["eu-west-3"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.NOT_RELEASED_OSES }}
+    test_createami.py::test_build_image_custom_components:
+      # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
+      # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["alinux2"]
+    test_createami.py::test_build_image_wrong_pcluster_version:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+  custom_resource:
+    test_cluster_custom_resource.py::test_cluster_1_click:
+      dimensions:
+        - regions: ["us-east-2"]
+  dcv:
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+          instances: ["g4dn.2xlarge"]
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+  disable_hyperthreading:
+    test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: ["c5.xlarge"]
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+  dns:
+    test_dns.py::test_existing_hosted_zone:
+      dimensions:
+        - regions: ["eu-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+          instances: ["p4d.24xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  iam:
+    test_iam.py::test_s3_read_write_resource:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+  log_rotation:
+    test_log_rotation.py::test_log_rotation:
+      dimensions:
+        - regions: ["il-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
+  monitoring:
+    test_monitoring.py::test_monitoring:
+      dimensions:
+        - regions: ["ap-northeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          schedulers: ["slurm"]
+          oss: {{ common.NOT_RELEASED_OSES }}
+    test_structured_log_events.py::test_custom_compute_action_failure:
+      dimensions:
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+  networking:
+    test_cluster_networking.py::test_existing_eip:
+      dimensions:
+        - regions: ["me-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+    test_multi_cidr.py::test_multi_cidr:
+      dimensions:
+        - regions: ["ap-northeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_security_groups.py::test_overwrite_sg:
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.NOT_RELEASED_OSES }}
+          schedulers: ["slurm"]
   pcluster_api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
       dimensions:
@@ -15,26 +195,151 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
-    test_api.py::test_cluster_awsbatch:
-      dimensions:
-        - regions: ["sa-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
-    # test_api.py::test_custom_image:
-    #   dimensions:
-    #     - regions: ["sa-east-1"]
-    #       instances: {{ common.INSTANCES_DEFAULT_X86 }}
-    #       oss: ["alinux2"]
+#    test_api.py::test_custom_image:
+#      dimensions:
+#        - regions: ["sa-east-1"]
+#          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+#          oss: ["alinux2"]
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
-  custom_resource:
-    test_cluster_custom_resource.py::test_cluster_1_click:
+  scaling:
+    test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+    test_mpi.py::test_mpi_ssh:
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+  schedulers:
+    test_awsbatch.py::test_awsbatch:
+      dimensions:
+        - regions: ["us-gov-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+    test_awsbatch.py::test_awsbatch_defaults:
+      dimensions:
+        - regions: ["ap-northeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+        - regions: ["ap-northeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+    test_slurm.py::test_error_handling:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.NOT_RELEASED_OSES }}
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_protected_mode:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_config_update:
+      dimensions:
+        - regions: [ "ap-east-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.NOT_RELEASED_OSES }}
+          schedulers: [ "slurm" ]
+    test_slurm.py::test_slurm_memory_based_scheduling:
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+  spot:
+    test_spot.py::test_spot_default:
+      dimensions:
+        - regions: ["me-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
+  storage:
+    test_fsx_lustre.py::test_fsx_lustre_dra:
+      dimensions:
+        - regions: [ "eu-north-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: [ "ubuntu2204" ]
+          schedulers: [ "slurm" ]
+    test_fsx_lustre.py::test_file_cache:
+      dimensions:
+        - regions: [ "eu-north-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: [ "ubuntu2204" ]
+          schedulers: [ "slurm" ]
+    test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
         - regions: ["us-east-2"]
-  capacity_reservations:
-    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
-      dimensions:
-        - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_fsx_lustre.py::test_fsx_lustre_backup:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+    test_efs.py::test_multiple_efs:
+      dimensions:
+        - regions: [ "ca-central-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["ubuntu2204"]
+          schedulers: [ "slurm" ]
+    test_ebs.py::test_ebs_single:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+    test_deletion_policy.py::test_retain_on_deletion:
+      dimensions:
+        - regions: ["ap-east-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    # Ephemeral test requires instance type with instance store
+    test_ephemeral.py::test_head_node_stop:
+      dimensions:
+        - regions: ["use1-az4"]
+          instances: ["m5d.xlarge"]  # SSD based instance
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  tags:
+    test_tag_propagation.py::test_tag_propagation:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm", "awsbatch"]
+  update:
+    test_update.py::test_update_slurm:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
