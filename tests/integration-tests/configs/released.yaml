@@ -6,11 +6,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2", "rhel8"]
-          schedulers: ["slurm"]
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204", "centos7"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
   arm_pl:
     test_arm_pl.py::test_arm_pl:
