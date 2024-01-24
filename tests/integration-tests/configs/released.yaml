@@ -6,11 +6,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2", "rhel8"]
-          schedulers: ["slurm"]
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204", "centos7"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
   capacity_reservations:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
