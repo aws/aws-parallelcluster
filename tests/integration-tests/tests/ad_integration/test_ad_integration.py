@@ -133,9 +133,41 @@ def zip_dir(path):
     return file_out
 
 
-def _create_directory_stack(
-    cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack: CfnVpcStack
-):
+def _get_stack_parameters(directory_type, vpc_stack, keypair):
+    private_subnet = vpc_stack.get_private_subnet()
+    private_subnets = vpc_stack.get_all_private_subnets().copy()
+    private_subnets.remove(private_subnet)
+
+    users = ""
+    for i in range(NUM_USERS_TO_CREATE):
+        users += f"PclusterUser{i},"
+
+    stack_parameters = [
+        {
+            "ParameterKey": "DomainName",
+            "ParameterValue": f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster",
+        },
+        {"ParameterKey": "AdminPassword", "ParameterValue": ADMIN_PASSWORD},
+        {
+            "ParameterKey": "ReadOnlyPassword",
+            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
+        },
+        {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
+        {"ParameterKey": "UserPassword", "ParameterValue": USER_PASSWORD},
+        {"ParameterKey": "DirectoryType", "ParameterValue": directory_type},
+        {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+        {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
+        {"ParameterKey": "PrivateSubnetTwo", "ParameterValue": private_subnets[0]},
+        {"ParameterKey": "Keypair", "ParameterValue": keypair},
+        {
+            "ParameterKey": "AdminNodeAmiId",
+            "ParameterValue": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2",
+        },
+    ]
+    return stack_parameters
+
+
+def _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack: CfnVpcStack):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
     )
@@ -148,36 +180,8 @@ def _create_directory_stack(
     logging.info("Creating stack %s", directory_stack_name)
 
     with open(directory_stack_template_path) as directory_stack_template:
-        private_subnet = vpc_stack.get_private_subnet()
-        private_subnets = vpc_stack.get_all_private_subnets().copy()
-        private_subnets.remove(private_subnet)
+        stack_parameters = _get_stack_parameters(directory_type, vpc_stack, request.config.getoption("key_name"))
 
-        users = ""
-        for i in range(NUM_USERS_TO_CREATE):
-            users += f"PclusterUser{i},"
-
-        stack_parameters = [
-            {
-                "ParameterKey": "DomainName",
-                "ParameterValue": f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster",
-            },
-            {"ParameterKey": "AdminPassword", "ParameterValue": ADMIN_PASSWORD},
-            {
-                "ParameterKey": "ReadOnlyPassword",
-                "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
-            },
-            {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
-            {"ParameterKey": "UserPassword", "ParameterValue": USER_PASSWORD},
-            {"ParameterKey": "DirectoryType", "ParameterValue": directory_type},
-            {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
-            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
-            {"ParameterKey": "PrivateSubnetTwo", "ParameterValue": private_subnets[0]},
-            {"ParameterKey": "Keypair", "ParameterValue": request.config.getoption("key_name")},
-            {
-                "ParameterKey": "AdminNodeAmiId",
-                "ParameterValue": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2",
-            },
-        ]
         directory_stack = CfnStack(
             name=directory_stack_name,
             region=region,
