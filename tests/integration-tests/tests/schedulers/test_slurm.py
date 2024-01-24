@@ -75,7 +75,7 @@ def test_slurm(
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     scaledown_idletime = 3
-    gpu_instance_type = "g3.4xlarge"
+    gpu_instance_type = "g4dn.2xlarge"
     gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
@@ -199,7 +199,7 @@ def test_slurm_from_login_nodes_in_private_network(
     """Test Slurm features in login nodes inside a private network."""
 
     scaledown_idletime = 3
-    gpu_instance_type = "g3.4xlarge"
+    gpu_instance_type = "g4dn.2xlarge"
     gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
     compute_node_bootstrap_timeout = 1600
     cluster_config = pcluster_config_reader(
