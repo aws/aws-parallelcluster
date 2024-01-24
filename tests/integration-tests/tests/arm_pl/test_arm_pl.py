@@ -19,7 +19,12 @@ from remote_command_executor import RemoteCommandExecutor
 
 @pytest.mark.usefixtures("region", "instance", "scheduler")
 def test_arm_pl(os, pcluster_config_reader, clusters_factory, test_datadir):
-    """Test Arm Performance Library"""
+    """
+    Test Arm Performance Library and GCC are correctly installed, the version and try to use them.
+
+    Important: This test is not executed because the code has been moved into a Kitchen test for ARM PL chef resource.
+    See: aws-parallelcluster-platform/test/controls/arm_pl_spec.rb
+    """
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
