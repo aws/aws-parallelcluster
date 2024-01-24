@@ -60,4 +60,8 @@ if [ "${CustomCookbookUrl}" != "NONE" ]; then
   vendor_cookbook
 fi
 
-/opt/aws/bin/cfn-init -s ${StackName} -v -c default -r LaunchTemplate --region ${Region}
+# This is necessary to find the cfn-init application
+export PATH=/opt/aws/bin:${!PATH}
+[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
+
+cfn-init -s ${StackName} -v -c default -r LaunchTemplate --region ${Region}
