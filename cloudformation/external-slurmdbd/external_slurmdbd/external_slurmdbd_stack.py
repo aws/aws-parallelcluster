@@ -87,19 +87,19 @@ class ExternalSlurmdbdStack(Stack):
         self._launch_template = self._add_external_slurmdbd_launch_template()
 
         # define EC2 Auto Scaling Group (ASG)
-        # self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
+        self._external_slurmdbd_asg = self._add_external_slurmdbd_auto_scaling_group()
 
         # define Primary Slurmdbd Instance (not via ASG)
-        self._primary_slurmdbd_instance = self._add_slurmdbd_primary_instance()
+        # self._primary_slurmdbd_instance = self._add_slurmdbd_primary_instance()
 
         # define external slurmdbd hosted zone
-        self._hosted_zone = self._add_hosted_zone()
+        # self._hosted_zone = self._add_hosted_zone()
 
         # Add DNS record to hosted zone
-        self._add_instance_to_dns(
-            ip_addr=self._primary_slurmdbd_instance.attr_private_ip,
-            name="slurmdbd",
-        )
+        # self._add_instance_to_dns(
+        #     ip_addr=self._primary_slurmdbd_instance.attr_private_ip,
+        #     name="slurmdbd",
+        # )
 
     def _add_cfn_init_config(self):
         dna_json_content = {
