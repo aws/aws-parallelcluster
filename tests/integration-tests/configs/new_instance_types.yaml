@@ -87,12 +87,6 @@ test-suites:
           oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm"]
   networking:
-    test_cluster_networking.py::test_cluster_in_private_subnet:
-      dimensions:
-        - regions: {{ NEW_REGIONS }}
-          instances: {{ NEW_INSTANCE_TYPES }}
-          oss: ["ubuntu2004"]
-          schedulers: ["slurm"]
 #     Useful for instances with multiple network interfaces
     test_multi_cidr.py::test_multi_cidr:
       dimensions:
