@@ -23,13 +23,15 @@ from utils import CWMetric, get_compute_nodes_instance_count, publish_metrics_to
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
 
 
-def scaling_target_condition(
+def retry_if_scaling_target_not_reached(
     ec2_capacity_time_series,
     compute_nodes_time_series,
     target_cluster_size,
     use_ec2_limit=True,  # Stop monitoring after all EC2 instances have been launched
     use_compute_nodes_limit=True,  # Stop monitoring after all nodes have joined the cluster
 ):
+    # Return True if we should retry, which is when the target cluster size
+    # (either EC2 or scheduler compute nodes) is not reached yet
     return (
         (use_ec2_limit and ec2_capacity_time_series[-1] != target_cluster_size)
         or (use_compute_nodes_limit and compute_nodes_time_series[-1] != target_cluster_size)
@@ -53,10 +55,10 @@ def get_scaling_metrics(
 
     @retry(
         # Retry until EC2 and Scheduler capacities scale to specified target
-        retry_on_result=lambda _: scaling_target_condition(
-            ec2_capacity_time_series, compute_nodes_time_series, target_cluster_size, use_compute_nodes_limit=False
+        retry_on_result=lambda _: retry_if_scaling_target_not_reached(
+            ec2_capacity_time_series, compute_nodes_time_series, target_cluster_size
         ),
-        wait_fixed=seconds(10),
+        wait_fixed=seconds(1),
         stop_max_delay=max_monitoring_time,
     )
     def _collect_metrics():
@@ -68,11 +70,11 @@ def get_scaling_metrics(
         )
         logging.info(f"Metrics from HeadNode: {headnode_metrics}")
         compute_node_count = int(headnode_metrics.get("NodeCount"))
-        pending_jobs_count = int(headnode_metrics.get("PendingJobsCount"))
-        running_jobs_count = int(headnode_metrics.get("RunningJobsCount"))
         ec2_capacity = get_compute_nodes_instance_count(cluster_name, region)
         if publish_metrics:
             # Use the cluster name as a dimension for each scaling metric
+            pending_jobs_count = int(headnode_metrics.get("PendingJobsCount"))
+            running_jobs_count = int(headnode_metrics.get("RunningJobsCount"))
             scaling_metrics = [
                 CWMetric(name="ComputeNodesCount", value=compute_node_count, unit="Count"),
                 CWMetric(name="EC2NodesCount", value=ec2_capacity, unit="Count"),
@@ -141,7 +143,9 @@ def get_compute_nodes_allocation(
     @retry(
         # Retry until EC2 and Scheduler capacities scale down to 0
         # Also make sure cluster scaled up before scaling down
-        retry_on_result=lambda _: scaling_target_condition(ec2_capacity_time_series, compute_nodes_time_series, 0),
+        retry_on_result=lambda _: retry_if_scaling_target_not_reached(
+            ec2_capacity_time_series, compute_nodes_time_series, 0
+        ),
         wait_fixed=seconds(20),
         stop_max_delay=max_monitoring_time,
     )

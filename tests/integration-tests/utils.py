@@ -842,7 +842,7 @@ def is_directory_supported(region: str, directory_type: str):
 
 
 def set_protected_failure_count(remote_command_executor, protected_failure_count):
-    """Disable protected mode by setting protected_failure_count to -1."""
+    """Set value for protected_failure_count into clustermgtd configuration"""
     clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
     remote_command_executor.run_remote_command(
         f"sudo sed -i '/^protected_failure_count /d' {clustermgtd_conf_path}; "
@@ -862,4 +862,5 @@ def retrieve_clustermgtd_conf_path(remote_command_executor):
 
 
 def disable_protected_mode(remote_command_executor):
+    """Disable protected mode by setting protected_failure_count to -1."""
     set_protected_failure_count(remote_command_executor, -1)
