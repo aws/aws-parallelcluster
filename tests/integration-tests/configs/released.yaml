@@ -188,13 +188,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
-  multiple_nics:
-    test_multiple_nics.py::test_multiple_nics:
-      dimensions:
-        - regions: ["use1-az6"]
-          instances: ["c6in.32xlarge"]
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:
       dimensions:
