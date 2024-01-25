@@ -19,6 +19,7 @@ import boto3
 import yaml
 from framework.credential_providers import run_pcluster_command
 from retrying import retry
+from time_utils import minutes, seconds
 from utils import (
     ClusterCreationError,
     dict_add_nested_key,
@@ -154,7 +155,7 @@ class Cluster:
                 raise
         self.has_been_deleted = True
 
-    def start(self):
+    def start(self, wait_running=False):
         """Run pcluster start and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
@@ -165,6 +166,12 @@ class Cluster:
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} started successfully".format(self.name))
+            if wait_running:
+                retry(
+                    wait_fixed=seconds(10),
+                    stop_max_delay=minutes(5),
+                    retry_on_result=lambda describe_result: "RUNNING" != describe_result["status"],
+                )(self.describe_compute_fleet)()
             return result.stdout
         except subprocess.CalledProcessError as e:
             logging.error("Failed starting cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
