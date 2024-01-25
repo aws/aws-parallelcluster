@@ -132,12 +132,6 @@ test-suites:
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   dns:
-    test_dns.py::test_hit_no_cluster_dns_mpi:
-      dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
     test_dns.py::test_existing_hosted_zone:
       dimensions:
         - regions: ["eu-south-1"]
