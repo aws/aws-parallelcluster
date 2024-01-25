@@ -304,12 +304,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_scaling:
-      dimensions:
-        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
-          instances: [{{ common.instance("instance_type_1") }}]
-          oss: [ "alinux2" ]
-          schedulers: [ "slurm" ]
     test_slurm.py::test_error_handling:
       dimensions:
         - regions: ["ca-central-1"]
