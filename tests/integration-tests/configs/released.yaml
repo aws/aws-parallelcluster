@@ -360,35 +360,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-    # EFS tests can be done in any region.
-    test_efs.py::test_efs_compute_az:
-      dimensions:
-        - regions: ["ca-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-    test_efs.py::test_efs_same_az:
-      dimensions:
-        - regions: [ "ca-central-1" ]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
-          schedulers: [ "slurm" ]
-    # The checks performed in test_efs_same_az is similar to test_multiple_efs.
-    # We should consider this when assigning dimensions to each test.
     test_efs.py::test_multiple_efs:
       dimensions:
-        - regions: ["cn-northwest-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
         - regions: [ "ca-central-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
-        - regions: ["us-gov-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
     test_raid.py::test_raid_fault_tolerance_mode:
       dimensions:
         - regions: ["cn-northwest-1"]
