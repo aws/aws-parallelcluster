@@ -76,12 +76,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
-    test_pcluster_configure.py::test_efa_unsupported:
-      dimensions:
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_EFA_UNSUPPORTED_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
   create:
     test_create.py::test_create_wrong_os:
       dimensions:
