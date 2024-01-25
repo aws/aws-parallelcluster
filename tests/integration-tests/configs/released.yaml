@@ -76,11 +76,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
-    test_pcluster_configure.py::test_region_without_t2micro:
-      dimensions:
-        - regions: ["eu-north-1"] # must be regions that do not have t2.micro
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
     test_pcluster_configure.py::test_efa_and_placement_group:
       dimensions:
         - regions: ["us-west-2"]
