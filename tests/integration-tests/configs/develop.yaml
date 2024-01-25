@@ -265,7 +265,7 @@ test-suites:
       dimensions:
         - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm"]
     test_dns.py::test_existing_hosted_zone:
       dimensions:
