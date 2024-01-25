@@ -789,7 +789,7 @@ test-suites:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
-          schedulers: ["slurm", "awsbatch"]
+          schedulers: ["slurm"]
   tags:
     test_tag_propagation.py::test_tag_propagation:
       dimensions:

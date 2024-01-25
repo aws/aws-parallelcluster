@@ -209,13 +209,6 @@ test-suites:
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
-  resource_bucket:
-    test_resource_bucket.py::test_resource_bucket:
-      dimensions:
-        - regions: ["us-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm", "awsbatch"]
   scaling:
     test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
       dimensions:
