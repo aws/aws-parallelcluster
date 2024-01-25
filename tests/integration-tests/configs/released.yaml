@@ -181,12 +181,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
-    test_dcv.py::test_dcv_with_remote_access:
-      dimensions:
-        - regions: ["ap-southeast-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
   disable_hyperthreading:
     test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
       dimensions:
