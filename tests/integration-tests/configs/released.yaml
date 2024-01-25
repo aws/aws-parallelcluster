@@ -181,13 +181,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-  intel_hpc:
-    test_intel_hpc.py::test_intel_hpc:
-      dimensions:
-        - regions: ["us-east-2"]
-          instances: ["c5.18xlarge"]
-          oss: ["centos7"]
-          schedulers: ["slurm"]
   log_rotation:
     test_log_rotation.py::test_log_rotation:
       dimensions:
