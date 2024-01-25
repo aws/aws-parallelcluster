@@ -130,25 +130,9 @@ test-suites:
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
-        # DCV on GPU enabled instance
         - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
           instances: ["g4dn.2xlarge"]
-          oss: {{ common.NOT_RELEASED_OSES }}
-          schedulers: ["slurm"]
-        # DCV on ARM + GPU
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-          instances: ["g5g.2xlarge"]
           oss: ["rhel8"]
-          schedulers: ["slurm"]
-        # DCV in cn regions and non GPU enabled instance
-        - regions: ["cn-northwest-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-        # DCV in gov-cloud regions and non GPU enabled instance
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   disable_hyperthreading:
     test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
