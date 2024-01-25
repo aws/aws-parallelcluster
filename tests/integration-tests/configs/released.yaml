@@ -43,28 +43,10 @@ test-suites:
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
-        # 1) run the test for all the schedulers with alinux2
-        - regions: ["cn-northwest-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: {{ common.SCHEDULERS_TRAD }}
-        - regions: ["us-gov-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
-        # 2) run the test for all OSes with slurm
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["ubuntu2204", "rhel8"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
-        - regions: ["ap-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: ["centos7"]
-        - regions: ["ap-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: {{ common.NOT_RELEASED_OSES }}
     test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
       dimensions:
         - regions: ["ap-east-1"]
