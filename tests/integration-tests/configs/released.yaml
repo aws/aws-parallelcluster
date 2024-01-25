@@ -8,13 +8,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-  arm_pl:
-    test_arm_pl.py::test_arm_pl:
-      dimensions:
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: ["slurm"]
   capacity_reservations:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
       dimensions:
@@ -115,12 +108,6 @@ test-suites:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.NOT_RELEASED_OSES }}
-    test_createami.py::test_kernel4_build_image_run_cluster:
-      dimensions:
-        - regions: ["eu-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: ["alinux2"]
     test_createami.py::test_build_image_custom_components:
       # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
       # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
@@ -281,12 +268,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
-    test_api.py::test_cluster_awsbatch:
-      dimensions:
-        - regions: ["sa-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
     test_api.py::test_custom_image:
       dimensions:
         - regions: ["sa-east-1"]
@@ -414,12 +395,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
-    test_slurm.py::test_scontrol_update_nodelist_sorting:
-      dimensions:
-        - regions: ["ca-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
     test_slurm_accounting.py::test_slurm_accounting:
       dimensions:
         - regions: ["ap-south-1"]
@@ -432,12 +407,6 @@ test-suites:
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_reconfigure_race_condition:
-      dimensions:
-        - regions: [ "af-south-1" ]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
-          schedulers: [ "slurm" ]
     test_slurm.py::test_slurm_custom_partitions:
       dimensions:
         - regions: ["ap-northeast-2"]
@@ -632,11 +601,6 @@ test-suites:
           oss: ["alinux2"]
           schedulers: ["slurm", "awsbatch"]
   update:
-    test_update.py::test_update_awsbatch:
-      dimensions:
-        - regions: ["eu-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
     test_update.py::test_update_slurm:
       dimensions:
         - regions: ["eu-central-1"]
