@@ -13,7 +13,7 @@
 
 set -ex
 
-NODE_COUNT=$(sudo -i sinfo --Node --noheader --responding -o '%t' | grep -v '[*#~%]' | awk '{print $1}' | wc -l)
+NODE_COUNT=$(sudo -i sinfo --Node --noheader --responding -o '%t' | grep -v '[*#~%]' | wc -l)
 PENDING_JOBS_COUNT=$(squeue -h -t configuring,pending | wc -l)
 RUNNING_JOBS_COUNT=$(squeue -h -t running | wc -l)
 

@@ -20,7 +20,7 @@ Scheduling:
         - Name: compute-resource-0
           Instances:
             - InstanceType: {{ instance }}
-          MaxCount: {{ scaling_target }}
+          MaxCount: {{ max_cluster_size }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
