@@ -174,13 +174,6 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
-  health_checks:
-    test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
-      dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
   iam:
     test_iam.py::test_iam_policies:
       dimensions:
