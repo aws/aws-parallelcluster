@@ -366,33 +366,11 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
-    test_ebs.py::test_ebs_multiple:
+    test_ebs.py::test_ebs_single:
       dimensions:
         - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
-    test_ebs.py::test_ebs_single:
-      dimensions:
-        - regions: ["us-gov-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-    test_ebs.py::test_ebs_snapshot:
-      dimensions:
-        - regions: [ "us-east-2" ]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
-          schedulers: [ "slurm" ]
-        - regions: ["cn-northwest-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
-    test_ebs.py::test_ebs_existing:
-      dimensions:
-        - regions: ["us-east-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
           schedulers: ["slurm"]
     test_deletion_policy.py::test_retain_on_deletion:
       dimensions:
