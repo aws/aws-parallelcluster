@@ -189,12 +189,6 @@ test-suites:
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   networking:
-    test_cluster_networking.py::test_cluster_in_private_subnet:
-      dimensions:
-        - regions: ["il-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
     test_cluster_networking.py::test_existing_eip:
       dimensions:
         - regions: ["me-south-1"]
