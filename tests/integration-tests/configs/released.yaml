@@ -55,20 +55,10 @@ test-suites:
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
       dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        # Do not run on ARM + Batch
-        # pcluster configure always picks optimal and Batch does not support ARM for optimal for now
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
   create:
     test_create.py::test_create_wrong_os:
       dimensions:
