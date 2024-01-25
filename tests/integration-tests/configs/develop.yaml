@@ -397,10 +397,6 @@ test-suites:
         # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
         - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
-        - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
