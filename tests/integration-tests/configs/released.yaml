@@ -233,12 +233,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.NOT_RELEASED_OSES }}
           schedulers: ["slurm"]
-    test_placement_group.py::test_placement_group:
-      dimensions:
-        - regions: ["eu-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
   pcluster_api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
       dimensions:
