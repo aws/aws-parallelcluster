@@ -157,22 +157,10 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["sa-east-1"]
-          instances: ["c5n.9xlarge"]
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
         - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-          instances: ["c6gn.16xlarge"]
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
-        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
-          instances: [{{ common.instance("instance_type_1") }}]
-          oss: ["centos7"]
-          schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
