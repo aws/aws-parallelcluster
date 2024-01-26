@@ -193,8 +193,13 @@ def test_kernel4_build_image_run_cluster(
     Test build image for given region and os and run a job in a new cluster created from the new images.
 
     Also check that the build instance has the desired ImdsSupport setting (IMDSv2, v1.0 is optional).
-    """
 
+    Note: This test has been introduced to verify the build-image with Amazon Linux based on kernel 4,
+    because the base AMI for Amazon Linux were based on kernel 5.10.
+
+    At the moment this test is no longer relevant,
+    kernel 5.10 in Amazon Linux 2 has been introduced on Nov 2021 and kernel 4.14 is now EOL.
+    """
     # Get base AMI from kernel4
     base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
 

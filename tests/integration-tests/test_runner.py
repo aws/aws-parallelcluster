@@ -753,6 +753,14 @@ def _check_args(args):
             raise argparse.ArgumentTypeError("'{0}' is not a valid test config".format(args.tests_config))
 
 
+def unset_proxy():
+    """Unset proxies"""
+    os.environ.pop("HTTP_PROXY", None)
+    os.environ.pop("HTTPS_PROXY", None)
+    os.environ.pop("http_proxy", None)
+    os.environ.pop("https_proxy", None)
+
+
 def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
@@ -778,6 +786,9 @@ def main():
 
     _check_args(args)
     logger.info("Parsed test_runner parameters {0}".format(args))
+
+    # Unset any proxies used to avoid network issues with tests, such as DCV
+    unset_proxy()
 
     _make_logging_dirs(args.output_dir)
 
