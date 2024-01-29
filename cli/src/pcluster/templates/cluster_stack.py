@@ -519,9 +519,11 @@ class ClusterCdkStack:
             function_id="CleanupResources",
             bucket=self.bucket,
             config=self.config,
-            execution_role=cleanup_resources_lambda_role.attr_arn
-            if cleanup_resources_lambda_role
-            else self.config.iam.roles.lambda_functions_role,
+            execution_role=(
+                cleanup_resources_lambda_role.attr_arn
+                if cleanup_resources_lambda_role
+                else self.config.iam.roles.lambda_functions_role
+            ),
             handler_func="cleanup_resources",
         ).lambda_func
 
@@ -813,12 +815,12 @@ class ClusterCdkStack:
                 )
 
                 if sg_type == "Storage":
-                    ingress_rule.cfn_options.deletion_policy = (
-                        ingress_rule.cfn_options.update_replace_policy
-                    ) = storage_deletion_policy
-                    egress_rule.cfn_options.deletion_policy = (
-                        egress_rule.cfn_options.update_replace_policy
-                    ) = storage_deletion_policy
+                    ingress_rule.cfn_options.deletion_policy = ingress_rule.cfn_options.update_replace_policy = (
+                        storage_deletion_policy
+                    )
+                    egress_rule.cfn_options.deletion_policy = egress_rule.cfn_options.update_replace_policy = (
+                        storage_deletion_policy
+                    )
 
         return storage_security_group
 
@@ -985,9 +987,9 @@ class ClusterCdkStack:
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
-            fsx_resource.cfn_options.deletion_policy = (
-                fsx_resource.cfn_options.update_replace_policy
-            ) = convert_deletion_policy(shared_fsx.deletion_policy)
+            fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
+                convert_deletion_policy(shared_fsx.deletion_policy)
+            )
 
             fsx_id = fsx_resource.ref
 
@@ -1205,9 +1207,9 @@ class ClusterCdkStack:
                         get_user_data_content("../resources/head_node/user_data.sh"),
                         {
                             **{
-                                "DisableMultiThreadingManually": "true"
-                                if head_node.disable_simultaneous_multithreading_manually
-                                else "false",
+                                "DisableMultiThreadingManually": (
+                                    "true" if head_node.disable_simultaneous_multithreading_manually else "false"
+                                ),
                                 "CloudFormationUrl": cloudformation_url,
                             },
                             **get_common_user_data_env(head_node, self.config),
@@ -1267,17 +1269,19 @@ class ClusterCdkStack:
                     "fsx_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.FSX]),
                     "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
-                    "ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
-                    if head_node.local_storage.ephemeral_volume
-                    else DEFAULT_EPHEMERAL_DIR,
+                    "ephemeral_dir": (
+                        head_node.local_storage.ephemeral_volume.mount_dir
+                        if head_node.local_storage.ephemeral_volume
+                        else DEFAULT_EPHEMERAL_DIR
+                    ),
                     "ebs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
                     "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
-                    "log_group_name": self.log_group.log_group_name
-                    if self.config.monitoring.logs.cloud_watch.enabled
-                    else "NONE",
+                    "log_group_name": (
+                        self.log_group.log_group_name if self.config.monitoring.logs.cloud_watch.enabled else "NONE"
+                    ),
                     "dcv_enabled": "head_node" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
