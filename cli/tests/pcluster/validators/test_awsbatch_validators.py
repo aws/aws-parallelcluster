@@ -143,9 +143,11 @@ def test_get_supported_batch_instance_types(mocker, raise_error_parsing_function
     # Mock all functions called by the function
     parsing_function_patch = mocker.patch(
         "pcluster.aws.batch.BatchClient.get_supported_instance_types_and_families",
-        side_effect=BatchErrorMessageParsingException
-        if raise_error_parsing_function
-        else lambda: dummy_batch_instance_types + dummy_batch_instance_families,
+        side_effect=(
+            BatchErrorMessageParsingException
+            if raise_error_parsing_function
+            else lambda: dummy_batch_instance_types + dummy_batch_instance_families
+        ),
     )
     supported_instance_types_patch = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=dummy_all_instance_types

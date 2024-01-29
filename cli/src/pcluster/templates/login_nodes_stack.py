@@ -131,12 +131,12 @@ class Pool(Construct):
                             **{
                                 "BaseOS": self._config.image.os,
                                 "ClusterName": self.stack_name,
-                                "ClusterDNSDomain": str(self._cluster_hosted_zone.name)
-                                if self._cluster_hosted_zone
-                                else "",
-                                "ClusterHostedZone": str(self._cluster_hosted_zone.ref)
-                                if self._cluster_hosted_zone
-                                else "",
+                                "ClusterDNSDomain": (
+                                    str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else ""
+                                ),
+                                "ClusterHostedZone": (
+                                    str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""
+                                ),
                                 "CustomNodePackage": self._config.custom_node_package or "",
                                 "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
@@ -207,9 +207,9 @@ class Pool(Construct):
                                 "LaunchingLifecycleHookName": (
                                     f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook"
                                 ),
-                                "DisableSudoAccessForDefault": "true"
-                                if self._config.disable_sudo_access_default_user
-                                else "false",
+                                "DisableSudoAccessForDefault": (
+                                    "true" if self._config.disable_sudo_access_default_user else "false"
+                                ),
                             },
                             **get_common_user_data_env(self._pool, self._config),
                         },

@@ -54,9 +54,9 @@ def test_list_load_balancers(boto3_stubber, generate_error):
         MockedBoto3Request(
             method="describe_load_balancers",
             expected_params={"Marker": dummy_next_marker},
-            response=dummy_message
-            if generate_error
-            else {"LoadBalancers": [dummy_load_balancer_2], "ResponseMetadata": {}},
+            response=(
+                dummy_message if generate_error else {"LoadBalancers": [dummy_load_balancer_2], "ResponseMetadata": {}}
+            ),
             generate_error=generate_error,
         ),
     ]
@@ -98,9 +98,9 @@ def test_describe_tags(boto3_stubber, generate_error):
         MockedBoto3Request(
             method="describe_tags",
             expected_params={"ResourceArns": dummy_load_balancer_arns},
-            response=dummy_message
-            if generate_error
-            else {"TagDescriptions": dummy_tags_description, "ResponseMetadata": {}},
+            response=(
+                dummy_message if generate_error else {"TagDescriptions": dummy_tags_description, "ResponseMetadata": {}}
+            ),
             generate_error=generate_error,
         )
     ]
@@ -177,9 +177,11 @@ def test_describe_target_health(boto3_stubber, generate_error):
         MockedBoto3Request(
             method="describe_target_health",
             expected_params={"TargetGroupArn": "dummy_target_arn"},
-            response=dummy_message
-            if generate_error
-            else {"TargetHealthDescriptions": dummy_targets_health, "ResponseMetadata": {}},
+            response=(
+                dummy_message
+                if generate_error
+                else {"TargetHealthDescriptions": dummy_targets_health, "ResponseMetadata": {}}
+            ),
             generate_error=generate_error,
         )
     ]

@@ -31,9 +31,9 @@ def test_kms_key_validator(mocker, kms_key_id, expected_message):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.kms.KmsClient.describe_key",
-        side_effect=AWSClientError(function_name="describe_key", message=expected_message)
-        if expected_message
-        else None,
+        side_effect=(
+            AWSClientError(function_name="describe_key", message=expected_message) if expected_message else None
+        ),
     )
 
     actual_failures = KmsKeyValidator().execute(kms_key_id)
