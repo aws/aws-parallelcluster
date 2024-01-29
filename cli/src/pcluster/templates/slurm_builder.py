@@ -283,9 +283,11 @@ class SlurmConstruct(Construct):
             function_id="CleanupRoute53",
             bucket=self.bucket,
             config=self.config,
-            execution_role=cleanup_route53_lambda_execution_role.attr_arn
-            if cleanup_route53_lambda_execution_role
-            else self.config.iam.roles.lambda_functions_role,
+            execution_role=(
+                cleanup_route53_lambda_execution_role.attr_arn
+                if cleanup_route53_lambda_execution_role
+                else self.config.iam.roles.lambda_functions_role
+            ),
             handler_func="cleanup_resources",
         ).lambda_func
 

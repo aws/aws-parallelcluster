@@ -1789,9 +1789,11 @@ class BaseClusterConfig(Resource):
         mount_dir_instance_types_dict = defaultdict(set)
         if self.head_node.instance_type_info.instance_storage_supported():
             mount_dir_instance_types_dict[
-                self.head_node.local_storage.ephemeral_volume.mount_dir
-                if self.head_node.local_storage.ephemeral_volume
-                else DEFAULT_EPHEMERAL_DIR
+                (
+                    self.head_node.local_storage.ephemeral_volume.mount_dir
+                    if self.head_node.local_storage.ephemeral_volume
+                    else DEFAULT_EPHEMERAL_DIR
+                )
             ].add(self.head_node.instance_type)
 
         scheduling = self.scheduling
@@ -1800,9 +1802,11 @@ class BaseClusterConfig(Resource):
                 instance_types_with_instance_storage = queue.instance_types_with_instance_storage
                 if instance_types_with_instance_storage:
                     mount_dir_instance_types_dict[
-                        queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                        if queue.compute_settings.local_storage.ephemeral_volume
-                        else DEFAULT_EPHEMERAL_DIR
+                        (
+                            queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                            if queue.compute_settings.local_storage.ephemeral_volume
+                            else DEFAULT_EPHEMERAL_DIR
+                        )
                     ].update(instance_types_with_instance_storage)
 
         return mount_dir_instance_types_dict

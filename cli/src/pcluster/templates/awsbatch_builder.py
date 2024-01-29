@@ -542,9 +542,9 @@ class AwsBatchConstruct(Construct):
             "PclusterCodeBuildDockerImageBuilderProj",
             artifacts=codebuild.CfnProject.ArtifactsProperty(type="NO_ARTIFACTS"),
             environment=codebuild.CfnProject.EnvironmentProperty(
-                compute_type="BUILD_GENERAL1_LARGE"
-                if self._condition_use_arm_code_build_image()
-                else "BUILD_GENERAL1_SMALL",
+                compute_type=(
+                    "BUILD_GENERAL1_LARGE" if self._condition_use_arm_code_build_image() else "BUILD_GENERAL1_SMALL"
+                ),
                 environment_variables=[
                     codebuild.CfnProject.EnvironmentVariableProperty(
                         name="AWS_REGION",
@@ -567,9 +567,11 @@ class AwsBatchConstruct(Construct):
                         value=self._docker_build_wait_condition_handle.ref,
                     ),
                 ],
-                image="aws/codebuild/amazonlinux2-aarch64-standard:2.0"
-                if self._condition_use_arm_code_build_image()
-                else "aws/codebuild/amazonlinux2-x86_64-standard:4.0",
+                image=(
+                    "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
+                    if self._condition_use_arm_code_build_image()
+                    else "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
+                ),
                 type="ARM_CONTAINER" if self._condition_use_arm_code_build_image() else "LINUX_CONTAINER",
                 privileged_mode=True,
             ),
@@ -625,9 +627,11 @@ class AwsBatchConstruct(Construct):
             function_id="ManageDockerImages",
             bucket=self.bucket,
             config=self.config,
-            execution_role=manage_docker_images_lambda_execution_role.attr_arn
-            if manage_docker_images_lambda_execution_role
-            else self.config.iam.roles.lambda_functions_role,
+            execution_role=(
+                manage_docker_images_lambda_execution_role.attr_arn
+                if manage_docker_images_lambda_execution_role
+                else self.config.iam.roles.lambda_functions_role
+            ),
             handler_func="manage_docker_images",
             timeout=60,
         ).lambda_func
@@ -690,9 +694,11 @@ class AwsBatchConstruct(Construct):
             function_id="BuildNotification",
             bucket=self.bucket,
             config=self.config,
-            execution_role=build_notification_lambda_execution_role.attr_arn
-            if build_notification_lambda_execution_role
-            else self.config.iam.roles.lambda_functions_role,
+            execution_role=(
+                build_notification_lambda_execution_role.attr_arn
+                if build_notification_lambda_execution_role
+                else self.config.iam.roles.lambda_functions_role
+            ),
             handler_func="send_build_notification",
             timeout=60,
         ).lambda_func
