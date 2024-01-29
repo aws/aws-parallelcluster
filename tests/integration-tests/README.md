@@ -211,13 +211,6 @@ Here is an example of a tests suite definition file:
 {%- import 'common.jinja2' as common -%}
 ---
 test-suites:
-  cfn-init:
-    test_cfn_init.py::test_replace_compute_on_failure:
-      dimensions:
-        - regions: ["eu-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_ONE_PER_DISTRO }}
-          schedulers: ["slurm", "awsbatch"]
   cli_commands:
     test_cli_commands.py::test_hit_cli_commands:
       dimensions:
