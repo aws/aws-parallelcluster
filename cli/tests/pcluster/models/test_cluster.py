@@ -242,9 +242,11 @@ class TestCluster:
                 "stack_name": FAKE_NAME,
                 "template_url": template_url,
             },
-            side_effect=AWSClientError(function_name="update_stack_from_url", message=error_message)
-            if error_message is not None
-            else None,
+            side_effect=(
+                AWSClientError(function_name="update_stack_from_url", message=error_message)
+                if error_message is not None
+                else None
+            ),
         )
 
         # mock bucket initialize

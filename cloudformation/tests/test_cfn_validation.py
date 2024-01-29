@@ -1,4 +1,5 @@
 """Test that all of the templates are in a valid format."""
+
 import json
 import os
 

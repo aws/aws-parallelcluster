@@ -204,11 +204,13 @@ class ImageBuilderCdkStack(Stack):
             self,
             "CfnParamUpdateOsAndReboot",
             type="String",
-            default="true"
-            if self.config.build
-            and self.config.build.update_os_packages
-            and self.config.build.update_os_packages.enabled
-            else "false",
+            default=(
+                "true"
+                if self.config.build
+                and self.config.build.update_os_packages
+                and self.config.build.update_os_packages.enabled
+                else "false"
+            ),
             description="UpdateOsAndReboot",
         )
 
@@ -324,13 +326,13 @@ class ImageBuilderCdkStack(Stack):
             "Name": (self.config.image.name if self.config.image and self.config.image.name else self.image_id)
             + AMI_NAME_REQUIRED_SUBSTRING,
             "AmiTags": ami_tags,
-            "LaunchPermissionConfiguration": json.loads(
-                self.config.dev_settings.distribution_configuration.launch_permission
-            )
-            if self.config.dev_settings
-            and self.config.dev_settings.distribution_configuration
-            and self.config.dev_settings.distribution_configuration.launch_permission
-            else None,
+            "LaunchPermissionConfiguration": (
+                json.loads(self.config.dev_settings.distribution_configuration.launch_permission)
+                if self.config.dev_settings
+                and self.config.dev_settings.distribution_configuration
+                and self.config.dev_settings.distribution_configuration.launch_permission
+                else None
+            ),
         }
         distributions = []
         for region in self._get_distribution_regions():
@@ -588,9 +590,11 @@ class ImageBuilderCdkStack(Stack):
             tags=build_tags,
             resource_tags=build_tags,
             instance_profile_name=instance_profile_name or Fn.ref("InstanceProfile"),
-            terminate_instance_on_failure=self.config.dev_settings.terminate_instance_on_failure
-            if self.config.dev_settings and self.config.dev_settings.terminate_instance_on_failure is not None
-            else True,
+            terminate_instance_on_failure=(
+                self.config.dev_settings.terminate_instance_on_failure
+                if self.config.dev_settings and self.config.dev_settings.terminate_instance_on_failure is not None
+                else True
+            ),
             instance_types=[self.config.build.instance_type],
             security_group_ids=self.config.build.security_group_ids,
             subnet_id=self.config.build.subnet_id,
@@ -796,12 +800,14 @@ class ImageBuilderCdkStack(Stack):
             timeout=900,
             environment=lambda_env,
             tags=build_tags,
-            vpc_config=awslambda.CfnFunction.VpcConfigProperty(
-                security_group_ids=self.config.lambda_functions_vpc_config.security_group_ids,
-                subnet_ids=self.config.lambda_functions_vpc_config.subnet_ids,
-            )
-            if self.config.lambda_functions_vpc_config
-            else None,
+            vpc_config=(
+                awslambda.CfnFunction.VpcConfigProperty(
+                    security_group_ids=self.config.lambda_functions_vpc_config.security_group_ids,
+                    subnet_ids=self.config.lambda_functions_vpc_config.subnet_ids,
+                )
+                if self.config.lambda_functions_vpc_config
+                else None
+            ),
         )
         permission = awslambda.CfnPermission(
             self,

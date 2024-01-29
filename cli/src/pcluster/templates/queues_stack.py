@@ -152,9 +152,9 @@ class QueuesStack(NestedStack):
                 associate_public_ip_address=queue.networking.assign_public_ip,
                 interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                 groups=queue_lt_security_groups,
-                subnet_id=queue.networking.subnet_ids[0]
-                if isinstance(compute_resource, SlurmComputeResource)
-                else None,
+                subnet_id=(
+                    queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                ),
             )
         ]
 
@@ -166,9 +166,9 @@ class QueuesStack(NestedStack):
                     associate_public_ip_address=False,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                     groups=queue_lt_security_groups,
-                    subnet_id=queue.networking.subnet_ids[0]
-                    if isinstance(compute_resource, SlurmComputeResource)
-                    else None,
+                    subnet_id=(
+                        queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                    ),
                 )
             )
 
@@ -217,9 +217,9 @@ class QueuesStack(NestedStack):
                                 "RAIDType": to_comma_separated_string(
                                     self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
                                 ),
-                                "DisableMultiThreadingManually": "true"
-                                if compute_resource.disable_simultaneous_multithreading_manually
-                                else "false",
+                                "DisableMultiThreadingManually": (
+                                    "true" if compute_resource.disable_simultaneous_multithreading_manually else "false"
+                                ),
                                 "BaseOS": self._config.image.os,
                                 "SharedStorageType": self._config.head_node.shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
                                 "EFSIds": get_shared_storage_ids_by_type(
@@ -255,33 +255,37 @@ class QueuesStack(NestedStack):
                                     self._shared_storage_mount_dirs[SharedStorageType.FSX]
                                 ),
                                 "Scheduler": self._config.scheduling.scheduler,
-                                "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                                if isinstance(queue, SlurmQueue)
-                                and queue.compute_settings.local_storage.ephemeral_volume
-                                else DEFAULT_EPHEMERAL_DIR,
+                                "EphemeralDir": (
+                                    queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                                    if isinstance(queue, SlurmQueue)
+                                    and queue.compute_settings.local_storage.ephemeral_volume
+                                    else DEFAULT_EPHEMERAL_DIR
+                                ),
                                 "EbsSharedDirs": to_comma_separated_string(
                                     self._shared_storage_mount_dirs[SharedStorageType.EBS]
                                 ),
-                                "ClusterDNSDomain": str(self._cluster_hosted_zone.name)
-                                if self._cluster_hosted_zone
-                                else "",
-                                "ClusterHostedZone": str(self._cluster_hosted_zone.ref)
-                                if self._cluster_hosted_zone
-                                else "",
+                                "ClusterDNSDomain": (
+                                    str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else ""
+                                ),
+                                "ClusterHostedZone": (
+                                    str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""
+                                ),
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
                                 "ClusterName": self.stack_name,
                                 "SlurmDynamoDBTable": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
-                                "LogGroupName": self._log_group.log_group_name
-                                if self._config.monitoring.logs.cloud_watch.enabled
-                                else "NONE",
+                                "LogGroupName": (
+                                    self._log_group.log_group_name
+                                    if self._config.monitoring.logs.cloud_watch.enabled
+                                    else "NONE"
+                                ),
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
                                 "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
                                 "QueueName": queue.name,
                                 "ComputeResourceName": compute_resource.name,
-                                "EnableEfaGdr": "compute"
-                                if compute_resource.efa and compute_resource.efa.gdr_support
-                                else "NONE",
+                                "EnableEfaGdr": (
+                                    "compute" if compute_resource.efa and compute_resource.efa.gdr_support else "NONE"
+                                ),
                                 "CustomNodePackage": self._config.custom_node_package or "",
                                 "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
                                 "ExtraJson": self._config.extra_chef_attributes,
