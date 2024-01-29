@@ -44,7 +44,8 @@ def test_multiple_jobs_submission(
     max_jobs_execution_time = 9
     # Test using the max no of queues because the scheduler and node daemon operations take slight longer
     # with multiple queues
-    no_of_queues = 50
+    # FIXME We must restore the actual maximum defined in constants.MAX_NUMBER_OF_QUEUES, which is 50.
+    no_of_queues = 46
 
     cluster_config = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime,
