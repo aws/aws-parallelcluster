@@ -63,8 +63,9 @@ def test_scheduler_performance(
 
     logging.info("Benchmark completed. Producing outputs and performing assertions.")
     benchmark_params["total_time"] = "{0}seconds".format(int((end_time - start_time).total_seconds()))
+    title = ", ".join("{0}={1}".format(key, val) for (key, val) in benchmark_params.items())
     produce_benchmark_metrics_report(
-        benchmark_params,
+        title,
         region,
         cluster.cfn_name,
         start_time.replace(tzinfo=datetime.timezone.utc).isoformat(),

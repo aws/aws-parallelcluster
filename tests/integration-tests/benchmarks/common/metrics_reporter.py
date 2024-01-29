@@ -12,60 +12,15 @@
 import datetime
 import logging
 import os
+import pathlib
 from time import sleep
 
 import boto3
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import describe_cluster_instances
-
-METRIC_WIDGET_TEMPLATE = """
-    {{
-        "metrics": [
-            [ "ParallelCluster/benchmarking/{cluster_name}", "ComputeNodesCount", {{ "stat": "Maximum", "label": \
-"ComputeNodesCount Max" }} ],
-            [ "...", {{ "stat": "Minimum", "label": "ComputeNodesCount Min" }} ],
-            [ "ParallelCluster/benchmarking/{cluster_name}", "EC2NodesCount", {{ "stat": "Maximum", "label": \
-"EC2NodesCount Max" }} ],
-            [ "...", {{ "stat": "Minimum", "label": "EC2NodesCount Min" }} ]
-        ],
-        "view": "timeSeries",
-        "stacked": false,
-        "stat": "Maximum",
-        "period": 1,
-        "title": "{title}",
-        "width": 1400,
-        "height": 700,
-        "start": "{graph_start_time}",
-        "end": "{graph_end_time}",
-        "annotations": {{
-            "horizontal": [
-                {{
-                    "label": "Scaling Target",
-                    "value": {scaling_target}
-                }}
-            ],
-            "vertical": [
-                {{
-                    "label": "Start Time",
-                    "value": "{start_time}"
-                }},
-                {{
-                    "label": "End Time",
-                    "value": "{end_time}"
-                }}
-            ]
-        }},
-        "yAxis": {{
-            "left": {{
-                "showUnits": false,
-                "label": "Count"
-            }},
-            "right": {{
-                "showUnits": true
-            }}
-        }}
-    }}"""
 
 
 def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region, cluster_name):
@@ -88,7 +43,7 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     def _watch_compute_nodes_allocation():
         try:
             compute_nodes = scheduler_commands.compute_nodes_count()
-            logging.info("Publishing schedueler compute metric: count={0}".format(compute_nodes))
+            logging.info("Publishing scheduler compute metric: count={0}".format(compute_nodes))
             cw_client.put_metric_data(
                 Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
                 MetricData=[{"MetricName": "ComputeNodesCount", "Value": compute_nodes, "Unit": "Count"}],
@@ -130,55 +85,45 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     return compute_nodes_time_series, timestamps, end_time
 
 
-def _publish_metric(region, instance, os, scheduler, state, count):
-    cw_client = boto3.client("cloudwatch", region_name=region)
-    logging.info("Publishing metric: state={0} count={1}".format(state, count))
-    cw_client.put_metric_data(
-        Namespace="parallelcluster/benchmarking/test_scaling_speed/{region}/{instance}/{os}/{scheduler}".format(
-            region=region, instance=instance, os=os, scheduler=scheduler
-        ),
-        MetricData=[
-            {
-                "MetricName": "ComputeNodesCount",
-                "Dimensions": [{"Name": "state", "Value": state}],
-                "Value": count,
-                "Unit": "Count",
-            }
-        ],
-    )
+def generate_metric_widget(**kwargs):
+    config_dir = pathlib.Path(__file__).parent
+    file_loader = FileSystemLoader(config_dir)
+    env = SandboxedEnvironment(loader=file_loader)
+    return env.get_template("scaling_metrics_source.jinja").render(**kwargs)
 
 
 def produce_benchmark_metrics_report(
-    benchmark_params, region, cluster_name, start_time, end_time, scaling_target, request
+    title, region, cluster_name, start_time, end_time, scaling_target, request, scaling_target_time=None
 ):
-    title = ", ".join("{0}={1}".format(key, val) for (key, val) in benchmark_params.items())
-    graph_start_time = _to_datetime(start_time) - datetime.timedelta(minutes=2)
-    graph_end_time = _to_datetime(end_time) + datetime.timedelta(minutes=2)
-    scaling_target = scaling_target
-    widget_metric = METRIC_WIDGET_TEMPLATE.format(
+    graph_start_time = start_time - datetime.timedelta(minutes=2)
+    graph_end_time = end_time + datetime.timedelta(minutes=2)
+    widget_metric = generate_metric_widget(
         cluster_name=cluster_name,
-        start_time=start_time,
-        end_time=end_time,
+        start_time=start_time.isoformat(),
+        end_time=end_time.isoformat(),
         title=title,
-        graph_start_time=graph_start_time,
-        graph_end_time=graph_end_time,
+        graph_start_time=graph_start_time.isoformat(),
+        graph_end_time=graph_end_time.isoformat(),
         scaling_target=scaling_target,
+        scaling_target_time=scaling_target_time.isoformat() if scaling_target_time else "",
     )
     logging.info(widget_metric)
     cw_client = boto3.client("cloudwatch", region_name=region)
     response = cw_client.get_metric_widget_image(MetricWidget=widget_metric)
-    _write_results_to_outdir(request, response["MetricWidgetImage"])
+    _write_results_to_outdir(request, response["MetricWidgetImage"], image_name_prefix=f"{scaling_target}-nodes")
 
 
 def _to_datetime(timestamp):
     return datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
 
 
-def _write_results_to_outdir(request, image_bytes):
+def _write_results_to_outdir(request, image_bytes, image_name_prefix):
     out_dir = request.config.getoption("output_dir")
     os.makedirs("{out_dir}/benchmarks".format(out_dir=out_dir), exist_ok=True)
-    graph_dst = "{out_dir}/benchmarks/{test_name}.png".format(
-        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
+    graph_dst = "{out_dir}/benchmarks/{test_name}-{image_name_prefix}.png".format(
+        out_dir=out_dir,
+        test_name=os.path.basename(request.node.nodeid.replace("::", "-")),
+        image_name_prefix=image_name_prefix,
     )
     with open(graph_dst, "wb") as image:
         image.write(image_bytes)

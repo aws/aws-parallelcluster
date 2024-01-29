@@ -1138,9 +1138,11 @@ def test_capacity_reservation_resource_group_validator(
     )
     mocker.patch(
         "pcluster.aws.resource_groups.ResourceGroupsClient.get_group_configuration",
-        side_effect=AWSClientError("mock-func", "mock-error")
-        if group_configuration == "AWSClientError"
-        else lambda group: group_configuration,
+        side_effect=(
+            AWSClientError("mock-func", "mock-error")
+            if group_configuration == "AWSClientError"
+            else lambda group: group_configuration
+        ),
     )
 
     mocker.patch(

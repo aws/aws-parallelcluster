@@ -18,6 +18,7 @@ import shlex
 import socket
 import string
 import subprocess
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from hashlib import sha1
 
@@ -36,6 +37,42 @@ PARTITION_MAP = {
     "us-iso-": "aws-iso",
     "us-isob": "aws-iso-b",
 }
+
+
+@dataclass
+class CWMetric:
+    """Data Class representing a CloudWatch Metric."""
+
+    name: str
+    value: any
+    unit: str
+    dimensions_as_dict: dict = None
+
+
+def generate_metric_data_entry(metric_name: str, dimensions_as_dict: dict, value: any, unit: str):
+    """Returns a Metric Data dictionary used when describing a CloudWatch Metric Data item."""
+
+    return {
+        "MetricName": metric_name,
+        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions_as_dict.items()],
+        "Value": value,
+        "Unit": unit,
+    }
+
+
+def publish_metrics_to_cloudwatch(namespace: str, cw_client, cw_metrics: list[CWMetric]):
+    cw_client.put_metric_data(
+        Namespace=namespace,
+        MetricData=[
+            generate_metric_data_entry(
+                metric_name=cw_metric.name,
+                dimensions_as_dict=cw_metric.dimensions_as_dict,
+                value=cw_metric.value,
+                unit=cw_metric.unit,
+            )
+            for cw_metric in cw_metrics
+        ],
+    )
 
 
 def _format_stack_error(message, stack_events=None, cluster_details=None) -> str:
@@ -332,7 +369,7 @@ def get_substacks(stack_name, region=None, sub_stack_name=None):
     return [r.get("PhysicalResourceId") for r in stacks]
 
 
-def get_compute_nodes_count(stack_name, region, instance_types=None):
+def get_compute_nodes_instance_count(stack_name, region, instance_types=None):
     return len(get_compute_nodes_instance_ids(stack_name, region, instance_types=instance_types))
 
 
@@ -622,7 +659,7 @@ def get_metadata(metadata_path, raise_error=True):
         if token.status_code == requests.codes.ok:
             headers["X-aws-ec2-metadata-token"] = token.content
         elif token.status_code >= 300:
-            raise Exception("Imds not reachable")
+            raise Exception("Imds not reachable. Is test running on EC2 Instance?")
         metadata_value = requests.get(f"{metadata_base_url}/meta-data/{metadata_path}", headers=headers).text
     except Exception as e:
         error_msg = f"Unable to get {metadata_path} metadata. Failed with exception: {e}"
@@ -802,3 +839,28 @@ def is_fsx_supported(region: str):
 
 def is_directory_supported(region: str, directory_type: str):
     return False if "us-iso" in region and directory_type == "SimpleAD" else True
+
+
+def set_protected_failure_count(remote_command_executor, protected_failure_count):
+    """Set value for protected_failure_count into clustermgtd configuration"""
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/^protected_failure_count /d' {clustermgtd_conf_path}; "
+        + f"echo 'protected_failure_count = {protected_failure_count}' | sudo tee -a {clustermgtd_conf_path}"
+    )
+
+
+def retrieve_clustermgtd_conf_path(remote_command_executor):
+    clustermgtd_conf_path = "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    clustermgtd_conf_path_override = remote_command_executor.run_remote_command(
+        "sudo strings /proc/$(pgrep -f bin/clustermgtd$)/environ | grep CONFIG_FILE= | cut -d '=' -f2"
+    ).stdout
+    if clustermgtd_conf_path_override:
+        clustermgtd_conf_path = clustermgtd_conf_path_override
+    assert_that(clustermgtd_conf_path).is_not_empty()
+    return clustermgtd_conf_path
+
+
+def disable_protected_mode(remote_command_executor):
+    """Disable protected mode by setting protected_failure_count to -1."""
+    set_protected_failure_count(remote_command_executor, -1)

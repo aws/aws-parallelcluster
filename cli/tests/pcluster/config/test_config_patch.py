@@ -780,9 +780,9 @@ def _test_storage(base_conf, target_conf):
                 "Name": f"{storage_name}4",
                 "MountDir": f"/{storage_name}4",
                 "StorageType": storage_type,
-                f"{storage_type}Settings": {"Encrypted": True}
-                if storage_type in ("Ebs", "Efs")
-                else {"DeploymentType": "PERSISTENT_2"},
+                f"{storage_type}Settings": (
+                    {"Encrypted": True} if storage_type in ("Ebs", "Efs") else {"DeploymentType": "PERSISTENT_2"}
+                ),
             }
         )
 

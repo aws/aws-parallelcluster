@@ -20,7 +20,7 @@ from retrying import RetryError, retry
 from time_utils import minutes, seconds
 from utils import (
     get_cfn_resources,
-    get_compute_nodes_count,
+    get_compute_nodes_instance_count,
     get_compute_nodes_instance_ids,
     get_compute_nodes_instance_ips,
 )
@@ -131,7 +131,7 @@ def submit_job_and_assert_logs(
 
 
 def assert_no_node_in_ec2(region, stack_name, instance_types=None):
-    assert_that(get_compute_nodes_count(stack_name, region, instance_types)).is_equal_to(0)
+    assert_that(get_compute_nodes_instance_count(stack_name, region, instance_types)).is_equal_to(0)
 
 
 def assert_scaling_worked(

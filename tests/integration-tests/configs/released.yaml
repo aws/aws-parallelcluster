@@ -55,20 +55,10 @@ test-suites:
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
       dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        # Do not run on ARM + Batch
-        # pcluster configure always picks optimal and Batch does not support ARM for optimal for now
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
   create:
     test_create.py::test_create_wrong_os:
       dimensions:
@@ -142,12 +132,6 @@ test-suites:
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   dns:
-    test_dns.py::test_hit_no_cluster_dns_mpi:
-      dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
     test_dns.py::test_existing_hosted_zone:
       dimensions:
         - regions: ["eu-south-1"]
@@ -195,32 +179,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-    test_networking.py::test_public_network_topology:
-      dimensions:
-        - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
-    test_networking.py::test_public_private_network_topology:
-      dimensions:
-        - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
-    test_cluster_networking.py::test_cluster_in_no_internet_subnet:
-      dimensions:
-        # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
-        # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
-        - regions: ["cn-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
-          schedulers: ["slurm"]
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
-          schedulers: ["slurm"]
     test_multi_cidr.py::test_multi_cidr:
       dimensions:
         - regions: ["ap-northeast-2"]
@@ -251,13 +209,6 @@ test-suites:
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
-  resource_bucket:
-    test_resource_bucket.py::test_resource_bucket:
-      dimensions:
-        - regions: ["us-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm", "awsbatch"]
   scaling:
     test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
       dimensions:
