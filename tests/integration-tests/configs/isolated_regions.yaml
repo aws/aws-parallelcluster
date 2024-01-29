@@ -21,6 +21,13 @@ test-suites:
               num_instances: [5]
               osu_benchmarks:
                 collective: ["osu_alltoall"]
+  basic:
+    test_essential_features.py::test_essential_features:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
 # This test cannot be executed in US isolated regions because it relies on a CloudFormation stack using resources
 # that are not supported by CloudFormation in ADC, i.e. CapacityReservation and ResourceGroup.
 #  capacity_reservations:
@@ -28,19 +35,6 @@ test-suites:
 #      dimensions:
 #        - regions: {{ REGIONS }}
 #          oss: {{ OSS }}
-  cfn-init:
-    test_cfn_init.py::test_replace_compute_on_failure:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
-    test_cfn_init.py::test_install_args_quotes:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
