@@ -804,11 +804,11 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 iam.PolicyStatement(
                     sid="AllowGettingDirectorySecretValue",
                     actions=[
-                        "secretsmanager:GetSecretValue"
-                        if password_secret_arn.service == "secretsmanager"
-                        else "ssm:GetParameter"
-                        if password_secret_arn.service == "ssm"
-                        else None
+                        (
+                            "secretsmanager:GetSecretValue"
+                            if password_secret_arn.service == "secretsmanager"
+                            else "ssm:GetParameter" if password_secret_arn.service == "ssm" else None
+                        )
                     ],
                     effect=iam.Effect.ALLOW,
                     resources=[self._config.directory_service.password_secret_arn],
@@ -1035,12 +1035,14 @@ class PclusterLambdaConstruct(Construct):
             role=execution_role,
             runtime="python3.9",
             timeout=timeout,
-            vpc_config=awslambda.CfnFunction.VpcConfigProperty(
-                security_group_ids=config.lambda_functions_vpc_config.security_group_ids,
-                subnet_ids=config.lambda_functions_vpc_config.subnet_ids,
-            )
-            if config.lambda_functions_vpc_config
-            else None,
+            vpc_config=(
+                awslambda.CfnFunction.VpcConfigProperty(
+                    security_group_ids=config.lambda_functions_vpc_config.security_group_ids,
+                    subnet_ids=config.lambda_functions_vpc_config.subnet_ids,
+                )
+                if config.lambda_functions_vpc_config
+                else None
+            ),
         )
 
     def _stack_unique_id(self):

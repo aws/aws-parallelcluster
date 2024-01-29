@@ -109,8 +109,10 @@ class Pcluster3ConfigConverter(object):
         """Read config from config file or from string."""
         try:
             self.config_parser = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-            self.config_parser.read_string(self.config_file) if self.input_as_string else self.config_parser.read(
-                self.config_file
+            (
+                self.config_parser.read_string(self.config_file)
+                if self.input_as_string
+                else self.config_parser.read(self.config_file)
             )
         except (configparser.ParsingError, configparser.DuplicateOptionError) as e:
             _error("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
