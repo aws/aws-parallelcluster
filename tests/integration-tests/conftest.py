@@ -404,12 +404,14 @@ def clusters_factory(request, region):
     def _cluster_factory(cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
-            name=request.config.getoption("cluster")
-            if request.config.getoption("cluster")
-            else "integ-tests-{0}{1}{2}".format(
-                random_alphanumeric().upper() if upper_case_cluster_name else random_alphanumeric(),
-                "-" if request.config.getoption("stackname_suffix") else "",
-                request.config.getoption("stackname_suffix"),
+            name=(
+                request.config.getoption("cluster")
+                if request.config.getoption("cluster")
+                else "integ-tests-{0}{1}{2}".format(
+                    random_alphanumeric().upper() if upper_case_cluster_name else random_alphanumeric(),
+                    "-" if request.config.getoption("stackname_suffix") else "",
+                    request.config.getoption("stackname_suffix"),
+                )
             ),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
@@ -506,9 +508,11 @@ def images_factory(request):
     def _image_factory(image_id, image_config, region, **kwargs):
         image_config_file = _write_config_to_outdir(request, image_config, "image_configs")
         image = Image(
-            image_id="-".join([image_id, request.config.getoption("stackname_suffix")])
-            if request.config.getoption("stackname_suffix")
-            else image_id,
+            image_id=(
+                "-".join([image_id, request.config.getoption("stackname_suffix")])
+                if request.config.getoption("stackname_suffix")
+                else image_id
+            ),
             config_file=image_config_file,
             region=region,
         )

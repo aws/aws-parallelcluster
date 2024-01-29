@@ -156,9 +156,9 @@ class QueuesStack(NestedStack):
                 associate_public_ip_address=queue.networking.assign_public_ip,
                 interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                 groups=queue_lt_security_groups,
-                subnet_id=queue.networking.subnet_ids[0]
-                if isinstance(compute_resource, SlurmComputeResource)
-                else None,
+                subnet_id=(
+                    queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                ),
             )
         ]
 
@@ -170,9 +170,9 @@ class QueuesStack(NestedStack):
                     associate_public_ip_address=False,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                     groups=queue_lt_security_groups,
-                    subnet_id=queue.networking.subnet_ids[0]
-                    if isinstance(compute_resource, SlurmComputeResource)
-                    else None,
+                    subnet_id=(
+                        queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                    ),
                 )
             )
 
@@ -229,9 +229,9 @@ class QueuesStack(NestedStack):
                         get_user_data_content("../resources/compute_node/user_data.sh"),
                         {
                             **{
-                                "DisableMultiThreadingManually": "true"
-                                if compute_resource.disable_simultaneous_multithreading_manually
-                                else "false",
+                                "DisableMultiThreadingManually": (
+                                    "true" if compute_resource.disable_simultaneous_multithreading_manually else "false"
+                                ),
                                 "BaseOS": self._config.image.os,
                                 "OSUser": OS_MAPPING[self._config.image.os]["user"],
                                 "ClusterName": self.stack_name,
@@ -330,17 +330,19 @@ class QueuesStack(NestedStack):
                         self._shared_storage_mount_dirs[SharedStorageType.FSX]
                     ),
                     "scheduler": self._config.scheduling.scheduler,
-                    "ephemeral_dir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                    if isinstance(queue, SlurmQueue) and queue.compute_settings.local_storage.ephemeral_volume
-                    else DEFAULT_EPHEMERAL_DIR,
+                    "ephemeral_dir": (
+                        queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                        if isinstance(queue, SlurmQueue) and queue.compute_settings.local_storage.ephemeral_volume
+                        else DEFAULT_EPHEMERAL_DIR
+                    ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
                     ),
                     "proxy": queue.networking.proxy.http_proxy_address if queue.networking.proxy else "NONE",
                     "slurm_ddb_table": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
-                    "log_group_name": self._log_group.log_group_name
-                    if self._config.monitoring.logs.cloud_watch.enabled
-                    else "NONE",
+                    "log_group_name": (
+                        self._log_group.log_group_name if self._config.monitoring.logs.cloud_watch.enabled else "NONE"
+                    ),
                     "dns_domain": str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else "",
                     "hosted_zone": str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else "",
                     "node_type": "ComputeFleet",
@@ -350,9 +352,9 @@ class QueuesStack(NestedStack):
                     "log_rotation_enabled": "true" if self._config.is_log_rotation_enabled else "false",
                     "scheduler_queue_name": queue.name,
                     "scheduler_compute_resource_name": compute_resource.name,
-                    "enable_efa_gdr": "compute"
-                    if compute_resource.efa and compute_resource.efa.gdr_support
-                    else "NONE",
+                    "enable_efa_gdr": (
+                        "compute" if compute_resource.efa and compute_resource.efa.gdr_support else "NONE"
+                    ),
                     "custom_node_package": self._config.custom_node_package or "",
                     "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
                     "use_private_hostname": str(
@@ -360,9 +362,9 @@ class QueuesStack(NestedStack):
                     ).lower(),
                     "head_node_private_ip": self._head_eni.attr_primary_private_ip_address,
                     "directory_service": {"enabled": str(self._config.directory_service is not None).lower()},
-                    "disable_sudo_access_for_default_user": "true"
-                    if self._config.disable_sudo_access_default_user
-                    else "false",
+                    "disable_sudo_access_for_default_user": (
+                        "true" if self._config.disable_sudo_access_default_user else "false"
+                    ),
                 }
             },
             indent=4,

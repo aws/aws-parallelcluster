@@ -72,9 +72,13 @@ def test_list_instance_types(boto3_stubber, generate_error):
         MockedBoto3Request(
             method="describe_instance_type_offerings",
             expected_params={},
-            response=dummy_message
-            if generate_error
-            else {"InstanceTypeOfferings": [{"InstanceType": instance_type} for instance_type in dummy_instance_types]},
+            response=(
+                dummy_message
+                if generate_error
+                else {
+                    "InstanceTypeOfferings": [{"InstanceType": instance_type} for instance_type in dummy_instance_types]
+                }
+            ),
             generate_error=generate_error,
         )
     ]

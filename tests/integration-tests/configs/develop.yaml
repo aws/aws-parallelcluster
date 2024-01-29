@@ -84,20 +84,10 @@ test-suites:
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
       dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-        # Do not run on ARM + Batch
-        # pcluster configure always picks optimal and Batch does not support ARM for optimal for now
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
     test_pcluster_configure.py::test_pcluster_configure_avoid_bad_subnets:
       dimensions:
         - regions: ["us-east-1"]  # region must be us-east-1 due to hardcoded logic for AZ selection
@@ -275,7 +265,7 @@ test-suites:
       dimensions:
         - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm"]
     test_dns.py::test_existing_hosted_zone:
       dimensions:
@@ -406,10 +396,6 @@ test-suites:
       dimensions:
         # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
@@ -803,7 +789,7 @@ test-suites:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
-          schedulers: ["slurm", "awsbatch"]
+          schedulers: ["slurm"]
   tags:
     test_tag_propagation.py::test_tag_propagation:
       dimensions:
@@ -845,10 +831,6 @@ test-suites:
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
-          schedulers: ["slurm"]
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
     test_update.py::test_multi_az_create_and_update:
       dimensions:
