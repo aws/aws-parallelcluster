@@ -340,16 +340,16 @@ def split_resource_prefix(resource_prefix):
     if resource_prefix:
         split_index = resource_prefix.rfind("/") + 1
         return (
-            None
-            if split_index == 0
-            else resource_prefix
-            if split_index == len(resource_prefix)
-            else resource_prefix[:split_index],
-            None
-            if split_index == len(resource_prefix)
-            else resource_prefix
-            if split_index == 0
-            else resource_prefix[split_index:],
+            (
+                None
+                if split_index == 0
+                else resource_prefix if split_index == len(resource_prefix) else resource_prefix[:split_index]
+            ),
+            (
+                None
+                if split_index == len(resource_prefix)
+                else resource_prefix if split_index == 0 else resource_prefix[split_index:]
+            ),
         )
     return None, None
 

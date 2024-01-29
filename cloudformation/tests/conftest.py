@@ -1,4 +1,5 @@
 """Additional pytest configuration."""
+
 import os
 import random
 import string
