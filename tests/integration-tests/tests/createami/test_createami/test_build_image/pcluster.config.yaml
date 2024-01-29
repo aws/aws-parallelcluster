@@ -12,11 +12,11 @@ HeadNode:
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
-    - Name: queue1
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_id }}
-      ComputeResources:
-        - Name: compute-resource1
-          Instances:
-            - InstanceType: {{ instance }}
+  - Name: queue1
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_id }}
+    ComputeResources:
+      - Name: compute-resource1
+        Instances:
+          - InstanceType: {{ instance }}
