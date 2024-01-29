@@ -20,6 +20,7 @@ from retrying import RetryError, retry
 from time_utils import minutes, seconds
 from utils import (
     get_cfn_resources,
+    get_cluster_nodes_instance_ids,
     get_compute_nodes_instance_count,
     get_compute_nodes_instance_ids,
     get_compute_nodes_instance_ips,
@@ -183,6 +184,17 @@ def wait_for_num_instances_in_cluster(cluster_name, region, desired):
 
 def assert_num_instances_in_cluster(cluster_name, region, desired):
     instances = get_compute_nodes_instance_ids(cluster_name, region)
+    assert_that(instances).is_length(desired)
+    return instances
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def wait_for_num_instances_in_queue(cluster_name, region, desired, queue):
+    return assert_num_instances_in_queue(cluster_name, region, desired, queue)
+
+
+def assert_num_instances_in_queue(cluster_name, region, desired, queue):
+    instances = get_cluster_nodes_instance_ids(cluster_name, region, node_type="Compute", queue_name=queue)
     assert_that(instances).is_length(desired)
     return instances
 

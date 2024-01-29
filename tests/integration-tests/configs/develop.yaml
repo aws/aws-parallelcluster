@@ -14,6 +14,13 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204", "centos7"]
           schedulers: ["slurm"]
+  basic:
+    test_essential_features.py::test_essential_features:
+      dimensions:
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
   capacity_reservations:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
       dimensions:
@@ -23,19 +30,6 @@ test-suites:
       dimensions:
         - regions: ["eu-west-1"]
           oss: ["alinux2"]
-          schedulers: ["slurm"]
-  cfn-init:
-    test_cfn_init.py::test_replace_compute_on_failure:
-      dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
-    test_cfn_init.py::test_install_args_quotes:
-      dimensions:
-        - regions: ["us-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
           schedulers: ["slurm"]
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:

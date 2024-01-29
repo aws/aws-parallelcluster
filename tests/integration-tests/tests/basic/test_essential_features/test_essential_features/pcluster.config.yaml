@@ -22,13 +22,13 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
-        EnableWriteAccess: false
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
-    - Name: queue-0
+    # queue with different quotes for custom bootstrap script
+    - Name: bootstrap-scripts-args
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket_name }}/scripts/pre_install.sh
@@ -59,4 +59,23 @@ Scheduling:
       Iam:
         S3Access:
           - BucketName: {{ bucket_name }}
-            EnableWriteAccess: false
+    # queue with a failing post install script
+    - Name: broken-post-install
+      CustomActions:
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/failing_post_install.sh
+      ComputeResources:
+        - Name: compute-i1
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          {% else %}
+          Instances:
+            - InstanceType: {{ instance }}
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
