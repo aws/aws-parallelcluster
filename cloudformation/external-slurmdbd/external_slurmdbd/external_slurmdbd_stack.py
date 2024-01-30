@@ -1,7 +1,7 @@
 import json
 
 import pkg_resources
-from aws_cdk import CfnParameter, Fn, Stack
+from aws_cdk import CfnOutput, CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
@@ -102,6 +102,8 @@ class ExternalSlurmdbdStack(Stack):
         #     ip_addr=self._primary_slurmdbd_instance.attr_private_ip,
         #     name="slurmdbd",
         # )
+
+        self._add_outputs()
 
     def _add_cfn_init_config(self):
         dna_json_content = {
@@ -415,4 +417,30 @@ class ExternalSlurmdbdStack(Stack):
             resource_records=[ip_addr],
             set_identifier="externalslurmdbdsetidentifier",
             ttl="300",
+        )
+
+    def _add_outputs(self):
+        CfnOutput(
+            self,
+            "SlurmDbdPrivateIP",
+            description="Secondary Private IP Address of the slurmdbd instance",
+            value=self.slurmdbd_private_ip.value_as_string,
+        )
+        CfnOutput(
+            self,
+            "SlurmDbdPort",
+            description="Port used to connect to slurmdbd service",
+            value="6819",  # this should be paramterized
+        )
+        CfnOutput(
+            self,
+            "AccountingClientSG",
+            description="Security Group ID that allows traffic from the slurmctld to slurmdbd",
+            value=self._slurmdbd_client_sg.security_group_id,
+        )
+        CfnOutput(
+            self,
+            "SSHClientSG",
+            description="Security Group ID that allows SSH traffic from the HeadNode to slurmdbd instance",
+            value=self._ssh_client_sg.security_group_id,
         )
