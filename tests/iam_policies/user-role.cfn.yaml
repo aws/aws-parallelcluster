@@ -488,6 +488,7 @@ Resources:
               - logs:CreateLogGroup
               - logs:TagResource
               - logs:UntagResource
+              - logs:ListTagsForResource
               - logs:DescribeMetricFilters
               - logs:PutMetricFilter
               - logs:deleteMetricFilter
