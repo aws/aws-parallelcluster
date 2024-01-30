@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pkg_resources
@@ -7,6 +8,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
@@ -78,6 +80,9 @@ class ExternalSlurmdbdStack(Stack):
         # Create a CloudWatch log group
         self._log_group = self._add_cloudwatch_log_group()
 
+        # add S3 bucket to store the slurmdbd configuration
+        self.s3_bucket = self._add_s3_bucket()
+
         # define IAM role and necessary IAM policies
         self._role = self._add_iam_role()
 
@@ -117,6 +122,7 @@ class ExternalSlurmdbdStack(Stack):
             "log_group_name": self._log_group.log_group_name,
             "stack_name": self.stack_name,
             "is_external_slurmdbd": True,
+            "slurmdbd_conf_bucket": self.s3_bucket.bucket_name,
         }
 
         return {
@@ -373,6 +379,25 @@ class ExternalSlurmdbdStack(Stack):
                         effect=iam.Effect.ALLOW,
                         sid="IPAssignmentPolicy",
                     ),
+                    iam.PolicyStatement(
+                        actions=[
+                            "s3:ListBucket",
+                        ],
+                        resources=[self.s3_bucket.attr_arn],
+                        effect=iam.Effect.ALLOW,
+                        sid="S3BucketPolicy",
+                    ),
+                    iam.PolicyStatement(
+                        actions=[
+                            "s3:GetObject",
+                            "s3:PutObject",
+                            "s3:AbortMultipartUpload",
+                            "s3:DeleteObject",
+                        ],
+                        resources=[self.s3_bucket.attr_arn + "/*"],
+                        effect=iam.Effect.ALLOW,
+                        sid="S3BucketObjectsPolicy",
+                    ),
                     # iam.PolicyStatement(
                     #     actions=[
                     #         "route53:CreateHostedZone",
@@ -401,6 +426,22 @@ class ExternalSlurmdbdStack(Stack):
                 ],
             ),
             retention=logs.RetentionDays.ONE_WEEK,
+        )
+
+    def _add_s3_bucket(self):
+        return s3.CfnBucket(
+            self,
+            id="ExternalSlurmdbdS3Bucket",
+            bucket_name=(
+                self.stack_name.lower() + "-" + hashlib.sha256((self.account + self.region).encode()).hexdigest()[0:16]
+            ),
+            public_access_block_configuration=s3.CfnBucket.PublicAccessBlockConfigurationProperty(
+                block_public_acls=True,
+                block_public_policy=True,
+                ignore_public_acls=True,
+                restrict_public_buckets=True,
+            ),
+            versioning_configuration=s3.CfnBucket.VersioningConfigurationProperty(status="Enabled"),
         )
 
     def _add_hosted_zone(self):
