@@ -244,7 +244,6 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
     def _directory_factory(
         existing_directory_stack_name,
         directory_type,
-        test_resources_dir,
         region,
     ):
         if existing_directory_stack_name:
@@ -258,7 +257,6 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
                 cfn_stacks_factory,
                 request,
                 directory_type,
-                test_resources_dir,
                 region,
                 vpc_stack,
             )
@@ -551,7 +549,6 @@ def test_ad_integration(
     directory_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
         directory_type,
-        str(test_datadir),
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
@@ -693,7 +690,6 @@ def test_ad_integration_on_login_nodes(
     directory_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
         directory_type,
-        str(test_datadir),
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
