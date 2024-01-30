@@ -19,7 +19,7 @@ import time
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from botocore.exceptions import ClientError
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
@@ -152,14 +152,15 @@ def test_build_image(
         image.image_id, region, lamda_vpc_config["SecurityGroupIds"], lamda_vpc_config["SubnetIds"]
     )
 
-    _test_build_image_success(image)
-    _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
-    _test_build_imds_settings(image, "required", region)
-    _test_image_tag_and_volume(image)
-    _test_list_image_log_streams(image)
-    _test_get_image_log_events(image)
-    _test_list_images(image)
-    _test_export_logs(s3_bucket_factory, image, region)
+    with soft_assertions():
+        _test_build_image_success(image)
+        _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
+        _test_build_imds_settings(image, "required", region)
+        _test_image_tag_and_volume(image)
+        _test_list_image_log_streams(image)
+        _test_get_image_log_events(image)
+        _test_list_images(image)
+        _test_export_logs(s3_bucket_factory, image, region)
 
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
