@@ -430,7 +430,7 @@ class ExternalSlurmdbdStack(Stack):
             self,
             "SlurmDbdPort",
             description="Port used to connect to slurmdbd service",
-            value="6819",  # this should be paramterized
+            value="6819",  # this should be parametrized
         )
         CfnOutput(
             self,
