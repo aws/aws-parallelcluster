@@ -320,13 +320,19 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     )
     cluster.update(str(failed_update_config_file), raise_on_error=False, log_error=False)
 
-    # Verify that compute nodes stored the deployed config version on DDB
-    assert_instance_config_version_on_ddb(cluster, last_cluster_config_version)
-
     _check_rollback_with_expected_error_message(region, cluster)
 
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
+
+    # Verify that compute nodes stored the deployed config version on DDB.
+    # This check must be retried when executed to validate a rollback, because
+    # the stack reaches the UPDATE_ROLLBACK_COMPLETE state before compute nodes complete their update recipe.
+    # TODO Make the stack reach the UPDATE_ROLLBACK_COMPLETE only once the compute nodes have completed their updates.
+    #  Then, move this assertion right after the update and remove the retry logic.
+    retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))(assert_instance_config_version_on_ddb)(
+        cluster, last_cluster_config_version
+    )
 
 
 def _check_rollback_with_expected_error_message(region, cluster):
