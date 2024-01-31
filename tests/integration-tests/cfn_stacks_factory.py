@@ -307,6 +307,21 @@ class CfnStacksFactory:
                     )
                 )
 
+    def delete_stacks_retain_ad(self):
+        """Destroy all created stacks."""
+        logging.debug("Destroying all cfn stacks except for AD and VPC stacks")
+        for value in reversed(OrderedDict(self.__created_stacks).values()):
+            if "vpc" in value.name or "SimpleAD" in value.name or "MicrosoftAD" in value.name:
+                continue
+            try:
+                self.delete_stack(value.name, value.region)
+            except Exception as e:
+                logging.error(
+                    "Failed when destroying stack {0} in region {1} with exception {2}.".format(
+                        value.name, value.region, e
+                    )
+                )
+
     @retry(
         retry_on_result=lambda result: result == "CREATE_IN_PROGRESS",
         wait_fixed=5000,
