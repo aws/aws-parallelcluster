@@ -83,6 +83,8 @@ class ExternalSlurmdbdStack(Stack):
         self._instance_profile = self._add_instance_profile(self._role.ref, "ExternalSlurmdbdInstanceProfile")
 
         # create Launch Template
+        # This defines the dna.json and so it depends on many of the previous steps.
+        # It should be launched just before the ASG that should be the last before the outputs.
         self._launch_template = self._add_external_slurmdbd_launch_template()
 
         # define EC2 Auto Scaling Group (ASG)
@@ -111,6 +113,7 @@ class ExternalSlurmdbdStack(Stack):
             "dbms_password_secret_arn": self.dbms_password_secret_arn.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
             "region": self.region,
+            "log_group_name": self._log_group.log_group_name,
             "stack_name": self.stack_name,
             "is_external_slurmdbd": True,
         }
@@ -392,7 +395,13 @@ class ExternalSlurmdbdStack(Stack):
         return logs.LogGroup(
             self,
             "SlurmdbdLogGroup",
-            log_group_name=f"/aws/slurmdbd/{self.stack_name}",
+            log_group_name=Fn.join(
+                "-",
+                [
+                    f"/aws/parallelcluster/external-slurmdbd/{self.stack_name}",
+                    Fn.select(4, Fn.split("-", Fn.select(2, Fn.split("/", self.stack_id)))),
+                ],
+            ),
             retention=logs.RetentionDays.ONE_WEEK,
         )
 
