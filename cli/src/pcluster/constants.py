@@ -72,6 +72,7 @@ OPENZFS = "OPENZFS"
 ONTAP = "ONTAP"
 FILECACHE = "FILECACHE"
 
+EFS = "Efs"
 FSX_LUSTRE = "FsxLustre"
 FSX_OPENZFS = "FsxOpenZfs"
 FSX_ONTAP = "FsxOntap"

@@ -12,7 +12,17 @@ import re
 from enum import Enum
 
 from pcluster.config.cluster_config import QueueUpdateStrategy
-from pcluster.constants import AWSBATCH, DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SLURM
+from pcluster.constants import (
+    AWSBATCH,
+    DEFAULT_MAX_COUNT,
+    DEFAULT_MIN_COUNT,
+    EFS,
+    FILE_CACHE,
+    FSX_LUSTRE,
+    FSX_ONTAP,
+    FSX_OPENZFS,
+    SLURM,
+)
 
 
 class UpdatePolicy:
@@ -222,17 +232,65 @@ def is_awsbatch_scheduler(_, patch):
     return patch.cluster.stack.scheduler == AWSBATCH
 
 
-def is_stop_required_for_shared_storage(change):
-    """
-    Cluster stop is required for unmount operation.
+def is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
+    return (
+        patch.cluster.has_running_capacity()
+        and not is_compute_fleet_update_supported_for_shared_storage(change)
+        and not is_queue_update_strategy_set(patch)
+    )
 
-    1. Remove managed/external EBS EFS and FSx sections, which indicates unmount operation.
-    2. Change MountDir, which indicates unmount operation.
+
+def is_login_fleet_stop_required_for_shared_storage_change(change, patch):
+    return patch.cluster.has_running_login_nodes() and not is_login_fleet_update_supported_for_shared_storage(change)
+
+
+def is_login_fleet_update_supported_for_shared_storage(_):
     """
-    if change.is_list and change.key == "SharedStorage" and change.old_value is not None and change.new_value is None:
+    Check if the live update of the running login fleet is supported for the given change.
+
+    In particular, it's never supported.
+    """
+    return False
+
+
+def _get_storage_info_from_change(change):
+    old_value = change.old_value
+    new_value = change.new_value
+
+    is_storage_list_change = change.is_list and change.key == "SharedStorage"
+    is_mount = is_storage_list_change and old_value is None and new_value is not None
+    is_unmount = is_storage_list_change and old_value is not None and new_value is None
+
+    storage_item = new_value if new_value is not None else old_value
+    storage_type = storage_item.get("StorageType")
+    storage_settings = storage_item.get(f"{storage_type}Settings", {})
+
+    return is_mount, is_unmount, storage_type, storage_settings
+
+
+def is_compute_fleet_update_supported_for_shared_storage(change):
+    """
+    Check if the live update of the running compute fleet is supported for the given change.
+
+    We are referring here to a live update, that does not require the replacement of compute nodes.
+    In particular, the live update is supported only in the following cases:
+      1. mount/unmount of external EFS
+      1. mount/unmount of external FSx
+    """
+    is_mount, is_unmount, storage_type, storage_settings = _get_storage_info_from_change(change)
+
+    is_external_efs = storage_type == EFS and "FileSystemId" in storage_settings
+    is_external_fsx_lustre = storage_type == FSX_LUSTRE and "FileSystemId" in storage_settings
+    is_external_fsx_ontap = storage_type == FSX_ONTAP and "VolumeId" in storage_settings
+    is_external_fsx_openzfs = storage_type == FSX_OPENZFS and "VolumeId" in storage_settings
+    is_external_file_cache = storage_type == FILE_CACHE and "FileCacheId" in storage_settings
+    is_external_fsx = (
+        is_external_fsx_lustre or is_external_fsx_ontap or is_external_fsx_openzfs or is_external_file_cache
+    )
+
+    if (is_mount or is_unmount) and (is_external_efs or is_external_fsx):
         return True
-    elif not change.is_list and change.key == "MountDir":
-        return True
+
     return False
 
 
@@ -250,12 +308,14 @@ def fail_reason_shared_storage_update_policy(change, patch):
         return "The /home directory cannot be changed during an update"
     if is_awsbatch_scheduler(change, patch):
         return f"Update actions are not currently supported for the '{change.key}' parameter"
-    reason = "All login and compute nodes must be stopped"
-    # QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues
-    if not is_stop_required_for_shared_storage(change) and is_slurm_scheduler(patch):
-        reason += " or QueueUpdateStrategy must be set"
 
-    return reason
+    reasons = []
+    if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
+        reasons.append("All compute nodes must be stopped or QueueUpdateStrategy must be set.")
+    if is_login_fleet_stop_required_for_shared_storage_change(change, patch):
+        reasons.append("All login nodes must be stopped.")
+
+    return " ".join(reasons)
 
 
 def fail_reason_queue_update_strategy(change, _):
@@ -401,12 +461,13 @@ def actions_needed_shared_storage_update(change, patch):
             else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
             + ". If you need this change, please consider creating a new cluster instead of updating the existing one."
         )
-    actions = "Stop the compute fleet with the pcluster update-compute-fleet command"
-    if not is_stop_required_for_shared_storage(change) and is_slurm_scheduler(patch):
-        actions += ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation"
-    actions += f". {UpdatePolicy.ACTIONS_NEEDED['login_nodes_stop'](change, patch)}"
+    actions = []
+    if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
+        actions.append(f"{UpdatePolicy.ACTIONS_NEEDED['compute_nodes_stop'](change, patch)}")
+    if is_login_fleet_stop_required_for_shared_storage_change(change, patch):
+        actions.append(f"{UpdatePolicy.ACTIONS_NEEDED['login_nodes_stop'](change, patch)}")
 
-    return actions
+    return " ".join(actions)
 
 
 def actions_needed_managed_fsx(change, patch):
@@ -432,13 +493,16 @@ def condition_checker_shared_storage_update_policy(change, patch):
         return False
     if is_awsbatch_scheduler(change, patch):
         return False
-    if patch.cluster.has_running_login_nodes():
+    if patch.cluster.has_running_login_nodes() and not is_login_fleet_update_supported_for_shared_storage(change):
         return False
-    result = not patch.cluster.has_running_capacity()
-    if is_slurm_scheduler(patch) and not is_stop_required_for_shared_storage(change):
-        result = result or is_queue_update_strategy_set(patch)
+    if (
+        patch.cluster.has_running_capacity()
+        and not is_compute_fleet_update_supported_for_shared_storage(change)
+        and not is_queue_update_strategy_set(patch)
+    ):
+        return False
 
-    return result
+    return True
 
 
 def condition_checker_login_nodes_pools_policy(change, patch):
@@ -481,6 +545,10 @@ UpdatePolicy.ACTIONS_NEEDED = {
     "managed_placement_group": actions_needed_managed_placement_group,
     "shared_storage_update_conditional": actions_needed_shared_storage_update,
     "managed_fsx": actions_needed_managed_fsx,
+    "compute_nodes_stop": lambda change, patch: (
+        "Stop the compute fleet with the pcluster update-compute-fleet command"
+        ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation."
+    ),
     "login_nodes_stop": lambda change, patch: (
         "Stop the login nodes by setting Count parameter to 0 "
         "and update the cluster with the pcluster update-cluster command"
