@@ -319,7 +319,7 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
             ["m6g.xlarge", "c5.xlarge"],
             [],
         ),
-        (
+        (  # Test Nvidia OpenRM with AWS ParallelCluster AMI
             "p3.2xlarge",
             "ami-0185634c5a8a37250",
             "The instance type 'p3.2xlarge' is not supported by NVIDIA OpenRM drivers. "
@@ -347,7 +347,7 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
             ["p3.2xlarge", "c5.xlarge"],
             ["x86_64"],
         ),
-        (
+        (  # Test Nvidia OpenRM with custom AMI with AMI description
             "p3.2xlarge",
             "ami-0185634c5a8a37250",
             None,
@@ -355,6 +355,31 @@ def test_instance_type_memory_info_validator(mocker, instance_type, instance_typ
                 "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
                 "Description": "Custom AMI",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 25,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            None,
+            ["p3.2xlarge", "c5.xlarge"],
+            ["x86_64"],
+        ),
+        (  # Test Nvidia OpenRM with custom AMI without AMI description
+            "p3.2xlarge",
+            "ami-0185634c5a8a37250",
+            None,
+            {
+                "ImageId": "ami-0185634c5a8a37250",
+                "Architecture": "x86_64",
+                "Description": None,
                 "BlockDeviceMappings": [
                     {
                         "DeviceName": "/dev/xvda",

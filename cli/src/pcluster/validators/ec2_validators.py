@@ -150,6 +150,7 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
 
         if (
             image_info
+            and image_info.description
             and "AWS ParallelCluster AMI" in image_info.description
             and instance_type.split(".")[0] in NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES
         ):
