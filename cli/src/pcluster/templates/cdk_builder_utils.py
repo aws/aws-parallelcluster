@@ -807,7 +807,9 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                         (
                             "secretsmanager:GetSecretValue"
                             if password_secret_arn.service == "secretsmanager"
-                            else "ssm:GetParameter" if password_secret_arn.service == "ssm" else None
+                            else "ssm:GetParameter"
+                            if password_secret_arn.service == "ssm"
+                            else None
                         )
                     ],
                     effect=iam.Effect.ALLOW,

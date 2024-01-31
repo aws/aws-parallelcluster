@@ -104,9 +104,9 @@ class Ec2Client(Boto3Client):
                 )
             )
             for capacity_reservation in response:
-                self.capacity_reservations_cache[capacity_reservation.get("CapacityReservationId")] = (
-                    CapacityReservationInfo(capacity_reservation)
-                )
+                self.capacity_reservations_cache[
+                    capacity_reservation.get("CapacityReservationId")
+                ] = CapacityReservationInfo(capacity_reservation)
                 result.append(CapacityReservationInfo(capacity_reservation))
         return result
 
