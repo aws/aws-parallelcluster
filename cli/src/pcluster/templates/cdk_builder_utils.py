@@ -758,7 +758,12 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     ),
                     iam.PolicyStatement(
                         sid="DynamoDBTable",
-                        actions=["dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:GetItem"],
+                        actions=[
+                            "dynamodb:UpdateItem",
+                            "dynamodb:PutItem",
+                            "dynamodb:GetItem",
+                            "dynamodb:BatchGetItem",
+                        ],
                         effect=iam.Effect.ALLOW,
                         resources=[
                             self._format_arn(
