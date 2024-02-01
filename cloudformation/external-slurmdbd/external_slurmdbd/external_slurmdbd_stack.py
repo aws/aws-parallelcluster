@@ -424,7 +424,7 @@ class ExternalSlurmdbdStack(Stack):
         return s3.CfnBucket(
             self,
             id="ExternalSlurmdbdS3Bucket",
-            bucket_name=self.stack_name.lower(),
+            bucket_name=(self.stack_name.lower() + "-" + self.account + "-" + self.region),
             public_access_block_configuration=s3.CfnBucket.PublicAccessBlockConfigurationProperty(
                 block_public_acls=True,
                 block_public_policy=True,
