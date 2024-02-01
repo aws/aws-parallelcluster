@@ -20,6 +20,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Slurm to 23.11.3.
+- Upgrade NVIDIA driver to version 535.154.05.
 - Add support for Python 3.11, 3.12 in pcluster CLI and aws-parallelcluster-batch-cli.
 - Upgrade Python to version 3.12 and NodeJS to version 18 in ParallelCluster Lambda Layer.
 - Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response, 
