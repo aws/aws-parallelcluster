@@ -555,6 +555,7 @@ def _create_permission_boundary(permission_boundary_name):
                         "dynamodb:CreateTable",
                         "dynamodb:DeleteTable",
                         "dynamodb:GetItem",
+                        "dynamodb:BatchGetItem",
                         "dynamodb:PutItem",
                         "dynamodb:UpdateItem",
                         "dynamodb:Query",
