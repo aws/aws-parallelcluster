@@ -1,0 +1,18 @@
+{%- import 'common.jinja2' as common with context -%}
+---
+test-suites:
+  basic:
+    # Verify aws-parallelcluster package is available in the 3 partitions,
+    # is possible to create a cluster and essential features are working
+    test_essential_features.py::test_essential_features:
+      dimensions:
+        - regions: ["ap-south-1", "cn-north-1", "us-gov-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
+  pcluster_api:
+    # Verify ECR image required for the API is available in the 3 partitions,
+    # deploy infrastructure and try to communicate with it
+    test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
+      dimensions:
+        - regions: ["ap-south-1", "cn-north-1", "us-gov-west-1"]
