@@ -28,6 +28,7 @@ from pcluster.constants import (
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
     MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
+    MAX_NUMBER_OF_QUEUES,
 )
 from pcluster.models.s3_bucket import S3FileFormat, format_content
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -129,8 +130,7 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
 
-    # TODO We must restore the actual maximum defined in constants.MAX_NUMBER_OF_QUEUES, which is 50.
-    max_number_of_queues = 46
+    max_number_of_queues = MAX_NUMBER_OF_QUEUES
 
     # The max number of queues cannot be used with the max number of compute resources
     # (it will exceed the max number of compute resources per cluster)
