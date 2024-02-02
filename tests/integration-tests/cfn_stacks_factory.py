@@ -294,24 +294,11 @@ class CfnStacksFactory:
                     "Couldn't find stack with name {0} in region {1}. Skipping update.".format(name, region)
                 )
 
-    def delete_all_stacks(self):
-        """Destroy all created stacks."""
+    def delete_all_stacks(self, excluded_stacks=None):
+        """Destroy all created stacks except for those in excluded_stacks."""
         logging.debug("Destroying all cfn stacks")
         for value in reversed(OrderedDict(self.__created_stacks).values()):
-            try:
-                self.delete_stack(value.name, value.region)
-            except Exception as e:
-                logging.error(
-                    "Failed when destroying stack {0} in region {1} with exception {2}.".format(
-                        value.name, value.region, e
-                    )
-                )
-
-    def delete_stacks_retain_ad(self):
-        """Destroy all created stacks."""
-        logging.debug("Destroying all cfn stacks except for AD and VPC stacks")
-        for value in reversed(OrderedDict(self.__created_stacks).values()):
-            if "vpc" in value.name or "SimpleAD" in value.name or "MicrosoftAD" in value.name:
+            if excluded_stacks and value.name in excluded_stacks:
                 continue
             try:
                 self.delete_stack(value.name, value.region)

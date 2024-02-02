@@ -867,6 +867,7 @@ def disable_protected_mode(remote_command_executor):
 
 
 def find_stack_by_tag(tag, region, stack_prefix):
+    """Find cloudformation stack with stack_prefix in its name that has a specfic tag"""
     cfn_client = boto3.client("cloudformation", region_name=region)
     stacks = cfn_client.describe_stacks()
 
