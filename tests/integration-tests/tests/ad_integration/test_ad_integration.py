@@ -27,7 +27,7 @@ from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import generate_stack_name, is_directory_supported, is_fsx_supported, random_alphanumeric
+from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, is_fsx_supported, random_alphanumeric
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
@@ -36,11 +36,6 @@ from tests.storage.test_fsx_lustre import create_fsx_ontap, create_fsx_open_zfs
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
 
-# ADMIN_PASSWORD = "".join(random.choices(string.ascii_letters + string.digits, k=60))
-# USER_PASSWORD = "".join(random.choices(string.ascii_letters + string.digits, k=60))
-ADMIN_PASSWORD = "TestPass123"
-USER_PASSWORD = "TestPass123"
-
 
 def get_infra_stack_outputs(stack_name):
     cfn = boto3.client("cloudformation")
@@ -48,6 +43,11 @@ def get_infra_stack_outputs(stack_name):
         entry.get("OutputKey"): entry.get("OutputValue")
         for entry in cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["Outputs"]
     }
+
+
+def get_user_password(secret_arn):
+    client = boto3.client("secretsmanager")
+    return client.get_secret_value(SecretId=secret_arn)["SecretString"]
 
 
 def get_vpc_public_subnet(vpc_id):
@@ -155,13 +155,19 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
             "ParameterKey": "DomainName",
             "ParameterValue": f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster",
         },
-        {"ParameterKey": "AdminPassword", "ParameterValue": ADMIN_PASSWORD},
+        {
+            "ParameterKey": "AdminPassword",
+            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
+        },
         {
             "ParameterKey": "ReadOnlyPassword",
             "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
         },
         {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
-        {"ParameterKey": "UserPassword", "ParameterValue": USER_PASSWORD},
+        {
+            "ParameterKey": "UserPassword",
+            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
+        },
         {"ParameterKey": "DirectoryType", "ParameterValue": directory_type},
         {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
         {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
@@ -236,29 +242,8 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
             directory_stack_name = created_directory_stacks.get(region, {}).get("directory")
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
-            directory_stack_name = ""
-            cfn_client = boto3.client("cloudformation", region_name=region)
-            stacks = cfn_client.describe_stacks()
-
-            for stack in stacks.get("Stacks"):
-                name = stack.get("StackName")
-                tags = stack.get("Tags")
-                creation_date = stack.get("CreationTime")
-                stack_status = stack.get("StackStatus")
-                has_tag = False
-
-                for tag in tags:
-                    if tag["Key"] == "parallelcluster:integ-tests-ad-stack":
-                        has_tag = True
-
-                if (
-                    stack_status == "CREATE_COMPLETE"
-                    and f"integ-tests-MultiUserInfraStack{directory_type}" in name
-                    and has_tag
-                ):
-                    directory_stack_name = name
-                    logging.info(f"Found stack: {directory_stack_name} (created on {creation_date})")
-                    break
+            stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
+            directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
 
             if not directory_stack_name:
                 directory_stack = _create_directory_stack(
@@ -544,7 +529,7 @@ def test_ad_integration(
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
-    ad_user_password = USER_PASSWORD
+    ad_user_password = get_user_password(directory_stack_outputs.get("UserPasswordSecretArn"))
 
     ldap_tls_ca_cert = "/opt/parallelcluster/shared/directory_service/certificate.crt"
     config_params.update(
@@ -687,7 +672,7 @@ def test_ad_integration_on_login_nodes(
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
-    ad_user_password = USER_PASSWORD
+    ad_user_password = get_user_password(directory_stack_outputs.get("PasswordSecretArn"))
     ldap_tls_ca_cert = "/opt/parallelcluster/shared_login_nodes/directory_service/certificate.crt"
     config_params = get_ad_config_param_vals(
         directory_stack_outputs,
