@@ -28,6 +28,7 @@ from pcluster.constants import (
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
     MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
+    MAX_NUMBER_OF_QUEUES,
 )
 from pcluster.models.s3_bucket import S3FileFormat, format_content
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -129,8 +130,7 @@ def test_cluster_config_limits(mocker, capsys, tmpdir, pcluster_config_reader, t
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
 
-    # TODO We must restore the actual maximum defined in constants.MAX_NUMBER_OF_QUEUES, which is 50.
-    max_number_of_queues = 46
+    max_number_of_queues = MAX_NUMBER_OF_QUEUES
 
     # The max number of queues cannot be used with the max number of compute resources
     # (it will exceed the max number of compute resources per cluster)
@@ -182,9 +182,18 @@ def _assert_template_limits(template_path: str, template_content: str):
     Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500.
 
     :param template_path: path to the generated cfn template
+    :param template_content: content of the generated cfn template
     """
-    assert_that(os.stat(template_path).st_size).is_less_than(MAX_SIZE_OF_CFN_TEMPLATE)
-    matches = len(re.findall("Type.*AWS::", str()))
+    template_size = os.stat(template_path).st_size
+
+    print("Template {} has size {}, maximum is {}".format(template_path, template_size, MAX_SIZE_OF_CFN_TEMPLATE))
+
+    assert_that(template_size).is_less_than(MAX_SIZE_OF_CFN_TEMPLATE)
+
+    matches = len(re.findall("Type.*AWS::", str(template_content)))
+
+    print("Template {} has {} resources, maximum is {}".format(template_path, matches, MAX_RESOURCES_PER_TEMPLATE))
+
     assert_that(matches).is_less_than(MAX_RESOURCES_PER_TEMPLATE)
 
 

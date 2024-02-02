@@ -911,37 +911,71 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
     )
 
 
+managed_ebs = {
+    "MountDir": "/ebs-managed",
+    "Name": "ebs-managed",
+    "StorageType": "Ebs",
+}
+
+managed_efs = {
+    "MountDir": "/efs-managed",
+    "Name": "efs-managed",
+    "StorageType": "Efs",
+}
+
+external_efs = {
+    "MountDir": "/efs-external",
+    "Name": "efs-external",
+    "StorageType": "Efs",
+    "EfsSettings": {"FileSystemId": "fs-123456789"},
+}
+
+managed_fsx_lustre = {
+    "MountDir": "/fsx-managed",
+    "Name": "fsx-managed",
+    "StorageType": "FsxLustre",
+}
+
+external_fsx_lustre = {
+    "MountDir": "/fsx-external",
+    "Name": "fsx-external",
+    "StorageType": "FsxLustre",
+    "FsxLustreSettings": {"FileSystemId": "fs-123456789"},
+}
+
+
 @pytest.mark.parametrize(
     "is_fleet_stopped, has_running_login_nodes, key, path, old_value, new_value, update_strategy, expected_result, "
     "expected_fail_reason, expected_actions_needed, scheduler",
     [
+        # Managed EBS
         pytest.param(
             True,
             False,
             "SharedStorage",
             [],
             None,
-            {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
+            managed_ebs,
             None,
             True,
             None,
             None,
             "slurm",
-            id="stopped fleet and add new EBS section",
+            id="Compute stopped, login stopped, add managed EBS, update strategy not set: accepted",
         ),
         pytest.param(
             True,
             False,
             "SharedStorage",
             [],
-            {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
+            managed_ebs,
             None,
             None,
             True,
-            "All compute and login nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command",
+            None,
+            None,
             "slurm",
-            id="stopped fleet and remove EBS section",
+            id="Compute stopped, login stopped, remove managed EBS, update strategy not set: accepted",
         ),
         pytest.param(
             False,
@@ -949,16 +983,14 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             "SharedStorage",
             [],
             None,
-            {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
+            managed_ebs,
             None,
             False,
-            "All login and compute nodes must be stopped or QueueUpdateStrategy must be set",
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set.",
             "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy in the "
-            "configuration used for the 'update-cluster' operation. "
-            "Stop the login nodes by setting Count parameter to 0 "
-            "and update the cluster with the pcluster update-cluster command",
+            "configuration used for the 'update-cluster' operation.",
             "slurm",
-            id="running fleet and adding a new EBS section with no update strategy set",
+            id="Compute running, login stopped, add managed EBS, update strategy not set: rejected",
         ),
         pytest.param(
             False,
@@ -966,14 +998,14 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             "SharedStorage",
             [],
             None,
-            {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
+            managed_ebs,
             None,
             False,
             "Update actions are not currently supported for the 'SharedStorage' parameter",
             "Restore the parameter 'SharedStorage'. If you need this change, please consider creating a new cluster "
             "instead of updating the existing one.",
             "awsbatch",
-            id="running fleet and EBS changed with no update strategy set with awsbatch scheduler",
+            id="Compute running, login running, add managed EBS, update strategy not set, with awsbatch: rejected",
         ),
         pytest.param(
             False,
@@ -981,150 +1013,373 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             "SharedStorage",
             [],
             None,
-            {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
+            managed_ebs,
             QueueUpdateStrategy.TERMINATE.value,
             True,
             None,
             None,
             "slurm",
-            id="running fleet and EBS added with update strategy TERMINATE",
+            id="Compute running, login stopped, add managed EBS, update strategy TERMINATE: accepted",
         ),
         pytest.param(
             False,
             False,
             "SharedStorage",
             [],
-            {"MountDir": "/ebs3", "Name": "ebs3", "StorageType": "Ebs", "EbsSettings": {"VolumeType": "gp3"}},
+            managed_ebs,
             None,
             QueueUpdateStrategy.DRAIN.value,
-            False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
-            "Stop the login nodes by setting Count parameter to 0 "
-            "and update the cluster with the pcluster update-cluster command",
+            True,
+            None,
+            None,
             "slurm",
-            id="running fleet and Ebs removed with update strategy DRAIN",
+            id="Compute running, login stopped, remove managed EBS, update strategy DRAIN: accepted",
         ),
+        # Managed EFS
         pytest.param(
             False,
             False,
             "SharedStorage",
             [],
             None,
-            {"MountDir": "/efs4", "Name": "efs4", "StorageType": "Efs"},
+            managed_efs,
             QueueUpdateStrategy.TERMINATE.value,
             True,
             None,
             None,
             "slurm",
-            id="running fleet and EFS added with update strategy TERMINATE",
+            id="Compute running, login stopped, add managed EFS, update strategy TERMINATE: accepted",
         ),
         pytest.param(
             True,
             False,
             "SharedStorage",
             [],
-            {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs"},
+            managed_efs,
             None,
             None,
             True,
             None,
             None,
             "slurm",
-            id="stopped fleet and change EFS section",
+            id="Compute stopped, login stopped, remove managed EFS, update strategy not set: accepted",
         ),
         pytest.param(
             False,
             True,
             "SharedStorage",
             [],
-            {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs"},
+            managed_efs,
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "All login nodes must be stopped.",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="running fleet and Efs removed with update strategy DRAIN",
+            id="Compute running, login running, remove managed EFS, update strategy DRAIN: rejected",
         ),
         pytest.param(
             False,
             True,
             "SharedStorage",
             [],
-            {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Retain"}},
+            managed_efs,
             None,
-            QueueUpdateStrategy.DRAIN.value,
+            None,
             False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped.",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, "
+            "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation. "
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="running fleet and Efs removed with DeletionPolicy to Retain and update strategy DRAIN",
+            id="Compute running, login running, remove managed EFS, update strategy not set: rejected",
         ),
         pytest.param(
             False,
             True,
             "SharedStorage",
             [],
-            {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Retain"}},
-            None,
-            None,
-            False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
-            "Stop the login nodes by setting Count parameter to 0 "
-            "and update the cluster with the pcluster update-cluster command",
-            "slurm",
-            id="running fleet and Efs removed with DeletionPolicy to Retain",
-        ),
-        pytest.param(
-            False,
-            True,
-            "SharedStorage",
-            [],
-            {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Retain"}},
+            managed_efs,
             None,
             None,
             False,
             "Update actions are not currently supported for the 'SharedStorage' parameter",
-            "Restore 'SharedStorage' value to '{'MountDir': '/efs', 'Name': 'efs', 'StorageType': 'Efs', "
-            "'EfsSettings': {'DeletionPolicy': 'Retain'}}'",
+            "Restore 'SharedStorage' value to "
+            "'{'MountDir': '/efs-managed', 'Name': 'efs-managed', 'StorageType': 'Efs'}'",
             "awsbatch",
-            id="running fleet and Efs removed with DeletionPolicy to Retain with awsbatch scheduler",
+            id="Compute running, login running, remove managed EFS, update strategy not set: rejected",
         ),
         pytest.param(
             False,
             True,
             "SharedStorage",
             [],
-            {"MountDir": "/efs", "Name": "efs", "StorageType": "Efs", "EfsSettings": {"DeletionPolicy": "Delete"}},
+            managed_efs,
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "All login nodes must be stopped.",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="running fleet and Efs removed with DeletionPolicy to Delete and update strategy DRAIN",
+            id="Compute running, login running, remove managed EFS, update strategy DRAIN: rejected",
+        ),
+        # External EFS
+        pytest.param(
+            True,
+            False,
+            "SharedStorage",
+            [],
+            None,
+            external_efs,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute stopped, login stopped, add external EFS, no update strategy set: accepted",
         ),
         pytest.param(
             True,
             False,
             "SharedStorage",
             [],
-            {"MountDir": "/lstrue", "Name": "Fsx", "StorageType": "FsxLustre"},
+            external_efs,
             None,
             None,
             True,
             None,
             None,
             "slurm",
-            id="Stopped fleet and change FsxLustre section",
+            id="Compute stopped, login stopped, remove external EFS, no update strategy set: accepted",
+        ),
+        pytest.param(
+            False,
+            True,
+            "SharedStorage",
+            [],
+            None,
+            external_efs,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute running, login running, add external EFS, update strategy not set: rejected",
+        ),
+        pytest.param(
+            False,
+            True,
+            "SharedStorage",
+            [],
+            external_efs,
+            None,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute running, login running, remove external EFS, update strategy not set: rejected",
+        ),
+        pytest.param(
+            True,
+            True,
+            "SharedStorage",
+            [],
+            None,
+            external_efs,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute stopped, login running, add external EFS, update strategy not set: rejected",
+        ),
+        pytest.param(
+            True,
+            True,
+            "SharedStorage",
+            [],
+            external_efs,
+            None,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute stopped, login running, remove external EFS, update strategy not set: rejected",
+        ),
+        pytest.param(
+            False,
+            False,
+            "SharedStorage",
+            [],
+            None,
+            external_efs,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute running, login stopped, add external EFS, update strategy not set: accepted",
+        ),
+        pytest.param(
+            False,
+            False,
+            "SharedStorage",
+            [],
+            external_efs,
+            None,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute running, login stopped, remove external EFS, update strategy not set: accepted",
+        ),
+        # Managed FSxLustre
+        pytest.param(
+            True,
+            False,
+            "SharedStorage",
+            [],
+            None,
+            managed_fsx_lustre,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute stopped, login stopped, add managed FSxLustre, update strategy not set: accepted",
+        ),
+        pytest.param(
+            True,
+            False,
+            "SharedStorage",
+            [],
+            managed_fsx_lustre,
+            None,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute stopped, login stopped, remove managed FSxLustre, no update strategy set: accepted",
+        ),
+        pytest.param(
+            False,
+            True,
+            "SharedStorage",
+            [],
+            None,
+            managed_fsx_lustre,
+            None,
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped.",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, "
+            "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute running, login running, add managed FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            False,
+            True,
+            "SharedStorage",
+            [],
+            managed_fsx_lustre,
+            None,
+            None,
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped.",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, "
+            "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation. "
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute running, login running, remove managed FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            True,
+            True,
+            "SharedStorage",
+            [],
+            None,
+            managed_fsx_lustre,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute stopped, login running, add managed FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            True,
+            True,
+            "SharedStorage",
+            [],
+            managed_fsx_lustre,
+            None,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute stopped, login running, remove managed FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            False,
+            True,
+            "SharedStorage",
+            [],
+            managed_fsx_lustre,
+            None,
+            QueueUpdateStrategy.DRAIN.value,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute running, login running, remove managed FSxLustre, update strategy DRAIN: rejected",
+        ),
+        pytest.param(
+            False,
+            False,
+            "SharedStorage",
+            [],
+            None,
+            managed_fsx_lustre,
+            None,
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set.",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, "
+            "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation.",
+            "slurm",
+            id="Compute running, login stopped, add managed FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            False,
+            False,
+            "SharedStorage",
+            [],
+            managed_fsx_lustre,
+            None,
+            None,
+            False,
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set.",
+            "Stop the compute fleet with the pcluster update-compute-fleet command, "
+            "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation.",
+            "slurm",
+            id="Compute running, login stopped, remove managed FSxLustre, update strategy not set: rejected",
         ),
         pytest.param(
             False,
@@ -1138,88 +1393,125 @@ def test_compute_fleet_stop_fail_reason_and_actions_needed(
             None,
             None,
             "slurm",
-            id="running fleet and Fsx added with update strategy DRAIN",
+            id="Compute running, login stopped, add managed FSxLustre, update strategy TERMINATE: accepted",
+        ),
+        # External FSx
+        # We test FSxLustre, as an FSx storage to cover all the other FSx storage types (Ontap, OpenZfs, FileCache)
+        pytest.param(
+            True,
+            False,
+            "SharedStorage",
+            [],
+            None,
+            external_fsx_lustre,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute stopped, login stopped, add external FSxLustre, no update strategy set: accepted",
+        ),
+        pytest.param(
+            True,
+            False,
+            "SharedStorage",
+            [],
+            external_fsx_lustre,
+            None,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute stopped, login stopped, remove external FSxLustre, no update strategy set: accepted",
         ),
         pytest.param(
             False,
             True,
             "SharedStorage",
             [],
-            {"MountDir": "/fsx", "Name": "fsx", "StorageType": "FsxLustre"},
             None,
-            QueueUpdateStrategy.DRAIN.value,
+            external_fsx_lustre,
+            None,
             False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "All login nodes must be stopped.",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="running fleet and Fsx removed with update strategy DRAIN",
+            id="Compute running, login running, add external FSxLustre, update strategy not set: rejected",
         ),
         pytest.param(
             False,
             True,
             "SharedStorage",
             [],
-            {
-                "MountDir": "/fsx",
-                "Name": "fsx",
-                "StorageType": "FsxLustre",
-                "FsxLustreSettings": {"DeletionPolicy": "Retain"},
-            },
+            external_fsx_lustre,
             None,
-            QueueUpdateStrategy.DRAIN.value,
+            None,
             False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "All login nodes must be stopped.",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="running fleet and FSx removed with DeletionPolicy to Retain and update strategy DRAIN",
+            id="Compute running, login running, remove external FSxLustre, update strategy not set: rejected",
         ),
         pytest.param(
             True,
-            False,
-            "SharedStorage",
-            [],
-            {"MountDir": "/openzfs", "Name": "Fsx", "StorageType": "FsxOpenZfs"},
-            None,
-            None,
-            True,
-            None,
-            None,
-            "slurm",
-            id="Stopped fleet and change FsxOpenXfs section",
-        ),
-        pytest.param(
-            True,
-            False,
-            "SharedStorage",
-            [],
-            None,
-            {"MountDir": "/ontap", "Name": "ontap", "StorageType": "FsxOntap"},
-            None,
-            True,
-            None,
-            None,
-            "slurm",
-            id="Stopped fleet and change FsxOntap section",
-        ),
-        pytest.param(
-            False,
             True,
             "SharedStorage",
             [],
-            {"MountDir": "/fsx", "Name": "fsx", "StorageType": "FsxOntap"},
             None,
+            external_fsx_lustre,
             None,
             False,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
+            "All login nodes must be stopped.",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="running fleet and Efs change with no update strategy set",
+            id="Compute stopped, login running, add external FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            True,
+            True,
+            "SharedStorage",
+            [],
+            external_fsx_lustre,
+            None,
+            None,
+            False,
+            "All login nodes must be stopped.",
+            "Stop the login nodes by setting Count parameter to 0 "
+            "and update the cluster with the pcluster update-cluster command",
+            "slurm",
+            id="Compute stopped, login running, remove external FSxLustre, update strategy not set: rejected",
+        ),
+        pytest.param(
+            False,
+            False,
+            "SharedStorage",
+            [],
+            None,
+            external_fsx_lustre,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute running, login stopped, add external FSxLustre, update strategy not set: accepted",
+        ),
+        pytest.param(
+            False,
+            False,
+            "SharedStorage",
+            [],
+            external_fsx_lustre,
+            None,
+            None,
+            True,
+            None,
+            None,
+            "slurm",
+            id="Compute running, login stopped, remove external FSxLustre, update strategy not set: accepted",
         ),
     ],
 )
@@ -1279,10 +1571,9 @@ def test_shared_storage_update_policy_condition_checker(
         )
     if scheduler != "awsbatch":
         cluster_has_running_login_nodes_mock.assert_called()
-        if has_running_login_nodes:
-            cluster_has_running_capacity_mock.assert_not_called()
-        else:
-            cluster_has_running_capacity_mock.assert_called()
+        cluster_has_running_capacity_mock.assert_called()
+    else:
+        cluster_has_running_login_nodes_mock.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -2424,10 +2715,8 @@ def test_compute_and_login_nodes_stop_policy(
             "dummy",
             "not_home",
             True,
-            "All login and compute nodes must be stopped",
-            "Stop the compute fleet with the pcluster update-compute-fleet command. "
-            "Stop the login nodes by setting Count parameter to 0 "
-            "and update the cluster with the pcluster update-cluster command",
+            None,
+            None,
         ),
     ],
 )
@@ -2446,9 +2735,10 @@ def test_home_change_policy(
     assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.condition_checker(change_mock, patch_mock)).is_equal_to(
         expected_condition
     )
-    assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.fail_reason(change_mock, patch_mock)).is_equal_to(
-        expected_fail_reason
-    )
-    assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.action_needed(change_mock, patch_mock)).is_equal_to(
-        expected_action_needed
-    )
+    if expected_condition is False:
+        assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.fail_reason(change_mock, patch_mock)).is_equal_to(
+            expected_fail_reason
+        )
+        assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.action_needed(change_mock, patch_mock)).is_equal_to(
+            expected_action_needed
+        )

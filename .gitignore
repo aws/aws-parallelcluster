@@ -1,3 +1,5 @@
+__pycache__
+.pytest_cache
 *.pyc
 *.pyo
 *.class
@@ -11,6 +13,7 @@ build/
 .tox/
 *.iml
 .coverage
+.coverage.*
 coverage.xml
 assets/
 report.html
