@@ -48,6 +48,7 @@
         "dynamodb:UpdateItem",
         "dynamodb:Query",
         "dynamodb:GetItem",
+        "dynamodb:BatchGetItem",
         "dynamodb:BatchWriteItem",
         "dynamodb:DeleteItem",
         "dynamodb:DescribeTable"

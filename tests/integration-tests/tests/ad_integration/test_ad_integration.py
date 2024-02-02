@@ -10,7 +10,6 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-import datetime
 import io
 import logging
 import os as os_lib
@@ -24,13 +23,11 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
-from OpenSSL import crypto
-from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import generate_stack_name, is_directory_supported, is_fsx_supported, random_alphanumeric
+from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, is_fsx_supported, random_alphanumeric
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
@@ -39,9 +36,6 @@ from tests.storage.test_fsx_lustre import create_fsx_ontap, create_fsx_open_zfs
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
 
-ADMIN_PASSWORD = "".join(random.choices(string.ascii_letters + string.digits, k=60))
-USER_PASSWORD = "".join(random.choices(string.ascii_letters + string.digits, k=60))
-
 
 def get_infra_stack_outputs(stack_name):
     cfn = boto3.client("cloudformation")
@@ -49,6 +43,19 @@ def get_infra_stack_outputs(stack_name):
         entry.get("OutputKey"): entry.get("OutputValue")
         for entry in cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["Outputs"]
     }
+
+
+def get_user_password(secret_arn):
+    client = boto3.client("secretsmanager")
+    return client.get_secret_value(SecretId=secret_arn)["SecretString"]
+
+
+def get_vpc_public_subnet(vpc_id):
+    cfn = boto3.client("ec2")
+    for entry in cfn.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]:
+        if entry.get("MapPublicIpOnLaunch"):
+            return {"public_subnet_id": entry.get("SubnetId")}
+    return None
 
 
 def get_infra_stack_parameters(stack_name):
@@ -88,6 +95,7 @@ def get_ad_config_param_vals(
         "ldap_tls_ca_cert": ldap_tls_ca_cert,
         "directory_protocol": directory_protocol,
         "ldap_tls_req_cert": "never" if directory_certificate_verification is False else "hard",
+        "private_subnet_id": directory_stack_outputs.get("PrivateSubnetIds").split(",")[0],
     }
 
 
@@ -147,13 +155,19 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
             "ParameterKey": "DomainName",
             "ParameterValue": f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster",
         },
-        {"ParameterKey": "AdminPassword", "ParameterValue": ADMIN_PASSWORD},
+        {
+            "ParameterKey": "AdminPassword",
+            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
+        },
         {
             "ParameterKey": "ReadOnlyPassword",
             "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
         },
         {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
-        {"ParameterKey": "UserPassword", "ParameterValue": USER_PASSWORD},
+        {
+            "ParameterKey": "UserPassword",
+            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
+        },
         {"ParameterKey": "DirectoryType", "ParameterValue": directory_type},
         {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
         {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
@@ -188,6 +202,7 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
             template=directory_stack_template.read(),
             parameters=stack_parameters,
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+            tags=[{"Key": "parallelcluster:integ-tests-ad-stack", "Value": directory_type}],
         )
     cfn_stacks_factory.create_stack(directory_stack)
     logging.info("Creation of stack %s complete", directory_stack_name)
@@ -202,31 +217,6 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     ).is_true()
 
 
-def _generate_certificate(common_name):
-    key = crypto.PKey()
-    key.generate_key(TYPE_RSA, 2048)
-    crt = X509()
-    crt.get_subject().commonName = common_name
-    crt.get_issuer().commonName = common_name
-    now = datetime.datetime.now()
-    days = datetime.timedelta(days=90)
-    asn1_time_format = "%Y%m%d000000Z"
-    crt.set_notBefore((now - days).strftime(asn1_time_format).encode())
-    crt.set_notAfter((now + days).strftime(asn1_time_format).encode())
-    crt.set_serial_number(random.randrange(1, 99999))
-    crt.set_pubkey(key)
-    crt.sign(key, "sha256")
-    certificate = dump_certificate(FILETYPE_PEM, crt)
-    private_key = dump_privatekey(FILETYPE_PEM, key)
-    iam = boto3.client("iam")
-    certificate_arn = iam.upload_server_certificate(
-        ServerCertificateName=common_name,
-        CertificateBody=certificate.decode("utf-8"),
-        PrivateKey=private_key.decode("utf-8"),
-    )["ServerCertificateMetadata"]["Arn"]
-    return certificate_arn, certificate
-
-
 @retry(stop_max_attempt_number=10, wait_exponential_multiplier=2000, wait_exponential_max=30000)
 def _delete_certificate(certificate_arn, region):
     logging.info("Deleting IAM certificate %s in region %s", certificate_arn, region)
@@ -239,7 +229,6 @@ def _delete_certificate(certificate_arn, region):
 def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
-    created_certificates = defaultdict(dict)
 
     def _directory_factory(
         existing_directory_stack_name,
@@ -253,15 +242,19 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
             directory_stack_name = created_directory_stacks.get(region, {}).get("directory")
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
-            directory_stack = _create_directory_stack(
-                cfn_stacks_factory,
-                request,
-                directory_type,
-                region,
-                vpc_stack,
-            )
-            directory_stack_name = directory_stack.name
-            created_directory_stacks[region]["directory"] = directory_stack_name
+            stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
+            directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
+
+            if not directory_stack_name:
+                directory_stack = _create_directory_stack(
+                    cfn_stacks_factory,
+                    request,
+                    directory_type,
+                    region,
+                    vpc_stack,
+                )
+                directory_stack_name = directory_stack.name
+                created_directory_stacks[region]["directory"] = directory_stack_name
 
         return directory_stack_name
 
@@ -270,7 +263,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
     for region, stack_dict in created_directory_stacks.items():
         for stack_type in stack_dict:
             stack_name = stack_dict[stack_type]
-            if request.config.getoption("no_delete"):
+            if request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack"):
                 logging.info(
                     "Not deleting %s stack named %s in region %s because --no-delete option was specified",
                     stack_type,
@@ -280,22 +273,6 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
             else:
                 logging.info("Deleting %s stack named %s in region %s", stack_type, stack_name, region)
                 cfn_stacks_factory.delete_stack(stack_name, region)
-
-    for region, certificate_arn in created_certificates.items():
-        if request.config.getoption("no_delete"):
-            logging.info(
-                "Not deleting IAM certificate %s in region %s because --no-delete option was specified",
-                certificate_arn,
-                region,
-            )
-        else:
-            logging.info(
-                "Sleeping 180 seconds to wait for the IAM certificate %s in region %s to become unused",
-                certificate_arn,
-                region,
-            )
-            time.sleep(180)
-            _delete_certificate(certificate_arn=certificate_arn, region=region)
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
@@ -552,7 +529,7 @@ def test_ad_integration(
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
-    ad_user_password = USER_PASSWORD
+    ad_user_password = get_user_password(directory_stack_outputs.get("UserPasswordSecretArn"))
 
     ldap_tls_ca_cert = "/opt/parallelcluster/shared/directory_service/certificate.crt"
     config_params.update(
@@ -564,6 +541,8 @@ def test_ad_integration(
             directory_certificate_verification,
         )
     )
+
+    config_params.update(get_vpc_public_subnet(directory_stack_outputs.get("VpcId")))
     if fsx_supported:
         config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
     cluster_config = pcluster_config_reader(**config_params)
@@ -693,7 +672,7 @@ def test_ad_integration_on_login_nodes(
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
-    ad_user_password = USER_PASSWORD
+    ad_user_password = get_user_password(directory_stack_outputs.get("PasswordSecretArn"))
     ldap_tls_ca_cert = "/opt/parallelcluster/shared_login_nodes/directory_service/certificate.crt"
     config_params = get_ad_config_param_vals(
         directory_stack_outputs,
@@ -702,6 +681,7 @@ def test_ad_integration_on_login_nodes(
         directory_protocol,
         directory_certificate_verification,
     )
+    config_params.update(get_vpc_public_subnet(directory_stack_outputs.get("VpcId")))
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 

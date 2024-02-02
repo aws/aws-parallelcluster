@@ -297,10 +297,6 @@ class ClusterCdkStack:
         # Initialize Login Nodes
         self._add_login_nodes_resources()
 
-        # SLURM only - Add Custom Resource to wait for the compute fleet stack to be ready,
-        # e.g. verifying that every compute node has deployed the expected cluster config version
-        self._add_wait_cluster_ready_lambda()
-
         # AWS Batch related resources
         if self._condition_is_batch():
             self.scheduler_resources = AwsBatchConstruct(
@@ -480,77 +476,6 @@ class ClusterCdkStack:
             )
             # Add dependency on the Head Node construct
             self.login_nodes_stack.node.add_dependency(self.head_node_instance)
-
-    def _add_wait_cluster_ready_lambda(self):
-        """Create a Custom Resource that performs some checks to consider the cluster ready (SLURM only).
-
-        In particular, it performs the following checks:
-          1. Verify that all compute nodes have deployed the expected cluster config version.
-        """
-        if not self._condition_is_slurm():
-            return
-
-        function_id = "WaitClusterReady"
-        lambda_role = None
-        if self._condition_create_lambda_iam_role():
-            lambda_role = add_lambda_cfn_role(
-                scope=self.stack,
-                config=self.config,
-                function_id=function_id,
-                statements=[
-                    iam.PolicyStatement(
-                        actions=["ec2:DescribeInstances"],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                        sid="EC2Policy",
-                    ),
-                    iam.PolicyStatement(
-                        actions=["dynamodb:BatchGetItem"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.stack.format_arn(
-                                service="dynamodb",
-                                account=self.stack.account,
-                                region=self.stack.region,
-                                resource=f"table/parallelcluster-{self.stack.stack_name}",
-                            )
-                        ],
-                        sid="DynamoDbPolicy",
-                    ),
-                    get_cloud_watch_logs_policy_statement(
-                        resource=self.stack.format_arn(
-                            service="logs",
-                            account=self.stack.account,
-                            region=self.stack.region,
-                            resource=get_lambda_log_group_prefix(f"{function_id}-*"),
-                        )
-                    ),
-                ],
-                has_vpc_config=self.config.lambda_functions_vpc_config,
-            )
-
-        lambda_fn = PclusterLambdaConstruct(
-            scope=self.stack,
-            id=f"{function_id}FunctionConstruct",
-            function_id=function_id,
-            bucket=self.bucket,
-            config=self.config,
-            execution_role=lambda_role.attr_arn if lambda_role else self.config.iam.roles.lambda_functions_role,
-            handler_func="wait_cluster_ready",
-        ).lambda_func
-
-        custom_resource = CustomResource(
-            self.stack,
-            f"{function_id}CustomResource",
-            service_token=lambda_fn.attr_arn,
-            properties={
-                "ClusterName": self.config.cluster_name,
-                "TableName": self.dynamodb_table_status.ref,
-                "ConfigVersion": self.config.config_version,
-            },
-        )
-
-        custom_resource.node.add_dependency(self.wait_condition)
 
     def _add_cleanup_resources_lambda(self):
         """Create Lambda cleanup resources function and its role."""

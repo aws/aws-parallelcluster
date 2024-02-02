@@ -92,6 +92,7 @@ TEST_DEFAULTS = {
     "lambda_layer_source": None,
     "force_run_instances": False,
     "force_elastic_ip": False,
+    "retain_ad_stack": False,
 }
 
 
@@ -417,6 +418,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("force_elastic_ip"),
         action="store_true",
     )
+    debug_group.add_argument(
+        "--retain-ad-stack",
+        action="store_true",
+        help="Retain AD stack and corresponding VPC stack.",
+        default=TEST_DEFAULTS.get("retain_ad_stack"),
+    )
 
     return parser
 
@@ -619,6 +626,9 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.external_shared_storage_stack_name:
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
+
+    if args.retain_ad_stack:
+        pytest_args.append("--retain-ad-stack")
 
 
 def _set_validate_instance_type_args(args, pytest_args):
