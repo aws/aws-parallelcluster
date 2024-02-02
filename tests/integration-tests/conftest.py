@@ -156,6 +156,9 @@ def pytest_addoption(parser):
     parser.addoption(
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
     )
+    parser.addoption(
+        "--retain-ad-stack", action="store_true", default=False, help="Retain AD stack and corresponding VPC stack."
+    )
     parser.addoption("--benchmarks", action="store_true", default=False, help="enable benchmark tests")
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
@@ -855,7 +858,11 @@ def cfn_stacks_factory(request):
     factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
     if not request.config.getoption("no_delete"):
-        factory.delete_all_stacks()
+        excluded_stacks = []
+        if request.config.getoption("retain_ad_stack"):
+            excluded_stacks.extend(["vpc", "SimpleAD", "MicrosoftAD"])
+            logging.warning("Skipping deletion of AD and VPC stacks because --retain-ad-stack option is set")
+        factory.delete_all_stacks(excluded_stacks)
     else:
         logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 

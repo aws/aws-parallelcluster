@@ -864,3 +864,25 @@ def retrieve_clustermgtd_conf_path(remote_command_executor):
 def disable_protected_mode(remote_command_executor):
     """Disable protected mode by setting protected_failure_count to -1."""
     set_protected_failure_count(remote_command_executor, -1)
+
+
+def find_stack_by_tag(tag, region, stack_prefix):
+    """Find cloudformation stack with stack_prefix in its name that has a specfic tag"""
+    cfn_client = boto3.client("cloudformation", region_name=region)
+    stacks = cfn_client.describe_stacks()
+
+    for stack in stacks.get("Stacks"):
+        name = stack.get("StackName")
+        tags = stack.get("Tags")
+        creation_date = stack.get("CreationTime")
+        stack_status = stack.get("StackStatus")
+        has_tag = False
+
+        for t in tags:
+            if t["Key"] == tag:
+                has_tag = True
+
+        if stack_status == "CREATE_COMPLETE" and stack_prefix in name and has_tag:
+            logging.info(f"Found stack: {name} (created on {creation_date})")
+            return name
+    return None
