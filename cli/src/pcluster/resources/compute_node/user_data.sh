@@ -40,14 +40,6 @@ Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
 
 bootcmd:
-  # Disable multithreading using logic from https://aws.amazon.com/blogs/compute/disabling-intel-hyper-threading-technology-on-amazon-linux/
-  # thread_siblings_list contains a comma (,) or dash (-) separated list of CPU hardware threads within the same core as cpu
-  # e.g. 0-1 or 0,1
-  # cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list
-  #     | tr '-' ','       # convert hyphen (-) to comma (,), to account that some kernels and CPU architectures use a hyphen instead of a comma
-  #     | cut -s -d, -f2-  # split over comma (,) and take the right part
-  #     | tr ',' '\n'      # convert remaining comma (,) into new lines
-  #     | sort -un         # sort and unique
   - if [ "${DisableMultiThreadingManually}" = "true" ]; then for cpunum in $(cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | tr '-' ',' | cut -s -d, -f2- | tr ',' '\n' | sort -un); do echo 0 > /sys/devices/system/cpu/cpu$cpunum/online; done; fi
 
 package_update: false
@@ -141,11 +133,7 @@ write_files:
       s3_url=${AWS::URLSuffix}
       if [ "${!custom_cookbook}" != "NONE" ]; then
         if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
-          # Set the socket connection timeout to 15s. Emperically, it seems like the actual
-          # timeout is 8x(cli-connect-timeout). i.e. if cli-connection-timeout is set to
-          # 60s, the call will timeout the connect attempt at 8m. Setting it to 15s, causes
-          # each attempt to take 240s, so 2m * 3 attempts will result in a failure after 6
-          # minutes.
+          # Socket timeout = 15s; the actual timeout is 8*(cli-connect-timeout), so (15s*8)*3retries=6min.
           S3API_RESULT=$(AWS_RETRY_MODE=standard aws s3api get-bucket-location --cli-connect-timeout 15 --bucket ${!BASH_REMATCH[1]} --region ${AWS::Region} 2>&1) || error_exit "${!S3API_RESULT}"
           bucket_region=$(echo "${!S3API_RESULT}" | jq -r '.LocationConstraint')
           if [[ "${!bucket_region}" == null ]]; then
@@ -176,7 +164,6 @@ write_files:
       fi
       cd /tmp
 
-      # measure start time
       start=$(date +%s)
 
       {
@@ -193,7 +180,6 @@ write_files:
         echo ${!cookbook_version} | tee /opt/parallelcluster/.bootstrapped
       fi
 
-      # measure end time
       end=$(date +%s)
 
       if [ "${ComputeStartupTimeMetricEnabled}" = "True" ]; then
@@ -219,6 +205,4 @@ if [ "${Timeout}" == "NONE" ]; then
 else
   timeout ${Timeout} /tmp/bootstrap.sh || error_exit
 fi
-
-# End of file
 --==BOUNDARY==
