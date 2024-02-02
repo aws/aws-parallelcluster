@@ -182,9 +182,18 @@ def _assert_template_limits(template_path: str, template_content: str):
     Assert that size of the template doesn't exceed 1MB and number of resources doesn't exceed 500.
 
     :param template_path: path to the generated cfn template
+    :param template_content: content of the generated cfn template
     """
-    assert_that(os.stat(template_path).st_size).is_less_than(MAX_SIZE_OF_CFN_TEMPLATE)
-    matches = len(re.findall("Type.*AWS::", str()))
+    template_size = os.stat(template_path).st_size
+
+    print("Template {} has size {}, maximum is {}".format(template_path, template_size, MAX_SIZE_OF_CFN_TEMPLATE))
+
+    assert_that(template_size).is_less_than(MAX_SIZE_OF_CFN_TEMPLATE)
+
+    matches = len(re.findall("Type.*AWS::", str(template_content)))
+
+    print("Template {} has {} resources, maximum is {}".format(template_path, matches, MAX_RESOURCES_PER_TEMPLATE))
+
     assert_that(matches).is_less_than(MAX_RESOURCES_PER_TEMPLATE)
 
 
