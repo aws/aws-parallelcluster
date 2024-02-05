@@ -467,6 +467,7 @@ class ClusterCdkStack:
                 login_security_group=self._login_security_group,
                 head_eni=self._head_eni,
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
+                cluster_bucket=self.bucket,
             )
             Tags.of(self.login_nodes_stack).add(
                 # This approach works since by design we have now only one pool.

@@ -88,45 +88,6 @@ def render_user_data(user_data):
     return content
 
 
-# user_data should contain the result provided by `render_user_data` function, that is a string with the
-# whole user_data injected in the Login/Compute nodes
-#
-# Content-Type: multipart/mixed; boundary="==BOUNDARY=="
-# MIME-Version: 1.0
-#
-# --==BOUNDARY==
-# Content-Type: text/cloud-boothook; charset="us-ascii"
-# MIME-Version: 1.0
-#
-# #!/bin/bash -x
-# ...
-# write_files:
-#  - path: /tmp/dna.json
-#    permissions: '0644'
-#    owner: root:root
-#    content: |
-#      {
-#        "cluster": {
-#          "base_os": "alinux2",
-#          "cluster_name": "clustername",
-#          "cluster_user": "ec2-user",
-#          "custom_node_package": "",
-# ..
-#      }
-#  - path: /etc/chef/client.rb
-#  permissions: '0644'
-# ..
-def validate_dna_json_fields(user_data, fields):
-    """Validate that all dna.json fields, expressed as key-value pairs, are present in the user_data."""
-    lines = user_data.splitlines()
-    for k, v in fields.items():
-        for line in lines:
-            if k in line:
-                break
-
-        assert v in line, f"Validating Key '{k}' - Value: '{v}' not found in dna.json line:  '{line}'"
-
-
 def get_head_node_policy(template, enforce_not_null=True):
     policy = get_resources(template, type="AWS::IAM::Policy", name="ParallelClusterPoliciesHeadNode").get(
         "ParallelClusterPoliciesHeadNode"

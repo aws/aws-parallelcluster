@@ -87,7 +87,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Update cluster with the same configuration, command should not result any error even if not using force update
     cluster.update(str(init_config_file), force_update="true")
 
-    # Verify that compute nodes stored the deployed config version on DDB
+    # Verify that compute and login nodes stored the deployed config version on DDB
     assert_instance_config_version_on_ddb(cluster, get_deployed_config_version(cluster))
 
     # Command executors
@@ -175,7 +175,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     )
     cluster.update(str(updated_config_file), force_update="true")
 
-    # Verify that compute nodes stored the deployed config version on DDB
+    # Verify that compute and login nodes stored the deployed config version on DDB
     last_cluster_config_version = get_deployed_config_version(cluster)
     assert_instance_config_version_on_ddb(cluster, last_cluster_config_version)
 
@@ -325,7 +325,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
 
-    # Verify that compute nodes stored the deployed config version on DDB.
+    # Verify that compute and login nodes stored the deployed config version on DDB.
     # This check must be retried when executed to validate a rollback, because
     # the stack reaches the UPDATE_ROLLBACK_COMPLETE state before compute nodes complete their update recipe.
     # TODO Make the stack reach the UPDATE_ROLLBACK_COMPLETE only once the compute nodes have completed their updates.
