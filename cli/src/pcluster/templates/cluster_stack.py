@@ -817,12 +817,12 @@ class ClusterCdkStack:
                 )
 
                 if sg_type == "Storage":
-                    ingress_rule.cfn_options.deletion_policy = ingress_rule.cfn_options.update_replace_policy = (
-                        storage_deletion_policy
-                    )
-                    egress_rule.cfn_options.deletion_policy = egress_rule.cfn_options.update_replace_policy = (
-                        storage_deletion_policy
-                    )
+                    ingress_rule.cfn_options.deletion_policy = (
+                        ingress_rule.cfn_options.update_replace_policy
+                    ) = storage_deletion_policy
+                    egress_rule.cfn_options.deletion_policy = (
+                        egress_rule.cfn_options.update_replace_policy
+                    ) = storage_deletion_policy
 
         return storage_security_group
 
@@ -989,9 +989,9 @@ class ClusterCdkStack:
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
-            fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
-                convert_deletion_policy(shared_fsx.deletion_policy)
-            )
+            fsx_resource.cfn_options.deletion_policy = (
+                fsx_resource.cfn_options.update_replace_policy
+            ) = convert_deletion_policy(shared_fsx.deletion_policy)
 
             fsx_id = fsx_resource.ref
 
@@ -1319,7 +1319,10 @@ class ClusterCdkStack:
                         get_attr(self.config, "additional_packages.intel_software.python")
                     ).lower(),
                     "disable_sudo_access_for_default_user": (
-                        "true" if self.config.disable_sudo_access_default_user else "false"
+                        "true"
+                        if self.config.deployment_settings
+                        and self.config.deployment_settings.disable_sudo_access_default_user
+                        else "false"
                     ),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)

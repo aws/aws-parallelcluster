@@ -265,7 +265,10 @@ class Pool(Construct):
                         get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                     ).lower(),
                     "disable_sudo_access_for_default_user": (
-                        "true" if self._config.disable_sudo_access_default_user else "false"
+                        "true"
+                        if self._config.deployment_settings
+                           and self._config.deployment_settings.disable_sudo_access_default_user
+                        else "false"
                     ),
                 }
             },

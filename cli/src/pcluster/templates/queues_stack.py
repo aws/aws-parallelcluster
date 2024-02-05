@@ -376,7 +376,10 @@ class QueuesStack(NestedStack):
                     "head_node_private_ip": self._head_eni.attr_primary_private_ip_address,
                     "directory_service": {"enabled": str(self._config.directory_service is not None).lower()},
                     "disable_sudo_access_for_default_user": (
-                        "true" if self._config.disable_sudo_access_default_user else "false"
+                        "true"
+                        if self._config.deployment_settings
+                        and self._config.deployment_settings.disable_sudo_access_default_user
+                        else "false"
                     ),
                 }
             },
