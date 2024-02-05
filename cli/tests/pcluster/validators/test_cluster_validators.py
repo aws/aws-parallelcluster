@@ -21,6 +21,7 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     CapacityReservationTarget,
     Database,
+    ExternalSlurmdbd,
     RootVolume,
     SharedEbs,
     SlurmComputeResource,
@@ -345,7 +346,10 @@ def test_custom_slurm_settings_include_file_only_validator(
         ),
         pytest.param(
             None,
-            "test.slurmdbd.host",
+            ExternalSlurmdbd(
+                host="test.slurmdbd.host",
+                port=6819,
+            ),
             None,
             id="Case with external slurmdbd",
         ),
@@ -365,7 +369,10 @@ def test_custom_slurm_settings_include_file_only_validator(
                 user_name="databaseadmin",
                 password_secret_arn="fake-password-secret-arn",
             ),
-            "test.slurmdbd.host",
+            ExternalSlurmdbd(
+                host="test.slurmdbd.host",
+                port=6819,
+            ),
             "Database and ExternalSlurmdbd cannot be defined at the same time within SlurmSettings.",
             id="Bad case with Slurm Accounting (via Database) and external slurmdbd",
         ),
