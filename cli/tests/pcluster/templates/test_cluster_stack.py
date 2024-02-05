@@ -41,11 +41,8 @@ from tests.pcluster.utils import (
     assert_lambdas_have_expected_vpc_config_and_managed_policy,
     assert_sg_rule,
     get_asset_content_with_resource_name,
-    get_resource_from_assets,
     get_resources,
     load_cluster_model_from_yaml,
-    render_user_data,
-    validate_dna_json_fields,
 )
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
@@ -435,6 +432,7 @@ class LoginNodeLTAssertion:
         http_tokens,
         iam_instance_profile_name,
         custom_tags=None,
+        user_data_variables=None,
     ):
         self.subnet_ids = subnet_ids
         self.root_volume_encrypted = root_volume_encrypted
@@ -442,6 +440,7 @@ class LoginNodeLTAssertion:
         self.http_tokens = http_tokens
         self.iam_instance_profile_name = iam_instance_profile_name
         self.custom_tags = custom_tags
+        self.user_data_variables = user_data_variables
 
     def assert_lt_properties(self, generated_template, resource_type):
         resources = generated_template["Resources"][resource_type]
@@ -459,6 +458,10 @@ class LoginNodeLTAssertion:
         if self.custom_tags:
             for tag in self.custom_tags:
                 assert tag in properties["LaunchTemplateData"]["TagSpecifications"][0]["Tags"]
+        if self.user_data_variables:
+            lt_user_data_variables = properties["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]
+            for k, v in self.user_data_variables.items():
+                assert_that(lt_user_data_variables[k]).is_equal_to(v)
 
 
 @pytest.mark.parametrize(
@@ -472,9 +475,58 @@ class LoginNodeLTAssertion:
                     root_volume_encrypted=True,
                     image_id="dummy-ami-id",
                     http_tokens="required",
-                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
+                    # Managed instance profile
+                    iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
+                    user_data_variables={
+                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
+                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                        # Name of the managed role name within the managed instance profile
+                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                    },
                 ),
-                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+        (
+            "test-login-nodes-stack-with-custom-instance-profile.yaml",
+            [
+                LoginNodeLTAssertion(
+                    subnet_ids=["subnet-12345678"],
+                    root_volume_encrypted=True,
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    # Custom instance profile
+                    iam_instance_profile_name="INSTANCE_PROFILE_NAME",
+                    user_data_variables={
+                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
+                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                        # Name of the custom role within the custom instance profile
+                        "CfnInitRole": "Mocked-RoleName",
+                    },
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
+                InstanceTypeLTAssertion(has_instance_type=True),
+            ],
+        ),
+        (
+            "test-login-nodes-stack-with-custom-instance-role.yaml",
+            [
+                LoginNodeLTAssertion(
+                    subnet_ids=["subnet-12345678"],
+                    root_volume_encrypted=True,
+                    image_id="dummy-ami-id",
+                    http_tokens="required",
+                    # Managed instance profile containing the custom instance role
+                    iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
+                    user_data_variables={
+                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
+                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                        # Name of the custom role
+                        "CfnInitRole": "ROLE_NAME",
+                    },
+                ),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
             ],
         ),
@@ -486,9 +538,16 @@ class LoginNodeLTAssertion:
                     root_volume_encrypted=True,
                     image_id="dummy-ami-id",
                     http_tokens="required",
-                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
+                    # Managed instance profile
+                    iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
+                    user_data_variables={
+                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
+                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                        # Name of the managed role name within the managed instance profile
+                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                    },
                 ),
-                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
             ],
         ),
@@ -500,13 +559,20 @@ class LoginNodeLTAssertion:
                     root_volume_encrypted=True,
                     image_id="dummy-ami-id",
                     http_tokens="required",
-                    iam_instance_profile_name={"Ref": "InstanceProfile15b342af42246b70"},
+                    # Managed instance profile
+                    iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     custom_tags=[
                         {"Key": "rs:environment", "Value": "development"},
                         {"Key": "rs:project", "Value": "solutions"},
                     ],
+                    user_data_variables={
+                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
+                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                        # Name of the managed role name within the managed instance profile
+                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                    },
                 ),
-                NetworkInterfaceLTAssertion(no_of_network_interfaces=3, subnet_id="subnet-12345678"),
+                NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
                 InstanceTypeLTAssertion(has_instance_type=True),
             ],
         ),
@@ -527,10 +593,10 @@ def test_login_nodes_launch_template_properties(
         rendered_config_file,
         test_datadir,
     )
-    launch_template_logical_id = "LaunchTemplate64e1c3597ca4c326"
-    asset_content = get_asset_content_with_resource_name(cdk_assets, launch_template_logical_id)
+    login_node_lt_id = "LoginNodeLaunchTemplateA50bdea9651dc48c"
+    asset_content = get_asset_content_with_resource_name(cdk_assets, login_node_lt_id)
     for lt_assertion in lt_assertions:
-        lt_assertion.assert_lt_properties(asset_content, launch_template_logical_id)
+        lt_assertion.assert_lt_properties(asset_content, login_node_lt_id)
 
 
 class AutoScalingGroupAssertion:
@@ -683,11 +749,49 @@ class IamPolicyAssertion:
                                         ":",
                                         {"Ref": "AWS::AccountId"},
                                         ":autoScalingGroup:*:autoScalingGroupName/clustername-"
-                                        + "testloginnodespool1-AutoScalingGroup",
+                                        "testloginnodespool1-AutoScalingGroup",
                                     ],
                                 ]
                             },
                             "Sid": "Autoscaling",
+                        },
+                        {
+                            "Action": "cloudformation:DescribeStackResource",
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":cloudformation:",
+                                        {"Ref": "AWS::Region"},
+                                        ":",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":stack/clustername-*/*",
+                                    ],
+                                ]
+                            },
+                            "Sid": "CloudFormation",
+                        },
+                        {
+                            "Action": ["dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:GetItem"],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":dynamodb:",
+                                        {"Ref": "AWS::Region"},
+                                        ":",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":table/parallelcluster-clustername",
+                                    ],
+                                ]
+                            },
+                            "Sid": "DynamoDBTable",
                         },
                     ]
                 ),
@@ -706,41 +810,41 @@ def test_login_nodes_traffic_management_resources_values_properties(
         config_file_name,
         test_datadir,
     )
-    asset_content_asg = get_asset_content_with_resource_name(
-        cdk_assets, "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
+
+    auto_scaling_group_id = "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
+    load_balancer_id = "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
+    target_group_id = "clusternametestloginnodespool1testloginnodespool1TargetGroup713F5EC5"
+    listener_id = (
+        "clusternametestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC"
     )
-    asset_content_nlb = get_asset_content_with_resource_name(
-        cdk_assets, "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
-    )
-    asset_content_target_group = get_asset_content_with_resource_name(
-        cdk_assets, "clusternametestloginnodespool1testloginnodespool1TargetGroup713F5EC5"
-    )
+    role_id = "RoleA50bdea9651dc48c"
+    policies_id = "ParallelClusterPoliciesA50bdea9651dc48c"
+
+    asset_content_asg = get_asset_content_with_resource_name(cdk_assets, auto_scaling_group_id)
+    asset_content_nlb = get_asset_content_with_resource_name(cdk_assets, load_balancer_id)
+    asset_content_target_group = get_asset_content_with_resource_name(cdk_assets, target_group_id)
     asset_content_nlb_listener = get_asset_content_with_resource_name(
         cdk_assets,
-        "clusternametestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC",
+        listener_id,
     )
     asset_content_iam_role = get_asset_content_with_resource_name(
         cdk_assets,
-        "RoleA50bdea9651dc48c",
+        role_id,
     )
     asset_content_iam_policy = get_asset_content_with_resource_name(
         cdk_assets,
-        "ParallelClusterPoliciesA50bdea9651dc48c",
+        policies_id,
     )
     for lt_assertion in lt_assertions:
         if isinstance(lt_assertion, AutoScalingGroupAssertion):
             lt_assertion.assert_asg_properties(
                 asset_content_asg,
-                "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937",
+                auto_scaling_group_id,
             )
         elif isinstance(lt_assertion, NetworkLoadBalancerAssertion):
-            lt_assertion.assert_nlb_properties(
-                asset_content_nlb, "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
-            )
+            lt_assertion.assert_nlb_properties(asset_content_nlb, load_balancer_id)
         elif isinstance(lt_assertion, TargetGroupAssertion):
-            lt_assertion.assert_tg_properties(
-                asset_content_target_group, "clusternametestloginnodespool1testloginnodespool1TargetGroup713F5EC5"
-            )
+            lt_assertion.assert_tg_properties(asset_content_target_group, target_group_id)
         elif isinstance(lt_assertion, NetworkLoadBalancerListenerAssertion):
             lt_assertion.assert_nlb_listener_properties(
                 asset_content_nlb_listener,
@@ -748,11 +852,9 @@ def test_login_nodes_traffic_management_resources_values_properties(
                 "LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC",
             )
         elif isinstance(lt_assertion, IamRoleAssertion):
-            lt_assertion.assert_iam_role_properties(asset_content_iam_role, "RoleA50bdea9651dc48c")
+            lt_assertion.assert_iam_role_properties(asset_content_iam_role, role_id)
         elif isinstance(lt_assertion, IamPolicyAssertion):
-            lt_assertion.assert_iam_policy_properties(
-                asset_content_iam_policy, "ParallelClusterPoliciesA50bdea9651dc48c"
-            )
+            lt_assertion.assert_iam_policy_properties(asset_content_iam_policy, policies_id)
 
 
 @pytest.mark.parametrize(
@@ -817,57 +919,6 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
 
     assert_that(generated_head_node_dna_json).is_equal_to(default_head_node_dna_json)
-
-
-@pytest.mark.parametrize(
-    "config_file_name, expected_login_node_dna_json_fields",
-    [
-        (
-            "login-basic-config.yaml",
-            {
-                "dns_domain": "{'Ref': 'referencetoclusternameClusterDNSDomain8D0872E1Ref'}",
-                "ephemeral_dir": "/scratch",
-                "enable_intel_hpc_platform": "false",
-                "head_node_private_ip": "{'Ref': 'referencetoclusternameHeadNodeENI6497A502PrimaryPrivateIpAddress'}",
-                "hosted_zone": "{'Ref': 'referencetoclusternameRoute53HostedZone2388733DRef'}",
-                "log_group_name": "/aws/parallelcluster/clustername",
-                "node_type": "LoginNode",
-                '"proxy"': "NONE",
-                "scheduler": "slurm",
-                "disable_sudo_access_for_default_user": "true",
-            },
-        ),
-        (
-            "login-with-directory-service.yaml",
-            {
-                "domain_read_only_user": "cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=sirena,dc=com",
-                "generate_ssh_keys_for_users": "true",
-                "disable_sudo_access_for_default_user": "false",
-            },
-        ),
-    ],
-)
-def test_login_node_dna_json(mocker, test_datadir, config_file_name, expected_login_node_dna_json_fields):
-    mock_aws_api(mocker)
-    mock_bucket_object_utils(mocker)
-
-    # Read yaml and render CF Template
-    input_yaml = load_yaml_dict(test_datadir / config_file_name)
-    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    _, cdk_assets = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-
-    # Retrieve UserData information from CF Template
-    login_node_lt = get_resource_from_assets(cdk_assets, "clusternameloginLoginNodeLaunchTemplatelogin990F8275")
-    user_data_content = login_node_lt["Properties"]["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"]
-    rendered_login_user_data = render_user_data(user_data_content)
-
-    # Validate dna.json fields in user_data
-    # Note: since all lines of the user data will be checked ensure you are setting the right key to
-    # uniquely identify the line to check
-    # The value may be a substring of the expected value since hash codes may vary
-    validate_dna_json_fields(rendered_login_user_data, expected_login_node_dna_json_fields)
 
 
 @freeze_time("2021-01-01T01:01:01")

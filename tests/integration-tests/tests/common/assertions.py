@@ -356,23 +356,29 @@ def _assert_slurm_rebooted_nodes(compute_nodes, remote_command_executor):
         )
 
 
-def assert_instance_config_version_on_ddb(cluster, expected_cluster_config_version: str):
-    """Verifies that every compute node stored on DynamoDB the expected cluster config version."""
-    compute_nodes = cluster.describe_cluster_instances(node_type="Compute")
-    n_compute_nodes = len(compute_nodes)
-    logging.info(
-        f"Verifying that all {n_compute_nodes} compute nodes stored the expected config version on DDB: "
-        f"{expected_cluster_config_version}"
-    )
-    for compute_node in compute_nodes:
-        instance_id = compute_node["instanceId"]
-        table_name = f"parallelcluster-{cluster.name}"
-        item_id = f"CLUSTER_CONFIG.{instance_id}"
-        item = get_ddb_item(cluster.region, table_name, {"Id": item_id})
-        assert_that(item).is_not_none()
-        cluster_config_version_on_ddb = item["Data"]["cluster_config_version"]
-        assert_that(cluster_config_version_on_ddb).is_equal_to(expected_cluster_config_version)
-    logging.info(
-        f"Verified that all {n_compute_nodes} compute nodes stored the expected config version on DDB: "
-        f"{expected_cluster_config_version}"
-    )
+def assert_instance_config_version_on_ddb(
+    cluster, expected_cluster_config_version: str, node_types=("Compute", "LoginNode")
+):
+    """Verifies that every cluster node stored on DynamoDB the expected cluster config version."""
+    for node_type in node_types:
+        nodes = cluster.describe_cluster_instances(node_type=node_type)
+        n_nodes = len(nodes)
+        if n_nodes == 0:
+            logging.info(f"No nodes of type {node_type} found to check, skipping")
+            continue
+        logging.info(
+            f"Verifying that all {n_nodes} nodes ({node_type}) stored the expected config version on DDB: "
+            f"{expected_cluster_config_version}"
+        )
+        for node in nodes:
+            instance_id = node["instanceId"]
+            table_name = f"parallelcluster-{cluster.name}"
+            item_id = f"CLUSTER_CONFIG.{instance_id}"
+            item = get_ddb_item(cluster.region, table_name, {"Id": item_id})
+            assert_that(item).is_not_none()
+            cluster_config_version_on_ddb = item["Data"]["cluster_config_version"]
+            assert_that(cluster_config_version_on_ddb).is_equal_to(expected_cluster_config_version)
+        logging.info(
+            f"Verified that all {n_nodes} nodes ({node_type}) stored the expected config version on DDB: "
+            f"{expected_cluster_config_version}"
+        )

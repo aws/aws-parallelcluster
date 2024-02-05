@@ -932,6 +932,27 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                     )
                 ],
             ),
+            iam.PolicyStatement(
+                sid="CloudFormation",
+                actions=[
+                    "cloudformation:DescribeStackResource",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(service="cloudformation", resource=f"stack/{Stack.of(self).stack_name}-*/*"),
+                ],
+            ),
+            iam.PolicyStatement(
+                sid="DynamoDBTable",
+                actions=["dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:GetItem"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="dynamodb",
+                        resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{Stack.of(self).stack_name}",
+                    )
+                ],
+            ),
         ]
 
 
