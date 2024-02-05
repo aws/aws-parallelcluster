@@ -115,6 +115,7 @@ class ExternalSlurmdbdStack(Stack):
     def _add_cfn_init_config(self):
         dna_json_content = {
             "slurmdbd_ip": self.slurmdbd_private_ip.value_as_string,
+            "slurmdbd_port": self.slurmdbd_port.value_as_number,
             "dbms_uri": self.dbms_uri.value_as_string,
             "dbms_username": self.dbms_username.value_as_string,
             "dbms_database_name": self.dbms_database_name.value_as_string,
@@ -218,9 +219,17 @@ class ExternalSlurmdbdStack(Stack):
             vpc=self.vpc,
         )
 
+        self.slurmdbd_port = CfnParameter(
+            self,
+            "SlurmdbdPort",
+            type="Number",
+            description="The port the slurmdbd service listens to.",
+            default=6819,
+        )
+
         slurmdbd_server_sg.add_ingress_rule(
             peer=slurmdbd_client_sg,
-            connection=ec2.Port.tcp(6819),
+            connection=ec2.Port.tcp(self.slurmdbd_port.value_as_number),
             description="Allow Slurm accounting traffic from the cluster head node",
         )
 
@@ -472,9 +481,9 @@ class ExternalSlurmdbdStack(Stack):
         )
         CfnOutput(
             self,
-            "SlurmdbdPort",
+            "SlurmdbdPortOut",
             description="Port used to connect to slurmdbd service",
-            value="6819",  # this should be parametrized
+            value=self.slurmdbd_port.value_as_string,
         )
         CfnOutput(
             self,
