@@ -378,7 +378,7 @@ class Imds(Resource):
         self.imds_support = Resource.init_param(imds_support, default="v2.0")
 
 
-class DeploymentSettings(Resource):
+class BaseDeploymentSettings(Resource):
     """
     Represent the settings related to PCluster deployment, i.e. Lambda Functions for custom resources.
 

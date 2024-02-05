@@ -35,6 +35,7 @@ from pcluster.config.cluster_config import (
     CapacityReservationTarget,
     CloudWatchDashboards,
     CloudWatchLogs,
+    ClusterDeploymentSettings,
     ClusterDevSettings,
     ClusterIam,
     ComputeSettings,
@@ -119,9 +120,9 @@ from pcluster.constants import (
 )
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
+    BaseDeploymentSettingsSchema,
     BaseDevSettingsSchema,
     BaseSchema,
-    DeploymentSettingsSchema,
 )
 from pcluster.schemas.common_schema import ImdsSchema as TopLevelImdsSchema
 from pcluster.schemas.common_schema import (
@@ -1152,6 +1153,21 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
         return ClusterDevSettings(**data)
 
 
+class ClusterDeploymentSettingsSchema(BaseDeploymentSettingsSchema):
+    """Represent the schema of DeploymentSettings for Cluster."""
+
+    disable_sudo_access_default_user = fields.Bool(
+        data_key="DisableSudoAccessForDefaultUser",
+        default=False,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ClusterDeploymentSettings(**data)
+
+
 # ---------------------- Health Checks ---------------------- #
 
 
@@ -1917,11 +1933,8 @@ class ClusterSchema(BaseSchema):
     custom_s3_bucket = fields.Str(metadata={"update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET})
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    deployment_settings = fields.Nested(DeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    disable_sudo_access_default_user = fields.Bool(
-        data_key="DisableSudoAccessForDefaultUser",
-        default=False,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
+    deployment_settings = fields.Nested(
+        ClusterDeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
 
     def __init__(self, cluster_name: str):

@@ -18,9 +18,9 @@ from typing import List
 from pcluster.aws.common import get_region
 from pcluster.config.common import (
     AdditionalIamPolicy,
+    BaseDeploymentSettings,
     BaseDevSettings,
     BaseTag,
-    DeploymentSettings,
     ExtraChefAttributes,
     Imds,
     Resource,
@@ -226,7 +226,7 @@ class ImageBuilderConfig(Resource):
         config_region: str = None,
         custom_s3_bucket: str = None,
         source_config: str = None,
-        deployment_settings: DeploymentSettings = None,
+        deployment_settings: BaseDeploymentSettings = None,
     ):
         super().__init__()
         self.image = image
