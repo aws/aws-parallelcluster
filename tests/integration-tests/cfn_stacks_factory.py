@@ -298,8 +298,14 @@ class CfnStacksFactory:
         """Destroy all created stacks except for those in excluded_stacks."""
         logging.debug("Destroying all cfn stacks")
         for value in reversed(OrderedDict(self.__created_stacks).values()):
-            if excluded_stacks and value.name in excluded_stacks:
-                continue
+            if excluded_stacks:
+                excluded = False
+                for stack in excluded_stacks:
+                    if stack in value.name:
+                        excluded = True
+                        break
+                if excluded:
+                    continue
             try:
                 self.delete_stack(value.name, value.region)
             except Exception as e:
