@@ -2743,6 +2743,20 @@ class Database(Resource):
             )
 
 
+class ExternalSlurmdbd(Resource):
+    """Represent the External Slurmdbd settings."""
+
+    def __init__(
+        self,
+        host: str = None,
+        port: int = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.host = Resource.init_param(host)
+        self.port = Resource.init_param(port, default=6819)
+
+
 class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
@@ -2756,7 +2770,7 @@ class SlurmSettings(Resource):
         custom_slurm_settings: List[Dict] = None,
         custom_slurm_settings_include_file: str = None,
         munge_key_secret_arn: str = None,
-        external_slurmdbd: str = None,
+        external_slurmdbd: ExternalSlurmdbd = None,
         **kwargs,
     ):
         super().__init__()
@@ -2770,7 +2784,7 @@ class SlurmSettings(Resource):
         self.custom_slurm_settings = Resource.init_param(custom_slurm_settings)
         self.custom_slurm_settings_include_file = Resource.init_param(custom_slurm_settings_include_file)
         self.munge_key_secret_arn = Resource.init_param(munge_key_secret_arn)
-        self.external_slurmdbd = Resource.init_param(external_slurmdbd)
+        self.external_slurmdbd = external_slurmdbd
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
