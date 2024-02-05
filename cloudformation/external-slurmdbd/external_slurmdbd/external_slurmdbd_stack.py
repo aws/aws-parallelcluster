@@ -473,13 +473,13 @@ class ExternalSlurmdbdStack(Stack):
     def _add_outputs(self):
         CfnOutput(
             self,
-            "SlurmDbdPrivateIP",
+            "SlurmdbdPrivateIp",
             description="Secondary Private IP Address of the slurmdbd instance",
             value=self.slurmdbd_private_ip.value_as_string,
         )
         CfnOutput(
             self,
-            "SlurmDbdPort",
+            "SlurmdbdPort",
             description="Port used to connect to slurmdbd service",
             value="6819",  # this should be parametrized
         )
@@ -494,4 +494,11 @@ class ExternalSlurmdbdStack(Stack):
             "SshClientSecurityGroup",
             description="Security Group ID that allows SSH traffic from the HeadNode to slurmdbd instance",
             value=self._ssh_client_sg.ref,
+        )
+        CfnOutput(
+            self,
+            "SlurmdbdConfigS3BucketName",
+            description="S3 Bucket where a copy of the slurmdbd configuration files can be stored and re-used when "
+            "re-provisioning the slurmdbd instance",
+            value=self.s3_bucket.bucket_name,
         )
