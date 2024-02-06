@@ -244,12 +244,29 @@ def is_login_fleet_stop_required_for_shared_storage_change(change, patch):
     return patch.cluster.has_running_login_nodes() and not is_login_fleet_update_supported_for_shared_storage(change)
 
 
-def is_login_fleet_update_supported_for_shared_storage(_):
+def is_login_fleet_update_supported_for_shared_storage(change):
     """
-    Check if the live update of the running login fleet is supported for the given change.
+    Check if the live update of the running login fleet is supported for the given change to SharedStorage.
 
-    In particular, it's never supported.
+    We are referring here to a live update, that does not require the replacement of login nodes.
+    In particular, the live update is supported only in the following cases:
+      1. mount/unmount of external EFS
+      1. mount/unmount of external FSx
     """
+    is_mount, is_unmount, storage_type, storage_settings = _get_storage_info_from_change(change)
+
+    is_external_efs = storage_type == EFS and "FileSystemId" in storage_settings
+    is_external_fsx_lustre = storage_type == FSX_LUSTRE and "FileSystemId" in storage_settings
+    is_external_fsx_ontap = storage_type == FSX_ONTAP and "VolumeId" in storage_settings
+    is_external_fsx_openzfs = storage_type == FSX_OPENZFS and "VolumeId" in storage_settings
+    is_external_file_cache = storage_type == FILE_CACHE and "FileCacheId" in storage_settings
+    is_external_fsx = (
+        is_external_fsx_lustre or is_external_fsx_ontap or is_external_fsx_openzfs or is_external_file_cache
+    )
+
+    if (is_mount or is_unmount) and (is_external_efs or is_external_fsx):
+        return True
+
     return False
 
 
@@ -270,7 +287,7 @@ def _get_storage_info_from_change(change):
 
 def is_compute_fleet_update_supported_for_shared_storage(change):
     """
-    Check if the live update of the running compute fleet is supported for the given change.
+    Check if the live update of the running compute fleet is supported for the given change to SharedStorage.
 
     We are referring here to a live update, that does not require the replacement of compute nodes.
     In particular, the live update is supported only in the following cases:
