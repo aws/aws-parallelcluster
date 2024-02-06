@@ -173,6 +173,23 @@ class InstanceInfo:
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)
 
 
+class NetworkCardInfo:
+    """Data object wrapping the "NetworkCards" section of the result of a describe_instance_types call."""
+
+    def __init__(self, network_card_data):
+        self.network_card_data = network_card_data
+
+    def network_card_index(self) -> int:
+        """Return the network card index."""
+        result = self.network_card_data.get("NetworkCardIndex")
+        return None if result is None else int(result)
+
+    def maximum_network_interfaces(self) -> int:
+        """Return maximum network interfaces."""
+        result = self.network_card_data.get("MaximumNetworkInterfaces")
+        return None if result is None else int(result)
+
+
 class InstanceTypeInfo:
     """Data object wrapping the result of a describe_instance_types call."""
 
@@ -236,10 +253,10 @@ class InstanceTypeInfo:
         """Max number of NICs for the instance."""
         return len(self.instance_type_data.get("NetworkInfo", {}).get("NetworkCards"))
 
-    def network_cards_index_list(self) -> list:
-        """List of NIC indexes for the instance."""
+    def network_cards_list(self) -> list:
+        """List of NICs for the instance."""
         return [
-            int(nic.get("NetworkCardIndex"))
+            NetworkCardInfo(nic)
             for nic in self.instance_type_data.get("NetworkInfo", {}).get("NetworkCards")
             if nic.get("NetworkCardIndex") is not None
         ]

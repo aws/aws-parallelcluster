@@ -163,11 +163,11 @@ class QueuesStack(NestedStack):
             )
         ]
 
-        for network_card_index in compute_resource.network_cards_index_list[1:]:
+        for network_card in compute_resource.network_cards_list[1:]:
             compute_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=1,
-                    network_card_index=network_card_index,
+                    device_index=0 if network_card.maximum_network_interfaces() == 1 else 1,
+                    network_card_index=network_card.network_card_index(),
                     associate_public_ip_address=False,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                     groups=queue_lt_security_groups,

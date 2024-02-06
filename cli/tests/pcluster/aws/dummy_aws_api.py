@@ -62,7 +62,7 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
     def max_network_cards(self):
         return self._max_network_card_count
 
-    def network_cards_index_list(self):
+    def network_cards_list(self):
         return self._network_cards_index_list
 
     def default_threads_per_core(self):
