@@ -14,7 +14,7 @@
       "enabled": "false",
       "generate_ssh_keys_for_users": "false"
     },
-    "disable_sudo_access_for_default_user": "false",
+    "disable_sudo_access_for_default_user": "true",
     "dns_domain": "{\"Ref\": \"referencetoclusternameClusterDNSDomain8D0872E1Ref\"}",
     "ebs_shared_dirs": "",
     "efs_encryption_in_transits": "",

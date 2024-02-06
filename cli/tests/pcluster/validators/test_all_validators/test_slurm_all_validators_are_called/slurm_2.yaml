@@ -61,4 +61,8 @@ AdditionalPackages:
     OneApi:
       BaseToolkit: true
     Python: true
-DisableSudoAccessForDefaultUser: false
+DeploymentSettings:
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds: ["sg-028d73ae220157d96"]
+    SubnetIds: ["subnet-8e482ce8"]
+  DisableSudoAccessForDefaultUser: false

@@ -54,4 +54,10 @@ DevSettings:
   DisableValidateAndTest: True
   DisableKernelUpdate: True
 
+DeploymentSettings:
+  {% if disable_sudo_access_for_default_user == "True" %}DisableSudoAccessForDefaultUser: True{% endif %}
+  LambdaFunctionsVpcConfig:
+    SecurityGroupIds: ["sg-028d73ae220157d96"]
+    SubnetIds: ["subnet-8e482ce8"]
+
 CustomS3Bucket: bucket-name

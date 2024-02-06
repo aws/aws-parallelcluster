@@ -19,7 +19,6 @@ DirectoryService:
   LdapTlsCaCert: string
   LdapTlsReqCert: never
   PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx
-DisableSudoAccessForDefaultUser: null
 HeadNode:
   CustomActions:
     OnNodeConfigured:

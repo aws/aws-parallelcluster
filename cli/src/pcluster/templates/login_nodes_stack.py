@@ -267,7 +267,7 @@ class Pool(Construct):
                     "disable_sudo_access_for_default_user": (
                         "true"
                         if self._config.deployment_settings
-                           and self._config.deployment_settings.disable_sudo_access_default_user
+                        and self._config.deployment_settings.disable_sudo_access_default_user
                         else "false"
                     ),
                 }

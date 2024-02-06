@@ -1230,7 +1230,7 @@ class ClusterDevSettings(BaseDevSettings):
 
 
 class ClusterDeploymentSettings(BaseDeploymentSettings):
-    """Represent the settings related to PCluster deployment."""
+    """Represent the cluster-wide settings related to deployment."""
 
     def __init__(self, disable_sudo_access_default_user: bool = None, **kwargs):
         super().__init__(**kwargs)

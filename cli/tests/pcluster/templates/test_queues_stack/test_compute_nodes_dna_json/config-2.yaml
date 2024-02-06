@@ -26,3 +26,5 @@ DirectoryService:
   DomainReadOnlyUser: cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=pcluster,dc=com
   LdapTlsReqCert: never
   GenerateSshKeysForUsers: true
+DeploymentSettings:
+  DisableSudoAccessForDefaultUser: True
