@@ -316,7 +316,11 @@ class TestSlurmComputeResource:
     def test_network_cards(self, expected_max_network_cards, expected_network_cards_index_list):
         compute_resource = SlurmComputeResource(name="compute_resource")
         assert_that(compute_resource.max_network_cards).is_equal_to(expected_max_network_cards)
-        assert_that(compute_resource.network_cards_index_list).is_equal_to(expected_network_cards_index_list)
+        network_cards_list = compute_resource.network_cards_list
+        for index in range(len(expected_network_cards_index_list)):
+            assert_that(network_cards_list[index].network_card_index()).is_equal_to(
+                expected_network_cards_index_list[index]
+            )
 
 
 @pytest.mark.usefixtures("instance_type_info_mock")
@@ -900,7 +904,10 @@ class TestHeadNode:
     def test_network_cards(self, expected_max_network_cards, expected_network_cards_index_list):
         head_node = HeadNode("c5.xlarge", HeadNodeNetworking("subnet"))
         assert_that(head_node.max_network_cards).is_equal_to(expected_max_network_cards)
-        assert_that(head_node.network_cards_index_list).is_equal_to(expected_network_cards_index_list)
+        for index in range(len(expected_network_cards_index_list)):
+            assert_that(head_node.network_cards_list[index].network_card_index()).is_equal_to(
+                expected_network_cards_index_list[index]
+            )
 
 
 class TestSlurmFlexibleComputeResource:
@@ -917,4 +924,7 @@ class TestSlurmFlexibleComputeResource:
             name="compute_resource",
         )
         assert_that(compute_resource.max_network_cards).is_equal_to(expected_max_network_cards_flexible)
-        assert_that(compute_resource.network_cards_index_list).is_equal_to(expected_network_cards_index_list_flexible)
+        for index in range(len(expected_network_cards_index_list_flexible)):
+            assert_that(compute_resource.network_cards_list[index].network_card_index()).is_equal_to(
+                expected_network_cards_index_list_flexible[index]
+            )

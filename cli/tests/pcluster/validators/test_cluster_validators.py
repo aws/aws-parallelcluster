@@ -14,7 +14,7 @@ import pytest
 from assertpy import assert_that
 from munch import DefaultMunch
 
-from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import InstanceTypeInfo, NetworkCardInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
     AwsBatchScheduling,
@@ -1769,11 +1769,15 @@ def test_generate_tag_specifications(input_tags):
     assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)
 
 
+def get_network_card_list(index_list):
+    return [NetworkCardInfo({"NetworkCardIndex": index}) for index in index_list]
+
+
 @pytest.mark.parametrize(
-    "network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips, expected_result",
+    "network_cards_list, use_efa, security_group_ids, subnet, use_public_ips, expected_result",
     [
         [
-            [0],
+            get_network_card_list([0]),
             False,
             "sg-1",
             "subnet-1",
@@ -1789,7 +1793,7 @@ def test_generate_tag_specifications(input_tags):
             ],
         ],
         [
-            [1],
+            get_network_card_list([1]),
             False,
             "sg-1",
             "subnet-1",
@@ -1805,7 +1809,7 @@ def test_generate_tag_specifications(input_tags):
             ],
         ],
         [
-            [0, 1, 2, 3],
+            get_network_card_list([0, 1, 2, 3]),
             True,
             "sg-2",
             "subnet-2",
@@ -1845,11 +1849,11 @@ def test_generate_tag_specifications(input_tags):
     ],
 )
 def test_build_launch_network_interfaces(
-    network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips, expected_result
+    network_cards_list, use_efa, security_group_ids, subnet, use_public_ips, expected_result
 ):
     """Verify function to build network interfaces for dry runs of RunInstances works as expected."""
     lt_network_interfaces = _LaunchTemplateValidator._build_launch_network_interfaces(
-        network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips
+        network_cards_list, use_efa, security_group_ids, subnet, use_public_ips
     )
     assert_that(lt_network_interfaces).is_equal_to(expected_result)
 
