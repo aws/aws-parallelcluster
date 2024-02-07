@@ -12,16 +12,13 @@ import re
 from enum import Enum
 
 from pcluster.config.cluster_config import QueueUpdateStrategy
+from pcluster.config.update_policy_utils import SharedStorageChangeInfo
 from pcluster.constants import (
     AWSBATCH,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
-    EFS,
-    FILE_CACHE,
-    FSX_LUSTRE,
-    FSX_ONTAP,
-    FSX_OPENZFS,
     SLURM,
+    STORAGE_TYPES_SUPPORTING_LIVE_UPDATES,
 )
 
 
@@ -244,54 +241,32 @@ def is_login_fleet_stop_required_for_shared_storage_change(change, patch):
     return patch.cluster.has_running_login_nodes() and not is_login_fleet_update_supported_for_shared_storage(change)
 
 
-def is_login_fleet_update_supported_for_shared_storage(_):
+def is_login_fleet_update_supported_for_shared_storage(change):
     """
-    Check if the live update of the running login fleet is supported for the given change.
+    Check if the live update of the running login fleet is supported for the given change to SharedStorage.
 
-    In particular, it's never supported.
+    We are referring here to a live update, that does not require the replacement of login nodes.
+    In particular, the live update is supported only in the following cases:
+      1. mount/unmount of external EFS
+      1. mount/unmount of external FSx
     """
-    return False
+    change_info = SharedStorageChangeInfo(change)
 
-
-def _get_storage_info_from_change(change):
-    old_value = change.old_value
-    new_value = change.new_value
-
-    is_storage_list_change = change.is_list and change.key == "SharedStorage"
-    is_mount = is_storage_list_change and old_value is None and new_value is not None
-    is_unmount = is_storage_list_change and old_value is not None and new_value is None
-
-    storage_item = new_value if new_value is not None else old_value
-    storage_type = storage_item.get("StorageType")
-    storage_settings = storage_item.get(f"{storage_type}Settings", {})
-
-    return is_mount, is_unmount, storage_type, storage_settings
+    return change_info.is_external and (change_info.storage_type in STORAGE_TYPES_SUPPORTING_LIVE_UPDATES)
 
 
 def is_compute_fleet_update_supported_for_shared_storage(change):
     """
-    Check if the live update of the running compute fleet is supported for the given change.
+    Check if the live update of the running compute fleet is supported for the given change to SharedStorage.
 
     We are referring here to a live update, that does not require the replacement of compute nodes.
     In particular, the live update is supported only in the following cases:
       1. mount/unmount of external EFS
       1. mount/unmount of external FSx
     """
-    is_mount, is_unmount, storage_type, storage_settings = _get_storage_info_from_change(change)
+    change_info = SharedStorageChangeInfo(change)
 
-    is_external_efs = storage_type == EFS and "FileSystemId" in storage_settings
-    is_external_fsx_lustre = storage_type == FSX_LUSTRE and "FileSystemId" in storage_settings
-    is_external_fsx_ontap = storage_type == FSX_ONTAP and "VolumeId" in storage_settings
-    is_external_fsx_openzfs = storage_type == FSX_OPENZFS and "VolumeId" in storage_settings
-    is_external_file_cache = storage_type == FILE_CACHE and "FileCacheId" in storage_settings
-    is_external_fsx = (
-        is_external_fsx_lustre or is_external_fsx_ontap or is_external_fsx_openzfs or is_external_file_cache
-    )
-
-    if (is_mount or is_unmount) and (is_external_efs or is_external_fsx):
-        return True
-
-    return False
+    return change_info.is_external and (change_info.storage_type in STORAGE_TYPES_SUPPORTING_LIVE_UPDATES)
 
 
 def is_home_change(change):
