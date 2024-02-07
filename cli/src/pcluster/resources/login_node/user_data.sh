@@ -104,7 +104,7 @@ write_files:
       # Load ParallelCluster environment variables
       [ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
 
-      cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the login node. Please check /var/log/cfn-init.log in the login node, or check the cfn-init.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
+      cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the login node. Please check /var/log/cfn-init.log in the login node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
 
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
@@ -161,7 +161,7 @@ write_files:
         /opt/parallelcluster/scripts/fetch_and_run -postinstall -c /opt/parallelcluster/shared_login_nodes/cluster-config.yaml &&
         cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::finalize &&
         popd
-      } || error_exit 'Failed to run bootstrap recipes. If --norollback was specified, check /var/log/cfn-init.log, /var/log/cloud-init-output.log and /var/log/chef-client.log'
+      } || error_exit 'Failed to run bootstrap recipes. Please check /var/log/chef-client.log in the login node or in CloudWatch logs.'
 
       if [ ! -f /opt/parallelcluster/.bootstrapped ]; then
         echo ${!cookbook_version} | tee /opt/parallelcluster/.bootstrapped
