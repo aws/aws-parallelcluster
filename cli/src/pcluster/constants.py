@@ -72,11 +72,14 @@ OPENZFS = "OPENZFS"
 ONTAP = "ONTAP"
 FILECACHE = "FILECACHE"
 
+EBS = "Ebs"
 EFS = "Efs"
 FSX_LUSTRE = "FsxLustre"
 FSX_OPENZFS = "FsxOpenZfs"
 FSX_ONTAP = "FsxOntap"
 FILE_CACHE = "FileCache"
+
+STORAGE_TYPES_SUPPORTING_LIVE_UPDATES = [EFS, FSX_LUSTRE, FSX_ONTAP, FSX_OPENZFS, FILE_CACHE]
 
 # https://docs.aws.amazon.com/fsx/latest/APIReference/API_DescribeVolumes.html#FSx-DescribeVolumes-request-VolumeIds.
 FSX_VOLUME_ID_REGEX = r"^fsvol-[0-9a-f]{17}$"
