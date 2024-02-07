@@ -134,7 +134,7 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
 fi
 
 # Call CloudFormation
-cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log or /var/log/chef-client.log in the head node, or check the cfn-init.log or chef-client.log in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
+cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log and /var/log/chef-client.log in the head node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
 cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
 # End of file
 --==BOUNDARY==
