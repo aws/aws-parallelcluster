@@ -1181,16 +1181,14 @@ class _LaunchTemplateValidator(Validator):
         self._launch_template_builder = DictLaunchTemplateBuilder()
 
     @staticmethod
-    def _build_launch_network_interfaces(
-        network_cards_index_list, use_efa, security_group_ids, subnet, use_public_ips=False
-    ):
+    def _build_launch_network_interfaces(network_cards_list, use_efa, security_group_ids, subnet, use_public_ips=False):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
-        for network_card_index in network_cards_index_list:
+        for network_card in network_cards_list:
             network_interfaces.append(
                 {
                     "DeviceIndex": 0,
-                    "NetworkCardIndex": network_card_index,
+                    "NetworkCardIndex": network_card.network_card_index(),
                     "InterfaceType": "efa" if use_efa else "interface",
                     "Groups": security_group_ids,
                     "SubnetId": subnet,
@@ -1198,7 +1196,7 @@ class _LaunchTemplateValidator(Validator):
             )
 
         # If instance types has multiple Network Interfaces we also check for
-        if len(network_cards_index_list) > 1 and use_public_ips:
+        if len(network_cards_list) > 1 and use_public_ips:
             network_interfaces[0]["AssociatePublicIpAddress"] = True
         return network_interfaces
 
@@ -1280,7 +1278,7 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 head_node_security_groups.extend(head_node.networking.additional_security_groups)
 
             head_node_network_interfaces = self._build_launch_network_interfaces(
-                network_cards_index_list=head_node.network_cards_index_list,
+                network_cards_list=head_node.network_cards_list,
                 use_efa=False,  # EFA is not supported on head node
                 security_group_ids=head_node_security_groups,
                 subnet=head_node.networking.subnet_id,
@@ -1390,7 +1388,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     ):
         """Test Compute Resource Instance Configuration."""
         network_interfaces = self._build_launch_network_interfaces(
-            network_cards_index_list=compute_resource.network_cards_index_list,
+            network_cards_list=compute_resource.network_cards_list,
             use_efa=compute_resource.efa.enabled,
             security_group_ids=security_groups_ids,
             subnet=subnet_id,

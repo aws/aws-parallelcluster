@@ -1,3 +1,4 @@
+import json
 from typing import Dict
 
 from aws_cdk import aws_autoscaling as autoscaling
@@ -13,11 +14,13 @@ from pcluster.constants import (
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     PCLUSTER_LOGIN_NODES_POOL_NAME_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     LoginNodesIamResources,
     _get_resource_combination_name,
+    create_hash_suffix,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
@@ -27,7 +30,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_user_data_content,
     to_comma_separated_string,
 )
-from pcluster.utils import get_attr, get_http_tokens_setting
+from pcluster.utils import get_attr, get_http_tokens_setting, get_resource_name_from_resource_arn, get_service_endpoint
 
 
 class Pool(Construct):
@@ -45,7 +48,9 @@ class Pool(Construct):
         shared_storage_attributes: Dict,
         login_security_group,
         stack_name,
+        stack_id,
         head_eni,
+        cluster_bucket,
         cluster_hosted_zone,
     ):
         super().__init__(scope, id)
@@ -56,9 +61,11 @@ class Pool(Construct):
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
+        self._cluster_bucket = cluster_bucket
         self._launch_template_builder = CdkLaunchTemplateBuilder()
         self._login_security_group = login_security_group
         self.stack_name = stack_name
+        self.stack_id = stack_id
         self._head_eni = head_eni
         self._cluster_hosted_zone = cluster_hosted_zone
         self._add_resources()
@@ -108,9 +115,25 @@ class Pool(Construct):
 
         ds_config = self._config.directory_service
         ds_generate_keys = str(ds_config.generate_ssh_keys_for_users).lower() if ds_config else "false"
-        return ec2.CfnLaunchTemplate(
-            self,
-            f"LoginNodeLaunchTemplate{self._pool.name}",
+
+        if self._pool.instance_profile:
+            instance_profile_name = get_resource_name_from_resource_arn(self._pool.instance_profile)
+            instance_role_name = (
+                AWSApi.instance()
+                .iam.get_instance_profile(instance_profile_name)
+                .get("InstanceProfile")
+                .get("Roles")[0]
+                .get("RoleName")
+            )
+        elif self._pool.instance_role:
+            instance_role_name = get_resource_name_from_resource_arn(self._pool.instance_role)
+        else:
+            instance_role_name = self._instance_role.ref
+
+        launch_template_id = f"LoginNodeLaunchTemplate{create_hash_suffix(self._pool.name)}"
+        launch_template = ec2.CfnLaunchTemplate(
+            Stack.of(self),
+            launch_template_id,
             launch_template_name=f"{self.stack_name}-{self._pool.name}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 block_device_mappings=self._launch_template_builder.get_block_device_mappings(
@@ -129,73 +152,6 @@ class Pool(Construct):
                         get_user_data_content("../resources/login_node/user_data.sh"),
                         {
                             **{
-                                "BaseOS": self._config.image.os,
-                                "ClusterName": self.stack_name,
-                                "ClusterDNSDomain": (
-                                    str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else ""
-                                ),
-                                "ClusterHostedZone": (
-                                    str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""
-                                ),
-                                "CustomNodePackage": self._config.custom_node_package or "",
-                                "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
-                                "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
-                                "DirectoryServiceEnabled": str(ds_config is not None).lower(),
-                                "DirectoryServiceReadOnlyUser": ds_config.domain_read_only_user if ds_config else "",
-                                "DirectoryServiceGenerateSshKeys": ds_generate_keys,
-                                "SharedStorageType": self._config.head_node.shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
-                                "EbsSharedDirs": to_comma_separated_string(
-                                    self._shared_storage_mount_dirs[SharedStorageType.EBS]
-                                ),
-                                "EFSIds": get_shared_storage_ids_by_type(
-                                    self._shared_storage_infos, SharedStorageType.EFS
-                                ),
-                                "EFSSharedDirs": to_comma_separated_string(
-                                    self._shared_storage_mount_dirs[SharedStorageType.EFS]
-                                ),
-                                "EFSEncryptionInTransits": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
-                                    use_lower_case=True,
-                                ),
-                                "EFSIamAuthorizations": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
-                                    use_lower_case=True,
-                                ),
-                                "EphemeralDir": DEFAULT_EPHEMERAL_DIR,
-                                "ExtraJson": self._config.extra_chef_attributes,
-                                "FSXIds": get_shared_storage_ids_by_type(
-                                    self._shared_storage_infos, SharedStorageType.FSX
-                                ),
-                                "FSXMountNames": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.FSX]["MountNames"]
-                                ),
-                                "FSXDNSNames": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
-                                ),
-                                "FSXVolumeJunctionPaths": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.FSX]["VolumeJunctionPaths"]
-                                ),
-                                "FSXFileSystemTypes": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
-                                ),
-                                "FSXSharedDirs": to_comma_separated_string(
-                                    self._shared_storage_mount_dirs[SharedStorageType.FSX]
-                                ),
-                                "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
-                                "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
-                                "LogGroupName": self._log_group.log_group_name,
-                                "LogRotationEnabled": "true" if self._config.is_log_rotation_enabled else "false",
-                                "OSUser": OS_MAPPING[self._config.image.os]["user"],
-                                "RAIDSharedDir": to_comma_separated_string(
-                                    self._shared_storage_mount_dirs[SharedStorageType.RAID]
-                                ),
-                                "RAIDType": to_comma_separated_string(
-                                    self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
-                                ),
-                                "Scheduler": self._config.scheduling.scheduler,
-                                "UsePrivateHostname": str(
-                                    get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
-                                ).lower(),
                                 "Timeout": str(
                                     get_attr(
                                         self._config,
@@ -207,9 +163,9 @@ class Pool(Construct):
                                 "LaunchingLifecycleHookName": (
                                     f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook"
                                 ),
-                                "DisableSudoAccessForDefault": (
-                                    "true" if self._config.disable_sudo_access_default_user else "false"
-                                ),
+                                "LaunchTemplateResourceId": launch_template_id,
+                                "CloudFormationUrl": get_service_endpoint("cloudformation", self._config.region),
+                                "CfnInitRole": instance_role_name,
                             },
                             **get_common_user_data_env(self._pool, self._config),
                         },
@@ -234,6 +190,147 @@ class Pool(Construct):
                 ],
             ),
         )
+
+        dna_json = json.dumps(
+            {
+                "cluster": {
+                    "base_os": self._config.image.os,
+                    "cluster_name": self.stack_name,
+                    "cluster_user": OS_MAPPING[self._config.image.os]["user"],
+                    "cluster_s3_bucket": self._cluster_bucket.name,
+                    "cluster_config_s3_key": "{0}/configs/{1}".format(
+                        self._cluster_bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
+                    ),
+                    "cluster_config_version": self._config.config_version,
+                    "custom_node_package": self._config.custom_node_package or "",
+                    "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
+                    "cw_logging_enabled": "true" if self._config.is_cw_logging_enabled else "false",
+                    "directory_service": {
+                        "enabled": str(ds_config is not None).lower(),
+                        "domain_read_only_user": ds_config.domain_read_only_user if ds_config else "",
+                        "generate_ssh_keys_for_users": ds_generate_keys,
+                    },
+                    "shared_storage_type": self._config.head_node.shared_storage_type.lower(),
+                    "ebs_shared_dirs": to_comma_separated_string(
+                        self._shared_storage_mount_dirs[SharedStorageType.EBS]
+                    ),
+                    "efs_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.EFS),
+                    "efs_shared_dirs": to_comma_separated_string(
+                        self._shared_storage_mount_dirs[SharedStorageType.EFS]
+                    ),
+                    "efs_encryption_in_transits": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
+                        use_lower_case=True,
+                    ),
+                    "efs_iam_authorizations": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
+                        use_lower_case=True,
+                    ),
+                    "enable_intel_hpc_platform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
+                    "ephemeral_dir": DEFAULT_EPHEMERAL_DIR,
+                    "fsx_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.FSX),
+                    "fsx_mount_names": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["MountNames"]
+                    ),
+                    "fsx_dns_names": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["DNSNames"]
+                    ),
+                    "fsx_volume_junction_paths": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["VolumeJunctionPaths"]
+                    ),
+                    "fsx_fs_types": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
+                    ),
+                    "fsx_shared_dirs": to_comma_separated_string(
+                        self._shared_storage_mount_dirs[SharedStorageType.FSX]
+                    ),
+                    "head_node_private_ip": self._head_eni.attr_primary_private_ip_address,
+                    "dns_domain": (str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else ""),
+                    "hosted_zone": (str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""),
+                    "log_group_name": self._log_group.log_group_name,
+                    "log_rotation_enabled": "true" if self._config.is_log_rotation_enabled else "false",
+                    "node_type": "LoginNode",
+                    "proxy": self._pool.networking.proxy.http_proxy_address if self._pool.networking.proxy else "NONE",
+                    "raid_shared_dir": to_comma_separated_string(
+                        self._shared_storage_mount_dirs[SharedStorageType.RAID]
+                    ),
+                    "raid_type": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.RAID]["Type"]
+                    ),
+                    "region": self._config.region,
+                    "scheduler": self._config.scheduling.scheduler,
+                    "stack_name": self.stack_name,
+                    "stack_arn": self.stack_id,
+                    "use_private_hostname": str(
+                        get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
+                    ).lower(),
+                    "disable_sudo_access_for_default_user": (
+                        "true" if self._config.disable_sudo_access_default_user else "false"
+                    ),
+                }
+            },
+            indent=4,
+        )
+
+        cfn_init = {
+            "configSets": {
+                "deployFiles": ["deployConfigFiles"],
+                "update": ["deployConfigFiles", "chefUpdate"],
+            },
+            "deployConfigFiles": {
+                "files": {
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/dna.json": {  # nosec B108
+                        "content": dna_json,
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "encoding": "plain",
+                    },
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/extra.json": {  # nosec B108
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "content": self._config.extra_chef_attributes,
+                    },
+                },
+                "commands": {
+                    "mkdir": {"command": "mkdir -p /etc/chef/ohai/hints"},
+                    "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
+                    "jq": {
+                        "command": (
+                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' "
+                            "> /etc/chef/dna.json "
+                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
+                        )
+                    },
+                },
+            },
+            "chefUpdate": {
+                "commands": {
+                    "chef": {
+                        "command": (
+                            ". /etc/profile.d/pcluster.sh; "
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
+                            " --logfile /var/log/chef-client.log --force-formatter --no-color"
+                            " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
+                            " --override-runlist aws-parallelcluster-entrypoints::update &&"
+                            " /opt/parallelcluster/scripts/fetch_and_run -postupdate"
+                        ),
+                        "cwd": "/etc/chef",
+                    }
+                }
+            },
+        }
+
+        launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
+
+        return launch_template
 
     def _add_login_nodes_pool_auto_scaling_group(self):
         launch_template_specification = autoscaling.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(
@@ -332,6 +429,7 @@ class LoginNodesStack(NestedStack):
         login_security_group,
         head_eni,
         cluster_hosted_zone,
+        cluster_bucket,
     ):
         super().__init__(scope, id)
         self._login_nodes = cluster_config.login_nodes
@@ -343,6 +441,7 @@ class LoginNodesStack(NestedStack):
         self._shared_storage_attributes = shared_storage_attributes
         self._head_eni = head_eni
         self._cluster_hosted_zone = cluster_hosted_zone
+        self._cluster_bucket = cluster_bucket
         self._add_resources()
 
     @property
@@ -364,7 +463,9 @@ class LoginNodesStack(NestedStack):
                 self._shared_storage_attributes,
                 self._login_security_group,
                 self.stack_name,
+                self.stack_id,
                 self._head_eni,
+                self._cluster_bucket,
                 cluster_hosted_zone=self._cluster_hosted_zone,
             )
             self.pools[pool.name] = pool_construct

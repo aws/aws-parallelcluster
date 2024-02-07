@@ -1431,9 +1431,9 @@ class HeadNode(Resource):
         return self.instance_type_info.max_network_cards()
 
     @property
-    def network_cards_index_list(self) -> list:
+    def network_cards_list(self) -> list:
         """List of NIC indexes for the instance."""
-        return self.instance_type_info.network_cards_index_list()
+        return self.instance_type_info.network_cards_list()
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -2281,7 +2281,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
 
     @property
     @abstractmethod
-    def network_cards_index_list(self) -> list:
+    def network_cards_list(self) -> list:
         """List of NIC indexes for the instance."""
 
     @property
@@ -2365,22 +2365,22 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
         return least_max_nics
 
     @property
-    def network_cards_index_list(self) -> list:
+    def network_cards_list(self) -> list:
         """Return the list of NIC indexes for the compute resource.
 
         In this case the Compute Resource may have multiple instance types, hence the instance-type with
         the least MaxNetworkCards value will be considered.
         """
         least_max_nics = self.instance_type_info_map[self.instance_types[0]].max_network_cards()
-        least_network_cards_index_list = self.instance_type_info_map[self.instance_types[0]].network_cards_index_list()
+        least_network_cards_list = self.instance_type_info_map[self.instance_types[0]].network_cards_list()
         if len(self.instance_types) > 1:
             for instance_type in self.instance_types[1:]:
                 instance_type_info = self.instance_type_info_map[instance_type]
                 max_nics = instance_type_info.max_network_cards()
                 if max_nics < least_max_nics:
                     least_max_nics = max_nics
-                    least_network_cards_index_list = instance_type_info.network_cards_index_list()
-        return least_network_cards_index_list
+                    least_network_cards_list = instance_type_info.network_cards_list()
+        return least_network_cards_list
 
 
 class SlurmComputeResource(_BaseSlurmComputeResource):
@@ -2426,9 +2426,9 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
         return self._instance_type_info.max_network_cards()
 
     @property
-    def network_cards_index_list(self) -> list:
+    def network_cards_list(self) -> list:
         """List of NIC indexes for the instance."""
-        return self._instance_type_info.network_cards_index_list()
+        return self._instance_type_info.network_cards_list()
 
     @property
     def _instance_type_info(self) -> InstanceTypeInfo:
