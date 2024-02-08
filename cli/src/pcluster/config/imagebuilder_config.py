@@ -212,6 +212,16 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.slurm_patches_s3_archive = Resource.init_param(slurm_patches_s3_archive, default="")
 
 
+class ImagebuilderDeploymentSettings(BaseDeploymentSettings):
+    """Represent the deployment settings for the ImageBuilder."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+
+
 # ---------------------- ImageBuilder ---------------------- #
 
 
@@ -226,7 +236,7 @@ class ImageBuilderConfig(Resource):
         config_region: str = None,
         custom_s3_bucket: str = None,
         source_config: str = None,
-        deployment_settings: BaseDeploymentSettings = None,
+        deployment_settings: ImagebuilderDeploymentSettings = None,
     ):
         super().__init__()
         self.image = image

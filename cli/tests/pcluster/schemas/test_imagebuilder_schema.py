@@ -5,7 +5,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow import ValidationError
 
-from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
+from pcluster.schemas.imagebuilder_schema import ImagebuilderDeploymentSettingsSchema, ImageBuilderSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -113,3 +113,43 @@ def test_imagebuilder_schema(
         # Print output yaml
         output_yaml = yaml.dump(output_json)
         print(output_yaml)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        pytest.param(
+            {
+                "LambdaFunctionsVpcConfig": {
+                    "SubnetIds": ["subnet-8e482ce8"],
+                    "SecurityGroupIds": ["sg-028d73ae220157d96"],
+                },
+            },
+            None,
+            id="No missing Fields",
+        ),
+        pytest.param(
+            {"LambdaFunctionsVpcConfig": {"SubnetIds": ["subnet-8e482ce8"]}},
+            "Missing data for required field",
+            id="Missing SecurityGroupIds",
+        ),
+        pytest.param(
+            {"LambdaFunctionsVpcConfig": {"SecurityGroupIds": ["sg-028d73ae220157d96"]}},
+            "Missing data for required field",
+            id="Missing SubnetIds",
+        ),
+        pytest.param(
+            {"DisableSudoAccessForDefaultUser": "True"},
+            "Unknown field.",
+            id="Unsupported field DisableSudoAccessForDefaultUser is provided",
+        ),
+    ],
+)
+def test_imagebuilder_deployment_settings_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ImagebuilderDeploymentSettingsSchema().load(config_dict)
+    else:
+        conf = ImagebuilderDeploymentSettingsSchema().load(config_dict)
+        ImagebuilderDeploymentSettingsSchema().dump(conf)
