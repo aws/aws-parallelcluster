@@ -16,15 +16,15 @@ CHANGELOG
   - Critical Update for Intel oneAPI DPC++/C++ Compiler: 2023.2.1
   - Critical Update for Intel Fortran Compiler & Intel® Fortran Compiler Classic: 2023.2.1
   - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
-  - Add `DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
+  - Add `DeploymentSettings/DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
 
 **CHANGES**
 - Upgrade Slurm to 23.11.3.
 - Upgrade NVIDIA driver to version 535.154.05.
 - Add support for Python 3.11, 3.12 in pcluster CLI and aws-parallelcluster-batch-cli.
 - Upgrade Python to version 3.12 and NodeJS to version 18 in ParallelCluster Lambda Layer.
-- Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response, 
-  instead of looping over `MaximumNetworkCards` range. 
+- Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response,
+  instead of looping over `MaximumNetworkCards` range.
 - Fail cluster creation when using instance types P3, G3, P2 and G2 because their GPU architecture is not compatible with Open Source Nvidia Drivers (OpenRM) introduced as part of 3.8.0 release.
 
 3.8.0
