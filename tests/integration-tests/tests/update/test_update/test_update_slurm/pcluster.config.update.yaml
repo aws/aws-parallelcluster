@@ -23,6 +23,18 @@ HeadNode:
         EnableWriteAccess: true  # New parameter
     AdditionalIamPolicies: # New section
       - Policy: {{ additional_policy_arn }}
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: {{ instance }}
+      Count: 0
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
+      Iam:
+        AdditionalIamPolicies: # New section
+          - Policy: {{ additional_policy_arn }}
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

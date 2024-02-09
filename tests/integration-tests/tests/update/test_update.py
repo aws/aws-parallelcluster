@@ -48,7 +48,12 @@ from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.storage.assertions import assert_storage_existence
 from tests.common.storage.constants import StorageType
-from tests.common.utils import generate_random_string, get_deployed_config_version, retrieve_latest_ami
+from tests.common.utils import (
+    _wait_for_login_fleet_stop,
+    generate_random_string,
+    get_deployed_config_version,
+    retrieve_latest_ami,
+)
 from tests.storage.storage_common import (
     check_fsx,
     test_ebs_correctly_mounted,
@@ -326,11 +331,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
 
-    # Verify that compute and login nodes stored the deployed config version on DDB.
-    # This check must be retried when executed to validate a rollback, because
-    # the stack reaches the UPDATE_ROLLBACK_COMPLETE state before compute nodes complete their update recipe.
-    # TODO Make the stack reach the UPDATE_ROLLBACK_COMPLETE only once the compute nodes have completed their updates.
-    #  Then, move this assertion right after the update and remove the retry logic.
+    # This check must be retried when executed to validate a rollback, because the rollback is a non-blocking operation.
+    # In particular, the stack reaches the UPDATE_ROLLBACK_COMPLETE state without waiting for the head node to
+    # signal the success to its WaitCondition.
+    # As a consequence, there may be some cluster nodes still executing their update recipes.
     retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))(assert_instance_config_version_on_ddb)(
         cluster, last_cluster_config_version
     )
@@ -1098,7 +1102,6 @@ def test_dynamic_file_systems_update(
         if fsx_supported
         else []
     )
-    all_mount_dirs = ebs_mount_dirs + [new_raid_mount_dir] + efs_mount_dirs + fsx_mount_dirs
 
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -1120,9 +1123,9 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    # Create cluster with initial configuration
+    # Create cluster without any shared storage.
     init_config_file = pcluster_config_reader(
-        config_file="pcluster.config.yaml", output_file="pcluster.config.init.yaml"
+        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
     )
     cluster = clusters_factory(init_config_file)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -1142,11 +1145,106 @@ def test_dynamic_file_systems_update(
     # Wait for the job to run
     scheduler_commands.wait_job_running(queue1_job_id)
 
-    # update cluster to add ebs, efs, fsx with drain strategy
-    logging.info("Updating the cluster to mount managed storage with DeletionPolicy set to Delete")
+    # Take note of the running compute and login nodes because we expect them to be retained during the next update.
+    compute_nodes_before_update = cluster.get_cluster_instance_ids(node_type="Compute")
+    login_nodes_before_update = cluster.get_cluster_instance_ids(node_type="LoginNode")
+
+    # Update cluster to add external EFS and FSx
+    logging.info("Updating the cluster to mount external EFS/FSx/FileCache with a live update")
     update_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update_drain.yaml",
-        output_file="pcluster.config.update_drain_1.yaml",
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_add_external_efs_fsx.yaml",
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+        file_cache_mount_dir=file_cache_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        existing_file_cache_id=existing_file_cache_id,
+        bucket_name=bucket_name,
+        fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=0,
+    )
+
+    cluster.update(update_cluster_config)
+
+    compute_nodes_after_update = cluster.get_cluster_instance_ids(node_type="Compute")
+    login_nodes_after_update = cluster.get_cluster_instance_ids(node_type="LoginNode")
+
+    assert_that(compute_nodes_after_update).is_equal_to(compute_nodes_before_update)
+    assert_that(login_nodes_after_update).is_equal_to(login_nodes_before_update)
+
+    scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
+
+    # check file systems are visible on the head node just after the update
+    _test_shared_storages_mount_on_headnode(
+        remote_command_executor,
+        cluster,
+        region,
+        bucket_name,
+        scheduler_commands_factory,
+        ebs_mount_dirs=[],
+        new_raid_mount_dir=[],
+        efs_mount_dirs=[existing_efs_mount_dir],
+        fsx_mount_dirs=[fsx_lustre_mount_dir, fsx_open_zfs_mount_dir, fsx_ontap_mount_dir, file_cache_mount_dir],
+        file_cache_path=file_cache_path,
+    )
+
+    # check newly mounted file systems are visible on all compute and login nodes, including those running jobs.
+    all_mount_dirs = [
+        existing_efs_mount_dir,
+        fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir,
+        file_cache_mount_dir,
+    ]
+
+    for mount_dir in all_mount_dirs:
+        verify_directory_correctly_shared(
+            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+        )
+        # TODO Add verification for login nodes
+
+    # Canceling the job just to reduce noise.
+    scheduler_commands.cancel_job(queue1_job_id)
+
+    # # Update cluster to stop login nodes
+    # logging.info("Updating the cluster to stop login nodes")
+    # update_cluster_config = pcluster_config_reader(
+    #     config_file="pcluster.config.update.yaml",
+    #     output_file="pcluster.config.update_login_fleet_stop.yaml",
+    #     existing_efs_mount_dir=existing_efs_mount_dir,
+    #     fsx_lustre_mount_dir=fsx_lustre_mount_dir,
+    #     fsx_ontap_mount_dir=fsx_ontap_mount_dir,
+    #     fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
+    #     file_cache_mount_dir=file_cache_mount_dir,
+    #     existing_efs_id=existing_efs_id,
+    #     existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+    #     fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+    #     fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+    #     existing_file_cache_id=existing_file_cache_id,
+    #     bucket_name=bucket_name,
+    #     fsx_supported=fsx_supported,
+    #     queue_update_strategy="DRAIN",
+    #     login_nodes_count=0,
+    # )
+    #
+    # cluster.update(update_cluster_config)
+    #
+    # _wait_for_login_fleet_stop(cluster)
+
+    # Update cluster to add managed EBS, EFS, FSx with DRAIN strategy
+    logging.info(
+        "Updating the cluster with DRAIN strategy to mount external EBS and managed EFS/FSx/FileCache "
+        "with DeletionPolicy set to Delete"
+    )
+    update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_add_external_ebs_managed_ebs_efs_fsx_drain.yaml",
         volume_id=existing_ebs_volume_id,
         existing_ebs_mount_dir=existing_ebs_mount_dir,
         existing_efs_mount_dir=existing_efs_mount_dir,
@@ -1169,6 +1267,8 @@ def test_dynamic_file_systems_update(
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Delete",
         fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=0,
     )
 
     cluster.update(update_cluster_config)
@@ -1238,8 +1338,8 @@ def test_dynamic_file_systems_update(
 
     logging.info("Updating the cluster to set DeletionPolicy to Retain for every managed storage")
     update_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update_drain.yaml",
-        output_file="pcluster.config.update_drain_2.yaml",
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_retain_managed_storage_drain.yaml",
         volume_id=existing_ebs_volume_id,
         existing_ebs_mount_dir=existing_ebs_mount_dir,
         existing_efs_mount_dir=existing_efs_mount_dir,
@@ -1262,6 +1362,8 @@ def test_dynamic_file_systems_update(
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Retain",
         fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=0,
     )
 
     cluster.update(update_cluster_config)
@@ -1424,9 +1526,10 @@ def _test_shared_storages_mount_on_headnode(
     for ebs_dir in ebs_mount_dirs:
         volume_size = "2.0" if "existing" in ebs_dir else "40"
         test_ebs_correctly_mounted(remote_command_executor, ebs_dir, volume_size=volume_size)
-    # check raid
-    test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
-    test_raid_correctly_mounted(remote_command_executor, new_raid_mount_dir, volume_size=74)
+    # check raid #TODO Skip this check if raid is not part of the check
+    if new_raid_mount_dir:
+        test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
+        test_raid_correctly_mounted(remote_command_executor, new_raid_mount_dir, volume_size=74)
     # check efs
     for efs in efs_mount_dirs:
         test_efs_correctly_mounted(remote_command_executor, efs)
@@ -1472,6 +1575,8 @@ def _test_shared_storage_rollback(
         new_lustre_mount_dir=new_lustre_mount_dir,
         new_efs_mount_dir=new_efs_mount_dir,
         fsx_supported=fsx_supported,
+        queue_update_strategy="TERMINATE",
+        login_nodes_count=0,
     )
     # remove logs from chef-client log in order to test cluster rollback behavior
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/chef-client.log")

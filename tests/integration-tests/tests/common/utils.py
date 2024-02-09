@@ -22,7 +22,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
-from time_utils import seconds
+from time_utils import minutes, seconds
 from utils import get_instance_info, run_command
 
 from tests.common.osu_common import PRIVATE_OSES
@@ -494,3 +494,10 @@ def assert_no_file_handler_leak(init_compute_ip_to_num_files, remote_command_exe
             assert_that(current_compute_ip_to_num_files[compute_ip]).is_equal_to(
                 init_compute_ip_to_num_files[compute_ip]
             )
+
+
+@retry(wait_fixed=minutes(3), stop_max_delay=minutes(9))
+def _wait_for_login_fleet_stop(cluster):
+    """Wait for the login fleet to be stopped"""
+    login_nodes = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(login_nodes).is_length(0)

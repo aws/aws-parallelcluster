@@ -220,7 +220,7 @@ class Cluster:
             )
             raise
 
-    def describe_cluster_instances(self, node_type=None, queue_name=None):
+    def describe_cluster_instances(self, node_type=None, queue_name=None, query=None):
         """Run pcluster describe-cluster-instances and return the result"""
         cmd_args = ["pcluster", "describe-cluster-instances", "--cluster-name", self.name]
         if node_type:
@@ -235,11 +235,13 @@ class Cluster:
             cmd_args.extend(["--node-type", node_type])
         if queue_name:
             cmd_args.extend(["--queue-name", queue_name])
+        if query:
+            cmd_args.extend(["--query", query])
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} instances successfully".format(self.name))
-            return response["instances"]
+            return response if query else response["instances"]
         except subprocess.CalledProcessError as e:
             logging.error("Failed when getting cluster instances with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise

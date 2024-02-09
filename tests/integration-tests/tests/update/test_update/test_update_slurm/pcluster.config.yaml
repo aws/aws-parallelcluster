@@ -20,6 +20,15 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ resource_bucket }}
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: {{ instance }}
+      Count: 0
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
