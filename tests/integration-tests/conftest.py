@@ -858,11 +858,7 @@ def cfn_stacks_factory(request):
     factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
     if not request.config.getoption("no_delete"):
-        excluded_stacks = []
-        if request.config.getoption("retain_ad_stack"):
-            excluded_stacks.extend(["vpc", "SimpleAD", "MicrosoftAD"])
-            logging.warning("Skipping deletion of AD and VPC stacks because --retain-ad-stack option is set")
-        factory.delete_all_stacks(excluded_stacks)
+        factory.delete_all_stacks()
     else:
         logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 

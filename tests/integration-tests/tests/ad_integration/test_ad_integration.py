@@ -51,8 +51,8 @@ def get_user_password(secret_arn):
 
 
 def get_vpc_public_subnet(vpc_id):
-    cfn = boto3.client("ec2")
-    for entry in cfn.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]:
+    ec2 = boto3.client("ec2")
+    for entry in ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]:
         if entry.get("MapPublicIpOnLaunch"):
             return {"public_subnet_id": entry.get("SubnetId")}
     return None
@@ -118,6 +118,18 @@ def _add_file_to_zip(zip_file, path, arcname):
         zinfo = zipfile.ZipInfo(filename=arcname)
         zinfo.external_attr = 0o644 << 16
         zip_file.writestr(zinfo, input_file.read())
+
+
+def add_tag_to_stack(stack_name, key, value):
+    cfn = boto3.resource("cloudformation")
+    stack = cfn.Stack(stack_name)
+    stack.update(
+        UsePreviousTemplate=True,
+        Capabilities=["CAPABILITY_IAM"],
+        Tags=[
+            {"Key": key, "Value": value},
+        ],
+    )
 
 
 def zip_dir(path):
@@ -195,6 +207,9 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
 
     with open(directory_stack_template_path) as directory_stack_template:
         stack_parameters = _get_stack_parameters(directory_type, vpc_stack, request.config.getoption("key_name"))
+        tags = [{"Key": "parallelcluster:integ-tests-ad-stack", "Value": directory_type}]
+        if request.config.getoption("retain_ad_stack"):
+            tags.append({"Key": "DO-NOT-DELETE", "Value": " "})
 
         directory_stack = CfnStack(
             name=directory_stack_name,
@@ -202,7 +217,7 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
             template=directory_stack_template.read(),
             parameters=stack_parameters,
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-            tags=[{"Key": "parallelcluster:integ-tests-ad-stack", "Value": directory_type}],
+            tags=tags,
         )
     cfn_stacks_factory.create_stack(directory_stack)
     logging.info("Creation of stack %s complete", directory_stack_name)
@@ -255,7 +270,8 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
                 )
                 directory_stack_name = directory_stack.name
                 created_directory_stacks[region]["directory"] = directory_stack_name
-
+                if request.config.getoption("retain_ad_stack"):
+                    add_tag_to_stack(vpc_stack.name, "DO-NOT-DELETE", " ")
         return directory_stack_name
 
     yield _directory_factory
