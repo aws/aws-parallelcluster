@@ -27,7 +27,7 @@ LoginNodes:
   Pools:
     - Name: login
       InstanceType: {{ instance }}
-      Count: 0
+      Count: 1
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
