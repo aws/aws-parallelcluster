@@ -21,7 +21,7 @@ import re
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
 from pcluster.config.cluster_config import BaseTag
-from pcluster.config.common import AdditionalIamPolicy, Cookbook, DeploymentSettings, Imds, LambdaFunctionsVpcConfig
+from pcluster.config.common import AdditionalIamPolicy, BaseDeploymentSettings, Cookbook, Imds, LambdaFunctionsVpcConfig
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import IAM_POLICY_REGEX, PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
 from pcluster.utils import to_pascal_case
@@ -259,7 +259,7 @@ class LambdaFunctionsVpcConfigSchema(BaseSchema):
         return LambdaFunctionsVpcConfig(**data)
 
 
-class DeploymentSettingsSchema(BaseSchema):
+class BaseDeploymentSettingsSchema(BaseSchema):
     """Represent the common schema of DeploymentSettings for ImageBuilder and Cluster."""
 
     lambda_functions_vpc_config = fields.Nested(
@@ -269,7 +269,7 @@ class DeploymentSettingsSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return DeploymentSettings(**data)
+        return BaseDeploymentSettings(**data)
 
 
 class BaseDevSettingsSchema(BaseSchema):

@@ -19,6 +19,7 @@ from marshmallow.validate import ValidationError
 from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.constants import NODE_BOOTSTRAP_TIMEOUT
 from pcluster.schemas.cluster_schema import (
+    ClusterDeploymentSettingsSchema,
     ClusterSchema,
     HeadNodeCustomActionsSchema,
     HeadNodeIamSchema,
@@ -1144,3 +1145,44 @@ def test_one_api(install_base_toolkit, install_hpc_toolkit, failure):
             OneApiSchema().load(config_dict)
     else:
         OneApiSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        pytest.param(
+            {
+                "LambdaFunctionsVpcConfig": {
+                    "SubnetIds": ["subnet-8e482ce8"],
+                    "SecurityGroupIds": ["sg-028d73ae220157d96"],
+                },
+                "DisableSudoAccessForDefaultUser": "False",
+            },
+            None,
+            id="No missing Fields",
+        ),
+        pytest.param(
+            {"LambdaFunctionsVpcConfig": {"SubnetIds": ["subnet-8e482ce8"]}},
+            "Missing data for required field",
+            id="Missing SecurityGroupIds",
+        ),
+        pytest.param(
+            {"LambdaFunctionsVpcConfig": {"SecurityGroupIds": ["sg-028d73ae220157d96"]}},
+            "Missing data for required field",
+            id="Missing SubnetIds",
+        ),
+        pytest.param(
+            {"DisableSudoAccessForDefaultUser": "True"},
+            None,
+            id="Only DisableSudoAccessForDefaultUser is provided",
+        ),
+    ],
+)
+def test_cluster_deployment_settings_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ClusterDeploymentSettingsSchema().load(config_dict)
+    else:
+        conf = ClusterDeploymentSettingsSchema().load(config_dict)
+        ClusterDeploymentSettingsSchema().dump(conf)

@@ -23,7 +23,7 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, CapacityType, DeploymentSettings
+from pcluster.config.common import AdditionalIamPolicy, BaseDeploymentSettings, BaseDevSettings, BaseTag, CapacityType
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -1229,6 +1229,17 @@ class ClusterDevSettings(BaseDevSettings):
             self._register_validator(UrlValidator, url=self.cluster_template)
 
 
+class ClusterDeploymentSettings(BaseDeploymentSettings):
+    """Represent the cluster-wide settings related to deployment."""
+
+    def __init__(self, disable_sudo_access_default_user: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+
+
 # ---------------------- Nodes and Cluster ---------------------- #
 
 
@@ -1522,8 +1533,7 @@ class BaseClusterConfig(Resource):
         imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
-        deployment_settings: DeploymentSettings = None,
-        disable_sudo_access_default_user: bool = None,
+        deployment_settings: ClusterDeploymentSettings = None,
     ):
         super().__init__()
         self.__region = None
@@ -1558,7 +1568,6 @@ class BaseClusterConfig(Resource):
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
         self._set_default_head_node_root_volume_size()
-        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1631,7 +1640,7 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
-        if self.disable_sudo_access_default_user:
+        if self.deployment_settings and self.deployment_settings.disable_sudo_access_default_user:
             self._register_validator(
                 SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler
             )

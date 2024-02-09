@@ -1319,7 +1319,10 @@ class ClusterCdkStack:
                         get_attr(self.config, "additional_packages.intel_software.python")
                     ).lower(),
                     "disable_sudo_access_for_default_user": (
-                        "true" if self.config.disable_sudo_access_default_user else "false"
+                        "true"
+                        if self.config.deployment_settings
+                        and self.config.deployment_settings.disable_sudo_access_default_user
+                        else "false"
                     ),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
