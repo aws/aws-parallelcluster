@@ -23,7 +23,14 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDeploymentSettings, BaseDevSettings, BaseTag, CapacityType
+from pcluster.config.common import (
+    AdditionalIamPolicy,
+    BaseDeploymentSettings,
+    BaseDevSettings,
+    BaseTag,
+    CapacityType,
+    DefaultUserHomeType,
+)
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -1232,9 +1239,13 @@ class ClusterDevSettings(BaseDevSettings):
 class ClusterDeploymentSettings(BaseDeploymentSettings):
     """Represent the cluster-wide settings related to deployment."""
 
-    def __init__(self, disable_sudo_access_default_user: bool = None, **kwargs):
+    def __init__(self, default_user_home: str = None, disable_sudo_access_default_user: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
+        self.default_user_home = Resource.init_param(
+            default_user_home,
+            default=DefaultUserHomeType.SHARED.value,
+        )
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)

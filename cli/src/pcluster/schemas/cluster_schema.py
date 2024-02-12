@@ -95,7 +95,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Timeouts,
 )
-from pcluster.config.common import BaseTag, CapacityType
+from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
@@ -1160,6 +1160,12 @@ class ClusterDeploymentSettingsSchema(BaseDeploymentSettingsSchema):
         data_key="DisableSudoAccessForDefaultUser",
         default=False,
         metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
+    )
+
+    default_user_home = fields.Str(
+        required=False,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.OneOf([type.value for type in DefaultUserHomeType]),
     )
 
     @post_load

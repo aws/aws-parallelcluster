@@ -884,6 +884,13 @@ def test_login_nodes_traffic_management_resources_values_properties(
                 "scheduler": "slurm",
             },
         ),
+        (
+            "default-user-local-home.yaml",
+            {
+                "scheduler": "slurm",
+                "default_user_home": "local",
+            },
+        ),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value

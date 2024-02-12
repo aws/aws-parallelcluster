@@ -378,6 +378,13 @@ class Imds(Resource):
         self.imds_support = Resource.init_param(imds_support, default="v2.0")
 
 
+class DefaultUserHomeType(Enum):
+    """Define supported allocation strategies."""
+
+    SHARED = "Shared"
+    LOCAL = "Local"
+
+
 class BaseDeploymentSettings(Resource):
     """
     Represent the settings related to PCluster deployment, i.e. Lambda Functions for custom resources.
@@ -388,6 +395,7 @@ class BaseDeploymentSettings(Resource):
 
     def __init__(self, lambda_functions_vpc_config: LambdaFunctionsVpcConfig = None, **kwargs):
         super().__init__(**kwargs)
+
         self.lambda_functions_vpc_config = Resource.init_param(lambda_functions_vpc_config)
 
     def _register_validators(self, context: ValidatorContext = None):

@@ -28,3 +28,4 @@ DirectoryService:
   GenerateSshKeysForUsers: true
 DeploymentSettings:
   DisableSudoAccessForDefaultUser: True
+  DefaultUserHome: Local

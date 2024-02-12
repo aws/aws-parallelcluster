@@ -13,6 +13,7 @@
     "dcv_enabled": "false",
     "dcv_port": "NONE",
     "ddb_table": "NONE",
+    "default_user_home": "shared",
     "disable_sudo_access_for_default_user": "false",
     "ebs_shared_dirs": "",
     "efs_encryption_in_transits": "",
