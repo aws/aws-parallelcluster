@@ -137,6 +137,7 @@ Resources:
       Size: 1
       Throughput: 125
       VolumeType: gp3
+      Encrypted: true
 
   # EFS
   EfsFileSystem:
