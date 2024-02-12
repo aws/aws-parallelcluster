@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os
 import os.path as os_path
 import re
 import time
@@ -55,6 +56,7 @@ from tests.storage.storage_common import (
     test_raid_correctly_mounted,
     verify_directory_correctly_shared,
 )
+from constants import REPOSITORY_ROOT
 
 
 @pytest.mark.usefixtures("os", "instance")
@@ -991,7 +993,7 @@ def _test_update_resize(
 @pytest.fixture
 def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
     def create_stack(vpc_stack, bucket_name, file_cache_path):
-        template_path = os_path.join(str(test_datadir), "storage-stack.yaml")
+        template_path = os.path.join(REPOSITORY_ROOT, "cloudformation/storage/storage-stack.yaml")
         option = "external_shared_storage_stack_name"
         if request.config.getoption(option):
             stack = CfnStack(name=request.config.getoption(option), region=region, template=None)
