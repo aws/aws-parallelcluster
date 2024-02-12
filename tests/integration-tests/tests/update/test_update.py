@@ -31,7 +31,6 @@ from utils import (
     get_arn_partition,
     get_root_volume_id,
     is_fsx_supported,
-    render_jinja_template,
     retrieve_cfn_resources,
     wait_for_computefleet_changed,
 )
@@ -991,7 +990,7 @@ def _test_update_resize(
 
 @pytest.fixture
 def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnVpcStack, cfn_stacks_factory):
-    def create_stack(bucket_name, file_cache_path):
+    def create_stack(vpc_stack, bucket_name, file_cache_path):
         template_path = os_path.join(str(test_datadir), "storage-stack.yaml")
         option = "external_shared_storage_stack_name"
         if request.config.getoption(option):
@@ -1003,23 +1002,41 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             subnets_by_az = defaultdict(list)
             for subnet in subnets:
                 subnets_by_az[subnet["AvailabilityZone"]].append(subnet["SubnetId"])
+            azs = [az for az in subnets_by_az.keys()]
+            one_subnet_per_az = [subnets_by_az[az][0] for az in azs]
 
-            render_jinja_template(template_path, one_subnet_per_az=[subnets[0] for subnets in subnets_by_az.values()])
+            # The EBS volume must be placed in the same AZ where the head node is.
+            # The head node is deployed in the public subnet.
+            ebs_volume_az = boto3.resource("ec2").Subnet(vpc_stack.get_public_subnet()).availability_zone
 
             vpc = vpc_stack.cfn_outputs["VpcId"]
-            public_subnet_id = vpc_stack.get_public_subnet()
             import_path = "s3://{0}".format(bucket_name)
             export_path = "s3://{0}/export_dir".format(bucket_name)
             fsx_supported = is_fsx_supported(region)
+
             params = [
-                {"ParameterKey": "vpc", "ParameterValue": vpc},
-                {"ParameterKey": "PublicSubnetId", "ParameterValue": public_subnet_id},
-                {"ParameterKey": "ImportPathParam", "ParameterValue": import_path},
-                {"ParameterKey": "S3BucketFileCacheStack", "ParameterValue": bucket_name},
-                {"ParameterKey": "ExportPathParam", "ParameterValue": export_path},
-                {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
+                # Networking
+                {"ParameterKey": "Vpc", "ParameterValue": vpc},
+                {"ParameterKey": "SubnetOne", "ParameterValue": one_subnet_per_az[0]},
+                {"ParameterKey": "SubnetTwo", "ParameterValue": one_subnet_per_az[1]},
+                {"ParameterKey": "SubnetThree", "ParameterValue": one_subnet_per_az[2]},
+                # EBS
+                {"ParameterKey": "CreateEbs", "ParameterValue": "true"},
+                {"ParameterKey": "EbsVolumeAz", "ParameterValue": ebs_volume_az},
+                # EFS
                 {"ParameterKey": "CreateEfs", "ParameterValue": "true"},
-                {"ParameterKey": "CreateFsx", "ParameterValue": str(fsx_supported).lower()},
+                # FSxLustre
+                {"ParameterKey": "CreateFsxLustre", "ParameterValue": str(fsx_supported).lower()},
+                {"ParameterKey": "FsxLustreImportPath", "ParameterValue": import_path},
+                {"ParameterKey": "FsxLustreExportPath", "ParameterValue": export_path},
+                # FSxOntap
+                {"ParameterKey": "CreateFsxOntap", "ParameterValue": str(fsx_supported).lower()},
+                # FSxOpenZfs
+                {"ParameterKey": "CreateFsxOpenZfs", "ParameterValue": str(fsx_supported).lower()},
+                # FileCache
+                {"ParameterKey": "CreateFileCache", "ParameterValue": str(fsx_supported).lower()},
+                {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
+                {"ParameterKey": "FileCacheS3BucketName", "ParameterValue": bucket_name},
             ]
             with open(template_path, encoding="utf-8") as template_file:
                 template = template_file.read()
@@ -1047,7 +1064,6 @@ def test_dynamic_file_systems_update(
     clusters_factory,
     scheduler_commands_factory,
     request,
-    snapshots_factory,
     vpc_stack,
     key_name,
     s3_bucket_factory,
@@ -1085,7 +1101,6 @@ def test_dynamic_file_systems_update(
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
-    bucket.upload_file(os_path.join("resources", "file-cache-storage-cfn.yaml"), "file-cache-storage-cfn.yaml")
     file_cache_path = "/file-cache-path/"
     (
         existing_ebs_volume_id,
@@ -1095,7 +1110,6 @@ def test_dynamic_file_systems_update(
         existing_fsx_open_zfs_volume_id,
         existing_file_cache_id,
     ) = _create_shared_storages_resources(
-        snapshots_factory,
         request,
         vpc_stack,
         region,
@@ -1327,7 +1341,6 @@ def _retrieve_managed_storage_ids(cluster, existing_ebs_ids, existing_efs_ids, e
 
 
 def _create_shared_storages_resources(
-    snapshots_factory,
     request,
     vpc_stack: CfnVpcStack,
     region,
@@ -1336,14 +1349,11 @@ def _create_shared_storages_resources(
     file_cache_path,
 ):
     """Create existing EBS, EFS, FSX resources for test."""
-    # create 1 existing ebs
-    ebs_volume_id = snapshots_factory.create_existing_volume(request, vpc_stack.get_public_subnet(), region)
 
-    # create external-shared-storage-stack
-    storage_stack = external_shared_storage_stack(bucket_name, file_cache_path)
+    storage_stack = external_shared_storage_stack(vpc_stack, bucket_name, file_cache_path)
 
     return (
-        ebs_volume_id,
+        storage_stack.cfn_outputs["EbsId"],
         storage_stack.cfn_outputs["EfsId"],
         storage_stack.cfn_outputs["FsxLustreFsId"],
         storage_stack.cfn_outputs["FsxOntapVolumeId"],
