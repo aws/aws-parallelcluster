@@ -36,10 +36,8 @@ from pcluster.constants import (
     RETAIN_POLICY,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
-    SUPPORTED_OSES_FOR_FEATURE,
     SUPPORTED_REGIONS,
     SUPPORTED_SCHEDULERS,
-    Feature,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.utils import (
@@ -1042,51 +1040,15 @@ class DcvValidator(Validator):
                 )
 
 
-class IntelHpc2018OsValidator(Validator):
+class IntelHpcOsValidator(Validator):
     """Intel HPC OS validator."""
 
     def _validate(self, os: str):
-        allowed_oses = SUPPORTED_OSES_FOR_FEATURE[Feature.INTEL_HPC_SPECIFICATION_2018]
+        allowed_oses = ["centos7"]
         if os not in allowed_oses:
             self._add_failure(
-                "When enabling intel HPC platform 2018, the operating system is required to be set "
+                "When enabling intel software, the operating system is required to be set "
                 f"to one of the following values : {allowed_oses}.",
-                FailureLevel.ERROR,
-            )
-
-
-class IntelOneApiToolkitsBootstrapTimeValidator(Validator):
-    """Intel OneApi Toolkits Bootstrap time Validator."""
-
-    def _validate(self):
-        self._add_failure(
-            "Cluster creation will take ~30 minutes, because installing Intel OneAPI Base Toolkit takes ~10 minutes.",
-            FailureLevel.INFO,
-        )
-
-
-class IntelOneApiToolkitsOsValidator(Validator):
-    """Intel OneApi Toolkits Os Validator."""
-
-    def _validate(self, os: str):
-        supported_oses = SUPPORTED_OSES_FOR_FEATURE[Feature.INTEL_ONE_API_BASE_TOOLKIT]
-        if os not in supported_oses:
-            self._add_failure(
-                "Intel OneAPI Base/HPC Toolkit can be installed on one of the following operating systems: "
-                f"{supported_oses}. It cannot be installed on {os}.",
-                FailureLevel.ERROR,
-            )
-
-
-class IntelPythonOsValidator(Validator):
-    """Intel Python Os Validator."""
-
-    def _validate(self, os: str):
-        supported_oses = SUPPORTED_OSES_FOR_FEATURE[Feature.INTEL_PYTHON]
-        if os not in supported_oses:
-            self._add_failure(
-                "Intel Python can be installed on one of the following operating systems: "
-                f"{supported_oses}. It cannot be installed on {os}.",
                 FailureLevel.ERROR,
             )
 
@@ -1420,13 +1382,12 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
 class RootVolumeSizeValidator(Validator):
     """Verify the root volume size is equal or greater to the size of the snapshot of the AMI."""
 
-    def _validate(self, root_volume_size, ami_volume_size, additional_space=0):
+    def _validate(self, root_volume_size, ami_volume_size):
         if root_volume_size:
-            if root_volume_size < ami_volume_size + additional_space:
+            if root_volume_size < ami_volume_size:
                 self._add_failure(
                     f"Root volume size {root_volume_size} GiB must be equal or greater than the volume size of "
-                    f"the AMI: {ami_volume_size} GiB"
-                    + ("." if additional_space == 0 else f" and additional {additional_space} GiB."),
+                    f"the AMI: {ami_volume_size} GiB.",
                     FailureLevel.ERROR,
                 )
 

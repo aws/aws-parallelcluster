@@ -68,9 +68,6 @@ HeadNode:
   InstanceType: t2.micro
   Networking:
     SubnetId: subnet-12345678
-  LocalStorage:
-    RootVolume:
-      Size: 80
   Ssh:
     KeyName: ec2-key-name
 Scheduling:
