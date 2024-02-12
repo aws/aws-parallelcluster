@@ -1,175 +1,246 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  This template creates EFS, FSX Lustre, FSX Ontap, FSX Open ZFS storage that can be attached to a cluster.
+  AWS ParallelCluster - External Shared Storage.
+  This template creates the storage that can be attached as external shared storage to a ParallelCluster cluster.
+  In particular, it can create: EBS, EFS, FSX Lustre, FSX ONTAP, FSX Open ZFS and File Cache.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Networking
+        Parameters:
+          - Vpc
+          - SubnetOne
+          - SubnetTwo
+          - SubnetThree
+      - Label:
+          default: EBS
+        Parameters:
+          - CreateEbs
+          - EbsVolumeAz
+      - Label:
+          default: EFS
+        Parameters:
+          - CreateEfs
+      - Label:
+          default: FSx Lustre
+        Parameters:
+          - CreateFsxLustre
+          - FsxLustreImportPath
+          - FsxLustreExportPath
+      - Label:
+          default: FSx ONTAP
+        Parameters:
+          - CreateFsxOntap
+      - Label:
+          default: FSx Open ZFS
+        Parameters:
+          - CreateFsxOpenZfs
+      - Label:
+          default: File Cache
+        Parameters:
+          - CreateFileCache
+          - FileCachePath
+          - FileCacheS3BucketName
+
 Parameters:
   FileCachePath:
-    Description: FileCachePath for Data Repository Association.
+    Description: Absolute path used by File Cache for Data Repository Association.
     Type: String
     Default: "/file-cache-path/"
-  PublicSubnetId:
+  FsxLustreImportPath:
+    Description: S3 URI of the Bucket or folder to import in FSx Lustre.
     Type: String
     Default: ''
-  ImportPathParam:
-    Type: String
-    Default: ''
-  S3BucketFileCacheStack:
-    Description: The s3 Bucket Name containing the FsxFileStack
+  FileCacheS3BucketName:
+    Description: Name of the S3 Bucket used by File Cache.
     Type: String
     Default: ""
-  ExportPathParam:
+  FsxLustreExportPath:
+    Description: S3 URI of the Bucket or folder to export in FSx Lustre.
     Type: String
     Default: ''
-  vpc:
-    Type: String
+  Vpc:
+    Description: ID of the VPC where the storage will be deployed.
+    Type: AWS::EC2::VPC::Id
     Default: ''
+  SubnetOne:
+    Description: ID of the Subnet (first Availability Zone) where the storage will be deployed.
+    Type: AWS::EC2::Subnet::Id
+    Default: ''
+  SubnetTwo:
+    Description: ID of the Subnet (second Availability Zone) where the storage will be deployed.
+    Type: AWS::EC2::Subnet::Id
+    Default: ''
+  SubnetThree:
+    Description: ID of the Subnet (third Availability Zone) where the storage will be deployed.
+    Type: AWS::EC2::Subnet::Id
+    Default: ''
+  EbsVolumeAz:
+    Description: AZ where the EBS Volume will be deployed. It must be the same AZ used by the cluster head node.
+    Type: AWS::EC2::AvailabilityZone::Name
+  CreateEbs:
+    Description: True to create the EBS resources; False otherwise.
+    Type: String
+    Default: 'true'
+    AllowedValues: [ 'true', 'false' ]
   CreateEfs:
+    Description: True to create the EFS resources; False otherwise.
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
-  CreateFsx:
+  CreateFsxLustre:
+    Description: True to create the FSx Lustre resources; False otherwise.
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
+  CreateFsxOntap:
+    Description: True to create the FSx ONTAP resources; False otherwise.
+    Type: String
+    Default: 'true'
+    AllowedValues: [ 'true', 'false' ]
+  CreateFsxOpenZfs:
+    Description: True to create the FSx Open ZFS resources; False otherwise.
+    Type: String
+    Default: 'true'
+    AllowedValues: [ 'true', 'false' ]
+  CreateFileCache:
+    Description: True to create the File Cache resources; False otherwise.
+    Type: String
+    Default: 'true'
+    AllowedValues: [ 'true', 'false' ]
+
 Conditions:
+  CreateEbs: !Equals [!Ref CreateEbs, 'true']
   CreateEfs: !Equals [!Ref CreateEfs, 'true']
-  CreateFsx: !Equals [!Ref CreateFsx, 'true']
+  CreateFsxLustre: !Equals [!Ref CreateFsxLustre, 'true']
+  CreateFsxOntap: !Equals [!Ref CreateFsxOntap, 'true']
+  CreateFsxOpenZfs: !Equals [!Ref CreateFsxOpenZfs, 'true']
+  CreateFileCache: !Equals [!Ref CreateFileCache, 'true']
+  NoStorage: !And
+    - !Not [!Equals [!Ref CreateEbs, 'true']]
+    - !Not [!Equals [!Ref CreateEfs, 'true']]
+    - !Not [!Equals [!Ref CreateFsxLustre, 'true']]
+    - !Not [!Equals [!Ref CreateFsxOntap, 'true']]
+    - !Not [!Equals [!Ref CreateFsxOpenZfs, 'true']]
+    - !Not [!Equals [!Ref CreateFileCache, 'true']]
+
 Resources:
-  FileSystemResource0:
+  # EBS
+  EbsVolume:
+    Type: AWS::EC2::Volume
+    Condition: CreateEbs
+    Properties:
+      AvailabilityZone: !Ref EbsVolumeAz
+      Iops: 3000
+      Size: 1
+      Throughput: 125
+      VolumeType: gp3
+
+  # EFS
+  EfsFileSystem:
     Type: 'AWS::EFS::FileSystem'
     Condition: CreateEfs
-{% for subnet in one_subnet_per_az %}
-  MountTargetResourceEfs0Subnet{{loop.index}}:
-    Condition: CreateEfs
-    Properties:
-      FileSystemId: !Ref FileSystemResource0
-      SecurityGroups:
-        - !Ref SecurityGroupResource
-      SubnetId: {{subnet}}
+  MountTargetResourceEfs0SubnetOne:
     Type: 'AWS::EFS::MountTarget'
-{% endfor %}
-  SecurityGroupIngressResource0:
     Condition: CreateEfs
     Properties:
-      CidrIp: 192.168.0.0/17
-      FromPort: 2049
-      GroupId: !Ref SecurityGroupResource
-      IpProtocol: '-1'
-      ToPort: 2049
-    Type: 'AWS::EC2::SecurityGroupIngress'
-  SecurityGroupIngressResource1:
+      FileSystemId: !Ref EfsFileSystem
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+      SubnetId: !Ref SubnetOne
+  MountTargetResourceEfs0SubnetTwo:
+    Type: 'AWS::EFS::MountTarget'
     Condition: CreateEfs
     Properties:
-      CidrIp: 192.168.128.0/17
-      FromPort: 2049
-      GroupId: !Ref SecurityGroupResource
-      IpProtocol: '-1'
-      ToPort: 2049
-    Type: 'AWS::EC2::SecurityGroupIngress'
-  SecurityGroupResource:
+      FileSystemId: !Ref EfsFileSystem
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+      SubnetId: !Ref SubnetTwo
+  MountTargetResourceEfs0SubnetThree:
+    Type: 'AWS::EFS::MountTarget'
     Condition: CreateEfs
     Properties:
-      GroupDescription: custom security group for EFS mount targets
-      VpcId: !Ref vpc
+      FileSystemId: !Ref EfsFileSystem
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+      SubnetId: !Ref SubnetThree
+  EfsSecurityGroup:
+    Condition: CreateEfs
+    Properties:
+      GroupDescription: Security group for EFS mount targets
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 2049
+          IpProtocol: tcp
+          ToPort: 2049
     Type: 'AWS::EC2::SecurityGroup'
-  FSxSecurityGroup:
-    Condition: CreateFsx
+
+  # FSxLustre
+  FsxLustreSecurityGroup:
+    Condition: CreateFsxLustre
     Properties:
-      GroupDescription: SecurityGroup for testing existing FSx
+      GroupDescription: Security Group for FSx Lustre
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           FromPort: 988
           IpProtocol: tcp
           ToPort: 988
-      VpcId: !Ref vpc
+      VpcId: !Ref Vpc
     Type: 'AWS::EC2::SecurityGroup'
-  FileSystemResource1:
-    Condition: CreateFsx
+  FsxLustreFileSystem:
+    Condition: CreateFsxLustre
     Properties:
       FileSystemType: LUSTRE
       LustreConfiguration:
         DeploymentType: PERSISTENT_1
-        ExportPath: !Ref ExportPathParam
-        ImportPath: !Ref ImportPathParam
+        ExportPath: !Ref FsxLustreExportPath
+        ImportPath: !Ref FsxLustreImportPath
         PerUnitStorageThroughput: 200
       SecurityGroupIds:
-        - !Ref FSxSecurityGroup
+        - !Ref FsxLustreSecurityGroup
       StorageCapacity: 1200
       SubnetIds:
-        - !Ref PublicSubnetId
+        - !Ref SubnetOne
     Type: 'AWS::FSx::FileSystem'
-  FSxSecurityGroup1:
-    Condition: CreateFsx
-    Properties:
-      GroupDescription: SecurityGroup for testing existing FSx
-      SecurityGroupIngress:
-        - CidrIp: 0.0.0.0/0
-          FromPort: 111
-          IpProtocol: tcp
-          ToPort: 111
-        - CidrIp: 0.0.0.0/0
-          FromPort: 111
-          IpProtocol: udp
-          ToPort: 111
-        - CidrIp: 0.0.0.0/0
-          FromPort: 635
-          IpProtocol: tcp
-          ToPort: 635
-        - CidrIp: 0.0.0.0/0
-          FromPort: 635
-          IpProtocol: udp
-          ToPort: 635
-        - CidrIp: 0.0.0.0/0
-          FromPort: 2049
-          IpProtocol: tcp
-          ToPort: 2049
-        - CidrIp: 0.0.0.0/0
-          FromPort: 2049
-          IpProtocol: udp
-          ToPort: 2049
-        - CidrIp: 0.0.0.0/0
-          FromPort: 4046
-          IpProtocol: tcp
-          ToPort: 4046
-        - CidrIp: 0.0.0.0/0
-          FromPort: 4046
-          IpProtocol: udp
-          ToPort: 4046
-      VpcId: !Ref vpc
-    Type: 'AWS::EC2::SecurityGroup'
-  FileSystemResource2:
-    Condition: CreateFsx
+
+  # FSx ONTAP
+  FsxOntapFileSystem:
+    Condition: CreateFsxOntap
     Properties:
       FileSystemType: ONTAP
       OntapConfiguration:
         DeploymentType: SINGLE_AZ_1
         ThroughputCapacity: 128
       SecurityGroupIds:
-        - !Ref FSxSecurityGroup1
+        - !Ref FsxOntapSecurityGroup
       StorageCapacity: 1024
       SubnetIds:
-        - !Ref PublicSubnetId
+        - !Ref SubnetOne
     Type: 'AWS::FSx::FileSystem'
-  SVMVolume0:
-    Condition: CreateFsx
+  StorageVirtualMachineVolume:
+    Condition: CreateFsxOntap
     Properties:
       Name: vol0
       OntapConfiguration:
         JunctionPath: /vol0
         SizeInMegabytes: '10240'
         StorageEfficiencyEnabled: 'true'
-        StorageVirtualMachineId: !Ref StorageVirtualMachineFileSystemResource
+        StorageVirtualMachineId: !Ref FsxOntapStorageVirtualMachine
       VolumeType: ONTAP
     Type: 'AWS::FSx::Volume'
-  StorageVirtualMachineFileSystemResource:
-    Condition: CreateFsx
+  FsxOntapStorageVirtualMachine:
+    Condition: CreateFsxOntap
     Properties:
-      FileSystemId: !Ref FileSystemResource2
+      FileSystemId: !Ref FsxOntapFileSystem
       Name: fsx
     Type: 'AWS::FSx::StorageVirtualMachine'
-  FSxSecurityGroup2:
-    Condition: CreateFsx
+  FsxOntapSecurityGroup:
+    Condition: CreateFsxOntap
     Properties:
-      GroupDescription: SecurityGroup for testing existing FSx
+      GroupDescription: Security group for FSx ONTAP
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           FromPort: 111
@@ -180,6 +251,14 @@ Resources:
           IpProtocol: udp
           ToPort: 111
         - CidrIp: 0.0.0.0/0
+          FromPort: 635
+          IpProtocol: tcp
+          ToPort: 635
+        - CidrIp: 0.0.0.0/0
+          FromPort: 635
+          IpProtocol: udp
+          ToPort: 635
+        - CidrIp: 0.0.0.0/0
           FromPort: 2049
           IpProtocol: tcp
           ToPort: 2049
@@ -188,33 +267,19 @@ Resources:
           IpProtocol: udp
           ToPort: 2049
         - CidrIp: 0.0.0.0/0
-          FromPort: 20001
+          FromPort: 4046
           IpProtocol: tcp
-          ToPort: 20001
+          ToPort: 4046
         - CidrIp: 0.0.0.0/0
-          FromPort: 20001
+          FromPort: 4046
           IpProtocol: udp
-          ToPort: 20001
-        - CidrIp: 0.0.0.0/0
-          FromPort: 20002
-          IpProtocol: tcp
-          ToPort: 20002
-        - CidrIp: 0.0.0.0/0
-          FromPort: 20002
-          IpProtocol: udp
-          ToPort: 20002
-        - CidrIp: 0.0.0.0/0
-          FromPort: 20003
-          IpProtocol: tcp
-          ToPort: 20003
-        - CidrIp: 0.0.0.0/0
-          FromPort: 20003
-          IpProtocol: udp
-          ToPort: 20003
-      VpcId: !Ref vpc
+          ToPort: 4046
+      VpcId: !Ref Vpc
     Type: 'AWS::EC2::SecurityGroup'
-  FileSystemResource3:
-    Condition: CreateFsx
+
+  # FSx OpenZfs
+  FsxOpenZfsFileSystem:
+    Condition: CreateFsxOpenZfs
     Properties:
       FileSystemType: OPENZFS
       OpenZFSConfiguration:
@@ -228,13 +293,13 @@ Resources:
                     - crossmnt
         ThroughputCapacity: 64
       SecurityGroupIds:
-        - !Ref FSxSecurityGroup2
+        - !Ref FsxOpenZfsSecurityGroup
       StorageCapacity: 64
       SubnetIds:
-        - !Ref PublicSubnetId
+        - !Ref SubnetOne
     Type: 'AWS::FSx::FileSystem'
-  OpenZFSVolume0:
-    Condition: CreateFsx
+  FsxOpenZfsVolume:
+    Condition: CreateFsxOpenZfs
     Properties:
       Name: vol0
       OpenZFSConfiguration:
@@ -245,34 +310,268 @@ Resources:
                   - rw
                   - crossmnt
         ParentVolumeId: !GetAtt
-          - FileSystemResource3
+          - FsxOpenZfsFileSystem
           - RootVolumeId
       VolumeType: OPENZFS
     Type: 'AWS::FSx::Volume'
+  FsxOpenZfsSecurityGroup:
+    Condition: CreateFsxOpenZfs
+    Properties:
+      GroupDescription: Security group for FSx Open ZFS
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 111
+          IpProtocol: tcp
+          ToPort: 111
+        - CidrIp: 0.0.0.0/0
+          FromPort: 111
+          IpProtocol: udp
+          ToPort: 111
+        - CidrIp: 0.0.0.0/0
+          FromPort: 2049
+          IpProtocol: tcp
+          ToPort: 2049
+        - CidrIp: 0.0.0.0/0
+          FromPort: 2049
+          IpProtocol: udp
+          ToPort: 2049
+        - CidrIp: 0.0.0.0/0
+          FromPort: 20001
+          IpProtocol: tcp
+          ToPort: 20001
+        - CidrIp: 0.0.0.0/0
+          FromPort: 20001
+          IpProtocol: udp
+          ToPort: 20001
+        - CidrIp: 0.0.0.0/0
+          FromPort: 20002
+          IpProtocol: tcp
+          ToPort: 20002
+        - CidrIp: 0.0.0.0/0
+          FromPort: 20002
+          IpProtocol: udp
+          ToPort: 20002
+        - CidrIp: 0.0.0.0/0
+          FromPort: 20003
+          IpProtocol: tcp
+          ToPort: 20003
+        - CidrIp: 0.0.0.0/0
+          FromPort: 20003
+          IpProtocol: udp
+          ToPort: 20003
+      VpcId: !Ref Vpc
+    Type: 'AWS::EC2::SecurityGroup'
+    
+  # File Cache
+  FileCacheSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateFileCache
+    Properties:
+      GroupDescription: Allow TCP Traffic for FileCache
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: -1
+          IpProtocol: "-1"
+          ToPort: -1
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 988
+          IpProtocol: tcp
+          ToPort: 988
+      VpcId: !Ref Vpc
+
+  CreateDeleteFileCacheLambda:
+    Type: AWS::Lambda::Function
+    Condition: CreateFileCache
+    Properties:
+      Description: !Sub "${AWS::StackName}: custom resource handler to create and delete a File Cache."
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt FileCacheLambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      TracingConfig:
+        Mode: Active
+      Code:
+        ZipFile: |
+          import time
+          import cfnresponse
+          import boto3
+          import logging
+          import random
+          import string
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          fsx = boto3.client("fsx")
+
+          def delete_file_cache_id(file_cache_id):
+            logger.info(f"Deleting File Cache {file_cache_id}...")
+            max_attempts = 5
+            sleep_time = 60
+            for attempt in range(1, max_attempts+1):
+              try:
+                fsx.delete_file_cache(FileCacheId=file_cache_id)
+                break
+              except fsx.exceptions.InternalServerError as e:
+                logger.error(f"(Attempt {attempt}/{max_attempts}) Cannot delete FileCache because of InternalServerError. Retrying in {sleep_time} seconds...")
+                if attempt == max_attempts:
+                  raise Exception(f"Cannot delete FileCache {file_cache_id}: {e}")
+                else:
+                  time.sleep(sleep_time)
+
+          def create_file_cache_id(file_cache_path, s3_bucket, subnet_id, securitygroup_id):
+            logger.info(f"Creating File Cache ...")
+            try:
+              return (
+                fsx.create_file_cache(
+                  FileCacheType="LUSTRE",
+                  FileCacheTypeVersion="2.12",
+                  StorageCapacity=1200,
+                  SubnetIds=[subnet_id],
+                  SecurityGroupIds=[securitygroup_id],
+                  LustreConfiguration={
+                    "PerUnitStorageThroughput": 1000,
+                    "DeploymentType": "CACHE_1",
+                    "MetadataConfiguration": {"StorageCapacity": 2400},
+                  },
+                  DataRepositoryAssociations=[
+                    {
+                      "FileCachePath": file_cache_path,
+                      "DataRepositoryPath": s3_bucket,
+                    },
+                  ],
+                ).get("FileCache")
+              )
+
+            except fsx.exceptions.InternalServerError as e:
+              logger.error(f"Cannot create FileCache because of InternalServerError.")
+              raise Exception(f"Cannot create FileCache {e}")
+
+
+          def handler(event, context):
+            logger.info(f"Context: {context}")
+            logger.info(f"Event: {event}")
+            logger.info(f"Boto version: {boto3.__version__}")
+
+
+
+            response_data = {}
+            reason = None
+            response_status = cfnresponse.SUCCESS
+
+            try:
+              physical_resource_id = ""
+              if event['RequestType'] == 'Create':
+                file_cache_path =  event['ResourceProperties']['FileCachePath']
+                logger.info(f"file_cache_path: {file_cache_path}")
+
+                s3_bucket = 's3://{}'.format(event['ResourceProperties']['S3BucketName'])
+                logger.info(f"s3_bucket: {s3_bucket}")
+
+                subnet_id = event['ResourceProperties']['SubnetId']
+                logger.info(f"subnet_id: {subnet_id}")
+
+                securitygroup_id = event['ResourceProperties']['SecurityGroupId']
+                logger.info(f"securitygroup_id: {securitygroup_id}")
+                file_cache_response = create_file_cache_id(file_cache_path, s3_bucket, subnet_id, securitygroup_id)
+                file_cache_id = file_cache_response.get("FileCacheId")
+                file_cache_arn= file_cache_response.get("ResourceARN")
+                response_data['Message'] = 'Resource creation successful!'
+                physical_resource_id = file_cache_id
+
+                logger.info(f"file_cache_id: {file_cache_id}")
+                # provide outputs
+                response_data['FileCacheId'] = file_cache_id
+                response_data['FileCacheARN'] = file_cache_arn
+              elif event['RequestType'] == 'Delete':
+                physical_resource_id = event.get("PhysicalResourceId")
+                logger.info('file_cache_id {}'.format(physical_resource_id))
+                delete_file_cache_id(file_cache_id=physical_resource_id)
+
+              else:
+                  physical_resource_id = event['PhysicalResourceId']
+            except Exception as e:
+                response_status = cfnresponse.FAILED
+                logger.error(f"Exception {e}")
+                reason = str(e)
+            cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
+
+  CreateDeleteFileCache:
+    Type: Custom::CreateDeleteFileCacheLambda
+    Condition: CreateFileCache
+    DependsOn:
+      - FileCacheSecurityGroup
+    Properties:
+      ServiceToken: !GetAtt CreateDeleteFileCacheLambda.Arn
+      FileCachePath: !Ref FileCachePath
+      S3BucketName: !Ref FileCacheS3BucketName
+      SubnetId: !Ref SubnetOne
+      SecurityGroupId: !Ref FileCacheSecurityGroup
+
+  FileCacheLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: CreateFileCache
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FSxFCPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - fsx:CreateFileCache
+                  - fsx:DeleteFileCache
+                  - fsx:Describe*
+                  - fsx:ListTagsForResource
+                  - fsx:CreateDataRepositoryAssociation
+                  - fsx:DeleteDataRepositoryAssociation
+                  - ec2:DescribeNetworkInterfaceAttribute
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                Effect: Allow
+                Resource: '*'
+              #                https://docs.aws.amazon.com/fsx/latest/LustreGuide/setting-up.html#fsx-adding-permissions-s3
+              - Action:
+                  - iam:CreateServiceLinkedRole
+                  - iam:AttachRolePolicy
+                  - iam:PutRolePolicy
+                Resource: arn:aws:iam::*:role/aws-service-role/s3.data-source.lustre.fsx.amazonaws.com/*
+                Effect: Allow
+              - Action:
+                  - s3:Get*
+                  - s3:List*
+                  - s3:PutObject
+                Effect: Allow
+                Resource: !Sub arn:aws:s3:::${FileCacheS3BucketName}
+
+  # Dummy resource created if no storage is created
+  # because empty stacks are not allowed.
   DummyResource:
     Type: AWS::CloudFormation::WaitConditionHandle
-
-# Using the tests/integration-tests/resources/file-cache-storage-cfn.yaml which is uploaded in S3 bucket
-  FileCacheStack:
-    Condition: CreateFsx
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub "https://${S3BucketFileCacheStack}.s3.amazonaws.com/file-cache-storage-cfn.yaml"
-      TimeoutInMinutes: 20
-      Parameters:
-        FileCachePath: !Ref FileCachePath
-        VpcId: !Ref vpc
-        SubnetId: !Ref PublicSubnetId
-        S3BucketName: !Ref S3BucketFileCacheStack
+    Condition: NoStorage
 
 Outputs:
+  EbsId:
+    Value: !If [ CreateEbs, !Ref EbsVolume, '' ]
   EfsId:
-    Value: !If [ CreateEfs, !Ref FileSystemResource0, '' ]
+    Value: !If [ CreateEfs, !Ref EfsFileSystem, '' ]
   FsxLustreFsId:
-    Value: !If [ CreateFsx, !Ref FileSystemResource1, '']
+    Value: !If [ CreateFsxLustre, !Ref FsxLustreFileSystem, '']
   FsxOntapVolumeId:
-    Value: !If [ CreateFsx, !Ref SVMVolume0, '']
+    Value: !If [ CreateFsxOntap, !Ref StorageVirtualMachineVolume, '']
   FsxOpenZfsVolumeId:
-    Value: !If [ CreateFsx, !Ref OpenZFSVolume0, '']
+    Value: !If [ CreateFsxOpenZfs, !Ref FsxOpenZfsVolume, '']
   FileCacheId:
-    Value: !If [ CreateFsx, !GetAtt FileCacheStack.Outputs.FileCacheId, '']
+    Value: !If [ CreateFileCache, !GetAtt CreateDeleteFileCache.FileCacheId, '']
