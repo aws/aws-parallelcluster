@@ -10,14 +10,8 @@ CHANGELOG
   stop the compute fleet. It's now possible to update them by setting `Scheduling/SlurmSettings/QueueUpdateStrategy`
   to TERMINATE. ParallelCluster will terminate only the nodes removed during a resize of the cluster capacity
   performed through a cluster update.
-- Add support for installing Intel OneAPI Base Toolkit and HPC Toolkit, and Intel Python.
-  - Intel OneAPI Base Toolkits: 2023.2.0
-  - Intel OneAPI HPC Toolkits: 2023.2.0
-  - Intel Python: 2023.2.0
-  - Critical Update for Intel oneAPI DPC++/C++ Compiler: 2023.2.1
-  - Critical Update for Intel Fortran Compiler & Intel® Fortran Compiler Classic: 2023.2.1
-  - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
-  - Add `DeploymentSettings/DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
+- Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
+- Add `DeploymentSettings/DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
 
 **CHANGES**
 - Upgrade Slurm to 23.11.3.

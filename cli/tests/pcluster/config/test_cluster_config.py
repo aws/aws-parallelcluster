@@ -19,7 +19,6 @@ from pcluster.config.cluster_config import (
     HeadNodeSsh,
     HealthChecks,
     Image,
-    LocalStorage,
     LoginNodes,
     LoginNodesImage,
     LoginNodesNetworking,
@@ -27,7 +26,6 @@ from pcluster.config.cluster_config import (
     LoginNodesSsh,
     PlacementGroup,
     QueueImage,
-    RootVolume,
     SharedEbs,
     SlurmClusterConfig,
     SlurmComputeResource,
@@ -331,9 +329,7 @@ class TestBaseClusterConfig:
         return BaseClusterConfig(
             cluster_name="clustername",
             image=Image("alinux2"),
-            head_node=HeadNode(
-                "c5.xlarge", HeadNodeNetworking("subnet"), local_storage=LocalStorage(root_volume=RootVolume(size=50))
-            ),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
         )
 
     @pytest.fixture()
@@ -341,9 +337,7 @@ class TestBaseClusterConfig:
         return SlurmClusterConfig(
             cluster_name="clustername",
             image=Image("alinux2"),
-            head_node=HeadNode(
-                "c5.xlarge", HeadNodeNetworking("subnet"), local_storage=LocalStorage(root_volume=RootVolume(size=50))
-            ),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(
                 [
                     SlurmQueue(

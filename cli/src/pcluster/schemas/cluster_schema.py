@@ -73,7 +73,6 @@ from pcluster.config.cluster_config import (
     LogRotation,
     Logs,
     Monitoring,
-    OneApi,
     PlacementGroup,
     Proxy,
     QueueImage,
@@ -1038,32 +1037,10 @@ class ImdsSchema(BaseSchema):
         return Imds(**data)
 
 
-class OneApiSchema(BaseSchema):
-    """Represent the schema of OneAPI."""
-
-    base_toolkit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    hpc_toolkit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return OneApi(**data)
-
-    @validates_schema
-    def hpc_toolkit_requires_base_toolkit(self, data, **kwargs):
-        """Ensure Base Toolkit is not disabled when HPC Toolkit is enabled."""
-        base_toolkit = data.get("base_toolkit")
-        hpc_toolkit = data.get("hpc_toolkit")
-        if base_toolkit is False and hpc_toolkit is True:
-            raise ValidationError("Intel Base Toolkit is required by Intel HPC Toolkit.")
-
-
 class IntelSoftwareSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
     intel_hpc_platform = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    one_api = fields.Nested(OneApiSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    python = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

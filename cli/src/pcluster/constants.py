@@ -260,9 +260,6 @@ class Feature(Enum):
     FSX_OPENZFS = "FSx OpenZfs"
     SLURM_DATABASE = "SLURM Database"
     CLUSTER_HEALTH_METRICS = "Cluster Health Metrics"
-    INTEL_HPC_SPECIFICATION_2018 = "Intel HPC Specification 2018"
-    INTEL_ONE_API_BASE_TOOLKIT = "Intel OneAPI Base Toolkit"
-    INTEL_PYTHON = "Intel Python"
     CAPACITY_BLOCK = "Capacity Block"
 
 
@@ -277,15 +274,6 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.CLUSTER_HEALTH_METRICS: ["us-iso"],
     Feature.CAPACITY_BLOCK: ["us-iso"],
 }
-
-SUPPORTED_OSES_FOR_FEATURE = {
-    Feature.INTEL_PYTHON: list(set(SUPPORTED_OSES) - {"centos7", "alinux2"}),
-    Feature.INTEL_ONE_API_BASE_TOOLKIT: list(set(SUPPORTED_OSES) - {"centos7"}),
-    Feature.INTEL_HPC_SPECIFICATION_2018: ["centos7"],
-}
-
-FEATURE_REQUIRING_ADDITION_SPACE = {Feature.INTEL_ONE_API_BASE_TOOLKIT: 30}  # In GBs
-FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME = {Feature.INTEL_ONE_API_BASE_TOOLKIT: 600}  # In seconds
 
 
 # Operations support
