@@ -134,7 +134,7 @@ Resources:
     Properties:
       AvailabilityZone: !Ref EbsVolumeAz
       Iops: 3000
-      Size: 1
+      Size: 2
       Throughput: 125
       VolumeType: gp3
       Encrypted: true

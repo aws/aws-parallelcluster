@@ -1422,7 +1422,7 @@ def _test_shared_storages_mount_on_headnode(
     """Check storages are mounted on headnode."""
     # ebs
     for ebs_dir in ebs_mount_dirs:
-        volume_size = "9.[7,8]" if "existing" in ebs_dir else "40"
+        volume_size = "2.0" if "existing" in ebs_dir else "40"
         test_ebs_correctly_mounted(remote_command_executor, ebs_dir, volume_size=volume_size)
     # check raid
     test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
