@@ -200,7 +200,7 @@ Resources:
           - parallelcluster/${Version}/layers/aws-parallelcluster/lambda-layer.zip
           - { Version: !FindInMap [ParallelCluster, Constants, Version]}
       CompatibleRuntimes:
-        - python3.12
+        - python3.9
 
   # We need to define three AWS::Serverless::Api due to an issue with the handling of AWS::NoValue
   # See related GitHub issue: https://github.com/aws/serverless-application-model/issues/1435
@@ -294,7 +294,7 @@ Resources:
           Value: api
         - Key: 'parallelcluster:version'
           Value: !FindInMap [ParallelCluster, Constants, Version]
-      Runtime: python3.12
+      Runtime: python3.9
       Handler: pcluster.api.awslambda.entrypoint.lambda_handler
       Layers:
         - !Ref PclusterLayer

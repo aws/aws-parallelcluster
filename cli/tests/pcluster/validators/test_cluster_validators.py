@@ -53,11 +53,8 @@ from pcluster.validators.cluster_validators import (
     HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
-    IntelHpc2018OsValidator,
     IntelHpcArchitectureValidator,
-    IntelOneApiToolkitsBootstrapTimeValidator,
-    IntelOneApiToolkitsOsValidator,
-    IntelPythonOsValidator,
+    IntelHpcOsValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -1623,8 +1620,8 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
     [
         ("centos7", None),
         ("alinux2", "the operating system is required to be set"),
+        ("ubuntu1804", "the operating system is required to be set"),
         ("ubuntu2004", "the operating system is required to be set"),
-        ("ubuntu2204", "the operating system is required to be set"),
         ("rhel8", "the operating system is required to be set"),
         # TODO migrate the parametrization below to unit test for the whole model
         # intel hpc disabled, you can use any os
@@ -1632,45 +1629,7 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
     ],
 )
 def test_intel_hpc_os_validator(os, expected_message):
-    actual_failures = IntelHpc2018OsValidator().execute(os)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-def test_intel_one_api_toolkits_bootstrap_time_validator():
-    actual_failures = IntelOneApiToolkitsBootstrapTimeValidator().execute()
-    assert_failure_messages(
-        actual_failures,
-        "Cluster creation will take ~30 minutes, because installing Intel OneAPI Base Toolkit takes ~10 minutes.",
-    )
-
-
-@pytest.mark.parametrize(
-    "os, expected_message",
-    [
-        ("centos7", "Intel OneAPI Base/HPC Toolkit.*cannot be installed on centos7"),
-        ("alinux2", None),
-        ("ubuntu2004", None),
-        ("ubuntu2204", None),
-        ("rhel8", None),
-    ],
-)
-def test_intel_one_api_toolkits_validator(os, expected_message):
-    actual_failures = IntelOneApiToolkitsOsValidator().execute(os)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-@pytest.mark.parametrize(
-    "os, expected_message",
-    [
-        ("centos7", "Intel Python.*cannot be installed on centos7"),
-        ("alinux2", "Intel Python.*cannot be installed on alinux2"),
-        ("ubuntu2004", None),
-        ("ubuntu2204", None),
-        ("rhel8", None),
-    ],
-)
-def test_intel_python_validator(os, expected_message):
-    actual_failures = IntelPythonOsValidator().execute(os)
+    actual_failures = IntelHpcOsValidator().execute(os)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -1893,25 +1852,19 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
 
 
 @pytest.mark.parametrize(
-    "root_volume_size, ami_size, additional_space, expected_message",
+    "root_volume_size, ami_size, expected_message",
     [
-        (65, 50, None, None),
+        (65, 50, None),
         (
             25,
             50,
-            None,
             "Root volume size 25 GiB must be equal or greater than .* 50 GiB.",
         ),
-        (65, 50, 15, None),
-        (65, 50, 16, "Root volume size 65 GiB must be equal or greater than .* 50 GiB and additional 16 GiB."),
     ],
 )
-def test_root_volume_size_validator(mocker, root_volume_size, ami_size, additional_space, expected_message):
+def test_root_volume_size_validator(mocker, root_volume_size, ami_size, expected_message):
     mock_aws_api(mocker)
-    if additional_space is None:
-        actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size)
-    else:
-        actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size, additional_space)
+    actual_failures = RootVolumeSizeValidator().execute(root_volume_size, ami_size)
     assert_failure_messages(actual_failures, expected_message)
 
 

@@ -30,7 +30,7 @@ from framework.fixture_utils import xdist_session_fixture
 from tests.common.utils import get_installed_parallelcluster_version
 
 logger = logging.getLogger()
-NODE_VERSION = "v18.18.2"
+NODE_VERSION = "v16.19.0"  # maintenance version compatible with alinux2's GLIBC
 
 
 def install_pc(basepath, pc_version):
@@ -40,9 +40,7 @@ def install_pc(basepath, pc_version):
     cli_dir = root / "cli"
     try:
         logger.info("installing ParallelCluster packages...")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "jsonschema==4.17.3", f"{cli_dir}[awslambda]", "-t", tempdir]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{cli_dir}[awslambda]", "-t", tempdir])
         # The following are provided by the lambda runtime
         shutil.rmtree(tempdir / "botocore")
         shutil.rmtree(tempdir / "boto3")

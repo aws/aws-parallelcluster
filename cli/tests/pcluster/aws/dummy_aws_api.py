@@ -428,7 +428,7 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_image",
-        return_value=ImageInfo({"BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 40}}]}),
+        return_value=ImageInfo({"BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 35}}]}),
     )
     if mock_instance_type_info:
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

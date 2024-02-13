@@ -25,7 +25,6 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeIamSchema,
     HeadNodeRootVolumeSchema,
     ImageSchema,
-    OneApiSchema,
     QueueCustomActionsSchema,
     QueueIamSchema,
     QueueTagSchema,
@@ -1127,24 +1126,6 @@ def test_job_exclusive_allocation(
     else:
         queue = SlurmQueueSchema().load(config_dict)
         assert_that(queue.job_exclusive_allocation).is_equal_to(expected_job_exc_inst_alloc)
-
-
-@pytest.mark.parametrize(
-    "install_base_toolkit, install_hpc_toolkit, failure",
-    [
-        (False, False, None),
-        (False, True, True),
-        (True, False, False),
-        (True, True, False),
-    ],
-)
-def test_one_api(install_base_toolkit, install_hpc_toolkit, failure):
-    config_dict = {"BaseToolkit": install_base_toolkit, "HpcToolkit": install_hpc_toolkit}
-    if failure:
-        with pytest.raises(ValidationError, match="Intel Base Toolkit is required by Intel HPC Toolkit."):
-            OneApiSchema().load(config_dict)
-    else:
-        OneApiSchema().load(config_dict)
 
 
 @pytest.mark.parametrize(

@@ -1157,11 +1157,7 @@ class ClusterCdkStack:
             count=1,
             handle=wait_condition_handle.ref,
             timeout=str(
-                get_attr(
-                    self.config,
-                    "dev_settings.timeouts.head_node_bootstrap_timeout",
-                    NODE_BOOTSTRAP_TIMEOUT + self.config.additional_bootstrap_time_for_features(),
-                )
+                get_attr(self.config, "dev_settings.timeouts.head_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT)
             ),
         )
         return wait_condition, wait_condition_handle
@@ -1318,15 +1314,6 @@ class ClusterCdkStack:
                     "compute_node_bootstrap_timeout": get_attr(
                         self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
                     ),
-                    "install_intel_base_toolkit": str(
-                        get_attr(self.config, "additional_packages.intel_software.one_api.base_toolkit")
-                    ).lower(),
-                    "install_intel_hpc_toolkit": str(
-                        get_attr(self.config, "additional_packages.intel_software.one_api.hpc_toolkit")
-                    ).lower(),
-                    "install_intel_python": str(
-                        get_attr(self.config, "additional_packages.intel_software.python")
-                    ).lower(),
                     "disable_sudo_access_for_default_user": (
                         "true"
                         if self.config.deployment_settings

@@ -1,5 +1,5 @@
 Image:
-  Os: ubuntu2204
+  Os: alinux2
 HeadNode:
   InstanceType: t2.micro  # t2.micro
   Networking:
@@ -56,11 +56,6 @@ SharedStorage:
       FileSystemId: fs-12345678123456789
 Iam:
   ResourcePrefix: /path-prefix/name-prefix
-AdditionalPackages:
-  IntelSoftware:
-    OneApi:
-      BaseToolkit: true
-    Python: true
 DeploymentSettings:
   LambdaFunctionsVpcConfig:
     SecurityGroupIds: ["sg-028d73ae220157d96"]

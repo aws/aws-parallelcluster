@@ -237,10 +237,6 @@ Monitoring:
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
-    OneApi:
-      BaseToolkit: true
-      HpcToolkit: false
-    Python: true
 Tags:
   - Key: String
     Value: String
