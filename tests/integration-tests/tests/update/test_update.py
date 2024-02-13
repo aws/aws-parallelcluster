@@ -22,6 +22,7 @@ import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
 from cfn_stacks_factory import CfnStack, CfnVpcStack
+from constants import REPOSITORY_ROOT
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
@@ -56,7 +57,6 @@ from tests.storage.storage_common import (
     test_raid_correctly_mounted,
     verify_directory_correctly_shared,
 )
-from constants import REPOSITORY_ROOT
 
 
 @pytest.mark.usefixtures("os", "instance")
