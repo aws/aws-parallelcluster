@@ -21,6 +21,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from hashlib import sha1
+from typing import List
 
 import boto3
 import requests
@@ -60,7 +61,7 @@ def generate_metric_data_entry(metric_name: str, dimensions_as_dict: dict, value
     }
 
 
-def publish_metrics_to_cloudwatch(namespace: str, cw_client, cw_metrics: list[CWMetric]):
+def publish_metrics_to_cloudwatch(namespace: str, cw_client, cw_metrics: List[CWMetric]):
     cw_client.put_metric_data(
         Namespace=namespace,
         MetricData=[
