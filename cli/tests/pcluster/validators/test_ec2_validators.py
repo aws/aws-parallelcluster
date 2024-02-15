@@ -31,6 +31,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
+    InstanceTypeOSCompatibleValidator,
     InstanceTypePlacementGroupValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -417,6 +418,38 @@ def test_instance_type_base_ami_compatible_validator(
     mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=instance_response)
     mocker.patch("pcluster.aws.ec2.Ec2Client.get_supported_architectures", return_value=instance_architectures)
     actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(instance_type=instance_type, image=parent_image)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "instance_type, os, expected_message",
+    [
+        (
+            "c5.xlarge",
+            "rhel9",
+            None,
+        ),
+        (
+            "t2.micro",
+            "rhel9",
+            "It is not recommended to use instance type t2.micro with rhel9. "
+            "If you want to use rhel9 it is recommended to use an instance type with at least 1.7 GB of memory.",
+        ),
+        (
+            "t2.micro",
+            "alinux2",
+            None,
+        ),
+        (
+            "t2.nano",
+            "rocky9",
+            "It is not recommended to use instance type t2.nano with rocky9. "
+            "If you want to use rocky9 it is recommended to use an instance type with at least 1.7 GB of memory.",
+        ),
+    ],
+)
+def test_instance_type_os_compatible_validator(instance_type, os, expected_message):
+    actual_failures = InstanceTypeOSCompatibleValidator().execute(instance_type=instance_type, os=os)
     assert_failure_messages(actual_failures, expected_message)
 
 
