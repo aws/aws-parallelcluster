@@ -840,8 +840,8 @@ def _test_update_queue_strategy_without_running_job(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         [
-            f"Queue update strategy is \\({queue_update_strategy}\\)",
-            "Adding queue \\(queue1\\) to list of queue to be updated",
+            r"Queue update strategy is ({0})".format(queue_update_strategy),
+            r"Adding queue \(queue1\) to list of queue to be updated",
         ],
     )
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
@@ -900,8 +900,8 @@ def _test_update_queue_strategy_with_running_job(
         remote_command_executor,
         ["/var/log/chef-client.log"],
         [
-            f"Queue update strategy is \\({queue_update_strategy}\\)",
-            "Adding queue \\(queue2\\) to list of queue to be updated",
+            r"Queue update strategy is ({0})".format(queue_update_strategy),
+            r"Adding queue \(queue2\) to list of queue to be updated",
         ],
     )
 
