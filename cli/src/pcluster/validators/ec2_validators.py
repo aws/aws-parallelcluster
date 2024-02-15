@@ -10,6 +10,7 @@
 # limitations under the License.
 import json
 import logging
+import re
 from collections import defaultdict
 from typing import Dict, List, Optional
 
@@ -18,7 +19,7 @@ from pcluster.aws.aws_api import AWSApi, KeyPairInfo
 from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.common import CapacityType
-from pcluster.constants import NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES
+from pcluster.constants import NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES, UNSUPPORTED_OSES_FOR_MICRO_NANO
 from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -179,6 +180,21 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
             )
             return []
         return AWSApi.instance().ec2.get_supported_architectures(instance_type)
+
+
+class InstanceTypeOSCompatibleValidator(Validator):
+    """EC2 Instance type and os compatibility validator."""
+
+    def _validate(self, instance_type: str, os: str):
+        if os in UNSUPPORTED_OSES_FOR_MICRO_NANO:
+            if re.search(r"(micro)|(nano)", instance_type):
+                self._add_failure(
+                    "It is not recommended to use instance type {0} with {1}. If you want to use "
+                    "{1} it is recommended to use an instance type with at least 1.7 GB of memory.".format(
+                        instance_type, os
+                    ),
+                    FailureLevel.WARNING,
+                )
 
 
 class KeyPairValidator(Validator):
