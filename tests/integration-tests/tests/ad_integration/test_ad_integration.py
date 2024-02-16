@@ -99,10 +99,10 @@ def get_ad_config_param_vals(
     }
 
 
-def get_fsx_config_param_vals(fsx_factory, svm_factory):
-    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
+def get_fsx_config_param_vals(fsx_factory, svm_factory, vpc=None, subnet=None):
+    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1, vpc=vpc, subnet=subnet)[0]
     fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id)[0]
-    fsx_open_zfs_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
+    fsx_open_zfs_volume_id = create_fsx_open_zfs(fsx_factory, num=1, vpc=vpc, subnet=subnet)[0]
     return {"fsx_ontap_volume_id": fsx_ontap_volume_id, "fsx_open_zfs_volume_id": fsx_open_zfs_volume_id}
 
 
@@ -123,13 +123,19 @@ def _add_file_to_zip(zip_file, path, arcname):
 def add_tag_to_stack(stack_name, key, value):
     cfn = boto3.resource("cloudformation")
     stack = cfn.Stack(stack_name)
-    stack.update(
-        UsePreviousTemplate=True,
-        Capabilities=["CAPABILITY_IAM"],
-        Tags=[
-            {"Key": key, "Value": value},
-        ],
-    )
+    add_tag = True
+    for tag in stack.tags:
+        if tag.get("Key") == "DO-NOT-DELETE":
+            add_tag = False
+            break
+    if add_tag:
+        stack.update(
+            UsePreviousTemplate=True,
+            Capabilities=["CAPABILITY_IAM"],
+            Tags=[
+                {"Key": key, "Value": value},
+            ],
+        )
 
 
 def zip_dir(path):
@@ -209,7 +215,7 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
         stack_parameters = _get_stack_parameters(directory_type, vpc_stack, request.config.getoption("key_name"))
         tags = [{"Key": "parallelcluster:integ-tests-ad-stack", "Value": directory_type}]
         if request.config.getoption("retain_ad_stack"):
-            tags.append({"Key": "DO-NOT-DELETE", "Value": " "})
+            tags.append({"Key": "DO-NOT-DELETE", "Value": "Retained for integration testing"})
 
         directory_stack = CfnStack(
             name=directory_stack_name,
@@ -271,7 +277,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
                 directory_stack_name = directory_stack.name
                 created_directory_stacks[region]["directory"] = directory_stack_name
                 if request.config.getoption("retain_ad_stack"):
-                    add_tag_to_stack(vpc_stack.name, "DO-NOT-DELETE", " ")
+                    add_tag_to_stack(vpc_stack.name, "DO-NOT-DELETE", "Retained for integration testing")
         return directory_stack_name
 
     yield _directory_factory
@@ -558,9 +564,13 @@ def test_ad_integration(
         )
     )
 
-    config_params.update(get_vpc_public_subnet(directory_stack_outputs.get("VpcId")))
-    if fsx_supported:
-        config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
+    vpc = directory_stack_outputs.get("VpcId")
+    config_params.update(get_vpc_public_subnet(vpc))
+    config_params.update(
+        get_fsx_config_param_vals(
+            fsx_factory, svm_factory, vpc=vpc, subnet=get_vpc_public_subnet(vpc).get("public_subnet_id")
+        )
+    )
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 

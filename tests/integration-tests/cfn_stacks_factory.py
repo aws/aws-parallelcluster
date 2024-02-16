@@ -304,10 +304,18 @@ class CfnStacksFactory:
                     "Couldn't find stack with name {0} in region {1}. Skipping update.".format(name, region)
                 )
 
-    def delete_all_stacks(self):
+    def delete_all_stacks(self, excluded_stacks=None):
         """Destroy all created stacks except for those in excluded_stacks."""
         logging.debug("Destroying all cfn stacks")
         for value in reversed(OrderedDict(self.__created_stacks).values()):
+            if excluded_stacks:
+                excluded = False
+                for stack in excluded_stacks:
+                    if stack in value.name:
+                        excluded = True
+                        break
+                if excluded:
+                    continue
             try:
                 self.delete_stack(value.name, value.region)
             except Exception as e:

@@ -670,24 +670,28 @@ def get_mount_name(fsx_fs_id, region):
         )
 
 
-def create_fsx_ontap(fsx_factory, num):
+def create_fsx_ontap(fsx_factory, num, vpc=None, subnet=None):
     return fsx_factory(
         ports=[111, 635, 2049, 4046],
         ip_protocols=["tcp", "udp"],
         num=num,
+        vpc=vpc,
+        subnet=subnet,
         file_system_type="ONTAP",
         StorageCapacity=1024,
         OntapConfiguration=OntapConfiguration(DeploymentType="SINGLE_AZ_1", ThroughputCapacity=128),
     )
 
 
-def create_fsx_open_zfs(fsx_factory, num):
+def create_fsx_open_zfs(fsx_factory, num, vpc=None, subnet=None):
     if num == 0:
         return []
     file_system_ids = fsx_factory(
         ports=[111, 2049, 20001, 20002, 20003],
         ip_protocols=["tcp", "udp"],
         num=num,
+        vpc=vpc,
+        subnet=subnet,
         file_system_type="OPENZFS",
         StorageCapacity=64,
         OpenZFSConfiguration=OpenZFSConfiguration(
