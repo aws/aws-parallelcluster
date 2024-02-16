@@ -1,6 +1,7 @@
 {%- import 'common.jinja2' as common with context -%}
 {{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
 {{- common.OSS_COMMERCIAL_X86.append("rocky8") or "" -}}
+{{- common.OSS_COMMERCIAL_X86.append("rocky9") or "" -}}
 ---
 test-suites:
   ad_integration:
@@ -62,7 +63,7 @@ test-suites:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
     test_compute_console_output_logging.py::test_console_output_with_monitoring_disabled:
       dimensions:
         - regions: ["ap-east-1"]
@@ -161,7 +162,7 @@ test-suites:
           oss: ["ubuntu2204", "rhel8"]
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
     test_createami.py::test_build_image_custom_components:
       # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
       # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
@@ -190,7 +191,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update:
       dimensions:
-        - oss: {{ common.NOT_RELEASED_OSES }}
+        - oss: ["rocky8"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_update_invalid:
@@ -210,7 +211,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_delete_retain:
       dimensions:
-        - oss: {{ common.NOT_RELEASED_OSES }}
+        - oss: ["rocky9"]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
@@ -224,7 +225,7 @@ test-suites:
         # DCV on GPU enabled instance
         - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
           instances: ["g4dn.2xlarge"]
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: ["slurm"]
         # DCV on ARM + GPU
         - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
@@ -284,7 +285,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: ["hpc6id.32xlarge"]
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
           schedulers: [ "slurm" ]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
@@ -319,7 +320,7 @@ test-suites:
     test_iam_image.py::test_iam_roles:
       dimensions:
         - regions: ["eu-south-1"]
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_iam.py::test_s3_read_write_resource:
       dimensions:
@@ -353,7 +354,7 @@ test-suites:
         - regions: ["ap-northeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
     test_structured_log_events.py::test_custom_compute_action_failure:
       dimensions:
         - regions: ["af-south-1"]
@@ -396,7 +397,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: ["slurm"]
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -418,7 +419,7 @@ test-suites:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
           schedulers: ["slurm"]
     test_placement_group.py::test_placement_group:
       dimensions:
@@ -455,7 +456,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: ["slurm"]
     test_scaling.py::test_job_level_scaling:
       dimensions:
@@ -508,7 +509,7 @@ test-suites:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_protected_mode:
       dimensions:
@@ -532,7 +533,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-east-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: [ "slurm" ]
     test_slurm.py::test_slurm_memory_based_scheduling:
       dimensions:
@@ -634,7 +635,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: [ "us-gov-west-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
           schedulers: [ "slurm" ]
     test_fsx_lustre.py::test_multi_az_fsx:
       dimensions:
@@ -665,7 +666,7 @@ test-suites:
       dimensions:
         - regions: [ "ca-central-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: [ "slurm" ]
     # The checks performed in test_efs_same_az is similar to test_multiple_efs.
     # We should consider this when assigning dimensions to each test.
@@ -698,7 +699,7 @@ test-suites:
         - regions: [ "ap-south-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: [ "slurm" ]
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
@@ -719,7 +720,7 @@ test-suites:
       dimensions:
         - regions: [ "us-east-2" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: [ "slurm" ]
         - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -764,7 +765,7 @@ test-suites:
       dimensions:
         - regions: ["sa-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky9"]
           schedulers: ["slurm"]
     test_api.py::test_custom_image:
       dimensions:
@@ -818,7 +819,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-south-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.NOT_RELEASED_OSES }}
+          oss: ["rocky8"]
           schedulers: [ "slurm" ]
     test_update.py::test_dynamic_file_systems_update:
       dimensions:

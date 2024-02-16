@@ -58,7 +58,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "rocky9": "rocky9-hvm",
 }
 # We do not publicly publish/release Parallelcluster AMI of below OSSes
-PRIVATE_OSES = ["rocky8"]
+PRIVATE_OSES = ["rocky8", "rocky9"]
 
 IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
 

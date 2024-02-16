@@ -209,9 +209,9 @@ phases:
                     yum versionlock kernel-abi-stablelists
                   fi
               
-                  if [[ ${!OS} == "rocky8" ]] ; then
+                  if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                     yum versionlock rocky-release rocky-repos
-                  elif [[ ${!OS} == "rhel8" ]] ; then
+                  elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
                     yum versionlock redhat-release
                   fi
                   echo "Kernel version locked"
@@ -312,9 +312,9 @@ phases:
                   yum versionlock delete kernel-abi-stablelists
                 fi
             
-                if [[ ${!OS} == "rocky8" ]] ; then
+                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release
-                elif [[ ${!OS} == "rhel8" ]] ; then
+                elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
                   yum versionlock delete redhat-release
                 fi
                 echo "Kernel version unlocked"
