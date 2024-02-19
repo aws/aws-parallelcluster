@@ -155,9 +155,9 @@ Debugging/Development options:
                         Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
 
   --no-delete           Don't delete stacks after tests are complete. (default: False)
-  
+
   --retain-ad-stack     Retain AD stack and corresponding VPC stack after tests are complete. (default: False)
-  
+
   --delete-logs-on-success
                         delete CloudWatch logs when a test succeeds (default: False)
   --stackname-suffix STACKNAME_SUFFIX
@@ -167,7 +167,7 @@ Debugging/Development options:
                         Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
   --ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME
                         Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
-  --external-shared-storage-stack-name 
+  --external-shared-storage-stack-name
                         Name of an existing external shared storage stack. (default: None)
 ```
 
@@ -384,6 +384,7 @@ use the following options:
 * `--custom-node-url`: URL to a custom node package.
 * `--custom-cookbook-url`: URL to a custom cookbook package.
 * `--createami-custom-cookbook-url`: URL to a custom cookbook package for the createami command.
+* `--createami-custom-node-url`: URL to a custom node package for the createami command.
 * `--custom-template-url`: URL to a custom cfn template.
 * `--custom-awsbatchcli-url`: URL to a custom awsbatch cli package.
 * `--custom-ami`: custom AMI to use for all tests. Note that this custom AMI will be used
@@ -652,10 +653,10 @@ available in the `pcluster.config.yaml` files:
 * Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
-* Networking related parameters: `{{ public_subnet_id }}`, `{{ public_subnet_ids }}`, 
+* Networking related parameters: `{{ public_subnet_id }}`, `{{ public_subnet_ids }}`,
 `{{ private_subnet_id }}` and `{{ private_subnet_ids }}`, where `{{ public_subnet_ids }}` and `{{ private_subnet_ids }}`
- contain a list of subnets for which the relative index points to subnets in the same AZ, e.g. 
-`{{ public_subnet_ids[2] }}` and `{{ private_subnet_ids[2] }}` will be in the same AZ   
+ contain a list of subnets for which the relative index points to subnets in the same AZ, e.g.
+`{{ public_subnet_ids[2] }}` and `{{ private_subnet_ids[2] }}` will be in the same AZ
 
 Additional parameters can be specified when calling the fixture to retrieve the rendered configuration
 as shown in the example above.
@@ -666,7 +667,7 @@ A VPC and the related subnets are automatically configured at the start of the i
 test. These resources are shared across all the tests and deleted when all tests are completed.
 
 The idea is to create a single VPC per region and have multiple subnets that allow to test different networking setups.
-A pair of subnets (public/private) for each available AZ, plus a subnet with VPC endpoints and no internet access, 
+A pair of subnets (public/private) for each available AZ, plus a subnet with VPC endpoints and no internet access,
 are generated with the following configuration:
 
 ```python
@@ -739,7 +740,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-  ...          
+  ...
     - Name: queue-2
       Networking:
         SubnetIds:

@@ -159,7 +159,7 @@ test-suites:
       dimensions:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204", "rhel8"]
+          oss: ["ubuntu2204", "rhel8", "rhel8.9"]
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rocky9"]
