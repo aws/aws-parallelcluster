@@ -102,8 +102,8 @@ Scheduling:
           InstanceType: c5.xlarge
           Tags:
             {% for i in range(number_of_tags) %}
-            - Key: computetag{{ i }}
-              Value: computetag{{ i }}
+            - Key: extremely_long_computetag_key{{ i }}
+              Value: extremely_long_computetag_value{{ i }}
             {% endfor %}
         {% endfor %}
       CustomActions:
@@ -177,8 +177,8 @@ Scheduling:
               Id: String
           Tags:
             {% for i in range(number_of_tags) %}
-            - Key: computetag{{ i }}
-              Value: computetag{{ i }}
+            - Key: extremely_long_computetag_key{{ i }}
+              Value: extremely_long_computetag_value{{ i }}
             {% endfor %}
         {% endfor %}
       Iam:
