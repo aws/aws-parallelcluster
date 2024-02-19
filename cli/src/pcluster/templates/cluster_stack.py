@@ -1415,11 +1415,7 @@ class ClusterCdkStack:
                     },
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
-                            "[main]\n"
-                            "stack=${StackId}\n"
-                            "region=${Region}\n"
-                            "url=${CloudFormationUrl}\n"
-                            "interval=2\n",
+                            "[main]\nstack=${StackId}\nregion=${Region}\nurl=${CloudFormationUrl}",
                             {
                                 "StackId": self.stack.stack_id,
                                 "Region": self.stack.region,
