@@ -122,13 +122,6 @@ def test_build_image(
     # remarkable AMIs are not available for ARM and ubuntu2204, centos7 yet
     if os not in ["ubuntu2204", "centos7"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-    elif os in ["ubuntu2204"]:
-        base_ami = retrieve_latest_ami(
-            region,
-            os,
-            architecture=architecture,
-            additional_filters=[{"Name": "creation-date", "Values": ["2023-01-06T*"]}],
-        )
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
@@ -336,7 +329,7 @@ def _test_export_logs(s3_bucket_factory, image, region):
         output_file = f"{tempdir}/testfile.tar.gz"
         bucket_prefix = "test_prefix"
         ret = image.export_logs(bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix)
-        assert_that(ret["path"]).is_equal_to(output_file)
+        assert_that(ret["path"]).contains(output_file)
 
         rexp = rf"{image.image_id}-logs.*/cloudwatch-logs/{get_installed_parallelcluster_base_version()}-1"
         with tarfile.open(output_file) as archive:

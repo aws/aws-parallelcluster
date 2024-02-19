@@ -724,7 +724,6 @@ class ImageBuilder:
                     # Get stack events and write them into a file
                     stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                     export_stack_events(self.stack.name, stack_events_file)
-
                 archive_path = create_logs_archive(root_archive_dir, output_file)
                 if output_file:
                     return output_file
