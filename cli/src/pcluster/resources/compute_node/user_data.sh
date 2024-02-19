@@ -51,10 +51,6 @@ datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
 write_files:
-  - path: /etc/chef/client.rb
-    permissions: '0644'
-    owner: root:root
-    content: cookbook_path ['/etc/chef/cookbooks']
   - path: /etc/cfn/cfn-hup.conf
     permissions: '0400'
     owner: root:root

@@ -161,8 +161,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -239,8 +239,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -317,8 +317,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -395,8 +395,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -473,8 +473,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -551,8 +551,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -629,8 +629,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -707,8 +707,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -785,8 +785,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -863,8 +863,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -941,8 +941,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1019,8 +1019,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1097,8 +1097,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1175,8 +1175,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1253,8 +1253,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1331,8 +1331,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1409,8 +1409,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1487,8 +1487,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1565,8 +1565,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1643,8 +1643,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1721,8 +1721,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1799,8 +1799,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1877,8 +1877,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -1955,8 +1955,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2033,8 +2033,8 @@ Scheduling:
       SpotPrice: null
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume: null
@@ -2111,8 +2111,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2179,8 +2179,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2247,8 +2247,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2315,8 +2315,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2383,8 +2383,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2451,8 +2451,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2519,8 +2519,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2587,8 +2587,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2655,8 +2655,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2723,8 +2723,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2791,8 +2791,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2859,8 +2859,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2927,8 +2927,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -2995,8 +2995,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3063,8 +3063,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3131,8 +3131,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3199,8 +3199,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3267,8 +3267,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3335,8 +3335,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3403,8 +3403,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3471,8 +3471,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3539,8 +3539,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3607,8 +3607,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3675,8 +3675,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:
@@ -3743,8 +3743,8 @@ Scheduling:
       SpotPrice: 1.1
       StaticNodePriority: 1
       Tags:
-      - Key: computetag0
-        Value: computetag0
+      - Key: extremely_long_computetag_key0
+        Value: extremely_long_computetag_value0
     ComputeSettings:
       LocalStorage:
         EphemeralVolume:

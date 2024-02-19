@@ -1356,12 +1356,6 @@ class ClusterCdkStack:
                         "group": "root",
                         "encoding": "plain",
                     },
-                    "/etc/chef/client.rb": {
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "content": "cookbook_path ['/etc/chef/cookbooks']",
-                    },
                     # A nosec comment is appended to the following line in order to disable the B108 check.
                     # The file is needed by the product
                     # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
