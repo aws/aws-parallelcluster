@@ -23,7 +23,14 @@ import pkg_resources
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, CapacityType, DeploymentSettings
+from pcluster.config.common import (
+    AdditionalIamPolicy,
+    BaseDeploymentSettings,
+    BaseDevSettings,
+    BaseTag,
+    CapacityType,
+    DefaultUserHomeType,
+)
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import Resource
 from pcluster.constants import (
@@ -41,8 +48,6 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
-    FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME,
-    FEATURE_REQUIRING_ADDITION_SPACE,
     FILECACHE,
     LUSTRE,
     MAX_COMPUTE_RESOURCES_PER_QUEUE,
@@ -85,11 +90,8 @@ from pcluster.validators.cluster_validators import (
     HeadNodeLaunchTemplateValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
-    IntelHpc2018OsValidator,
     IntelHpcArchitectureValidator,
-    IntelOneApiToolkitsBootstrapTimeValidator,
-    IntelOneApiToolkitsOsValidator,
-    IntelPythonOsValidator,
+    IntelHpcOsValidator,
     LoginNodesSchedulerValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
@@ -139,6 +141,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeAcceleratorManufacturerValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeMemoryInfoValidator,
+    InstanceTypeOSCompatibleValidator,
     InstanceTypePlacementGroupValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -1144,23 +1147,12 @@ class ClusterIam(Resource):
             self._register_validator(IamResourcePrefixValidator, resource_prefix=self.resource_prefix)
 
 
-class OneApi(Resource):
-    """Represent the OneApi configuration."""
-
-    def __init__(self, base_toolkit: bool = None, hpc_toolkit: bool = None):
-        super().__init__()
-        self.base_toolkit = Resource.init_param(base_toolkit or hpc_toolkit, default=False)
-        self.hpc_toolkit = Resource.init_param(hpc_toolkit, default=False)
-
-
 class IntelSoftware(Resource):
-    """Represent the Intel software configuration."""
+    """Represent the Intel select solution configuration."""
 
-    def __init__(self, one_api: OneApi = None, intel_hpc_platform: bool = None, python: bool = None):
+    def __init__(self, intel_hpc_platform: bool = None):
         super().__init__()
         self.intel_hpc_platform = Resource.init_param(intel_hpc_platform, default=False)
-        self.one_api = Resource.init_param(one_api)
-        self.python = python
 
 
 class AdditionalPackages(Resource):
@@ -1227,6 +1219,21 @@ class ClusterDevSettings(BaseDevSettings):
         super()._register_validators(context)
         if self.cluster_template:
             self._register_validator(UrlValidator, url=self.cluster_template)
+
+
+class ClusterDeploymentSettings(BaseDeploymentSettings):
+    """Represent the cluster-wide settings related to deployment."""
+
+    def __init__(self, default_user_home: str = None, disable_sudo_access_default_user: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
+        self.default_user_home = Resource.init_param(
+            default_user_home,
+            default=DefaultUserHomeType.SHARED.value,
+        )
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
 
 
 # ---------------------- Nodes and Cluster ---------------------- #
@@ -1522,8 +1529,7 @@ class BaseClusterConfig(Resource):
         imds: TopLevelImds = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
-        deployment_settings: DeploymentSettings = None,
-        disable_sudo_access_default_user: bool = None,
+        deployment_settings: ClusterDeploymentSettings = None,
     ):
         super().__init__()
         self.__region = None
@@ -1557,8 +1563,6 @@ class BaseClusterConfig(Resource):
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
-        self._set_default_head_node_root_volume_size()
-        self.disable_sudo_access_default_user = Resource.init_param(disable_sudo_access_default_user)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -1575,6 +1579,11 @@ class BaseClusterConfig(Resource):
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
                 image=self.head_node_ami,
+            )
+            self._register_validator(
+                InstanceTypeOSCompatibleValidator,
+                instance_type=self.head_node.instance_type,
+                os=self.image.os,
             )
         if self.head_node.image and self.head_node.image.custom_ami:
             self._register_validator(
@@ -1619,7 +1628,6 @@ class BaseClusterConfig(Resource):
             RootVolumeSizeValidator,
             root_volume_size=root_volume_size,
             ami_volume_size=ami_volume_size,
-            additional_space=self._additional_space_for_features(),
         )
         self._register_validator(
             EbsVolumeTypeSizeValidator, volume_type=root_volume.volume_type, volume_size=root_volume_size
@@ -1631,26 +1639,16 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
-        if self.disable_sudo_access_default_user:
+        if self.deployment_settings and self.deployment_settings.disable_sudo_access_default_user:
             self._register_validator(
                 SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler
             )
 
     def _register_additional_package_validator(self):
-        feature_requiring_additional_space = []
         if self.additional_packages and self.additional_packages.intel_software:
             if self.additional_packages.intel_software.intel_hpc_platform:
-                self._register_validator(IntelHpc2018OsValidator, os=self.image.os)
+                self._register_validator(IntelHpcOsValidator, os=self.image.os)
                 self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
-            if (
-                self.additional_packages.intel_software.one_api
-                and self.additional_packages.intel_software.one_api.base_toolkit
-            ):
-                feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-                self._register_validator(IntelOneApiToolkitsOsValidator, os=self.image.os)
-                self._register_validator(IntelOneApiToolkitsBootstrapTimeValidator)
-            if self.additional_packages.intel_software.python:
-                self._register_validator(IntelPythonOsValidator, os=self.image.os)
 
     def _register_storage_validators(self):  # noqa: C901 FIXME: function too complex
         if self.shared_storage:
@@ -1797,44 +1795,6 @@ class BaseClusterConfig(Resource):
                 volume_ids.append(storage.volume_id)
         if volume_ids:
             AWSApi.instance().fsx.describe_volumes(volume_ids)
-
-    def _set_default_head_node_root_volume_size(self):
-        root_volume = self.head_node.local_storage.root_volume
-        if root_volume.size is None:
-            root_volume.size = Resource.init_param(
-                None,
-                default=AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
-                + self._additional_space_for_features(),
-            )
-
-    def _additional_space_for_features(self):
-        feature_requiring_additional_space = []
-        if (
-            self.additional_packages
-            and self.additional_packages.intel_software
-            and self.additional_packages.intel_software.one_api
-            and self.additional_packages.intel_software.one_api.base_toolkit
-        ):
-            feature_requiring_additional_space.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-        additional_space = 0
-        for feature in feature_requiring_additional_space:
-            additional_space += FEATURE_REQUIRING_ADDITION_SPACE[feature]
-        return additional_space
-
-    def additional_bootstrap_time_for_features(self):
-        """Calculate total additional bootstrap time for enabled features."""
-        feature_requiring_additional_bootstrap_time = []
-        if (
-            self.additional_packages
-            and self.additional_packages.intel_software
-            and self.additional_packages.intel_software.one_api
-            and self.additional_packages.intel_software.one_api.base_toolkit
-        ):
-            feature_requiring_additional_bootstrap_time.append(Feature.INTEL_ONE_API_BASE_TOOLKIT)
-        additional_bootstrap_time = 0
-        for feature in feature_requiring_additional_bootstrap_time:
-            additional_bootstrap_time += FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME[feature]
-        return additional_bootstrap_time
 
     @property
     def region(self):
@@ -2973,6 +2933,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                         instance_type=pool.instance_type,
                         image=self.login_nodes_ami[pool.name],
                     )
+                    self._register_validator(
+                        InstanceTypeOSCompatibleValidator,
+                        instance_type=pool.instance_type,
+                        os=self.image.os,
+                    )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(
@@ -3082,6 +3047,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                         InstanceTypeBaseAMICompatibleValidator,
                         instance_type=instance_type,
                         image=queue_image,
+                    )
+                    self._register_validator(
+                        InstanceTypeOSCompatibleValidator,
+                        instance_type=instance_type,
+                        os=self.image.os,
                     )
                     self._register_validator(
                         InstanceTypeAcceleratorManufacturerValidator,

@@ -86,8 +86,8 @@ def test_generate_random_prefix():
 @pytest.mark.parametrize(
     "architecture, supported_oses",
     [
-        ("x86_64", ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"]),
-        ("arm64", ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"]),
+        ("x86_64", ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]),
+        ("arm64", ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):
@@ -100,7 +100,7 @@ def test_get_supported_os_for_architecture(architecture, supported_oses):
 @pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
-        ("slurm", ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"]),
+        ("slurm", ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]),
         ("awsbatch", ["alinux2"]),
     ],
 )

@@ -36,6 +36,8 @@ Allowed values for Operating System:
 4. ubuntu2204
 5. rhel8
 6. rocky8
+7. rhel9
+8. rocky9
 Allowed values for Availability Zone:
 1. eu-west-1a
 2. eu-west-1b

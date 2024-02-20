@@ -233,7 +233,7 @@ class RemoteCommandExecutor:
     def clear_log_file(self, path: str):
         """Clear a log file in a specific path."""
 
-        self.run_remote_command(f"sudo truncate -s 0 {path}")
+        self.run_remote_command(f"sudo -u {self.get_user_to_operate_on_file(path)} truncate -s 0 {path}")
 
     def clear_clustermgtd_log(self):
         """Clear clustermgtd log file."""
@@ -249,3 +249,13 @@ class RemoteCommandExecutor:
         """Clear slurmctld log file."""
 
         self.clear_log_file("/var/log/slurmctld.log")
+
+    def get_user_to_operate_on_file(self, path):
+        """Get the user to operate on the file."""
+
+        file_owner_result = self.run_remote_command(f"stat -c '%U' {path}", raise_on_error=False)
+        if file_owner_result.failed:
+            # If failed, it means the `path` does not contain files/directories. Use root as the default owner.
+            return "root"
+        else:
+            return file_owner_result.stdout.strip()

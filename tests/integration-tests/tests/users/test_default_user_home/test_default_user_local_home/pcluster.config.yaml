@@ -2,12 +2,13 @@ Image:
   Os: {{ os }}
 LoginNodes:
   Pools:
-    - Name: login
+    - Name: login-node-pool-0
       InstanceType: {{ instance }}
-      Count: {{ login_nodes_count }}
+      Count: 2
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
+      GracetimePeriod: 60
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -17,16 +18,16 @@ HeadNode:
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
-  Scheduler: {{ scheduler }}
+  Scheduler: slurm
   SlurmQueues:
-    - Name: compute
+    - Name: queue-0
       ComputeResources:
-        - Name: compute-i1
+        - Name: compute-resource-0
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 2
+          MinCount: 1
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
 DeploymentSettings:
-  DisableSudoAccessForDefaultUser: {{ disable_sudo_access_default_user }}
+  DefaultUserHome: Local

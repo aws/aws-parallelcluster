@@ -9,6 +9,7 @@
     "custom_awsbatchcli_package": "",
     "custom_node_package": "",
     "cw_logging_enabled": "true",
+    "default_user_home": "shared",
     "directory_service": {
       "domain_read_only_user": "cn=ReadOnlyUser,ou=Users,ou=CORP,dc=corp,dc=pcluster,dc=com",
       "enabled": "true",

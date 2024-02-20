@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_ids[0] }}
   Ssh:
@@ -13,7 +13,7 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-1
           Instances:
-            - InstanceType: t3.micro
+            - InstanceType: {{ instance }}
           MinCount: 6
           MaxCount: 10
           CapacityReservationTarget:
@@ -26,7 +26,7 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-2
           Instances:
-            - InstanceType: t2.micro
+            - InstanceType: {{ instance }}
           MinCount: 0
           MaxCount: 4
       Networking:

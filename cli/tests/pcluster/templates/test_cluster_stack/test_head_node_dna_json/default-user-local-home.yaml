@@ -1,17 +1,11 @@
 Image:
   Os: alinux2
-{% if enabled %}
-AdditionalPackages:
-  IntelSoftware:
-    OneApi:
-      BaseToolkit: true
-      HpcToolkit: true
-    Python: true
-{% endif %}
 HeadNode:
   InstanceType: t2.micro
   Networking:
     SubnetId: subnet-12345678
+  Ssh:
+    KeyName: ec2-key-name
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -22,3 +16,7 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+DeploymentSettings:
+  DefaultUserHome: Local

@@ -5,19 +5,19 @@
 {%- set SCHEDULERS_ALL = ["slurm", "awsbatch"] -%}
 {%- set SCHEDULERS_TRAD = ["slurm"] -%}
 {%- set OSS_BATCH = ["alinux2"] -%}
-{%- set OSS_COMMERCIAL_X86 = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8"] -%}
-{%- set OSS_CHINA_X86 = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"] -%}
-{%- set OSS_GOVCLOUD_X86 = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"] -%}
-{%- set OSS_COMMERCIAL_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8"] -%}
-{%- set OSS_CHINA_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8"] -%}
-{%- set OSS_GOVCLOUD_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8"] -%}
+{%- set OSS_COMMERCIAL_X86 = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rhel9"] -%}
+{%- set OSS_CHINA_X86 = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"] -%}
+{%- set OSS_GOVCLOUD_X86 = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"] -%}
+{%- set OSS_COMMERCIAL_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rhel9"] -%}
+{%- set OSS_CHINA_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rhel9"] -%}
+{%- set OSS_GOVCLOUD_ARM = ["alinux2", "ubuntu2004", "ubuntu2204", "rhel8", "rhel9"] -%}
 {%- set OSS_ONE_PER_DISTRO = ["centos7", "alinux2", "ubuntu2004", "rhel8", "rocky8"] -%}
 {%- set INSTANCES_DEFAULT_X86 = ["c5.xlarge"] -%}
 {%- set INSTANCES_DEFAULT_ARM = ["m6g.xlarge"] -%} # m6g.xlarge is not supported in af-south-1, eu-south-1, eu-west-3, me-south-1
 {%- set INSTANCES_DEFAULT = ["c5.xlarge", "m6g.xlarge"] -%}
 {%- set INSTANCES_EFA_SUPPORTED_X86 = ["c5n.9xlarge"] -%}
 {%- set INSTANCES_EFA_UNSUPPORTED_X86 = ["t2.micro"] -%}
-{%- set NOT_RELEASED_OSES = ["rocky8"] -%}
+{%- set NOT_RELEASED_OSES = ["rocky8", "rocky9"] -%}
 
 {%- macro instance(instance_key) -%}
     {%- if additional_instance_types_map -%}

@@ -57,6 +57,7 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
+from pcluster.config.common import DefaultUserHomeType
 from pcluster.constants import (
     ALL_PORTS_RANGE,
     CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
@@ -1156,11 +1157,7 @@ class ClusterCdkStack:
             count=1,
             handle=wait_condition_handle.ref,
             timeout=str(
-                get_attr(
-                    self.config,
-                    "dev_settings.timeouts.head_node_bootstrap_timeout",
-                    NODE_BOOTSTRAP_TIMEOUT + self.config.additional_bootstrap_time_for_features(),
-                )
+                get_attr(self.config, "dev_settings.timeouts.head_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT)
             ),
         )
         return wait_condition, wait_condition_handle
@@ -1250,6 +1247,14 @@ class ClusterCdkStack:
                     "base_os": self.config.image.os,
                     "region": self.stack.region,
                     "shared_storage_type": self.config.head_node.shared_storage_type.lower(),
+                    "default_user_home": (
+                        self.config.deployment_settings.default_user_home.lower()
+                        if (
+                            self.config.deployment_settings is not None
+                            and self.config.deployment_settings.default_user_home is not None
+                        )
+                        else DefaultUserHomeType.SHARED.value.lower()
+                    ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                     "efs_encryption_in_transits": to_comma_separated_string(
@@ -1309,17 +1314,11 @@ class ClusterCdkStack:
                     "compute_node_bootstrap_timeout": get_attr(
                         self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
                     ),
-                    "install_intel_base_toolkit": str(
-                        get_attr(self.config, "additional_packages.intel_software.one_api.base_toolkit")
-                    ).lower(),
-                    "install_intel_hpc_toolkit": str(
-                        get_attr(self.config, "additional_packages.intel_software.one_api.hpc_toolkit")
-                    ).lower(),
-                    "install_intel_python": str(
-                        get_attr(self.config, "additional_packages.intel_software.python")
-                    ).lower(),
                     "disable_sudo_access_for_default_user": (
-                        "true" if self.config.disable_sudo_access_default_user else "false"
+                        "true"
+                        if self.config.deployment_settings
+                        and self.config.deployment_settings.disable_sudo_access_default_user
+                        else "false"
                     ),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
@@ -1356,12 +1355,6 @@ class ClusterCdkStack:
                         "owner": "root",
                         "group": "root",
                         "encoding": "plain",
-                    },
-                    "/etc/chef/client.rb": {
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "content": "cookbook_path ['/etc/chef/cookbooks']",
                     },
                     # A nosec comment is appended to the following line in order to disable the B108 check.
                     # The file is needed by the product

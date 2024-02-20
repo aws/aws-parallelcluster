@@ -150,9 +150,9 @@ class CloudWatchLoggingClusterState:
         # cookbooks/aws-parallelcluster-config/files/default/cloudwatch the configurations refers to:
         # * "alinux2" as platform "amazon"
         # * "rhel8" as platform "redhat"
-        if base_os == "alinux2":
+        if "alinux" in base_os:
             return "amazon"
-        elif base_os == "rhel8":
+        elif "rhel" in base_os:
             return "redhat"
         else:
             return base_os.rstrip(string.digits)
@@ -356,7 +356,8 @@ class CloudWatchLoggingClusterState:
         dummy_log_entry = "CloudWatch logs integ test - ensuring critical log file is not empty"
         self._run_command_on_head_node(f"echo '{dummy_log_entry}' > {dummy_log_message_path}")
         # Append the dummy entry to the log
-        cmd = f"sudo tee -a {log_path} < {dummy_log_message_path}"
+        log_file_user = self.remote_command_executor.get_user_to_operate_on_file(log_path)
+        cmd = f"sudo -u {log_file_user} tee -a {log_path} < {dummy_log_message_path}"
         if node_type == HEAD_NODE_ROLE_NAME:
             self._run_command_on_head_node(cmd)
         elif node_type == COMPUTE_NODE_ROLE_NAME:

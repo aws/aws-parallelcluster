@@ -24,6 +24,7 @@ from pcluster.config.imagebuilder_config import (
     Iam,
     Image,
     ImageBuilderConfig,
+    ImagebuilderDeploymentSettings,
     ImagebuilderDevSettings,
     UpdateOsPackages,
     Volume,
@@ -33,9 +34,9 @@ from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.schemas.common_schema import (
     ALLOWED_VALUES,
     AdditionalIamPolicySchema,
+    BaseDeploymentSettingsSchema,
     BaseDevSettingsSchema,
     BaseSchema,
-    DeploymentSettingsSchema,
     ImdsSchema,
     TagSchema,
     get_field_validator,
@@ -212,6 +213,15 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
         return ImagebuilderDevSettings(**data)
 
 
+class ImagebuilderDeploymentSettingsSchema(BaseDeploymentSettingsSchema):
+    """Represent the schema of the ImageBuilder Deployment Setting."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ImagebuilderDeploymentSettings(**data)
+
+
 # ---------------------- ImageBuilder Schema ---------------------- #
 
 
@@ -223,7 +233,7 @@ class ImageBuilderSchema(BaseSchema):
     dev_settings = fields.Nested(ImagebuilderDevSettingsSchema)
     config_region = fields.Str(data_key="Region")
     custom_s3_bucket = fields.Str()
-    deployment_settings = fields.Nested(DeploymentSettingsSchema)
+    deployment_settings = fields.Nested(ImagebuilderDeploymentSettingsSchema)
 
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):

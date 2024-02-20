@@ -8,11 +8,14 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from enum import Enum
 
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
 
 OSU_BENCHMARK_VERSION = "5.7.1"
+
+REPOSITORY_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
 
 
 class NodeType(Enum):

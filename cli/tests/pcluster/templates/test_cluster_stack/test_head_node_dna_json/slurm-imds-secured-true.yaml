@@ -1,4 +1,5 @@
-DisableSudoAccessForDefaultUser: True
+DeploymentSettings:
+  DisableSudoAccessForDefaultUser: True
 Image:
   Os: alinux2
 HeadNode:

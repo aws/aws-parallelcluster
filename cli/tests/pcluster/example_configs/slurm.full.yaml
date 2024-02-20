@@ -237,10 +237,6 @@ Monitoring:
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: false
-    OneApi:
-      BaseToolkit: true
-      HpcToolkit: false
-    Python: true
 Tags:
   - Key: String
     Value: String
@@ -279,4 +275,5 @@ DevSettings:
     HeadNodeBootstrapTimeout: 1201  # Default 1800 (seconds)
     ComputeNodeBootstrapTimeout: 1001  # Default 1800 (seconds)
   ComputeStartupTimeMetricEnabled: false
-DisableSudoAccessForDefaultUser: True
+DeploymentSettings:
+  DisableSudoAccessForDefaultUser: True

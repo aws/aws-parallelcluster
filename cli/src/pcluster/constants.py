@@ -23,8 +23,9 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
+UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
 DELETION_POLICIES = [DELETE_POLICY, RETAIN_POLICY]
@@ -42,6 +43,8 @@ OS_MAPPING = {
     "ubuntu2204": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
     "rocky8": {"user": "rocky"},
+    "rhel9": {"user": "ec2-user"},
+    "rocky9": {"user": "rocky"},
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
@@ -51,9 +54,11 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "ubuntu2204": "ubuntu-2204-lts-hvm",
     "rhel8": "rhel8-hvm",
     "rocky8": "rocky8-hvm",
+    "rhel9": "rhel9-hvm",
+    "rocky9": "rocky9-hvm",
 }
 # We do not publicly publish/release Parallelcluster AMI of below OSSes
-PRIVATE_OSES = ["rocky8"]
+PRIVATE_OSES = ["rocky8", "rocky9"]
 
 IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
 
@@ -260,9 +265,6 @@ class Feature(Enum):
     FSX_OPENZFS = "FSx OpenZfs"
     SLURM_DATABASE = "SLURM Database"
     CLUSTER_HEALTH_METRICS = "Cluster Health Metrics"
-    INTEL_HPC_SPECIFICATION_2018 = "Intel HPC Specification 2018"
-    INTEL_ONE_API_BASE_TOOLKIT = "Intel OneAPI Base Toolkit"
-    INTEL_PYTHON = "Intel Python"
     CAPACITY_BLOCK = "Capacity Block"
 
 
@@ -277,15 +279,6 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.CLUSTER_HEALTH_METRICS: ["us-iso"],
     Feature.CAPACITY_BLOCK: ["us-iso"],
 }
-
-SUPPORTED_OSES_FOR_FEATURE = {
-    Feature.INTEL_PYTHON: list(set(SUPPORTED_OSES) - {"centos7", "alinux2"}),
-    Feature.INTEL_ONE_API_BASE_TOOLKIT: list(set(SUPPORTED_OSES) - {"centos7"}),
-    Feature.INTEL_HPC_SPECIFICATION_2018: ["centos7"],
-}
-
-FEATURE_REQUIRING_ADDITION_SPACE = {Feature.INTEL_ONE_API_BASE_TOOLKIT: 30}  # In GBs
-FEATURE_REQUIRING_ADDITION_BOOTSTRAP_TIME = {Feature.INTEL_ONE_API_BASE_TOOLKIT: 600}  # In seconds
 
 
 # Operations support

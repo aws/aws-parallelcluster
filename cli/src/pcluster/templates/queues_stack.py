@@ -8,6 +8,7 @@ from constructs import Construct
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import SharedStorageType, SlurmClusterConfig, SlurmComputeResource, SlurmQueue
+from pcluster.config.common import DefaultUserHomeType
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
@@ -314,6 +315,14 @@ class QueuesStack(NestedStack):
                     "base_os": self._config.image.os,
                     "region": self._config.region,
                     "shared_storage_type": self._config.head_node.shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
+                    "default_user_home": (
+                        self._config.deployment_settings.default_user_home.lower()
+                        if (
+                            self._config.deployment_settings is not None
+                            and self._config.deployment_settings.default_user_home is not None
+                        )
+                        else DefaultUserHomeType.SHARED.value.lower()
+                    ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.EFS),
                     "efs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EFS]
@@ -376,7 +385,10 @@ class QueuesStack(NestedStack):
                     "head_node_private_ip": self._head_eni.attr_primary_private_ip_address,
                     "directory_service": {"enabled": str(self._config.directory_service is not None).lower()},
                     "disable_sudo_access_for_default_user": (
-                        "true" if self._config.disable_sudo_access_default_user else "false"
+                        "true"
+                        if self._config.deployment_settings
+                        and self._config.deployment_settings.disable_sudo_access_default_user
+                        else "false"
                     ),
                 }
             },

@@ -35,6 +35,7 @@ from pcluster.config.cluster_config import (
     CapacityReservationTarget,
     CloudWatchDashboards,
     CloudWatchLogs,
+    ClusterDeploymentSettings,
     ClusterDevSettings,
     ClusterIam,
     ComputeSettings,
@@ -72,7 +73,6 @@ from pcluster.config.cluster_config import (
     LogRotation,
     Logs,
     Monitoring,
-    OneApi,
     PlacementGroup,
     Proxy,
     QueueImage,
@@ -94,7 +94,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Timeouts,
 )
-from pcluster.config.common import BaseTag, CapacityType
+from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
@@ -119,9 +119,9 @@ from pcluster.constants import (
 )
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
+    BaseDeploymentSettingsSchema,
     BaseDevSettingsSchema,
     BaseSchema,
-    DeploymentSettingsSchema,
 )
 from pcluster.schemas.common_schema import ImdsSchema as TopLevelImdsSchema
 from pcluster.schemas.common_schema import (
@@ -1037,32 +1037,10 @@ class ImdsSchema(BaseSchema):
         return Imds(**data)
 
 
-class OneApiSchema(BaseSchema):
-    """Represent the schema of OneAPI."""
-
-    base_toolkit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    hpc_toolkit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return OneApi(**data)
-
-    @validates_schema
-    def hpc_toolkit_requires_base_toolkit(self, data, **kwargs):
-        """Ensure Base Toolkit is not disabled when HPC Toolkit is enabled."""
-        base_toolkit = data.get("base_toolkit")
-        hpc_toolkit = data.get("hpc_toolkit")
-        if base_toolkit is False and hpc_toolkit is True:
-            raise ValidationError("Intel Base Toolkit is required by Intel HPC Toolkit.")
-
-
 class IntelSoftwareSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
     intel_hpc_platform = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    one_api = fields.Nested(OneApiSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    python = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1150,6 +1128,27 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return ClusterDevSettings(**data)
+
+
+class ClusterDeploymentSettingsSchema(BaseDeploymentSettingsSchema):
+    """Represent the schema of DeploymentSettings for Cluster."""
+
+    disable_sudo_access_default_user = fields.Bool(
+        data_key="DisableSudoAccessForDefaultUser",
+        default=False,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
+    )
+
+    default_user_home = fields.Str(
+        required=False,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.OneOf([type.value for type in DefaultUserHomeType]),
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ClusterDeploymentSettings(**data)
 
 
 # ---------------------- Health Checks ---------------------- #
@@ -1917,11 +1916,8 @@ class ClusterSchema(BaseSchema):
     custom_s3_bucket = fields.Str(metadata={"update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET})
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    deployment_settings = fields.Nested(DeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    disable_sudo_access_default_user = fields.Bool(
-        data_key="DisableSudoAccessForDefaultUser",
-        default=False,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP},
+    deployment_settings = fields.Nested(
+        ClusterDeploymentSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
 
     def __init__(self, cluster_name: str):

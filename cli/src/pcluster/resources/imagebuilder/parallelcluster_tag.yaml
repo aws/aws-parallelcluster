@@ -57,6 +57,10 @@ phases:
                 OS='rhel8'
               elif [ $(echo "${RELEASE}" | grep '^rocky\.8') ]; then
                 OS='rocky8'
+              elif [ $(echo "${RELEASE}" | grep '^rhel\.9') ]; then
+                OS='rhel9'
+              elif [ $(echo "${RELEASE}" | grep '^rocky\.9') ]; then
+                OS='rocky9'
               fi
 
               echo ${OS}
