@@ -60,7 +60,6 @@ write_files:
       region=${AWS::Region}
       url=${CloudFormationUrl}
       role=${CfnInitRole}
-      interval=2
   - path: /etc/cfn/hooks.d/parallelcluster-update.conf
     permissions: '0400'
     owner: root:root
