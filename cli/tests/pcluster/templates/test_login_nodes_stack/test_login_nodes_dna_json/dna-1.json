@@ -43,6 +43,7 @@
     "shared_storage_type": "ebs",
     "stack_arn": "{\"Ref\": \"AWS::StackId\"}",
     "stack_name": "clustername",
-    "use_private_hostname": "false"
+    "use_private_hostname": "false",
+    "launch_template_id": "LoginNodeLaunchTemplate2736fab291f04e69"
   }
 }

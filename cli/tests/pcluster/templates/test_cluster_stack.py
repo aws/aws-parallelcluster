@@ -46,7 +46,7 @@ from tests.pcluster.utils import (
 )
 
 EXAMPLE_CONFIGS_DIR = f"{os.path.abspath(os.path.join(__file__, '..', '..'))}/example_configs"
-MAX_SIZE_OF_CFN_TEMPLATE = 1024 * 1024
+MAX_SIZE_OF_CFN_TEMPLATE = 1000000
 MAX_RESOURCES_PER_TEMPLATE = 500
 
 

@@ -42,6 +42,7 @@
     "shared_storage_type": "ebs",
     "stack_arn": "{'Ref': 'AWS::StackId'}",
     "stack_name": "clustername",
-    "volume": ""
+    "volume": "",
+    "launch_template_id": "HeadNodeLaunchTemplate"
   }
 }
