@@ -279,6 +279,7 @@ class Pool(Construct):
                         and self._config.deployment_settings.disable_sudo_access_default_user
                         else "false"
                     ),
+                    "launch_template_id": launch_template_id,
                 }
             },
             indent=4,

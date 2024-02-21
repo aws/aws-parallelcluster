@@ -1186,9 +1186,10 @@ class ClusterCdkStack:
         cloudformation_url = get_service_endpoint("cloudformation", self.config.region)
 
         # Head node Launch Template
+        launch_template_id = "HeadNodeLaunchTemplate"
         head_node_launch_template = ec2.CfnLaunchTemplate(
             self.stack,
-            "HeadNodeLaunchTemplate",
+            launch_template_id,
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=head_node.instance_type,
                 block_device_mappings=self._launch_template_builder.get_block_device_mappings(
@@ -1320,6 +1321,7 @@ class ClusterCdkStack:
                         and self.config.deployment_settings.disable_sudo_access_default_user
                         else "false"
                     ),
+                    "launch_template_id": launch_template_id,
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
                         if self._condition_is_slurm()
@@ -1335,7 +1337,6 @@ class ClusterCdkStack:
             "configSets": {
                 "deployFiles": ["deployConfigFiles"],
                 "default": [
-                    "cfnHupConfig",
                     "chefPrepEnv",
                     "shellRunPreInstall",
                     "chefConfig",
@@ -1386,47 +1387,6 @@ class ClusterCdkStack:
                         )
                     },
                 },
-            },
-            "cfnHupConfig": {
-                "files": {
-                    "/etc/cfn/hooks.d/parallelcluster-update.conf": {
-                        "content": Fn.sub(
-                            (
-                                "[parallelcluster-update]\n"
-                                "triggers=post.update\n"
-                                "path=Resources.HeadNodeLaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
-                                "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
-                                ". /etc/profile.d/pcluster.sh; "
-                                "cfn-init -v --stack ${StackName} "
-                                "--resource HeadNodeLaunchTemplate --configsets update "
-                                "--region ${Region} "
-                                "--url ${CloudFormationUrl}\n"
-                                "runas=root\n"
-                            ),
-                            {
-                                "StackName": self._stack_name,
-                                "Region": self.stack.region,
-                                "CloudFormationUrl": cloudformation_url,
-                            },
-                        ),
-                        "mode": "000400",
-                        "owner": "root",
-                        "group": "root",
-                    },
-                    "/etc/cfn/cfn-hup.conf": {
-                        "content": Fn.sub(
-                            "[main]\nstack=${StackId}\nregion=${Region}\nurl=${CloudFormationUrl}",
-                            {
-                                "StackId": self.stack.stack_id,
-                                "Region": self.stack.region,
-                                "CloudFormationUrl": cloudformation_url,
-                            },
-                        ),
-                        "mode": "000400",
-                        "owner": "root",
-                        "group": "root",
-                    },
-                }
             },
             "chefPrepEnv": {
                 "commands": {

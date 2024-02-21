@@ -51,24 +51,6 @@ datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
 write_files:
-  - path: /etc/cfn/cfn-hup.conf
-    permissions: '0400'
-    owner: root:root
-    content: |
-      [main]
-      stack=${AWS::StackId}
-      region=${AWS::Region}
-      url=${CloudFormationUrl}
-      role=${CfnInitRole}
-  - path: /etc/cfn/hooks.d/parallelcluster-update.conf
-    permissions: '0400'
-    owner: root:root
-    content: |
-      [parallelcluster-update]
-      triggers=post.update
-      path=Resources.${LaunchTemplateResourceId}.Metadata.AWS::CloudFormation::Init
-      action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; . /etc/profile.d/pcluster.sh; cfn-init -v --stack ${AWS::StackName} --resource ${LaunchTemplateResourceId} --configsets update --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole}
-      runas=root
   - path: /tmp/bootstrap.sh
     permissions: '0744'
     owner: root:root
@@ -112,14 +94,13 @@ write_files:
       }
 
       export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
-      # Load ParallelCluster environment variables
+
       [ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
 
       cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the compute node. Please check /var/log/cfn-init.log in the compute node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
 
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
-      # Configure AWS CLI using the expected overrides, if any.
       [ -f /etc/profile.d/aws-cli-default-config.sh ] && . /etc/profile.d/aws-cli-default-config.sh
 
       custom_cookbook=${CustomChefCookbook}
@@ -162,12 +143,14 @@ write_files:
       start=$(date +%s)
 
       {
+        CINC_CMD="cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist"
+        FR_CMD="/opt/parallelcluster/scripts/fetch_and_run"
         pushd /etc/chef &&
-        cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::init &&
-        /opt/parallelcluster/scripts/fetch_and_run -preinstall &&
-        cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::config &&
-        /opt/parallelcluster/scripts/fetch_and_run -postinstall &&
-        cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::finalize &&
+        ${!CINC_CMD} aws-parallelcluster-entrypoints::init &&
+        ${!FR_CMD} -preinstall &&
+        ${!CINC_CMD} aws-parallelcluster-entrypoints::config &&
+        ${!FR_CMD} -postinstall &&
+        ${!CINC_CMD} aws-parallelcluster-entrypoints::finalize &&
         popd
       } || error_exit 'Failed to run bootstrap recipes. Please check /var/log/chef-client.log in the compute node or in CloudWatch logs.'
 
