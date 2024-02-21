@@ -375,9 +375,12 @@ def assert_instance_config_version_on_ddb(
             table_name = f"parallelcluster-{cluster.name}"
             item_id = f"CLUSTER_CONFIG.{instance_id}"
             item = get_ddb_item(cluster.region, table_name, {"Id": item_id})
-            assert_that(item).is_not_none()
+            assert_that(item, f"DDB record for {instance_id} ({node_type}) exists").is_not_none()
             cluster_config_version_on_ddb = item["Data"]["cluster_config_version"]
-            assert_that(cluster_config_version_on_ddb).is_equal_to(expected_cluster_config_version)
+            assert_that(
+                cluster_config_version_on_ddb,
+                f"DDB record for {instance_id} ({node_type}) has the correct config version",
+            ).is_equal_to(expected_cluster_config_version)
         logging.info(
             f"Verified that all {n_nodes} nodes ({node_type}) stored the expected config version on DDB: "
             f"{expected_cluster_config_version}"
