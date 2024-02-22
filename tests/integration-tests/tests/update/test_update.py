@@ -933,6 +933,7 @@ def _test_update_queue_strategy_with_running_job(
         # requeue job in queue2 to launch new instances for nodes
         remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
     elif queue_update_strategy == "TERMINATE":
+        time.sleep(60)
         scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
 
     # Be sure the queue2 job is running even after the forced termination: we need the nodes active so that we
