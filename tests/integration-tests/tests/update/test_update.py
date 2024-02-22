@@ -178,6 +178,15 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     # Verify that compute and login nodes stored the deployed config version on DDB
     last_cluster_config_version = get_deployed_config_version(cluster)
+    # This check must be retried because the last update added a new static node
+    # and the update workflow does not wait for new static nodes to complete their bootstrap, by design.
+    # On the other hand, the update workflow waits for existing nodes to complete their update recipes.
+    # As a consequence, the stack may reach the UPDATE_COMPLETE state
+    # without waiting for new static nodes to complete their bootstrap recipes.
+    retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))(assert_instance_config_version_on_ddb)(
+        cluster, last_cluster_config_version
+    )
+
     assert_instance_config_version_on_ddb(cluster, last_cluster_config_version)
 
     # Here is the expected list of nodes.
@@ -326,11 +335,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
 
-    # Verify that compute and login nodes stored the deployed config version on DDB.
-    # This check must be retried when executed to validate a rollback, because
-    # the stack reaches the UPDATE_ROLLBACK_COMPLETE state before compute nodes complete their update recipe.
-    # TODO Make the stack reach the UPDATE_ROLLBACK_COMPLETE only once the compute nodes have completed their updates.
-    #  Then, move this assertion right after the update and remove the retry logic.
+    # This check must be retried when executed to validate a rollback, because the rollback is a non-blocking operation.
+    # In particular, the stack reaches the UPDATE_ROLLBACK_COMPLETE state without waiting for the head node to
+    # signal the success to its WaitCondition.
+    # As a consequence, there may be some cluster nodes still executing their update recipes.
     retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))(assert_instance_config_version_on_ddb)(
         cluster, last_cluster_config_version
     )
