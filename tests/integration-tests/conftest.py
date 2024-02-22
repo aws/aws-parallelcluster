@@ -1632,7 +1632,7 @@ def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key
     """
     created_stacks = []
 
-    def _fsx_factory(ports, ip_protocols, file_system_type, num=1, **kwargs):
+    def _fsx_factory(ports, ip_protocols, file_system_type, num=1, vpc=None, subnet=None, **kwargs):
         # FSx stack
         if num == 0:
             return []
@@ -1642,6 +1642,9 @@ def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key
 
         # Create security group. If using an existing file system
         # It must be associated to a security group that allows inbound TCP/UDP traffic to specific ports
+        if not vpc:
+            vpc = vpc_stack.cfn_outputs["VpcId"]
+            subnet = vpc_stack.get_public_subnet()
         fsx_sg = ec2.SecurityGroup(
             "FSxSecurityGroup",
             GroupDescription="SecurityGroup for testing existing FSx",
@@ -1650,7 +1653,7 @@ def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key
                 for port in ports
                 for ip_protocol in ip_protocols
             ],
-            VpcId=vpc_stack.cfn_outputs["VpcId"],
+            VpcId=vpc,
         )
         fsx_template.add_resource(fsx_sg)
         file_system_resource_name = "FileSystemResource"
@@ -1662,7 +1665,7 @@ def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key
             fsx_filesystem = FileSystem(
                 title=f"{file_system_resource_name}{i}",
                 SecurityGroupIds=[Ref(fsx_sg)],
-                SubnetIds=[vpc_stack.get_public_subnet()],
+                SubnetIds=[subnet],
                 FileSystemType=file_system_type,
                 **kwargs,
                 **depends_on_arg,

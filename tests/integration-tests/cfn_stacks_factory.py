@@ -216,6 +216,16 @@ class CfnStacksFactory:
                 try:
                     stack = self.__created_stacks[internal_id]
                     cfn_client = boto3.client("cloudformation", region_name=stack.region)
+                    tags = cfn_client.describe_stacks(StackName=stack.name)["Stacks"][0]["Tags"]
+                    for tag in tags:
+                        if tag.get("Key") == "DO-NOT-DELETE":
+                            logging.info(
+                                "Deletion of stack {0} in region {1} skipped due to DO-NOT-DELETE tag".format(
+                                    name, region
+                                )
+                            )
+                            del self.__created_stacks[internal_id]
+                            return
                     cfn_client.delete_stack(StackName=stack.name)
                     final_status = self.__wait_for_stack_deletion(stack.cfn_stack_id, cfn_client)
                     self.__assert_stack_status(
