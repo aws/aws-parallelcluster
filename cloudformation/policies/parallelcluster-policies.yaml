@@ -423,7 +423,7 @@ Resources:
           - Action:
               - cloudformation:CreateStack
             Resource: !Sub
-              - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
+              - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
               - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
             Effect: Allow
             Condition:
@@ -433,12 +433,12 @@ Resources:
           - Action:
               - cloudformation:UpdateStack
             Resource: !Sub
-              - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
+              - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
               - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
             Effect: Allow
             Condition:
-              ForAnyValue:StringLike:
-                aws:ResourceTag/parallelcluster:cluster-name: "*"
+              ForAnyValue:StringEquals:
+                aws:TagKeys: [ "parallelcluster:cluster-name" ]
             Sid: CloudFormationUpdate
           - Action:
               - cloudformation:DeleteStack
@@ -448,7 +448,7 @@ Resources:
               - cloudformation:GetTemplate
               - cloudformation:ListStacks
             Resource: !Sub
-              - arn:*:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
+              - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
               - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
             Effect: Allow
             Sid: CloudFormationReadAndDelete
