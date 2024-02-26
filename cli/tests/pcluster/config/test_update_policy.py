@@ -1073,7 +1073,7 @@ external_fsx_lustre = {
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All login nodes must be stopped.",
+            "All login nodes must be stopped",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
@@ -1088,7 +1088,7 @@ external_fsx_lustre = {
             None,
             None,
             False,
-            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped.",
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped",
             "Stop the compute fleet with the pcluster update-compute-fleet command, "
             "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation. "
             "Stop the login nodes by setting Count parameter to 0 "
@@ -1120,7 +1120,7 @@ external_fsx_lustre = {
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All login nodes must be stopped.",
+            "All login nodes must be stopped",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
@@ -1277,7 +1277,7 @@ external_fsx_lustre = {
             managed_fsx_lustre,
             None,
             False,
-            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped.",
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped",
             "Stop the compute fleet with the pcluster update-compute-fleet command, "
             "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation. "
             "Stop the login nodes by setting Count parameter to 0 "
@@ -1294,7 +1294,7 @@ external_fsx_lustre = {
             None,
             None,
             False,
-            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped.",
+            "All compute nodes must be stopped or QueueUpdateStrategy must be set. All login nodes must be stopped",
             "Stop the compute fleet with the pcluster update-compute-fleet command, "
             "or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation. "
             "Stop the login nodes by setting Count parameter to 0 "
@@ -1311,7 +1311,7 @@ external_fsx_lustre = {
             managed_fsx_lustre,
             None,
             False,
-            "All login nodes must be stopped.",
+            "All login nodes must be stopped",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
@@ -1326,7 +1326,7 @@ external_fsx_lustre = {
             None,
             None,
             False,
-            "All login nodes must be stopped.",
+            "All login nodes must be stopped",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
@@ -1341,7 +1341,7 @@ external_fsx_lustre = {
             None,
             QueueUpdateStrategy.DRAIN.value,
             False,
-            "All login nodes must be stopped.",
+            "All login nodes must be stopped",
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
