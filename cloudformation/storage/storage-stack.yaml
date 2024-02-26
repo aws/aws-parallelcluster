@@ -195,7 +195,7 @@ Resources:
     Condition: CreateFsxLustre
     Properties:
       FileSystemType: LUSTRE
-      FileSystemTypeVersion: '2.12'
+      FileSystemTypeVersion: '2.15'
       LustreConfiguration:
         DeploymentType: PERSISTENT_1
         ExportPath: !Ref FsxLustreExportPath
@@ -428,7 +428,7 @@ Resources:
               return (
                 fsx.create_file_cache(
                   FileCacheType="LUSTRE",
-                  FileCacheTypeVersion="2.12",
+                  FileCacheTypeVersion="2.15",
                   StorageCapacity=1200,
                   SubnetIds=[subnet_id],
                   SecurityGroupIds=[securitygroup_id],

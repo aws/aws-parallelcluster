@@ -524,7 +524,7 @@ class SharedFsxLustre(BaseSharedFsx):
         self.auto_import_policy = Resource.init_param(auto_import_policy)
         self.drive_cache_type = Resource.init_param(drive_cache_type)
         self.file_system_type = LUSTRE
-        self.file_system_type_version = "2.12" if backup_id is None and file_system_id is None else None
+        self.file_system_type_version = "2.15" if backup_id is None and file_system_id is None else None
         self.deletion_policy = Resource.init_param(
             deletion_policy, default=DELETE_POLICY if not file_system_id else None
         )
