@@ -14,6 +14,8 @@ CHANGELOG
 - Add support for Rocky Linux 9 as `CustomAmi` created through `build-image` process. No public official ParallelCluster Rocky9 Linux AMI is made available at this time.
 - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
 - Add `DeploymentSettings/DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
+- Changes to FSx for Lustre file systems created by ParallelCluster:
+  - Change the Lustre server version to `2.15`.
 
 **CHANGES**
 - Upgrade Slurm to 23.11.3.
