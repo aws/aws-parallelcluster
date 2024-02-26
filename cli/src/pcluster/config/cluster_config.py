@@ -2320,8 +2320,7 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             for instance_type in self.instance_types[1:]:
                 instance_type_info = self.instance_type_info_map[instance_type]
                 max_nics = instance_type_info.max_network_cards()
-                if max_nics < least_max_nics:
-                    least_max_nics = max_nics
+                least_max_nics = min(least_max_nics, max_nics)
         return least_max_nics
 
     @property
