@@ -288,7 +288,7 @@ def fail_reason_shared_storage_update_policy(change, patch):
     if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
         reasons.append("All compute nodes must be stopped or QueueUpdateStrategy must be set.")
     if is_login_fleet_stop_required_for_shared_storage_change(change, patch):
-        reasons.append("All login nodes must be stopped.")
+        reasons.append("All login nodes must be stopped")
 
     return " ".join(reasons)
 
