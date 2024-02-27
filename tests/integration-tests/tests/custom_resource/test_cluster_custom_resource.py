@@ -171,7 +171,9 @@ def test_cluster_update_invalid(
     assert_that(reason).contains("Cannot update the ClusterName")
 
     for cluster_config_path, error in [
-        ("pcluster.config.reducemaxcount.yaml", "Stop the compute fleet"),
+        # CloudFormation truncates error messages,
+        # so we cannot specify the full error message here, but only a part of it.
+        ("pcluster.config.reducemaxcount.yaml", "Jobs running on the removed nodes will terminate"),
         ("pcluster.config.negativemaxcount.yaml", "Must be greater than or equal to 1."),
         ("pcluster.config.wrongscripturi.yaml", "s3 url 's3://invalid' is invalid."),
     ]:
