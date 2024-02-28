@@ -9,9 +9,20 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: {{ instance }}
+      Count: {{ login_nodes_count }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
 Scheduling:
+  {% if queue_update_strategy %}
   SlurmSettings:
-    QueueUpdateStrategy: TERMINATE
+    QueueUpdateStrategy: {{ queue_update_strategy }}
+  {% endif %}
   Scheduler: slurm
   SlurmQueues:
     - Name: queue1

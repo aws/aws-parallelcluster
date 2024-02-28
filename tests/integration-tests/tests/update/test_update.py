@@ -44,6 +44,7 @@ from tests.common.hit_common import (
     get_partition_nodes,
     wait_for_compute_nodes_states,
 )
+from tests.common.login_nodes_utils import terminate_login_nodes
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.storage.assertions import assert_storage_existence
@@ -1086,10 +1087,10 @@ def test_dynamic_file_systems_update(
     fsx_supported = is_fsx_supported(region)
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
     existing_efs_mount_dir = "/existing_efs_mount_dir"
-    fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
-    fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir"
-    fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir"
-    file_cache_mount_dir = "/existing_file_cache_mount_dir"
+    existing_fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
+    existing_fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir"
+    existing_fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir"
+    existing_file_cache_mount_dir = "/existing_file_cache_mount_dir"
     new_ebs_mount_dir = "/new_ebs_mount_dir"
     new_raid_mount_dir = "/new_raid_dir"
     new_efs_mount_dir = "/new_efs_mount_dir"
@@ -1099,15 +1100,14 @@ def test_dynamic_file_systems_update(
     fsx_mount_dirs = (
         [
             new_lustre_mount_dir,
-            fsx_lustre_mount_dir,
-            fsx_open_zfs_mount_dir,
-            fsx_ontap_mount_dir,
-            file_cache_mount_dir,
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_file_cache_mount_dir,
         ]
         if fsx_supported
         else []
     )
-    all_mount_dirs = ebs_mount_dirs + [new_raid_mount_dir] + efs_mount_dirs + fsx_mount_dirs
 
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -1129,20 +1129,18 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    # Create cluster with initial configuration
+    # Create cluster without any shared storage.
     init_config_file = pcluster_config_reader(
-        config_file="pcluster.config.yaml", output_file="pcluster.config.init.yaml"
+        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
     )
     cluster = clusters_factory(init_config_file)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    cluster_nodes = scheduler_commands.get_compute_nodes()
-    queue1_nodes = [node for node in cluster_nodes if "queue1" in node]
 
     # submit a job to queue1
     queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "sleep 3000",  # sleep 3000 to keep the job running
+            "command": "sleep 86400",  # sleep 86400 seconds (1 day) to keep the job running
             "nodes": 1,
             "partition": "queue1",
         },
@@ -1151,18 +1149,118 @@ def test_dynamic_file_systems_update(
     # Wait for the job to run
     scheduler_commands.wait_job_running(queue1_job_id)
 
-    # update cluster to add ebs, efs, fsx with drain strategy
-    logging.info("Updating the cluster to mount managed storage with DeletionPolicy set to Delete")
+    # Take note of the running compute and login nodes because we expect them to be retained during the next update.
+    compute_nodes_before_update = cluster.get_cluster_instance_ids(node_type="Compute")
+    login_nodes_before_update = cluster.get_cluster_instance_ids(node_type="LoginNode")
+
+    # Update cluster to add storage with a live update.
+    # In particular, we add here: external EFS/FsxLustre/FsxOntap/FsxOpenZfs/FileCache.
+    logging.info("Updating the cluster to mount external EFS/FsxLustre/FsxOntap/FsxOpenZfs/FileCache with live update")
     update_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update_drain.yaml",
-        output_file="pcluster.config.update_drain_1.yaml",
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_add_external_efs_fsx_and_filecache.yaml",
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
+        file_cache_mount_dir=existing_file_cache_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        existing_file_cache_id=existing_file_cache_id,
+        bucket_name=bucket_name,
+        fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=1,
+    )
+
+    cluster.update(update_cluster_config)
+
+    # Check that compute and login nodes didn't get replaced as part of the update
+    # as the update only contains storage changes supporting live updates.
+    compute_nodes_after_update = cluster.get_cluster_instance_ids(node_type="Compute")
+    login_nodes_after_update = cluster.get_cluster_instance_ids(node_type="LoginNode")
+    assert_that(compute_nodes_after_update).is_equal_to(compute_nodes_before_update)
+    assert_that(login_nodes_after_update).is_equal_to(login_nodes_before_update)
+
+    scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
+
+    # Check that the mounted storage is visible on all cluster nodes right after the update.
+    all_mount_dirs_update_1 = [
+        existing_efs_mount_dir,
+        existing_fsx_lustre_mount_dir,
+        existing_fsx_ontap_mount_dir,
+        existing_fsx_open_zfs_mount_dir,
+        existing_file_cache_mount_dir,
+    ]
+    _test_shared_storages_mount_on_headnode(
+        remote_command_executor,
+        cluster,
+        region,
+        bucket_name,
+        scheduler_commands_factory,
+        ebs_mount_dirs=[],
+        new_raid_mount_dir=[],
+        efs_mount_dirs=[existing_efs_mount_dir],
+        fsx_mount_dirs=[
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_file_cache_mount_dir,
+        ],
+        file_cache_path=file_cache_path,
+    )
+    for mount_dir in all_mount_dirs_update_1:
+        verify_directory_correctly_shared(
+            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+        )
+
+    # # Update cluster to stop login nodes
+    logging.info("Updating the cluster to stop login nodes")
+    update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_login_fleet_stop.yaml",
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
+        file_cache_mount_dir=existing_file_cache_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
+        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
+        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
+        existing_file_cache_id=existing_file_cache_id,
+        bucket_name=bucket_name,
+        fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=0,
+    )
+
+    cluster.update(update_cluster_config)
+
+    # We forcefully terminate login nodes to save time.
+    # In this way, we do not need to wait for them to be terminated by the scale-in operation of the AutoScalingGroup,
+    # In fact, the termination would take the grace time period (minimum is 3 minutes) +
+    # ~1min for the ASG to perform the actual scale-in operation.
+    terminate_login_nodes(cluster)
+
+    # Update cluster to add storage that does not support live updates.
+    # In particular, we add here: external EBS, managed EBS/EFS/FsxLustre with DRAIN strategy
+    logging.info(
+        "Updating the cluster with DRAIN strategy to mount external EBS and managed EBS/EFS/FsxLustre "
+        "with DeletionPolicy set to Delete"
+    )
+    update_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_add_external_ebs_managed_ebs_efs_fsx_lustre_drain.yaml",
         volume_id=existing_ebs_volume_id,
         existing_ebs_mount_dir=existing_ebs_mount_dir,
         existing_efs_mount_dir=existing_efs_mount_dir,
-        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
-        fsx_ontap_mount_dir=fsx_ontap_mount_dir,
-        fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
-        file_cache_mount_dir=file_cache_mount_dir,
+        fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
+        file_cache_mount_dir=existing_file_cache_mount_dir,
         existing_efs_id=existing_efs_id,
         existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
         fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
@@ -1178,6 +1276,8 @@ def test_dynamic_file_systems_update(
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Delete",
         fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=0,
     )
 
     cluster.update(update_cluster_config)
@@ -1217,12 +1317,23 @@ def test_dynamic_file_systems_update(
     )
 
     scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
-    # assert all nodes are drain
+
+    logging.info("Checking the status of compute nodes in queue1")
+    # Compute nodes in queue1 are expected to be in drain
+    # because the static compute node has a job running.
+    queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(
-        scheduler_commands, cluster_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
+        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
     )
 
-    # check file systems are visible on the head node just after the update
+    logging.info("Checking the status of compute nodes in queue2")
+    # All compute nodes in queue2 are expected to be in idle or drained
+    # because they have not jobs running, hence we expect them to have been replaced (idle)
+    # or under replacement (drained).
+    queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
+    assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["idle", "drained"])
+
+    logging.info("Checking that shared storage is visible on the head node")
     _test_shared_storages_mount_on_headnode(
         remote_command_executor,
         cluster,
@@ -1236,26 +1347,61 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    # check newly mounted file systems are not visible on compute nodes that are running jobs
+    all_mount_dirs_update_2 = [
+        new_ebs_mount_dir,
+        new_raid_mount_dir,
+        new_efs_mount_dir,
+        new_lustre_mount_dir,
+        existing_ebs_mount_dir,
+        existing_efs_mount_dir,
+        existing_fsx_lustre_mount_dir,
+        existing_fsx_ontap_mount_dir,
+        existing_fsx_open_zfs_mount_dir,
+        existing_file_cache_mount_dir,
+    ]
+
+    mount_dirs_requiring_replacement = [
+        new_ebs_mount_dir,
+        new_raid_mount_dir,
+        new_efs_mount_dir,
+        new_lustre_mount_dir,
+        existing_ebs_mount_dir,
+    ]
+
+    logging.info("Checking that previously mounted storage is visible on all compute nodes")
+    for mount_dir in all_mount_dirs_update_1:
+        verify_directory_correctly_shared(
+            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+        )
+
+    logging.info("Checking that newly mounted storage is not visible on compute nodes with jobs running (queue1)")
     for node_name in queue1_nodes:
-        _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
-    for mount_dir in all_mount_dirs:
+        _test_directory_not_mounted(
+            remote_command_executor, mount_dirs_requiring_replacement, node_type="compute", node_name=node_name
+        )
+
+    logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue2)")
+    for mount_dir in all_mount_dirs_update_2:
         verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue2"])
+
+    logging.info("Canceling job in queue1 to trigger compute nodes replacement")
     scheduler_commands.cancel_job(queue1_job_id)
-    for mount_dir in all_mount_dirs:
+
+    logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue1)")
+    for mount_dir in all_mount_dirs_update_2:
         verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
 
     logging.info("Updating the cluster to set DeletionPolicy to Retain for every managed storage")
     update_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update_drain.yaml",
-        output_file="pcluster.config.update_drain_2.yaml",
+        config_file="pcluster.config.update.yaml",
+        output_file="pcluster.config.update_retain_managed_storage_drain.yaml",
         volume_id=existing_ebs_volume_id,
         existing_ebs_mount_dir=existing_ebs_mount_dir,
         existing_efs_mount_dir=existing_efs_mount_dir,
-        fsx_lustre_mount_dir=fsx_lustre_mount_dir,
-        fsx_ontap_mount_dir=fsx_ontap_mount_dir,
-        fsx_open_zfs_mount_dir=fsx_open_zfs_mount_dir,
-        file_cache_mount_dir=file_cache_mount_dir,
+        fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
+        fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
+        fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
+        file_cache_mount_dir=existing_file_cache_mount_dir,
         existing_efs_id=existing_efs_id,
         existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
         fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
@@ -1271,6 +1417,8 @@ def test_dynamic_file_systems_update(
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Retain",
         fsx_supported=fsx_supported,
+        queue_update_strategy="DRAIN",
+        login_nodes_count=0,
     )
 
     cluster.update(update_cluster_config)
@@ -1285,7 +1433,7 @@ def test_dynamic_file_systems_update(
     # submit a job to queue2
     queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "sleep 3000",
+            "command": "sleep 86400",  # sleep 86400 seconds (1 day) to keep the job running
             "nodes": 1,
             "partition": "queue1",
         },
@@ -1298,7 +1446,7 @@ def test_dynamic_file_systems_update(
         new_raid_mount_dir,
         efs_mount_dirs,
         fsx_mount_dirs,
-        all_mount_dirs,
+        all_mount_dirs_update_2,
         cluster_nodes,
     )
 
@@ -1434,8 +1582,9 @@ def _test_shared_storages_mount_on_headnode(
         volume_size = "2.0" if "existing" in ebs_dir else "40"
         test_ebs_correctly_mounted(remote_command_executor, ebs_dir, volume_size=volume_size)
     # check raid
-    test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
-    test_raid_correctly_mounted(remote_command_executor, new_raid_mount_dir, volume_size=74)
+    if new_raid_mount_dir:
+        test_raid_correctly_configured(remote_command_executor, raid_type="0", volume_size=75, raid_devices=5)
+        test_raid_correctly_mounted(remote_command_executor, new_raid_mount_dir, volume_size=74)
     # check efs
     for efs in efs_mount_dirs:
         test_efs_correctly_mounted(remote_command_executor, efs)
@@ -1481,6 +1630,8 @@ def _test_shared_storage_rollback(
         new_lustre_mount_dir=new_lustre_mount_dir,
         new_efs_mount_dir=new_efs_mount_dir,
         fsx_supported=fsx_supported,
+        queue_update_strategy="TERMINATE",
+        login_nodes_count=0,
     )
     # remove logs from chef-client log in order to test cluster rollback behavior
     remote_command_executor.run_remote_command("sudo truncate -s 0 /var/log/chef-client.log")
