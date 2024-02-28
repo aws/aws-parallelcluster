@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
+from datetime import datetime
 
 import boto3
 from assertpy import assert_that
@@ -529,21 +530,24 @@ def poll_on_data_export(task, fsx):
 
 def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region):
     logging.info("Testing fsx lustre data repository task")
+    file_name = f"file_to_export-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
     file_contents = "Exported by FSx Lustre"
     remote_command_executor.run_remote_command(
-        "echo '{file_contents}' > {mount_dir}/file_to_export".format(file_contents=file_contents, mount_dir=mount_dir)
+        "echo '{file_contents}' > {mount_dir}/{file_name}".format(
+            file_contents=file_contents, mount_dir=mount_dir, file_name=file_name
+        )
     )
 
     # set file permissions
     remote_command_executor.run_remote_command(
-        "sudo chmod 777 {mount_dir}/file_to_export && sudo chown 6666:6666 {mount_dir}/file_to_export".format(
-            mount_dir=mount_dir
+        "sudo chmod 777 {mount_dir}/{file_name} && sudo chown 6666:6666 {mount_dir}/{file_name}".format(
+            mount_dir=mount_dir, file_name=file_name
         )
     )
 
     fsx = boto3.client("fsx", region_name=region)
     task = fsx.create_data_repository_task(
-        FileSystemId=fsx_fs_id, Type="EXPORT_TO_REPOSITORY", Paths=["file_to_export"], Report={"Enabled": False}
+        FileSystemId=fsx_fs_id, Type="EXPORT_TO_REPOSITORY", Paths=[file_name], Report={"Enabled": False}
     ).get("DataRepositoryTask")
 
     task = poll_on_data_export(task, fsx)
@@ -551,17 +555,19 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(task.get("Lifecycle")).is_equal_to("SUCCEEDED")
 
     remote_command_executor.run_remote_command(
-        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
-            region=region, bucket_name=bucket_name
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/{file_name} ./{file_name}".format(
+            region=region, bucket_name=bucket_name, file_name=file_name
         )
     )
-    result = remote_command_executor.run_remote_command("cat ./file_to_export")
+    result = remote_command_executor.run_remote_command("cat ./{file_name}".format(file_name=file_name))
     assert_that(result.stdout).is_equal_to(file_contents)
 
     # test s3 metadata
     s3 = boto3.client("s3", region_name=region)
     metadata = (
-        s3.head_object(Bucket=bucket_name, Key="export_dir/file_to_export").get("ResponseMetadata").get("HTTPHeaders")
+        s3.head_object(Bucket=bucket_name, Key="export_dir/{file_name}".format(file_name=file_name))
+        .get("ResponseMetadata")
+        .get("HTTPHeaders")
     )
     file_owner = metadata.get("x-amz-meta-file-owner")
     file_group = metadata.get("x-amz-meta-file-group")
@@ -573,47 +579,67 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
 
 def _test_export_path(remote_command_executor, mount_dir, bucket_name, region, file_cache_path=None):
     logging.info("Testing fsx lustre export path")
+    file_name = f"file_to_export-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
     if file_cache_path:
         remote_command_executor.run_remote_command(
-            "echo 'Exported by FSx Lustre' | sudo tee {mount_dir}{file_cache_path}file_to_export".format(
-                mount_dir=mount_dir, file_cache_path=file_cache_path
+            "echo 'Exported by FSx Lustre' | sudo tee {mount_dir}{file_cache_path}{file_name}".format(
+                mount_dir=mount_dir,
+                file_cache_path=file_cache_path,
+                file_name=file_name,
             )
         )
         remote_command_executor.run_remote_command(
-            "sudo lfs hsm_archive {mount_dir}{file_cache_path}file_to_export && sleep 5".format(
-                mount_dir=mount_dir, file_cache_path=file_cache_path
+            "sudo lfs hsm_archive {mount_dir}{file_cache_path}{file_name} && sleep 5".format(
+                mount_dir=mount_dir,
+                file_cache_path=file_cache_path,
+                file_name=file_name,
             )
         )
         export_result = remote_command_executor.run_remote_command(
-            "sudo lfs hsm_state {mount_dir}{file_cache_path}file_to_export".format(
-                mount_dir=mount_dir, file_cache_path=file_cache_path
+            "sudo lfs hsm_state {mount_dir}{file_cache_path}{file_name}".format(
+                mount_dir=mount_dir,
+                file_cache_path=file_cache_path,
+                file_name=file_name,
             )
         )
         assert_that(export_result.stdout).is_equal_to(
-            "{mount_dir}{file_cache_path}file_to_export: (0x00000009) exists archived, archive_id:1".format(
-                mount_dir=mount_dir, file_cache_path=file_cache_path
+            "{mount_dir}{file_cache_path}{file_name}: (0x00000009) exists archived, archive_id:1".format(
+                mount_dir=mount_dir,
+                file_cache_path=file_cache_path,
+                file_name=file_name,
             )
         )
 
         remote_command_executor.run_remote_command(
-            "sudo aws s3 cp --region {region} s3://{bucket_name}/file_to_export ./file_to_export".format(
-                region=region, bucket_name=bucket_name
+            "sudo aws s3 cp --region {region} s3://{bucket_name}/{file_name} ./{file_name}".format(
+                region=region,
+                bucket_name=bucket_name,
+                file_name=file_name,
             )
         )
 
     else:
         remote_command_executor.run_remote_command(
-            "echo 'Exported by FSx Lustre' > {mount_dir}/file_to_export".format(mount_dir=mount_dir)
-        )
-        remote_command_executor.run_remote_command(
-            "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
-        )
-        remote_command_executor.run_remote_command(
-            "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
-                region=region, bucket_name=bucket_name
+            "echo 'Exported by FSx Lustre' > {mount_dir}/{file_name}".format(
+                mount_dir=mount_dir,
+                file_name=file_name,
             )
         )
-    result = remote_command_executor.run_remote_command("cat ./file_to_export")
+        remote_command_executor.run_remote_command(
+            "sudo lfs hsm_archive {mount_dir}/{file_name} && sleep 5".format(mount_dir=mount_dir, file_name=file_name)
+        )
+        remote_command_executor.run_remote_command(
+            "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/{file_name} ./{file_name}".format(
+                region=region,
+                bucket_name=bucket_name,
+                file_name=file_name,
+            )
+        )
+    result = remote_command_executor.run_remote_command(
+        "cat ./{file_name}".format(
+            file_name=file_name,
+        )
+    )
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
 
 

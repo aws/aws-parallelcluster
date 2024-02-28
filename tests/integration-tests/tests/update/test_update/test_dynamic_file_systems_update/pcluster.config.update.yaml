@@ -9,9 +9,20 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: {{ instance }}
+      Count: {{ login_nodes_count }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
 Scheduling:
+  {% if queue_update_strategy %}
   SlurmSettings:
-    QueueUpdateStrategy: DRAIN
+    QueueUpdateStrategy: {{ queue_update_strategy }}
+  {% endif %}
   Scheduler: slurm
   SlurmQueues:
     - Name: queue1
@@ -41,6 +52,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
 SharedStorage:
+{% if new_raid_mount_dir %}
   - MountDir: {{ new_raid_mount_dir }}
     StorageType: Ebs
     Name: manage-raid
@@ -53,18 +65,24 @@ SharedStorage:
         Type: 0
         NumberOfVolumes: 5
       DeletionPolicy: {{ new_raid_deletion_policy }}
+{% endif %}
+{% if new_ebs_mount_dir %}
   - MountDir: {{ new_ebs_mount_dir }}
     Name: /manage-ebs
     StorageType: Ebs
     EbsSettings:
       VolumeType: gp3
       DeletionPolicy: {{ new_ebs_deletion_policy }}
+{% endif %}
+{% if existing_ebs_mount_dir %}
   - MountDir: {{ existing_ebs_mount_dir }}
     Name: existing_ebs
     StorageType: Ebs
     EbsSettings:
       VolumeType: gp2
       VolumeId: {{ volume_id }}
+{% endif %}
+{% if new_efs_mount_dir %}
   - MountDir: {{ new_efs_mount_dir }}
     Name: manage-efs
     StorageType: Efs
@@ -74,12 +92,16 @@ SharedStorage:
       ThroughputMode: provisioned
       ProvisionedThroughput: 200
       DeletionPolicy: {{ new_efs_deletion_policy }}
+{% endif %}
+{% if existing_efs_mount_dir %}
   - MountDir: {{ existing_efs_mount_dir }}
     Name: existing_efs
     StorageType: Efs
     EfsSettings:
       FileSystemId: {{ existing_efs_id }}
-  {% if fsx_supported %}
+{% endif %}
+{% if fsx_supported %}
+{% if new_lustre_mount_dir %}
   - MountDir: {{ new_lustre_mount_dir }}
     Name: manage-fsx
     StorageType: FsxLustre
@@ -90,24 +112,34 @@ SharedStorage:
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
       DeletionPolicy: {{ new_lustre_deletion_policy }}
+{% endif %}
+{% if fsx_lustre_mount_dir %}
   - MountDir: {{ fsx_lustre_mount_dir }}
     Name: existingfsx
     StorageType: FsxLustre
     FsxLustreSettings:
       FileSystemId: {{ existing_fsx_lustre_fs_id }}
+{% endif %}
+{% if fsx_open_zfs_mount_dir %}
   - MountDir: {{ fsx_open_zfs_mount_dir }}
     Name: existingopenzfs
     StorageType: FsxOpenZfs
     FsxOpenZfsSettings:
       VolumeId: {{ fsx_open_zfs_volume_id }}
+{% endif %}
+{% if fsx_ontap_mount_dir %}
   - MountDir: {{ fsx_ontap_mount_dir }}
     Name: existingontap
     StorageType: FsxOntap
     FsxOntapSettings:
       VolumeId: {{ fsx_ontap_volume_id }}
+{% endif %}
+{% if file_cache_mount_dir %}
   - MountDir: {{ file_cache_mount_dir }}
     Name: existingfilecache
     StorageType: FileCache
     FileCacheSettings:
       FileCacheId: {{ existing_file_cache_id }}
-  {% endif %}
+{% endif %}
+{% endif %}
+
