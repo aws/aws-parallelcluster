@@ -25,6 +25,10 @@ CHANGELOG
   instead of looping over `MaximumNetworkCards` range.
 - Fail cluster creation when using instance types P3, G3, P2 and G2 because their GPU architecture is not compatible with Open Source Nvidia Drivers (OpenRM) introduced as part of 3.8.0 release.
 
+**BUG FIXES**
+- Refactor IAM policies defined in CloudFormation template `parallelclutser-policies.yaml` to prevent ParallelCluster API deployment failure 
+  caused by policies exceeding IAM limits.
+
 3.8.0
 ------
 
