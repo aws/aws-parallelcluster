@@ -145,7 +145,7 @@ def policies_template_with_custom_actions_bucket_access_fixture(policies_templat
     with open(policies_template_path, "r", encoding="utf-8") as f:
         policies_template = TemplateGenerator(cfn_tools.load_yaml(f.read()))
 
-    policy_document = policies_template.resources.get("ParallelClusterClusterPolicy").properties["PolicyDocument"]
+    policy_document = policies_template.resources.get("ParallelClusterClusterPolicy2").properties["PolicyDocument"]
     statement = policy_document.get("Statement")
     statement.append(
         {

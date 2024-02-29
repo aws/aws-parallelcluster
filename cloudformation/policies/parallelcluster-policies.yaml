@@ -66,20 +66,14 @@ Outputs:
   ParallelClusterLogRetrievalPolicy:
     Value: !Ref ParallelClusterLogRetrievalPolicy
 
-  ParallelClusterDescribeImageManagedPolicy:
-    Value: !Ref ParallelClusterDescribeImageManagedPolicy
+  ParallelClusterImageManagedPolicy:
+    Value: !Ref ParallelClusterImageManagedPolicy
 
-  ParallelClusterListImagesManagedPolicy:
-    Value: !Ref ParallelClusterListImagesManagedPolicy
+  ParallelClusterClusterPolicy1:
+    Value: !Ref ParallelClusterClusterPolicy1
 
-  ParallelClusterDeleteImageManagedPolicy:
-    Value: !Ref ParallelClusterDeleteImageManagedPolicy
-
-  ParallelClusterBuildImageManagedPolicy:
-    Value: !Ref ParallelClusterBuildImageManagedPolicy
-
-  ParallelClusterClusterPolicy:
-    Value: !Ref ParallelClusterClusterPolicy
+  ParallelClusterClusterPolicy2:
+    Value: !Ref ParallelClusterClusterPolicy2
 
   FSxS3AccessPolicy:
     Condition: EnableFSxS3AccessCondition
@@ -210,15 +204,13 @@ Resources:
           - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
         - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         # Required to run ParallelCluster functionalities
-        - !Ref ParallelClusterClusterPolicy
+        - !Ref ParallelClusterClusterPolicy1
+        - !Ref ParallelClusterClusterPolicy2
         - !If
           - EnableBatchAccessCondition
           - !Ref ParallelClusterClusterPolicyBatch
           - !Ref AWS::NoValue
-        - !Ref ParallelClusterBuildImageManagedPolicy
-        - !Ref ParallelClusterDeleteImageManagedPolicy
-        - !Ref ParallelClusterListImagesManagedPolicy
-        - !Ref ParallelClusterDescribeImageManagedPolicy
+        - !Ref ParallelClusterImageManagedPolicy
         - !Ref ParallelClusterLogRetrievalPolicy
 
   ### CLUSTER ACTIONS POLICIES
@@ -336,11 +328,11 @@ Resources:
       Roles:
         - !Ref ParallelClusterLambdaRole
 
-  ParallelClusterClusterPolicy:
+  ParallelClusterClusterPolicy1:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy-${StackIdSuffix}
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy1-${StackIdSuffix}
         - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
       PolicyDocument:
         Version: '2012-10-17'
@@ -470,6 +462,16 @@ Resources:
                   aws:RequestedRegion:
                     - !Ref Region
             Sid: CloudWatch
+
+  ParallelClusterClusterPolicy2:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy2-${StackIdSuffix}
+        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
           - Action:
               - iam:GetRole
               - iam:GetRolePolicy
@@ -624,24 +626,24 @@ Resources:
 
   # ### IMAGE ACTIONS POLICIES
 
-  ParallelClusterBuildImageManagedPolicy:
+  ParallelClusterImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterBuildImageManagedPolicy-${StackIdSuffix}
+        - ${IAMRoleAndPolicyPrefix}ParallelClusterImageManagedPolicy-${StackIdSuffix}
         - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
-      Description: Managed policy to execute pcluster build-image command without IAM permission
+      Description: Managed policy to execute pcluster build-image, delete-image, list-images and describe-image commands
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: EC2
+          - Sid: EC2BuildImage
             Effect: Allow
             Action:
               - ec2:DescribeImages
               - ec2:DescribeInstanceTypeOfferings
               - ec2:DescribeInstanceTypes
             Resource: '*'
-          - Sid: IAM
+          - Sid: IAMBuildImage
             Effect: Allow
             Action:
               - iam:CreateInstanceProfile
@@ -653,7 +655,7 @@ Resources:
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/ParallelClusterImage*'
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
-          - Sid: IAMPassRole
+          - Sid: IAMPassRoleBuildImage
             Effect: Allow
             Action:
               - iam:PassRole
@@ -666,7 +668,7 @@ Resources:
                   - lambda.amazonaws.com
                   - ec2.amazonaws.com
                   - ec2.amazonaws.com.cn
-          - Sid: CloudWatch
+          - Sid: CloudWatchBuildImage
             Effect: Allow
             Action:
               - logs:CreateLogGroup
@@ -674,14 +676,14 @@ Resources:
               - logs:UntagResource
             Resource:
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
-          - Sid: CloudFormation
+          - Sid: CloudFormationBuildImage
             Effect: Allow
             Action:
               - cloudformation:DescribeStacks
               - cloudformation:CreateStack
             Resource:
               - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
-          - Sid: Lambda
+          - Sid: LambdaBuildImage
             Effect: Allow
             Action:
               - lambda:CreateFunction
@@ -690,12 +692,12 @@ Resources:
               - lambda:AddPermission
             Resource:
               - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
-          - Sid: ImageBuilderGet
+          - Sid: ImageBuilderGetBuildImage
             Effect: Allow
             Action:
               - imagebuilder:Get*
             Resource: '*'
-          - Sid: ImageBuilder
+          - Sid: ImageBuilderBuildImage
             Effect: Allow
             Action:
               - imagebuilder:CreateImage
@@ -710,14 +712,14 @@ Resources:
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
-          - Sid: S3Bucket
+          - Sid: S3BucketBuildImage
             Effect: Allow
             Action:
               - s3:CreateBucket
               - s3:ListBucket
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*'
-          - Sid: SNS
+          - Sid: SNSBuildImage
             Effect: Allow
             Action:
               - sns:GetTopicAttributes
@@ -727,14 +729,15 @@ Resources:
               - sns:Publish
             Resource:
               - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
-          - Sid: S3Objects
+          - Sid: S3ObjectsBuildImage
             Effect: Allow
             Action:
               - s3:PutObject
               - s3:GetObject
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
-          - Action:
+          - Sid: IAMSLRBuildImage
+            Action:
               - iam:CreateServiceLinkedRole
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/imagebuilder.amazonaws.com/AWSServiceRoleForImageBuilder
@@ -743,32 +746,21 @@ Resources:
               StringLike:
                 iam:AWSServiceName:
                   - imagebuilder.amazonaws.com
-
-  ParallelClusterDeleteImageManagedPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterDeleteImageManagedPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
-      Description: Managed policy to execute pcluster delete-image command without IAM permission
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: EC2
+          - Sid: EC2DeleteImage
             Effect: Allow
             Action:
               - ec2:DeregisterImage
               - ec2:DescribeImages
               - ec2:DeleteSnapshot
             Resource: '*'
-          - Sid: IAM
+          - Sid: IAMDeleteImage
             Effect: Allow
             Action:
               - iam:RemoveRoleFromInstanceProfile
             Resource:
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
-          - Sid: ImageBuilder
+          - Sid: ImageBuilderDeleteImage
             Effect: Allow
             Action:
               - imagebuilder:DeleteImage
@@ -784,14 +776,14 @@ Resources:
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
-          - Sid: CloudFormation
+          - Sid: CloudFormationDeleteImage
             Effect: Allow
             Action:
               - cloudformation:DescribeStacks
               - cloudformation:DeleteStack
             Resource:
               - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
-          - Sid: Lambda
+          - Sid: LambdaDeleteImage
             Effect: Allow
             Action:
               - lambda:RemovePermission
@@ -799,7 +791,7 @@ Resources:
               - lambda:AddPermission
             Resource:
               - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
-          - Sid: SNS
+          - Sid: SNSDeleteImage
             Effect: Allow
             Action:
               - SNS:DeleteTopic
@@ -807,14 +799,14 @@ Resources:
               - SNS:GetTopicAttributes
             Resource:
               - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
-          - Sid: S3Bucket
+          - Sid: S3BucketDeleteImage
             Effect: Allow
             Action:
               - s3:ListBucket
               - s3:ListBucketVersions
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*'
-          - Sid: S3Objects
+          - Sid: S3ObjectsDeleteImage
             Effect: Allow
             Action:
               - s3:PutObject
@@ -824,57 +816,24 @@ Resources:
               - s3:DeleteObjectVersion
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
-          - Sid: CloudWatch
+          - Sid: CloudWatchDeleteImage
             Effect: Allow
             Action:
               - logs:DeleteLogGroup
             Resource:
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/imagebuilder/ParallelClusterImage-*'
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
-
-  ParallelClusterListImagesManagedPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterListImagesManagedPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
-      Description: Managed policy to execute pcluster list-images command
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: EC2
+          - Sid: EC2ListImages
             Effect: Allow
             Action:
               - ec2:DescribeImages
             Resource: '*'
-          - Sid: CloudFormation
+          - Sid: CloudFormationListImages
             Effect: Allow
             Action:
               - cloudformation:DescribeStacks
             Resource:
               - '*'
-
-  ParallelClusterDescribeImageManagedPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterDescribeImageManagedPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
-      Description: Managed policy to execute pcluster describe-image command
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: EC2
-            Effect: Allow
-            Action:
-              - ec2:DescribeImages
-            Resource: '*'
-          - Sid: CloudFormation
-            Effect: Allow
-            Action:
-              - cloudformation:DescribeStacks
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
 
   ### LOG COMMANDS
 
