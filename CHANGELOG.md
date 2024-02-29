@@ -18,7 +18,7 @@ CHANGELOG
   - Change the Lustre server version to `2.15`.
 
 **CHANGES**
-- Upgrade Slurm to 23.11.3.
+- Upgrade Slurm to 23.11.4.
 - Upgrade NVIDIA driver to version 535.154.05.
 - Add support for Python 3.11, 3.12 in pcluster CLI and aws-parallelcluster-batch-cli.
 - Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response,
