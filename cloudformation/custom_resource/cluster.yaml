@@ -115,9 +115,10 @@ Resources:
       ManagedPolicyArns: !Split
         - ","
         - !Sub
-          - ${LambdaExecutionPolicy},${ClusterPolicy},${DefaultAdminPolicy},${EventsPolicy},${S3Policy}${AdditionalIamPolicies}
+          - ${LambdaExecutionPolicy},${ClusterPolicy1},${ClusterPolicy2},${DefaultAdminPolicy},${EventsPolicy},${S3Policy}${AdditionalIamPolicies}
           - { LambdaExecutionPolicy: !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-              ClusterPolicy: !GetAtt [ PclusterPolicies, Outputs.ParallelClusterClusterPolicy ],
+              ClusterPolicy1: !GetAtt [ PclusterPolicies, Outputs.ParallelClusterClusterPolicy1 ],
+              ClusterPolicy2: !GetAtt [ PclusterPolicies, Outputs.ParallelClusterClusterPolicy2 ],
               DefaultAdminPolicy: !GetAtt [ PclusterPolicies, Outputs.DefaultParallelClusterIamAdminPolicy ],
               EventsPolicy: !Ref EventsPolicy,
               S3Policy: !Ref S3Policy,
