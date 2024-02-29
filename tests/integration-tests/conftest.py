@@ -1009,6 +1009,14 @@ def api_definition_s3_uri(request, resource_bucket):
     )
 
 
+@pytest.fixture(scope="class")
+def api_permissions_boundary_policy_arn(request, region):
+    """Return the ARN of an IAM permissions boundary to be used with the ParallelCluster API."""
+    arn_partition = get_arn_partition(region)
+    # TODO Restrict the permissions boundary to the minimum set of required permissions
+    return f"arn:{arn_partition}:iam::aws:policy/AdministratorAccess"
+
+
 @pytest.fixture(scope="session")
 def api_infrastructure_s3_uri(request):
     return request.config.getoption("api_infrastructure_s3_uri")

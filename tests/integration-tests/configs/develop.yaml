@@ -761,6 +761,9 @@ test-suites:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
       dimensions:
         - regions: ["ap-south-1", "cn-north-1", "us-gov-west-1"]
+    test_api_infrastructure.py::test_api_infrastructure_with_full_parameters:
+      dimensions:
+        - regions: [ "eu-west-1" ]
     test_api.py::test_cluster_slurm:
       dimensions:
         - regions: ["sa-east-1"]
