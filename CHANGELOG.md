@@ -10,6 +10,8 @@ CHANGELOG
   stop the compute fleet. It's now possible to update them by setting `Scheduling/SlurmSettings/QueueUpdateStrategy`
   to TERMINATE. ParallelCluster will terminate only the nodes removed during a resize of the cluster capacity
   performed through a cluster update.
+- Permit to update the external shared storage of type Efs, FsxLustre, FsxOntap, FsxOpenZfs and FileCache
+  without replacing the compute and login fleet.
 - Add support for RHEL9.
 - Add support for Rocky Linux 9 as `CustomAmi` created through `build-image` process. No public official ParallelCluster Rocky9 Linux AMI is made available at this time.
 - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
