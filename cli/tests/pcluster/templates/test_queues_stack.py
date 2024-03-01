@@ -48,18 +48,7 @@ from tests.pcluster.utils import get_asset_content_with_resource_name
                             "Action": "cloudformation:DescribeStackResource",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "arn:",
-                                        {"Ref": "AWS::Partition"},
-                                        ":cloudformation:",
-                                        {"Ref": "AWS::Region"},
-                                        ":",
-                                        {"Ref": "AWS::AccountId"},
-                                        ":stack/clustername-*/*",
-                                    ],
-                                ]
+                                "Ref": "AWS::StackId",
                             },
                             "Sid": "CloudFormation",
                         },
