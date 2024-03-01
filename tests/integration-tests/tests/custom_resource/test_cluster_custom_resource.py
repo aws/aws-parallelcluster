@@ -173,7 +173,7 @@ def test_cluster_update_invalid(
     for cluster_config_path, error in [
         # CloudFormation truncates error messages,
         # so we cannot specify the full error message here, but only a part of it.
-        ("pcluster.config.reducemaxcount.yaml", "Jobs running on the removed nodes will terminate"),
+        ("pcluster.config.reducemaxcount.yaml", "Stop the compute fleet or set QueueUpdateStrategy:TERMINATE"),
         ("pcluster.config.negativemaxcount.yaml", "Must be greater than or equal to 1."),
         ("pcluster.config.wrongscripturi.yaml", "s3 url 's3://invalid' is invalid."),
     ]:

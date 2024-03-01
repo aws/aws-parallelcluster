@@ -485,10 +485,8 @@ def test_condition_checker_resize_update_strategy_on_remove(
         "All compute nodes must be stopped or QueueUpdateStrategy must be set to TERMINATE"
     )
     assert_that(UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE.action_needed(change_mock, patch_mock)).is_equal_to(
-        "Stop the compute fleet with the pcluster update-compute-fleet command, or set QueueUpdateStrategy to "
-        "TERMINATE in the configuration used for the 'update-cluster' operation. Be aware that this update will remove "
-        "nodes from the scheduler and terminates the EC2 instances associated. Jobs running on the removed nodes will "
-        "terminate"
+        "Stop the compute fleet or set QueueUpdateStrategy:TERMINATE in config "
+        "to remove nodes from the scheduler, terminate the associated instances & any running jobs"
     )
     cluster_has_running_capacity_mock.assert_called()
 
