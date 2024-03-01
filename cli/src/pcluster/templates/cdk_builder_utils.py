@@ -19,6 +19,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
+from aws_cdk import core
 from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
 from aws_cdk.core import Arn, ArnFormat, CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
@@ -656,10 +657,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     "cloudformation:SignalResource",
                 ],
                 effect=iam.Effect.ALLOW,
-                resources=[
-                    self._format_arn(service="cloudformation", resource=f"stack/{Stack.of(self).stack_name}/*"),
-                    self._format_arn(service="cloudformation", resource=f"stack/{Stack.of(self).stack_name}-*/*"),
-                ],
+                resources=[core.Aws.STACK_ID],
             ),
             iam.PolicyStatement(
                 sid="DcvLicense",
@@ -938,9 +936,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                     "cloudformation:DescribeStackResource",
                 ],
                 effect=iam.Effect.ALLOW,
-                resources=[
-                    self._format_arn(service="cloudformation", resource=f"stack/{Stack.of(self).stack_name}-*/*"),
-                ],
+                resources=[core.Aws.STACK_ID],
             ),
             iam.PolicyStatement(
                 sid="DynamoDBTable",
@@ -999,9 +995,7 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
                     "cloudformation:DescribeStackResource",
                 ],
                 effect=iam.Effect.ALLOW,
-                resources=[
-                    self._format_arn(service="cloudformation", resource=f"stack/{Stack.of(self).stack_name}-*/*"),
-                ],
+                resources=[core.Aws.STACK_ID],
             ),
             iam.PolicyStatement(
                 sid="DynamoDBTable",
