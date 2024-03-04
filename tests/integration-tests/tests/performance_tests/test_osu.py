@@ -247,6 +247,7 @@ def _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, bench
                 "Instance": instance,
                 "OsuBenchmarkName": benchmark_name,
                 "PacketSize": packet_size,
+                "OperatingSystem": os,
             }
             metric_data.append(
                 {
