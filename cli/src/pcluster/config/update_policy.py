@@ -122,10 +122,8 @@ def actions_needed_queue_update_strategy(change, _):
 
 def actions_needed_resize_update_strategy_on_remove(*_):
     return (
-        "Stop the compute fleet with the pcluster update-compute-fleet command, "
-        "or set QueueUpdateStrategy to TERMINATE in the configuration used for the 'update-cluster' operation. "
-        "Be aware that this update will remove nodes from the scheduler and terminates the EC2 instances "
-        "associated. Jobs running on the removed nodes will terminate"
+        "Stop the compute fleet or set QueueUpdateStrategy:TERMINATE in config "
+        "to remove nodes from the scheduler, terminate the associated instances & any running jobs"
     )
 
 
