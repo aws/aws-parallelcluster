@@ -16,8 +16,6 @@ CHANGELOG
 - Add support for Rocky Linux 9 as `CustomAmi` created through `build-image` process. No public official ParallelCluster Rocky9 Linux AMI is made available at this time.
 - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
 - Add `DeploymentSettings/DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
-- Changes to FSx for Lustre file systems created by ParallelCluster:
-  - Change the Lustre server version to `2.15`.
 
 **CHANGES**
 - Upgrade Slurm to 23.11.4.
@@ -26,6 +24,7 @@ CHANGELOG
 - Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response,
   instead of looping over `MaximumNetworkCards` range.
 - Fail cluster creation when using instance types P3, G3, P2 and G2 because their GPU architecture is not compatible with Open Source Nvidia Drivers (OpenRM) introduced as part of 3.8.0 release.
+- Upgrade the default FSx Lustre server version managed by ParallelCluster to 2.15.
 
 **BUG FIXES**
 - Refactor IAM policies defined in CloudFormation template `parallelclutser-policies.yaml` to prevent ParallelCluster API deployment failure 
