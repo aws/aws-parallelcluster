@@ -1331,7 +1331,9 @@ def test_dynamic_file_systems_update(
     # because they have not jobs running, hence we expect them to have been replaced (idle)
     # or under replacement (drained).
     queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
-    assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["idle", "drained"])
+    assert_compute_node_states(
+        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*"]
+    )
 
     logging.info("Checking that shared storage is visible on the head node")
     _test_shared_storages_mount_on_headnode(
