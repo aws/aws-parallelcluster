@@ -1415,6 +1415,7 @@ def odcr_stack(
         AvailabilityZone=availability_zone_1,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
+        InstanceMatchCriteria="targeted",
         InstanceType="c5.xlarge",
     )
     az2_odcr = ec2.CapacityReservation(
@@ -1422,6 +1423,7 @@ def odcr_stack(
         AvailabilityZone=availability_zone_2,
         InstanceCount=2,
         InstancePlatform="Linux/UNIX",
+        InstanceMatchCriteria="targeted",
         InstanceType="c5.xlarge",
     )
     multi_az_odcr_group = resourcegroups.Group(
