@@ -15,10 +15,11 @@ import pathlib
 import time
 
 import boto3
+from framework.metrics_publisher import Metric, MetricsPublisher
 from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import seconds
-from utils import CWMetric, get_compute_nodes_instance_count, publish_metrics_to_cloudwatch
+from utils import get_compute_nodes_instance_count
 
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
 
@@ -51,7 +52,7 @@ def get_scaling_metrics(
     ec2_capacity_time_series = []
     compute_nodes_time_series = []
     timestamps = []
-    cw_client = boto3.client("cloudwatch", region_name=region)
+    metrics_pub = MetricsPublisher(region=region)
 
     @retry(
         # Retry until EC2 and Scheduler capacities scale to specified target
@@ -76,19 +77,18 @@ def get_scaling_metrics(
             pending_jobs_count = int(headnode_metrics.get("PendingJobsCount"))
             running_jobs_count = int(headnode_metrics.get("RunningJobsCount"))
             scaling_metrics = [
-                CWMetric(name="ComputeNodesCount", value=compute_node_count, unit="Count"),
-                CWMetric(name="EC2NodesCount", value=ec2_capacity, unit="Count"),
-                CWMetric(name="PendingJobsCount", value=pending_jobs_count, unit="Count"),
-                CWMetric(name="RunningJobsCount", value=running_jobs_count, unit="Count"),
+                Metric(name="ComputeNodesCount", value=compute_node_count, unit="Count"),
+                Metric(name="EC2NodesCount", value=ec2_capacity, unit="Count"),
+                Metric(name="PendingJobsCount", value=pending_jobs_count, unit="Count"),
+                Metric(name="RunningJobsCount", value=running_jobs_count, unit="Count"),
             ]
             for metric in scaling_metrics:
-                metric.dimensions_as_dict = {"ClusterName": cluster_name}
+                metric.dimensions = [{"Name": "ClusterName", "Value": cluster_name}]
 
             logging.info(f"Publishing metrics: {scaling_metrics}")
-            publish_metrics_to_cloudwatch(
+            metrics_pub.publish_metrics_to_cloudwatch(
                 namespace="ParallelCluster/ScalingStressTest",
-                cw_client=cw_client,
-                cw_metrics=scaling_metrics,
+                metrics=scaling_metrics,
             )
 
         # add values only if there is a transition.

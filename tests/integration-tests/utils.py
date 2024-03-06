@@ -18,10 +18,8 @@ import shlex
 import socket
 import string
 import subprocess
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from hashlib import sha1
-from typing import List
 
 import boto3
 import requests
@@ -38,42 +36,6 @@ PARTITION_MAP = {
     "us-iso-": "aws-iso",
     "us-isob": "aws-iso-b",
 }
-
-
-@dataclass
-class CWMetric:
-    """Data Class representing a CloudWatch Metric."""
-
-    name: str
-    value: any
-    unit: str
-    dimensions_as_dict: dict = None
-
-
-def generate_metric_data_entry(metric_name: str, dimensions_as_dict: dict, value: any, unit: str):
-    """Returns a Metric Data dictionary used when describing a CloudWatch Metric Data item."""
-
-    return {
-        "MetricName": metric_name,
-        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions_as_dict.items()],
-        "Value": value,
-        "Unit": unit,
-    }
-
-
-def publish_metrics_to_cloudwatch(namespace: str, cw_client, cw_metrics: List[CWMetric]):
-    cw_client.put_metric_data(
-        Namespace=namespace,
-        MetricData=[
-            generate_metric_data_entry(
-                metric_name=cw_metric.name,
-                dimensions_as_dict=cw_metric.dimensions_as_dict,
-                value=cw_metric.value,
-                unit=cw_metric.unit,
-            )
-            for cw_metric in cw_metrics
-        ],
-    )
 
 
 def _format_stack_error(message, stack_events=None, cluster_details=None) -> str:
