@@ -16,6 +16,7 @@ import pathlib
 from time import sleep
 
 import boto3
+from framework.metrics_publisher import Metric, MetricsPublisher
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import RetryError, retry
@@ -25,7 +26,7 @@ from utils import describe_cluster_instances
 
 def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region, cluster_name):
     logging.info("Monitoring scheduler status and publishing metrics")
-    cw_client = boto3.client("cloudwatch", region_name=region)
+    metrics_pub = MetricsPublisher(region)
     compute_nodes_time_series = []
     ec2_nodes_time_series = []
     timestamps = [datetime.datetime.utcnow()]
@@ -43,17 +44,15 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     def _watch_compute_nodes_allocation():
         try:
             compute_nodes = scheduler_commands.compute_nodes_count()
-            logging.info("Publishing scheduler compute metric: count={0}".format(compute_nodes))
-            cw_client.put_metric_data(
-                Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
-                MetricData=[{"MetricName": "ComputeNodesCount", "Value": compute_nodes, "Unit": "Count"}],
-            )
             ec2_instances_count = len(describe_cluster_instances(cluster_name, region, filter_by_node_type="Compute"))
+            logging.info("Publishing scheduler compute metric: count={0}".format(compute_nodes))
             logging.info("Publishing EC2 compute metric: count={0}".format(ec2_instances_count))
-            cw_client.put_metric_data(
-                Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
-                MetricData=[{"MetricName": "EC2NodesCount", "Value": ec2_instances_count, "Unit": "Count"}],
-            )
+            metrics = [
+                Metric("ComputeNodesCount", compute_nodes, "Count"),
+                Metric("EC2NodesCount", ec2_instances_count, "Count"),
+            ]
+            namespace = f"ParallelCluster/benchmarking/{cluster_name}"
+            metrics_pub.publish_metrics_to_cloudwatch(namespace, metrics)
             # add values only if there is a transition.
             if (
                 len(ec2_nodes_time_series) == 0

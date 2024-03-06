@@ -13,9 +13,10 @@ import datetime
 import json
 import os
 import time
+from typing import List
 
-import boto3
 import untangle
+from framework.metrics_publisher import Metric, MetricsPublisher
 from junitparser import JUnitXml
 
 
@@ -32,7 +33,7 @@ def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_st
     if not os.path.isfile(test_report_file):
         generate_junitxml_merged_report(test_results_dir)
     report = generate_json_report(test_results_dir=test_results_dir, save_to_file=False)
-    cw_client = boto3.client("cloudwatch", region_name=aws_region)
+    metric_pub = MetricsPublisher(region=aws_region)
 
     if start_timestamp is not None:
         timestamp = datetime.datetime.fromtimestamp(start_timestamp)
@@ -40,14 +41,13 @@ def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_st
         timestamp = datetime.datetime.combine(datetime.datetime.utcnow(), datetime.time())
     else:
         timestamp = datetime.datetime.utcnow()
-
-    for key, value in report.items():
-        if key == "all":
-            _put_metrics(cw_client, namespace, value, [], timestamp)
+    for category, dictionary in report.items():
+        if category == "all":
+            _put_metrics(metric_pub, namespace, dictionary, [], timestamp)
         else:
-            for dimension_value, metrics in value.items():
-                dimensions = [{"Name": key, "Value": dimension_value}]
-                _put_metrics(cw_client, namespace, metrics, dimensions, timestamp)
+            for dimension, metrics in dictionary.items():
+                dimensions = [{"Name": category, "Value": dimension}]
+                _put_metrics(metric_pub, namespace, metrics, dimensions, timestamp)
 
 
 def generate_junitxml_merged_report(test_results_dir):
@@ -113,15 +113,19 @@ def _empty_results_dict():
     return {"total": 0, "skipped": 0, "failures": 0, "errors": 0, "succeeded": 0}
 
 
-def _put_metrics(cw_client, namespace, metrics, dimensions, timestamp):
+def _put_metrics(
+    metric_publisher: MetricsPublisher,
+    namespace: str,
+    metrics: dict[str, int],
+    dimensions: List[dict[str, str]],
+    timestamp,
+):
     # CloudWatch PutMetric API has a TPS of 150. Setting a rate of 60 metrics per second
     put_metric_sleep_interval = 1.0 / 60
     for key, value in metrics.items():
-        cw_client.put_metric_data(
-            Namespace=namespace,
-            MetricData=[
-                {"MetricName": key, "Dimensions": dimensions, "Timestamp": timestamp, "Value": value, "Unit": "Count"}
-            ],
+        metric_publisher.publish_metrics_to_cloudwatch(
+            namespace,
+            [Metric(key, value, "Count", dimensions)],
         )
         time.sleep(put_metric_sleep_interval)
 
@@ -132,16 +136,8 @@ def _put_metrics(cw_client, namespace, metrics, dimensions, timestamp):
         {"name": "failure_rate", "value": failure_rate, "unit": "Percent"},
     ]
     for item in additional_metrics:
-        cw_client.put_metric_data(
-            Namespace=namespace,
-            MetricData=[
-                {
-                    "MetricName": item["name"],
-                    "Dimensions": dimensions,
-                    "Timestamp": timestamp,
-                    "Value": item["value"],
-                    "Unit": item["unit"],
-                }
-            ],
+        metric_publisher.publish_metrics_to_cloudwatch(
+            namespace,
+            [Metric(item["name"], item["value"], item["unit"], dimensions, timestamp)],
         )
         time.sleep(put_metric_sleep_interval)
