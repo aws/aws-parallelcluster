@@ -1017,6 +1017,28 @@ class ClusterCdkStack:
         if shared_fsx.data_repository_associations:
             for dra in shared_fsx.data_repository_associations:
                 dra_id = "{0}{1}".format(dra.name, create_hash_suffix(dra.name))
+                s3 = None
+                if dra.auto_export_policy and dra.auto_import_policy:
+                    s3 = fsx.CfnDataRepositoryAssociation.S3Property(
+                        auto_export_policy=fsx.CfnDataRepositoryAssociation.AutoExportPolicyProperty(
+                            events=dra.auto_export_policy
+                        ),
+                        auto_import_policy=fsx.CfnDataRepositoryAssociation.AutoImportPolicyProperty(
+                            events=dra.auto_import_policy
+                        ),
+                    )
+                elif dra.auto_import_policy:
+                    s3 = fsx.CfnDataRepositoryAssociation.S3Property(
+                        auto_import_policy=fsx.CfnDataRepositoryAssociation.AutoImportPolicyProperty(
+                            events=dra.auto_import_policy
+                        ),
+                    )
+                elif dra.auto_export_policy:
+                    s3 = fsx.CfnDataRepositoryAssociation.S3Property(
+                        auto_export_policy=fsx.CfnDataRepositoryAssociation.AutoExportPolicyProperty(
+                            events=dra.auto_export_policy
+                        ),
+                    )
                 fsx.CfnDataRepositoryAssociation(
                     self.stack,
                     dra_id,
@@ -1025,14 +1047,7 @@ class ClusterCdkStack:
                     file_system_id=fsx_id,
                     file_system_path=dra.file_system_path,
                     imported_file_chunk_size=dra.imported_file_chunk_size,
-                    s3=fsx.CfnDataRepositoryAssociation.S3Property(
-                        auto_export_policy=fsx.CfnDataRepositoryAssociation.AutoExportPolicyProperty(
-                            events=dra.auto_export_policy
-                        ),
-                        auto_import_policy=fsx.CfnDataRepositoryAssociation.AutoImportPolicyProperty(
-                            events=dra.auto_import_policy
-                        ),
-                    ),
+                    s3=s3,
                     tags=[CfnTag(key="Name", value=dra.name)],
                 )
 
