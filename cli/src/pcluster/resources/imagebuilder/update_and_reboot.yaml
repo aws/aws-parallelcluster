@@ -215,18 +215,6 @@ phases:
                     yum versionlock redhat-release
                   fi
                   echo "Kernel version locked"
-              
-                elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                  # Install LTS kernel packages
-                  # linux-aws-lts-22.04 depends on linux-image-aws-lts-22.04 and linux-headers-aws-lts-22.04
-                  # linux-image-aws-lts-22.04 depends on linux-image-5.15.0-10xx-aws, that depends on linux-modules-5.15.0-10xx-aws
-                  # linux-headers-aws-lts-22.04 depends on linux-headers-5.15.0-10xx-aws
-                  UBUNTU_VERSION=$(lsb_release -sr)
-                  DEBIAN_FRONTEND=noninteractive apt-get -y install linux-aws-lts-${!UBUNTU_VERSION}
-
-                  # remove not updated meta-packages
-                  apt-get -y remove linux-image-aws linux-aws linux-headers-aws
-                  echo "Kernel updated to LTS version"
                 fi
               fi
 
@@ -238,6 +226,7 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
@@ -251,7 +240,11 @@ phases:
 
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 DEBIAN_FRONTEND=noninteractive apt-get -y update
-                DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade
+                if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
+                  DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
+                else
+                  DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade
+                fi
                 apt-get --purge autoremove -y
               fi
 
@@ -287,7 +280,6 @@ phases:
               
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
-                   # already installed to LTS version
                    apt-get -y install linux-aws linux-headers-aws linux-image-aws
                 fi
               fi
