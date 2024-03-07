@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.10.0
+------
+
+**BUG FIXES**
+- Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
+
 3.9.0
 ------
 

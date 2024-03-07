@@ -200,13 +200,30 @@ SharedStorage:
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
       DataRepositoryAssociations:
-        - Name: dra
+        - Name: dra1
           BatchImportMetaDataOnCreate: false
-          DataRepositoryPath: s3://bucket/folder
-          FileSystemPath: /
+          DataRepositoryPath: s3://bucket/folder1
+          FileSystemPath: /one
           ImportedFileChunkSize: 1024
           AutoExportPolicy: [ NEW, CHANGED, DELETED ]
           AutoImportPolicy: [ NEW, CHANGED, DELETED ]
+        - Name: dra2
+          BatchImportMetaDataOnCreate: false
+          DataRepositoryPath: s3://bucket/folder2
+          FileSystemPath: /two
+          ImportedFileChunkSize: 1024
+          AutoImportPolicy: [ NEW, DELETED ]
+        - Name: dra3
+          BatchImportMetaDataOnCreate: false
+          DataRepositoryPath: s3://bucket/folder3
+          FileSystemPath: /three
+          ImportedFileChunkSize: 1024
+          AutoExportPolicy: [ DELETED ]
+        - Name: dra4
+          BatchImportMetaDataOnCreate: false
+          DataRepositoryPath: s3://bucket/folder4
+          FileSystemPath: /four
+          ImportedFileChunkSize: 1024
   - MountDir: /my/mount/point4
     Name: name4
     StorageType: FsxOpenZfs
