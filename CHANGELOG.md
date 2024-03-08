@@ -5,29 +5,46 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add the configuration parameter `DeploymentSettings/DefaultUserHome` to allow users to move the default user's home directory to `/local/home` instead of `/home` (default).
+- Permit to update the external shared storage of type Efs, FsxLustre, FsxOntap, FsxOpenZfs and FileCache
+  without replacing compute and login fleet.
 - Permit to update `MinCount`, `MaxCount`, `Queue` and `ComputeResource` configuration parameters without the need to
   stop the compute fleet. It's now possible to update them by setting `Scheduling/SlurmSettings/QueueUpdateStrategy`
   to TERMINATE. ParallelCluster will terminate only the nodes removed during a resize of the cluster capacity
   performed through a cluster update.
-- Permit to update the external shared storage of type Efs, FsxLustre, FsxOntap, FsxOpenZfs and FileCache
-  without replacing the compute and login fleet.
 - Add support for RHEL9.
 - Add support for Rocky Linux 9 as `CustomAmi` created through `build-image` process. No public official ParallelCluster Rocky9 Linux AMI is made available at this time.
 - Remove `CommunicationParameters` from the Custom Slurm Settings deny list.
-- Add `DeploymentSettings/DisableSudoAccessForDefaultUser` parameter to disable sudo access of default user in supported OSes.
+- Add the configuration parameter `DeploymentSettings/DefaultUserHome` to allow users to move the default user's home directory to `/local/home` instead of `/home` (default).
+- Add configuration parameter `DeploymentSettings/DisableSudoAccessForDefaultUser` to disable sudo access of default user in supported OSes.
 
 **CHANGES**
-- Upgrade Slurm to 23.11.4.
-- Upgrade NVIDIA driver to version 535.154.05.
+- Upgrade Slurm to 23.11.4 (from 23.02.7).
+  - Upgrade Pmix to 4.2.9 (from 4.2.6).
 - Add support for Python 3.11, 3.12 in pcluster CLI and aws-parallelcluster-batch-cli.
 - Build network interfaces using network card index from `NetworkCardIndex` list of EC2 DescribeInstances response,
   instead of looping over `MaximumNetworkCards` range.
 - Fail cluster creation when using instance types P3, G3, P2 and G2 because their GPU architecture is not compatible with Open Source Nvidia Drivers (OpenRM) introduced as part of 3.8.0 release.
 - Upgrade the default FSx Lustre server version managed by ParallelCluster to 2.15.
+- Upgrade NVIDIA driver to version 535.154.05.
+- Upgrade EFA installer to `1.30.0`.
+  - Efa-driver: `efa-2.6.0-1`
+  - Efa-config: `efa-config-1.15-1`
+  - Efa-profile: `efa-profile-1.6-1`
+  - Libfabric-aws: `libfabric-aws-1.19.0`
+  - Rdma-core: `rdma-core-46.0-1`
+  - Open MPI: `openmpi40-aws-4.1.6-2` and `openmpi50-aws-5.0.0-11`
+- Upgrade NICE DCV to version `2023.1-16388`.
+  - server: `2023.1.16388-1`
+  - xdcv: `2023.1.565-1`
+  - gl: `2023.1.1047-1`
+  - web_viewer: `2023.1.16388-1`
+- Upgrade ARM PL to version 23.10.
+- Upgrade third-party cookbook dependencies:
+  - nfs-5.1.2 (from nfs-5.0.0)
+
 
 **BUG FIXES**
-- Refactor IAM policies defined in CloudFormation template `parallelclutser-policies.yaml` to prevent ParallelCluster API deployment failure 
+- Refactor IAM policies defined in CloudFormation template `parallelclutser-policies.yaml` to prevent ParallelCluster API deployment failure
   caused by policies exceeding IAM limits.
 
 3.8.0
