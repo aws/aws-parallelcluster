@@ -2,15 +2,15 @@ import datetime
 import json
 import logging
 import time
-import yaml
 
 import pytest
+import yaml
 from assertpy import assert_that, soft_assertions
 from benchmarks.common.metrics_reporter import produce_benchmark_metrics_report
+from pykwalify.core import Core
 from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
 from utils import disable_protected_mode
-from pykwalify.core import Core
 
 from tests.common.assertions import assert_no_msg_in_logs
 from tests.common.scaling_common import get_scaling_metrics
@@ -71,12 +71,16 @@ def _datetime_to_minute(dt: datetime):
 
 
 def _get_scaling_time(capacity_time_series: list, timestamps: list, scaling_target: int, start_time: datetime):
-    scaling_target_index = capacity_time_series.index(scaling_target)
-    timestamp_at_full_cluster_size = timestamps[scaling_target_index]
-    scaling_target_time = datetime.datetime.fromtimestamp(
-        float(timestamp_at_full_cluster_size), tz=datetime.timezone.utc
-    )
-    return scaling_target_time, int((scaling_target_time - start_time).total_seconds())
+    try:
+        scaling_target_index = capacity_time_series.index(scaling_target)
+        timestamp_at_full_cluster_size = timestamps[scaling_target_index]
+        scaling_target_time = datetime.datetime.fromtimestamp(
+            float(timestamp_at_full_cluster_size), tz=datetime.timezone.utc
+        )
+        return scaling_target_time, int((scaling_target_time - start_time).total_seconds())
+    except ValueError as e:
+        logging.error("Cluster did not scale up to %d nodes", scaling_target)
+        raise e
 
 
 @pytest.mark.usefixtures("scheduler")
@@ -90,7 +94,7 @@ def test_scaling_stress_test(
     pcluster_config_reader,
     scheduler_commands_factory,
     clusters_factory,
-    scaling_strategy
+    scaling_strategy,
 ):
     """
     This test scales a cluster up and down while periodically monitoring some primary metrics.
@@ -277,11 +281,17 @@ def _scale_up_and_down(
         )
 
         # Verify scale up time for EC2
-        assert_that(scale_up_time_ec2).is_less_than_or_equal_to(baseline_scale_up_time_ec2)
+        assert_that(scale_up_time_ec2, f"Scaling target {scaling_target} EC2 scale up time").is_less_than_or_equal_to(
+            baseline_scale_up_time_ec2
+        )
         # Verify scale up time for scheduler (EC2 + bootstrap)
-        assert_that(scale_up_time_scheduler).is_less_than_or_equal_to(baseline_scale_up_time_scheduler)
+        assert_that(
+            scale_up_time_scheduler, f"Scaling target {scaling_target} scheduler scale up time"
+        ).is_less_than_or_equal_to(baseline_scale_up_time_scheduler)
         # Verify scale down time
-        assert_that(scale_down_time).is_less_than_or_equal_to(baseline_scale_down_time)
+        assert_that(scale_down_time, f"Scaling target {scaling_target} scale down time").is_less_than_or_equal_to(
+            baseline_scale_down_time
+        )
     except AttributeError:
         logging.warning(
             f"Baseline for ComputeNode ({instance}), ScalingTarget ({scaling_target}), "

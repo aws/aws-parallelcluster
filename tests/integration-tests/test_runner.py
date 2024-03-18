@@ -316,7 +316,7 @@ def _init_argparser():
     scaling_group.add_argument(
         "--scaling-test-config",
         help="config file with scaling test parameters",
-        default=TEST_DEFAULTS.get("scaling_test_config")
+        default=TEST_DEFAULTS.get("scaling_test_config"),
     )
 
     custom_resource_group = parser.add_argument_group("CloudFormation / Custom Resource options")
