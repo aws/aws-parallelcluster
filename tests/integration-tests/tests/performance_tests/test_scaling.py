@@ -4,8 +4,10 @@ import logging
 import time
 
 import pytest
+import yaml
 from assertpy import assert_that, soft_assertions
 from benchmarks.common.metrics_reporter import produce_benchmark_metrics_report
+from pykwalify.core import Core
 from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
 from utils import disable_protected_mode
@@ -69,26 +71,20 @@ def _datetime_to_minute(dt: datetime):
 
 
 def _get_scaling_time(capacity_time_series: list, timestamps: list, scaling_target: int, start_time: datetime):
-    scaling_target_index = capacity_time_series.index(scaling_target)
-    timestamp_at_full_cluster_size = timestamps[scaling_target_index]
-    scaling_target_time = datetime.datetime.fromtimestamp(
-        float(timestamp_at_full_cluster_size), tz=datetime.timezone.utc
-    )
-    return scaling_target_time, int((scaling_target_time - start_time).total_seconds())
-
-
-SCALING_TARGETS = [1000, 2000, 3000, 4000]
+    try:
+        scaling_target_index = capacity_time_series.index(scaling_target)
+        timestamp_at_full_cluster_size = timestamps[scaling_target_index]
+        scaling_target_time = datetime.datetime.fromtimestamp(
+            float(timestamp_at_full_cluster_size), tz=datetime.timezone.utc
+        )
+        return scaling_target_time, int((scaling_target_time - start_time).total_seconds())
+    except ValueError as e:
+        logging.error("Cluster did not scale up to %d nodes", scaling_target)
+        raise e
 
 
 @pytest.mark.usefixtures("scheduler")
-@pytest.mark.parametrize(
-    "max_monitoring_time_in_mins, shared_headnode_storage_type, head_node_instance_type, scaling_strategy",
-    [
-        (20, "Efs", "c5.24xlarge", "best-effort"),
-        # NOTE parallel tests will concur to RunInstances Resource Token Bucket consumption
-        (20, "Efs", "c5.24xlarge", "all-or-nothing"),
-    ],
-)
+@pytest.mark.parametrize("scaling_strategy", ["all-or-nothing", "best-effort"])
 def test_scaling_stress_test(
     test_datadir,
     instance,
@@ -98,9 +94,6 @@ def test_scaling_stress_test(
     pcluster_config_reader,
     scheduler_commands_factory,
     clusters_factory,
-    max_monitoring_time_in_mins,
-    shared_headnode_storage_type,
-    head_node_instance_type,
     scaling_strategy,
 ):
     """
@@ -117,11 +110,18 @@ def test_scaling_stress_test(
     - Log with the Metrics Source that can be used from CloudWatch Console
     - A Metrics Image showing the scale up and scale down using a linear graph with annotations
     """
+    # Get the scaling parameters
+    scaling_test_config = _validate_and_get_scaling_test_config(test_datadir, request)
+    max_monitoring_time_in_mins = scaling_test_config.get("MaxMonitoringTimeInMins")
+    shared_headnode_storage_type = scaling_test_config.get("SharedHeadNodeStorageType")
+    head_node_instance_type = scaling_test_config.get("HeadNodeInstanceType")
+    scaling_targets = scaling_test_config.get("ScalingTargets")
+
     # Creating cluster with intended head node instance type and scaling parameters
     cluster_config = pcluster_config_reader(
         # Prevent nodes being set down before we start monitoring the scale down metrics
         scaledown_idletime=max_monitoring_time_in_mins,
-        max_cluster_size=max(SCALING_TARGETS),
+        max_cluster_size=max(scaling_targets),
         head_node_instance_type=head_node_instance_type,
         shared_headnode_storage_type=shared_headnode_storage_type,
         scaling_strategy=scaling_strategy,
@@ -134,7 +134,7 @@ def test_scaling_stress_test(
     disable_protected_mode(remote_command_executor)
 
     with soft_assertions():
-        for scaling_target in SCALING_TARGETS:
+        for scaling_target in scaling_targets:
             _scale_up_and_down(
                 cluster,
                 head_node_instance_type,
@@ -152,9 +152,31 @@ def test_scaling_stress_test(
 
             # Make sure the RunInstances Resource Token Bucket is full before starting another scaling up
             # ref https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html
-            if scaling_target != SCALING_TARGETS[-1]:
+            if scaling_target != scaling_targets[-1]:
                 logging.info("Waiting for the RunInstances Resource Token Bucket to refill")
                 time.sleep(300)
+
+
+def _validate_and_get_scaling_test_config(test_datadir, request):
+    """Get and validate the scaling test parameters"""
+    scaling_test_config_file = request.config.getoption("scaling_test_config")
+    scaling_test_schema = str(test_datadir / "scaling_test_config_schema.yaml")
+    logging.info("Parsing scaling test config file: %s", scaling_test_config_file)
+    with open(scaling_test_config_file) as file:
+        scaling_test_config = yaml.safe_load(file)
+        logging.info(scaling_test_config)
+
+        # Validate scaling test config file against defined schema
+        logging.info("Validating config file against the schema")
+        try:
+            c = Core(source_data=scaling_test_config, schema_files=[scaling_test_schema])
+            c.validate(raise_exception=True)
+        except Exception as e:
+            logging.error("Failed when validating schema: %s", e)
+            logging.info("Dumping rendered template:\n%s", yaml.dump(scaling_test_config, default_flow_style=False))
+            raise
+
+    return scaling_test_config
 
 
 def _scale_up_and_down(
@@ -259,11 +281,17 @@ def _scale_up_and_down(
         )
 
         # Verify scale up time for EC2
-        assert_that(scale_up_time_ec2).is_less_than_or_equal_to(baseline_scale_up_time_ec2)
+        assert_that(scale_up_time_ec2, f"Scaling target {scaling_target} EC2 scale up time").is_less_than_or_equal_to(
+            baseline_scale_up_time_ec2
+        )
         # Verify scale up time for scheduler (EC2 + bootstrap)
-        assert_that(scale_up_time_scheduler).is_less_than_or_equal_to(baseline_scale_up_time_scheduler)
+        assert_that(
+            scale_up_time_scheduler, f"Scaling target {scaling_target} scheduler scale up time"
+        ).is_less_than_or_equal_to(baseline_scale_up_time_scheduler)
         # Verify scale down time
-        assert_that(scale_down_time).is_less_than_or_equal_to(baseline_scale_down_time)
+        assert_that(scale_down_time, f"Scaling target {scaling_target} scale down time").is_less_than_or_equal_to(
+            baseline_scale_down_time
+        )
     except AttributeError:
         logging.warning(
             f"Baseline for ComputeNode ({instance}), ScalingTarget ({scaling_target}), "

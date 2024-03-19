@@ -160,6 +160,7 @@ def pytest_addoption(parser):
         "--retain-ad-stack", action="store_true", default=False, help="Retain AD stack and corresponding VPC stack."
     )
     parser.addoption("--benchmarks", action="store_true", default=False, help="enable benchmark tests")
+    parser.addoption("--scaling-test-config", help="Path to scaling test config file")
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
         "--delete-logs-on-success", help="delete CloudWatch logs when a test succeeds", action="store_true"
