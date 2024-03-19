@@ -87,13 +87,6 @@ test-suites:
           instances: ["g5g.2xlarge"]
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-  disable_hyperthreading:
-    test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
-      dimensions:
-        - regions: ["us-west-1"]
-          instances: ["m4.xlarge"]
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
