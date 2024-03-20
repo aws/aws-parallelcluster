@@ -12,52 +12,7 @@
 import logging
 import re
 
-import pytest
 from assertpy import assert_that
-from remote_command_executor import RemoteCommandExecutor
-
-from tests.common.assertions import assert_no_errors_in_logs
-from tests.common.utils import fetch_instance_slots, run_system_analyzer
-
-
-@pytest.mark.usefixtures("os")
-def test_hit_disable_hyperthreading(
-    region,
-    scheduler,
-    instance,
-    pcluster_config_reader,
-    clusters_factory,
-    default_threads_per_core,
-    scheduler_commands_factory,
-    request,
-):
-    """Test Disable Hyperthreading for HIT clusters."""
-    slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    _test_disable_hyperthreading_settings(
-        remote_command_executor,
-        scheduler_commands,
-        slots_per_instance,
-        scheduler,
-        hyperthreading_disabled=False,
-        partition="ht-enabled",
-        default_threads_per_core=default_threads_per_core,
-    )
-    _test_disable_hyperthreading_settings(
-        remote_command_executor,
-        scheduler_commands,
-        slots_per_instance,
-        scheduler,
-        hyperthreading_disabled=True,
-        partition="ht-disabled",
-        default_threads_per_core=default_threads_per_core,
-    )
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-    run_system_analyzer(cluster, scheduler_commands_factory, request)
 
 
 def _test_disable_hyperthreading_settings(
