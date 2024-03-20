@@ -125,6 +125,10 @@ AMI selection parameters:
 
 Benchmarks:
   --benchmarks          Run benchmarks tests. Benchmarks tests will be run together with functionality tests. (default: False)
+  
+Scaling test options:
+    --scaling-test-config SCALING_TEST_CONFIG
+                        Path to the config file containing scaling stress test parameters  (default: None)
 
 CloudFormation / Custom Resource options:
   --cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN
