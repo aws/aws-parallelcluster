@@ -15,13 +15,36 @@ import pathlib
 import time
 
 import boto3
+import yaml
 from framework.metrics_publisher import Metric, MetricsPublisher
+from pykwalify.core import Core
 from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import get_compute_nodes_instance_count
 
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
+
+
+def validate_and_get_scaling_test_config(scaling_test_config_file):
+    """Get and validate the scaling test parameters"""
+    scaling_test_schema = str(SCALING_COMMON_DATADIR / "scaling_test_config_schema.yaml")
+    logging.info("Parsing scaling test config file: %s", scaling_test_config_file)
+    with open(scaling_test_config_file) as file:
+        scaling_test_config = yaml.safe_load(file)
+        logging.info(scaling_test_config)
+
+        # Validate scaling test config file against defined schema
+        logging.info("Validating config file against the schema")
+        try:
+            c = Core(source_data=scaling_test_config, schema_files=[scaling_test_schema])
+            c.validate(raise_exception=True)
+        except Exception as e:
+            logging.error("Failed when validating schema: %s", e)
+            logging.info("Dumping rendered template:\n%s", yaml.dump(scaling_test_config, default_flow_style=False))
+            raise
+
+    return scaling_test_config
 
 
 def retry_if_scaling_target_not_reached(
