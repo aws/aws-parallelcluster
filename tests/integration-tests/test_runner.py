@@ -76,6 +76,7 @@ TEST_DEFAULTS = {
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
+    "scaling_test_config": None,
     "stackname_suffix": "",
     "delete_logs_on_success": False,
     "tests_root_dir": "./tests",
@@ -311,13 +312,19 @@ def _init_argparser():
         type=int,
     )
 
+    scaling_group = parser.add_argument_group("Scaling stress test options")
+    scaling_group.add_argument(
+        "--scaling-test-config",
+        help="config file with scaling test parameters",
+        default=TEST_DEFAULTS.get("scaling_test_config"),
+    )
+
     custom_resource_group = parser.add_argument_group("CloudFormation / Custom Resource options")
     custom_resource_group.add_argument(
         "--cluster-custom-resource-service-token",
         help="ServiceToken (ARN) Cluster CloudFormation custom resource provider",
         default=TEST_DEFAULTS.get("cluster_custom_resource_service_token"),
     )
-
     custom_resource_group.add_argument(
         "--resource-bucket",
         help="Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates.",
@@ -551,6 +558,9 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
         pytest_args.append("--self-contained-html")
         pytest_args.append("--capture=tee-sys")
+
+    if args.scaling_test_config:
+        pytest_args.extend(["--scaling-test-config", args.scaling_test_config])
 
     _set_custom_packages_args(args, pytest_args)
     _set_ami_args(args, pytest_args)
