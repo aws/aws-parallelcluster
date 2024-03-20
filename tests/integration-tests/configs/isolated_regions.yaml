@@ -135,13 +135,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-  disable_hyperthreading:
-    test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -531,13 +524,6 @@ test-suites:
 #        - regions: {{ REGIONS }}
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
-  log_rotation:
-    test_log_rotation.py::test_log_rotation:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:

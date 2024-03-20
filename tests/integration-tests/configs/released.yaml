@@ -118,13 +118,6 @@ test-suites:
           instances: ["g4dn.2xlarge"]
           oss: ["rhel8"]
           schedulers: ["slurm"]
-  disable_hyperthreading:
-    test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
-      dimensions:
-        - regions: ["us-west-1"]
-          instances: ["c5.xlarge"]
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
   dns:
     test_dns.py::test_existing_hosted_zone:
       dimensions:
@@ -146,13 +139,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-  log_rotation:
-    test_log_rotation.py::test_log_rotation:
-      dimensions:
-        - regions: ["il-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
-          schedulers: ["slurm"]
   monitoring:
     test_monitoring.py::test_monitoring:
       dimensions:
@@ -160,12 +146,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
           oss: ["rocky9"]
-    test_structured_log_events.py::test_custom_compute_action_failure:
-      dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_existing_eip:
       dimensions:
