@@ -19,7 +19,7 @@ import time
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from botocore.exceptions import ClientError
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
@@ -94,7 +94,7 @@ def test_invalid_config(
     assert_that(suppressed.message).contains("Request would have succeeded")
 
 
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_build_image(
     region,
     os,
@@ -104,10 +104,14 @@ def test_build_image(
     build_image_custom_resource,
     images_factory,
     request,
+    clusters_factory,
+    scheduler_commands_factory,
 ):
     """
     Test build image for given region and os.
 
+    In the cluster config there is DisableValidateAndTest:False to enable kitchen tests in the validate phase.
+    The created AMI is also used for a cluster.
     Also check that the build instance has the desired ImdsSupport setting (v2.0, so IMDSv2 is required).
     """
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
@@ -141,14 +145,37 @@ def test_build_image(
         image.image_id, region, lamda_vpc_config["SecurityGroupIds"], lamda_vpc_config["SubnetIds"]
     )
 
-    _test_build_image_success(image)
-    _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
-    _test_build_imds_settings(image, "required", region)
-    _test_image_tag_and_volume(image)
-    _test_list_image_log_streams(image)
-    _test_get_image_log_events(image)
-    _test_list_images(image)
-    _test_export_logs(s3_bucket_factory, image, region)
+    with soft_assertions():
+        _test_build_image_success(image)
+        _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
+        _test_build_imds_settings(image, "required", region)
+        _test_image_tag_and_volume(image)
+        _test_list_image_log_streams(image)
+        _test_get_image_log_events(image)
+        _test_list_images(image)
+        _test_export_logs(s3_bucket_factory, image, region)
+
+    _test_cluster_creation(
+        image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
+    )
+
+
+def _test_cluster_creation(image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory):
+    """Create cluster with given image id and verify it's possible to run jobs on it."""
+    cluster_config = pcluster_config_reader(custom_ami=image_id)
+    cluster = clusters_factory(cluster_config, raise_on_error=True)
+
+    assert_head_node_is_running(region, cluster)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    node_number = 2
+
+    result = scheduler_commands.submit_command(command="uptime", nodes=node_number)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id, children_number=node_number)
+
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
 
 
 @retry(
@@ -170,7 +197,7 @@ def _wait_for_creation_of_delete_stack_function(stack_name, cfn_client):
     )
 
 
-@pytest.mark.usefixtures("instance")
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_kernel4_build_image_run_cluster(
     region,
     os,
@@ -180,7 +207,6 @@ def test_kernel4_build_image_run_cluster(
     request,
     scheduler_commands_factory,
     clusters_factory,
-    scheduler,
 ):
     """
     Test build image for given region and os and run a job in a new cluster created from the new images.
@@ -196,11 +222,7 @@ def test_kernel4_build_image_run_cluster(
     # Get base AMI from kernel4
     base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
 
-    image_config = pcluster_config_reader(
-        config_file="image.config.yaml",
-        parent_image=base_ami,
-        region=region,
-    )
+    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami, region=region)
 
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
     image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
@@ -208,22 +230,9 @@ def test_kernel4_build_image_run_cluster(
     _test_build_imds_settings(image, "required", region)
     _test_list_images(image)
 
-    cluster_config = pcluster_config_reader(custom_ami=image.ec2_image_id)
-    cluster = clusters_factory(cluster_config, raise_on_error=True)
-
-    assert_head_node_is_running(region, cluster)
-
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
-
-    node_number = 2
-    result = scheduler_commands.submit_command(command="uptime", nodes=node_number)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-
-    scheduler_commands.assert_job_succeeded(job_id, children_number=node_number)
-    if scheduler == "slurm":
-        assert_no_msg_in_logs(remote_command_executor, ["/var/log/slurmctld.log"], ["launch failure"])
+    _test_cluster_creation(
+        image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
+    )
 
 
 def _test_list_images(image):
@@ -358,9 +367,11 @@ def _test_image_tag_and_volume(image):
     )
     logging.info(image_list)
     assert_that(len(image_list)).is_equal_to(1)
-    volume_size = image_list[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
+
+    created_image = image_list[0]
+    volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
     assert_that(volume_size).is_equal_to(200)
-    assert_that(image.image_tags).contains({"key": "dummyImageTag", "value": "dummyImageTag"})
+    assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
 
 
 @pytest.fixture()
