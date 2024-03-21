@@ -28,7 +28,8 @@ def _test_mpi(
     scaledown_idletime=None,
     verify_scaling=False,
     partition=None,
-):
+    verify_pmix=None,
+    num_computes=None):
     logging.info("Testing mpi job")
     mpi_module = "openmpi"
     # Compile mpi script
@@ -57,26 +58,33 @@ def _test_mpi(
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)
 
-    mpi_out = remote_command_executor.run_remote_command("cat /shared/mpi.out").stdout
-    # mpi_out expected output
-    # Hello world from processor ip-192-168-53-169, rank 0 out of 2 processors
-    # Process 0 received token -1 from process 1
-    # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
-    # Process 1 received token -1 from process 0
-    assert_that(mpi_out.splitlines()).is_length(4)
-    # Slurm HIT DNS name is the same as nodename and starts with partition
-    # Example: efa-enabled-st-c5n18xlarge-2
-    if partition:
-        nodename_prefix = partition
-    elif scheduler == "slurm":
-        nodename_prefix = ""
+    if verify_pmix:
+        mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
+        assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
+
+        interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
+        remote_command_executor.run_remote_command(interactive_command)
     else:
-        nodename_prefix = "ip-"
-    assert_that(mpi_out).matches(
-        r"Hello world from processor {0}.+, rank 0 out of 2 processors".format(nodename_prefix)
-    )
-    assert_that(mpi_out).matches(
-        r"Hello world from processor {0}.+, rank 1 out of 2 processors".format(nodename_prefix)
-    )
-    assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
-    assert_that(mpi_out).contains("Process 1 received token -1 from process 0")
+        mpi_out = remote_command_executor.run_remote_command("cat /shared/mpi.out").stdout
+        # mpi_out expected output
+        # Hello world from processor ip-192-168-53-169, rank 0 out of 2 processors
+        # Process 0 received token -1 from process 1
+        # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
+        # Process 1 received token -1 from process 0
+        assert_that(mpi_out.splitlines()).is_length(4)
+        # Slurm HIT DNS name is the same as nodename and starts with partition
+        # Example: efa-enabled-st-c5n18xlarge-2
+        if partition:
+            nodename_prefix = partition
+        elif scheduler == "slurm":
+            nodename_prefix = ""
+        else:
+            nodename_prefix = "ip-"
+        assert_that(mpi_out).matches(
+            r"Hello world from processor {0}.+, rank 0 out of 2 processors".format(nodename_prefix)
+        )
+        assert_that(mpi_out).matches(
+            r"Hello world from processor {0}.+, rank 1 out of 2 processors".format(nodename_prefix)
+        )
+        assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
+        assert_that(mpi_out).contains("Process 1 received token -1 from process 0")

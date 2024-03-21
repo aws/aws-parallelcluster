@@ -173,10 +173,23 @@ def test_slurm_accounting(
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
-    cluster_config = pcluster_config_reader(
-        public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id, **config_params
-    )
+
+    # First create a cluster without Slurm Accounting disabled
+    cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
     cluster = clusters_factory(cluster_config)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    _test_that_slurmdbd_is_not_running(remote_command_executor)
+
+    # Then update the cluster to enable Slurm Accounting
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        **config_params,
+    )
+    cluster.update(str(updated_config_file), force_update="true")
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -193,7 +206,7 @@ def test_slurm_accounting(
     # Re-use the same update to test the modification of DatabaseName.
     custom_database_name = "test_custom_dbname"
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml",
+        config_file="pcluster.config.update2.yaml",
         public_subnet_id=public_subnet_id,
         private_subnet_id=private_subnet_id,
         custom_database_name=custom_database_name,
@@ -227,7 +240,7 @@ def test_slurm_accounting_disabled_to_enabled_update(
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
 
-    # First create a cluster without Slurm Accounting enabled
+    # First create a cluster without Slurm Accounting disabled
     cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
     cluster = clusters_factory(cluster_config)
 

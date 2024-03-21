@@ -20,7 +20,6 @@ Scheduling:
       Uri: {{ database_host }}
       UserName: {{ database_admin_user }}
       PasswordSecretArn: {{ database_secret_arn }}
-      DatabaseName: {{ custom_database_name }}
   SlurmQueues:
     - Name: compute
       ComputeResources:
@@ -28,7 +27,7 @@ Scheduling:
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 0
-          MaxCount: 12
+          MaxCount: 10
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
