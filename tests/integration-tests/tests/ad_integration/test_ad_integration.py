@@ -210,7 +210,7 @@ def _create_directory_stack(
             region=region,
             template=directory_stack_template.read(),
             parameters=params,
-            capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+            capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
         )
     cfn_stacks_factory.create_stack(directory_stack)
     logging.info("Creation of stack %s complete", directory_stack_name)
@@ -338,6 +338,7 @@ def _delete_certificate(certificate_arn, region):
 def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
+    created_certificates = defaultdict(dict)
 
     def _directory_factory(
         existing_directory_stack_name,

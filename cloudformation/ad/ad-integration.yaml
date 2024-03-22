@@ -591,16 +591,9 @@ Resources:
   PasswordSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Description: ReadOnly password for AD
+      Description: Password for Microsoft AD
       Name: !Sub [ "PasswordSecret-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
       SecretString: !Ref ReadOnlyPassword
-
-  UserPasswordSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: User password for AD
-      Name: !Sub [ "UserPasswordSecret-${StackIdSuffix}", { StackIdSuffix: !Select [ 1, !Split [ '/', !Ref 'AWS::StackId' ] ] } ]
-      SecretString: !Ref UserPassword
 
   DomainCertificateSecret:
     Type: AWS::SecretsManager::Secret
@@ -920,8 +913,6 @@ Outputs:
     Value: !Ref DomainName
   PasswordSecretArn:
     Value: !Ref PasswordSecret
-  UserPasswordSecretArn:
-    Value: !Ref UserPasswordSecret
   DomainCertificateArn:
     Value: !GetAtt DomainCertificateSetup.DomainCertificateArn
   DomainCertificateSecretArn:
