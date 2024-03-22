@@ -51,10 +51,10 @@ SharedStorage:
       VolumeId: {{ fsx_ontap_volume_id }}
   {% endif %}
 DirectoryService:
-  DomainName: {{ domain_name }}
+  DomainName: {{ ldap_search_base }}
   DomainAddr: {{ ldap_uri }}
   PasswordSecretArn: {{ password_secret_arn }}
-  DomainReadOnlyUser: {{ domain_read_only_user }}
+  DomainReadOnlyUser: {{ ldap_default_bind_dn }}
   LdapTlsCaCert: {{ ldap_tls_ca_cert }}
   LdapTlsReqCert: {{ ldap_tls_req_cert }}
   GenerateSshKeysForUsers: true

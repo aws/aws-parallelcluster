@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
+import datetime
 import io
 import logging
 import os as os_lib
@@ -23,14 +24,22 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
+from OpenSSL import crypto
+from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, is_fsx_supported, random_alphanumeric
+from utils import (
+    generate_stack_name,
+    is_directory_supported,
+    is_fsx_supported,
+    random_alphanumeric,
+    render_jinja_template,
+)
 
 from tests.ad_integration.cluster_user import ClusterUser
-from tests.common.utils import run_system_analyzer
+from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, run_system_analyzer
 from tests.storage.test_fsx_lustre import create_fsx_ontap, create_fsx_open_zfs
 
 NUM_USERS_TO_CREATE = 5
@@ -43,19 +52,6 @@ def get_infra_stack_outputs(stack_name):
         entry.get("OutputKey"): entry.get("OutputValue")
         for entry in cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["Outputs"]
     }
-
-
-def get_user_password(secret_arn):
-    client = boto3.client("secretsmanager")
-    return client.get_secret_value(SecretId=secret_arn)["SecretString"]
-
-
-def get_vpc_public_subnet(vpc_id):
-    ec2 = boto3.client("ec2")
-    for entry in ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]:
-        if entry.get("MapPublicIpOnLaunch"):
-            return {"public_subnet_id": entry.get("SubnetId")}
-    return None
 
 
 def get_infra_stack_parameters(stack_name):
@@ -72,37 +68,47 @@ def _get_ldap_base_search(domain_name):
 
 def get_ad_config_param_vals(
     directory_stack_outputs,
+    nlb_stack_parameters,
+    password_secret_arn,
     ldap_tls_ca_cert,
     directory_type,
     directory_protocol,
     directory_certificate_verification,
 ):
     """Return a dict used to set values for config file parameters."""
-    if directory_type not in ("MicrosoftAD", "SimpleAD"):
+    ldap_search_base = _get_ldap_base_search(directory_stack_outputs.get("DomainName"))
+    domain_short_name = directory_stack_outputs.get("DomainShortName")
+    read_only_username = directory_stack_outputs.get("ReadOnlyUserName")
+
+    if directory_type == "SimpleAD":
+        ldap_default_bind_dn = f"CN={read_only_username},CN=Users,{ldap_search_base}"
+    elif directory_type == "MicrosoftAD":
+        ldap_default_bind_dn = f"CN={read_only_username},OU=Users,OU={domain_short_name},{ldap_search_base}"
+    else:
         raise Exception(f"Unknown directory type: {directory_type}")
 
     if directory_protocol == "ldaps":
-        ldap_uri = directory_stack_outputs.get("DomainAddrLdaps")
+        ldap_uri = nlb_stack_parameters.get("DomainName")
     elif directory_protocol == "ldap":
-        ldap_uri = directory_stack_outputs.get("DomainAddrLdap")
+        directory_dns_ips = directory_stack_outputs.get("DirectoryDnsIpAddresses")
+        ldap_uri = ",".join(f"ldap://{ip}" for ip in directory_dns_ips.split(","))
     else:
         raise Exception(f"Unknown directory protocol: {directory_protocol}")
     return {
         "ldap_uri": ldap_uri,
-        "domain_name": directory_stack_outputs.get("DomainName"),
-        "domain_read_only_user": directory_stack_outputs.get("DomainReadOnlyUser"),
-        "password_secret_arn": directory_stack_outputs.get("PasswordSecretArn"),
+        "ldap_search_base": ldap_search_base,
+        "ldap_default_bind_dn": ldap_default_bind_dn,
+        "password_secret_arn": password_secret_arn,
         "ldap_tls_ca_cert": ldap_tls_ca_cert,
         "directory_protocol": directory_protocol,
         "ldap_tls_req_cert": "never" if directory_certificate_verification is False else "hard",
-        "private_subnet_id": directory_stack_outputs.get("PrivateSubnetIds").split(",")[0],
     }
 
 
-def get_fsx_config_param_vals(fsx_factory, svm_factory, vpc=None, subnet=None):
-    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1, vpc=vpc, subnet=subnet)[0]
+def get_fsx_config_param_vals(fsx_factory, svm_factory):
+    fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
     fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id)[0]
-    fsx_open_zfs_volume_id = create_fsx_open_zfs(fsx_factory, num=1, vpc=vpc, subnet=subnet)[0]
+    fsx_open_zfs_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
     return {"fsx_ontap_volume_id": fsx_ontap_volume_id, "fsx_open_zfs_volume_id": fsx_open_zfs_volume_id}
 
 
@@ -118,24 +124,6 @@ def _add_file_to_zip(zip_file, path, arcname):
         zinfo = zipfile.ZipInfo(filename=arcname)
         zinfo.external_attr = 0o644 << 16
         zip_file.writestr(zinfo, input_file.read())
-
-
-def add_tag_to_stack(stack_name, key, value):
-    cfn = boto3.resource("cloudformation")
-    stack = cfn.Stack(stack_name)
-    add_tag = True
-    for tag in stack.tags:
-        if tag.get("Key") == "DO-NOT-DELETE":
-            add_tag = False
-            break
-    if add_tag:
-        stack.update(
-            UsePreviousTemplate=True,
-            Capabilities=["CAPABILITY_IAM"],
-            Tags=[
-                {"Key": key, "Value": value},
-            ],
-        )
 
 
 def zip_dir(path):
@@ -159,47 +147,9 @@ def zip_dir(path):
     return file_out
 
 
-def _get_stack_parameters(directory_type, vpc_stack, keypair):
-    private_subnet = vpc_stack.get_private_subnet()
-    private_subnets = vpc_stack.get_all_private_subnets().copy()
-    private_subnets.remove(private_subnet)
-
-    users = ""
-    for i in range(NUM_USERS_TO_CREATE):
-        users += f"PclusterUser{i},"
-
-    stack_parameters = [
-        {
-            "ParameterKey": "DomainName",
-            "ParameterValue": f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster",
-        },
-        {
-            "ParameterKey": "AdminPassword",
-            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
-        },
-        {
-            "ParameterKey": "ReadOnlyPassword",
-            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
-        },
-        {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
-        {
-            "ParameterKey": "UserPassword",
-            "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
-        },
-        {"ParameterKey": "DirectoryType", "ParameterValue": directory_type},
-        {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
-        {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
-        {"ParameterKey": "PrivateSubnetTwo", "ParameterValue": private_subnets[0]},
-        {"ParameterKey": "Keypair", "ParameterValue": keypair},
-        {
-            "ParameterKey": "AdminNodeAmiId",
-            "ParameterValue": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2",
-        },
-    ]
-    return stack_parameters
-
-
-def _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack: CfnVpcStack):
+def _create_directory_stack(
+    cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack: CfnVpcStack
+):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
     )
@@ -207,27 +157,63 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
     if directory_type not in ("MicrosoftAD", "SimpleAD"):
         raise Exception(f"Unknown directory type: {directory_type}")
 
-    directory_stack_template_path = "../../cloudformation/ad/ad-integration.yaml"
+    directory_stack_template_path = os_lib.path.join(test_resources_dir, "ad_stack.yaml")
+    account_id = (
+        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
+        .get_caller_identity()
+        .get("Account")
+    )
+    ad_admin_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
+    ad_user_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
+    ad_domain_name = f"{directory_type.lower()}.{random_alphanumeric(size=10)}.multiuser.pcluster"
+    ad_domain_short_name = "NET"
+    ad_base_search = _get_ldap_base_search(ad_domain_name)
+    if directory_type == "SimpleAD":
+        ad_users_base_search = f"CN=Users,{ad_base_search}"
+    elif directory_type == "MicrosoftAD":
+        ad_users_base_search = f"OU=Users,OU={ad_domain_short_name},{ad_base_search}"
+    else:
+        raise Exception(f"Unknown directory type: {directory_type}")
 
+    config_args = {
+        "region": region,
+        "account": account_id,
+        "admin_node_ami_id": retrieve_latest_ami(region, "alinux2"),
+        "admin_node_instance_type": "c5.large",
+        "admin_node_key_name": request.config.getoption("key_name"),
+        "ad_users_base_search": ad_users_base_search,
+        "ad_admin_password": ad_admin_password,
+        "ad_user_password": ad_user_password,
+        "ad_domain_name": ad_domain_name,
+        "ad_domain_short_name": ad_domain_short_name,
+        "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
+        "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
+        "directory_type": directory_type,
+    }
     logging.info("Creating stack %s", directory_stack_name)
+    with open(render_jinja_template(directory_stack_template_path, **config_args)) as directory_stack_template:
+        private_subnet = vpc_stack.get_private_subnet()
+        private_subnets = vpc_stack.get_all_private_subnets().copy()
+        private_subnets.remove(private_subnet)
 
-    with open(directory_stack_template_path) as directory_stack_template:
-        stack_parameters = _get_stack_parameters(directory_type, vpc_stack, request.config.getoption("key_name"))
-        tags = [{"Key": "parallelcluster:integ-tests-ad-stack", "Value": directory_type}]
-        if request.config.getoption("retain_ad_stack"):
-            tags.append({"Key": "DO-NOT-DELETE", "Value": "Retained for integration testing"})
-
+        params = [
+            {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
+            {
+                "ParameterKey": "PrivateSubnetTwo",
+                "ParameterValue": private_subnets[0],
+            },
+            {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.get_public_subnet()},
+        ]
         directory_stack = CfnStack(
             name=directory_stack_name,
             region=region,
             template=directory_stack_template.read(),
-            parameters=stack_parameters,
-            capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-            tags=tags,
+            parameters=params,
+            capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
         )
     cfn_stacks_factory.create_stack(directory_stack)
     logging.info("Creation of stack %s complete", directory_stack_name)
-
     return directory_stack
 
 
@@ -236,6 +222,108 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     assert_that(
         ssm_client.get_command_invocation(CommandId=command_id, InstanceId=instance_id)["Status"] == "Success"
     ).is_true()
+
+
+def _populate_directory_with_users(directory_stack, num_users_to_create, region):
+    logging.info("Creating %s users in directory service", str(num_users_to_create))
+    ssm_client = boto3.client("ssm", region_name=region)
+    admin_node_instance_id = directory_stack.cfn_resources["AdDomainAdminNode"]
+    directory_id = directory_stack.cfn_resources["Directory"]
+    command_id = ssm_client.send_command(
+        DocumentName="AWS-RunShellScript",
+        InstanceIds=[directory_stack.cfn_resources["AdDomainAdminNode"]],
+        MaxErrors="0",
+        TimeoutSeconds=num_users_to_create * 4 + 300,
+        Parameters={"commands": [f"bash /usr/local/bin/add_a_number_of_users.sh {directory_id} {num_users_to_create}"]},
+    )["Command"]["CommandId"]
+    _check_ssm_success(ssm_client, command_id, admin_node_instance_id)
+    logging.info("Creation of %s users in directory service completed", str(num_users_to_create))
+
+
+def _create_nlb_stack(
+    cfn_stacks_factory,
+    request,
+    directory_stack,
+    region,
+    test_resources_dir,
+    certificate_arn,
+    certificate_secret_arn,
+    domain_name,
+):
+    nlb_stack_template_path = os_lib.path.join(test_resources_dir, "NLB_SimpleAD.yaml")
+    nlb_stack_name = generate_stack_name(
+        "integ-tests-MultiUserInfraStackNLB", request.config.getoption("stackname_suffix")
+    )
+    logging.info("Creating stack %s", nlb_stack_name)
+    nlb_stack = None
+    with open(nlb_stack_template_path) as nlb_stack_template:
+        nlb_stack = CfnStack(
+            name=nlb_stack_name,
+            region=region,
+            template=nlb_stack_template.read(),
+            parameters=[
+                {
+                    "ParameterKey": "LDAPSCertificateARN",
+                    "ParameterValue": certificate_arn,
+                },
+                {
+                    "ParameterKey": "VPCId",
+                    "ParameterValue": directory_stack.cfn_outputs["VpcId"],
+                },
+                {
+                    "ParameterKey": "SubnetId1",
+                    "ParameterValue": directory_stack.cfn_outputs["PrivateSubnetIds"].split(",")[0],
+                },
+                {
+                    "ParameterKey": "SubnetId2",
+                    "ParameterValue": directory_stack.cfn_outputs["PrivateSubnetIds"].split(",")[1],
+                },
+                {
+                    "ParameterKey": "SimpleADPriIP",
+                    "ParameterValue": directory_stack.cfn_outputs["DirectoryDnsIpAddresses"].split(",")[0],
+                },
+                {
+                    "ParameterKey": "SimpleADSecIP",
+                    "ParameterValue": directory_stack.cfn_outputs["DirectoryDnsIpAddresses"].split(",")[1],
+                },
+                {
+                    "ParameterKey": "CertificateSecretArn",
+                    "ParameterValue": certificate_secret_arn,
+                },
+                {
+                    "ParameterKey": "DomainName",
+                    "ParameterValue": domain_name,
+                },
+            ],
+        )
+    cfn_stacks_factory.create_stack(nlb_stack)
+    logging.info("Creation of NLB stack %s complete", nlb_stack_name)
+    return nlb_stack
+
+
+def _generate_certificate(common_name):
+    key = crypto.PKey()
+    key.generate_key(TYPE_RSA, 2048)
+    crt = X509()
+    crt.get_subject().commonName = common_name
+    crt.get_issuer().commonName = common_name
+    now = datetime.datetime.now()
+    days = datetime.timedelta(days=90)
+    asn1_time_format = "%Y%m%d000000Z"
+    crt.set_notBefore((now - days).strftime(asn1_time_format).encode())
+    crt.set_notAfter((now + days).strftime(asn1_time_format).encode())
+    crt.set_serial_number(random.randrange(1, 99999))
+    crt.set_pubkey(key)
+    crt.sign(key, "sha256")
+    certificate = dump_certificate(FILETYPE_PEM, crt)
+    private_key = dump_privatekey(FILETYPE_PEM, key)
+    iam = boto3.client("iam")
+    certificate_arn = iam.upload_server_certificate(
+        ServerCertificateName=common_name,
+        CertificateBody=certificate.decode("utf-8"),
+        PrivateKey=private_key.decode("utf-8"),
+    )["ServerCertificateMetadata"]["Arn"]
+    return certificate_arn, certificate
 
 
 @retry(stop_max_attempt_number=10, wait_exponential_multiplier=2000, wait_exponential_max=30000)
@@ -253,39 +341,62 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
 
     def _directory_factory(
         existing_directory_stack_name,
+        existing_nlb_stack_name,
         directory_type,
         region,
     ):
         if existing_directory_stack_name:
             directory_stack_name = existing_directory_stack_name
+            directory_stack = CfnStack(name=directory_stack_name, region=region, template=None)
             logging.info("Using pre-existing directory stack named %s", directory_stack_name)
         elif created_directory_stacks.get(region, {}).get("directory"):
             directory_stack_name = created_directory_stacks.get(region, {}).get("directory")
+            directory_stack = CfnStack(name=directory_stack_name, region=region, template=None)
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
-            stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
-            directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
-
-            if not directory_stack_name:
-                directory_stack = _create_directory_stack(
-                    cfn_stacks_factory,
-                    request,
-                    directory_type,
-                    region,
-                    vpc_stack,
-                )
-                directory_stack_name = directory_stack.name
-                created_directory_stacks[region]["directory"] = directory_stack_name
-                if request.config.getoption("retain_ad_stack"):
-                    add_tag_to_stack(vpc_stack.name, "DO-NOT-DELETE", "Retained for integration testing")
-        return directory_stack_name
+            directory_stack = _create_directory_stack(
+                cfn_stacks_factory,
+                request,
+                directory_type,
+                test_resources_dir,
+                region,
+                vpc_stack,
+            )
+            directory_stack_name = directory_stack.name
+            created_directory_stacks[region]["directory"] = directory_stack_name
+            _populate_directory_with_users(directory_stack, NUM_USERS_TO_CREATE, region)
+        # Create NLB that will be used to enable LDAPS
+        if existing_nlb_stack_name:
+            nlb_stack_name = existing_nlb_stack_name
+            logging.info("Using pre-existing NLB stack named %s", nlb_stack_name)
+        elif created_directory_stacks.get(region, {}).get("nlb"):
+            nlb_stack_name = created_directory_stacks.get(region, {}).get("nlb")
+            logging.info("Using NLB stack named %s created by another test", nlb_stack_name)
+        else:
+            directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
+            common_name = directory_stack_outputs.get("DomainName")
+            certificate_arn, certificate = _generate_certificate(common_name)
+            certificate_secret_arn = store_secret_in_secret_manager(region, secret_binary=certificate)
+            created_certificates[region] = certificate_arn
+            nlb_stack_name = _create_nlb_stack(
+                cfn_stacks_factory,
+                request,
+                directory_stack,
+                region,
+                test_resources_dir,
+                certificate_arn,
+                certificate_secret_arn,
+                common_name,
+            ).name
+            created_directory_stacks[region]["nlb"] = nlb_stack_name
+        return directory_stack_name, nlb_stack_name
 
     yield _directory_factory
 
     for region, stack_dict in created_directory_stacks.items():
         for stack_type in stack_dict:
             stack_name = stack_dict[stack_type]
-            if request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack"):
+            if request.config.getoption("no_delete"):
                 logging.info(
                     "Not deleting %s stack named %s in region %s because --no-delete option was specified",
                     stack_type,
@@ -295,6 +406,22 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
             else:
                 logging.info("Deleting %s stack named %s in region %s", stack_type, stack_name, region)
                 cfn_stacks_factory.delete_stack(stack_name, region)
+
+    for region, certificate_arn in created_certificates.items():
+        if request.config.getoption("no_delete"):
+            logging.info(
+                "Not deleting IAM certificate %s in region %s because --no-delete option was specified",
+                certificate_arn,
+                region,
+            )
+        else:
+            logging.info(
+                "Sleeping 180 seconds to wait for the IAM certificate %s in region %s to become unused",
+                certificate_arn,
+                region,
+            )
+            time.sleep(180)
+            _delete_certificate(certificate_arn=certificate_arn, region=region)
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
@@ -545,38 +672,39 @@ def test_ad_integration(
     config_params = {
         "fsx_supported": fsx_supported,
     }
-    directory_stack_name = directory_factory(
+    directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
+        request.config.getoption("ldaps_nlb_stack_name"),
         directory_type,
+        str(test_datadir),
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
-    ad_user_password = get_user_password(directory_stack_outputs.get("UserPasswordSecretArn"))
-
+    ad_user_password = directory_stack_outputs.get("UserPassword")
+    password_secret_arn = store_secret_in_secret_manager(
+        region, secret_string=directory_stack_outputs.get("AdminPassword")
+    )
+    nlb_stack_parameters = get_infra_stack_parameters(nlb_stack_name)
     ldap_tls_ca_cert = "/opt/parallelcluster/shared/directory_service/certificate.crt"
     config_params.update(
         get_ad_config_param_vals(
             directory_stack_outputs,
+            nlb_stack_parameters,
+            password_secret_arn,
             ldap_tls_ca_cert,
             directory_type,
             directory_protocol,
             directory_certificate_verification,
         )
     )
-
-    vpc = directory_stack_outputs.get("VpcId")
-    config_params.update(get_vpc_public_subnet(vpc))
-    config_params.update(
-        get_fsx_config_param_vals(
-            fsx_factory, svm_factory, vpc=vpc, subnet=get_vpc_public_subnet(vpc).get("public_subnet_id")
-        )
-    )
+    if fsx_supported:
+        config_params.update(get_fsx_config_param_vals(fsx_factory, svm_factory))
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 
-    certificate_secret_arn = directory_stack_outputs.get("DomainCertificateSecretArn")
-    certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
-    with open(test_datadir / "certificate.crt", "w") as f:
+    certificate_secret_arn = nlb_stack_parameters.get("CertificateSecretArn")
+    certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretBinary"]
+    with open(test_datadir / "certificate.crt", "wb") as f:
         f.write(certificate)
 
     # Publish compute node count metric every minute via cron job
@@ -692,28 +820,35 @@ def test_ad_integration_on_login_nodes(
     2. SSH key for AD users is created when the property GenerateSshKeysForUsers is true;
     3. AD users can submit workloads;
     """
-    directory_stack_name = directory_factory(
+    directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
+        request.config.getoption("ldaps_nlb_stack_name"),
         directory_type,
+        str(test_datadir),
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
-    ad_user_password = get_user_password(directory_stack_outputs.get("PasswordSecretArn"))
+    ad_user_password = directory_stack_outputs.get("UserPassword")
+    password_secret_arn = store_secret_in_secret_manager(
+        region, secret_string=directory_stack_outputs.get("AdminPassword")
+    )
+    nlb_stack_parameters = get_infra_stack_parameters(nlb_stack_name)
     ldap_tls_ca_cert = "/opt/parallelcluster/shared_login_nodes/directory_service/certificate.crt"
     config_params = get_ad_config_param_vals(
         directory_stack_outputs,
+        nlb_stack_parameters,
+        password_secret_arn,
         ldap_tls_ca_cert,
         directory_type,
         directory_protocol,
         directory_certificate_verification,
     )
-    config_params.update(get_vpc_public_subnet(directory_stack_outputs.get("VpcId")))
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 
-    certificate_secret_arn = directory_stack_outputs.get("DomainCertificateSecretArn")
-    certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
-    with open(test_datadir / "certificate.crt", "w") as f:
+    certificate_secret_arn = nlb_stack_parameters.get("CertificateSecretArn")
+    certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretBinary"]
+    with open(test_datadir / "certificate.crt", "wb") as f:
         f.write(certificate)
 
     # Publish compute node count metric every minute via cron job
