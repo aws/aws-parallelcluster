@@ -343,6 +343,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack, store_secret_in_se
         existing_directory_stack_name,
         existing_nlb_stack_name,
         directory_type,
+        test_resources_dir,
         region,
     ):
         if existing_directory_stack_name:
