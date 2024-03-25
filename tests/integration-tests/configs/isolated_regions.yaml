@@ -104,6 +104,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_create.py::test_create_disable_sudo_access_for_default_user:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_create.py::test_create_imds_secured:
       dimensions:
         - regions: {{ REGIONS }}
