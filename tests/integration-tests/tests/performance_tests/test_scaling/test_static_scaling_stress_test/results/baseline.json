@@ -1,0 +1,52 @@
+{
+  "c5.large": {
+    "1000": {
+      "best-effort": {
+        "scale_up_time_ec2": 360,
+        "scale_up_time_scheduler": 600,
+        "scale_down_time": 300
+      },
+      "all-or-nothing": {
+        "scale_up_time_ec2": 360,
+        "scale_up_time_scheduler": 600,
+        "scale_down_time": 300
+      }
+    },
+    "2000": {
+      "best-effort": {
+        "scale_up_time_ec2": 420,
+        "scale_up_time_scheduler": 720,
+        "scale_down_time": 360
+      },
+      "all-or-nothing": {
+        "scale_up_time_ec2": 420,
+        "scale_up_time_scheduler": 720,
+        "scale_down_time": 360
+      }
+    },
+    "3000": {
+      "best-effort": {
+        "scale_up_time_ec2": 720,
+        "scale_up_time_scheduler": 1020,
+        "scale_down_time": 480
+      },
+      "all-or-nothing": {
+        "scale_up_time_ec2": 720,
+        "scale_up_time_scheduler": 1020,
+        "scale_down_time": 480
+      }
+    },
+    "4000": {
+      "best-effort": {
+        "scale_up_time_ec2": 900,
+        "scale_up_time_scheduler": 1200,
+        "scale_down_time": 540
+      },
+      "all-or-nothing": {
+        "scale_up_time_ec2": 900,
+        "scale_up_time_scheduler": 1200,
+        "scale_down_time": 540
+      }
+    }
+  }
+}
