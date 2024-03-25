@@ -118,6 +118,12 @@ Conditions:
   CreateFsxOntap: !Equals [!Ref CreateFsxOntap, 'true']
   CreateFsxOpenZfs: !Equals [!Ref CreateFsxOpenZfs, 'true']
   CreateFileCache: !Equals [!Ref CreateFileCache, 'true']
+  UniqueSubnetThree: !Or
+    - !Equals [!Ref SubnetOne, !Ref SubnetThree]
+    - !Equals [!Ref SubnetTwo, !Ref SubnetThree]
+  CreateMountTargetSubnetThree: !And
+    - !Condition CreateEfs
+    - !Not [!Condition UniqueSubnetThree]
   NoStorage: !And
     - !Not [!Equals [!Ref CreateEbs, 'true']]
     - !Not [!Equals [!Ref CreateEfs, 'true']]
@@ -161,7 +167,7 @@ Resources:
       SubnetId: !Ref SubnetTwo
   MountTargetResourceEfs0SubnetThree:
     Type: 'AWS::EFS::MountTarget'
-    Condition: CreateEfs
+    Condition: CreateMountTargetSubnetThree
     Properties:
       FileSystemId: !Ref EfsFileSystem
       SecurityGroups:
@@ -363,7 +369,7 @@ Resources:
           ToPort: 20003
       VpcId: !Ref Vpc
     Type: 'AWS::EC2::SecurityGroup'
-    
+
   # File Cache
   FileCacheSecurityGroup:
     Type: AWS::EC2::SecurityGroup
