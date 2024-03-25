@@ -92,7 +92,6 @@ TEST_DEFAULTS = {
     "lambda_layer_source": None,
     "force_run_instances": False,
     "force_elastic_ip": False,
-    "retain_ad_stack": False,
 }
 
 
@@ -390,6 +389,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("directory_stack_name"),
     )
     debug_group.add_argument(
+        "--ldaps-nlb-stack-name",
+        help="Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD "
+        "integration feature.",
+        default=TEST_DEFAULTS.get("ldaps_nlb_stack_name"),
+    )
+    debug_group.add_argument(
         "--slurm-database-stack-name",
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
         default=TEST_DEFAULTS.get("slurm_database_stack_name"),
@@ -417,12 +422,6 @@ def _init_argparser():
         help="Force the usage of Elastic IP for Multi network interface EC2 instances",
         default=TEST_DEFAULTS.get("force_elastic_ip"),
         action="store_true",
-    )
-    debug_group.add_argument(
-        "--retain-ad-stack",
-        action="store_true",
-        help="Retain AD stack and corresponding VPC stack.",
-        default=TEST_DEFAULTS.get("retain_ad_stack"),
     )
 
     return parser
@@ -621,14 +620,14 @@ def _set_custom_stack_args(args, pytest_args):
     if args.directory_stack_name:
         pytest_args.extend(["--directory-stack-name", args.directory_stack_name])
 
+    if args.ldaps_nlb_stack_name:
+        pytest_args.extend(["--ldaps-nlb-stack-name", args.ldaps_nlb_stack_name])
+
     if args.slurm_database_stack_name:
         pytest_args.extend(["--slurm-database-stack-name", args.slurm_database_stack_name])
 
     if args.external_shared_storage_stack_name:
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
-
-    if args.retain_ad_stack:
-        pytest_args.append("--retain-ad-stack")
 
 
 def _set_validate_instance_type_args(args, pytest_args):
