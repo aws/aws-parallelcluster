@@ -1162,6 +1162,8 @@ def _test_partition_states(
     # Assert no nodes in inactive partition
     wait_for_num_nodes_in_scheduler(scheduler_commands, desired=0, filter_by_partition=inactive_partition)
     # Assert active partition is not affected
+    if "us-iso" in region:
+        time.sleep(25)
     assert_num_nodes_in_scheduler(scheduler_commands, desired=num_static_nodes, filter_by_partition=active_partition)
     # set inactive partition back to active and wait for nodes to spin up
     scheduler_commands.set_partition_state(inactive_partition, "up")
