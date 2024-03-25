@@ -11,7 +11,7 @@ from time_utils import minutes
 from utils import disable_protected_mode
 
 from tests.common.assertions import assert_no_msg_in_logs
-from tests.common.scaling_common import get_scaling_metrics, validate_and_get_scaling_test_config
+from tests.common.scaling_common import get_bootstrap_errors, get_scaling_metrics, validate_and_get_scaling_test_config
 
 
 @pytest.mark.parametrize(
@@ -78,7 +78,10 @@ def _get_scaling_time(capacity_time_series: list, timestamps: list, scaling_targ
         return scaling_target_time, int((scaling_target_time - start_time).total_seconds())
     except ValueError as e:
         logging.error("Cluster did not scale up to %d nodes", scaling_target)
-        raise Exception("Cluster could not scale up to target nodes within the max monitoring time") from e
+        raise Exception(
+            f"Cluster could not scale up to {scaling_target} nodes within the max monitoring time. "
+            "Check the test outputs for any bootstrap failures."
+        ) from e
 
 
 @pytest.mark.usefixtures("scheduler")
@@ -283,6 +286,8 @@ def _scale_up_and_down(
         publish_metrics=True,
         target_cluster_size=scaling_target,
     )
+
+    get_bootstrap_errors(remote_command_executor, cluster.name, request.config.getoption("output_dir"), region)
 
     # Extract scale up duration and timestamp from the monitoring metrics collected above
     _, scale_up_time_ec2 = _get_scaling_time(ec2_capacity_time_series_up, timestamps, scaling_target, start_time)
