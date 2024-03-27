@@ -154,3 +154,12 @@ def database(request, vpc_stack_for_database, region):
 @pytest.fixture(scope="function")
 def test_resources_dir(datadir):
     return datadir / "resources"
+
+
+@pytest.fixture(scope="class")
+def munge_key(store_secret_in_secret_manager, region):
+    key_length = random.randrange(32, 1024)
+    random_key = os.urandom(key_length)
+    encoded_munge_key = base64.b64encode(random_key).decode("utf-8")
+    munge_key_secret_arn = store_secret_in_secret_manager(region, secret_string=encoded_munge_key)
+    yield encoded_munge_key, munge_key_secret_arn
