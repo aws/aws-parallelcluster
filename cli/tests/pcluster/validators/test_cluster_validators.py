@@ -21,6 +21,7 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     CapacityReservationTarget,
     Database,
+    ExternalSlurmdbd,
     RootVolume,
     SharedEbs,
     SlurmComputeResource,
@@ -88,6 +89,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    ExternalSlurmdbdVsDatabaseIncompatibility,
     SlurmNodePrioritiesWarningValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -327,6 +329,54 @@ def test_custom_slurm_settings_include_file_only_validator(
         custom_slurm_settings,
         custom_slurm_settings_include_file,
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "database, external_slurmdbd, expected_message",
+    [
+        pytest.param(
+            None,
+            None,
+            None,
+            id="Case with no Slurm accounting",
+        ),
+        pytest.param(
+            None,
+            ExternalSlurmdbd(
+                host="test.slurmdbd.host",
+                port=6819,
+            ),
+            None,
+            id="Case with external slurmdbd",
+        ),
+        pytest.param(
+            Database(
+                uri="test.database.server",
+                user_name="databaseadmin",
+                password_secret_arn="fake-password-secret-arn",
+            ),
+            None,
+            None,
+            id="Case with normal Slurm Accounting (via Database)",
+        ),
+        pytest.param(
+            Database(
+                uri="test.database.server",
+                user_name="databaseadmin",
+                password_secret_arn="fake-password-secret-arn",
+            ),
+            ExternalSlurmdbd(
+                host="test.slurmdbd.host",
+                port=6819,
+            ),
+            "Database and ExternalSlurmdbd cannot be defined at the same time within SlurmSettings.",
+            id="Bad case with Slurm Accounting (via Database) and external slurmdbd",
+        ),
+    ],
+)
+def test_external_slurmdbd_vs_database_incompatibility_validator(database, external_slurmdbd, expected_message):
+    actual_failures = ExternalSlurmdbdVsDatabaseIncompatibility().execute(database, external_slurmdbd)
     assert_failure_messages(actual_failures, expected_message)
 
 

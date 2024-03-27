@@ -3794,6 +3794,7 @@ Scheduling:
       HostedZoneId: null
       UseEc2Hostnames: false
     EnableMemoryBasedScheduling: false
+    ExternalSlurmdbd: null
     MungeKeySecretArn: null
     QueueUpdateStrategy: TERMINATE
     ScaledownIdletime: 10

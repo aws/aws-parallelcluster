@@ -2,12 +2,12 @@ import logging
 import os
 import re
 
-import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
+from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.utils import get_aws_domain
@@ -15,21 +15,21 @@ from tests.common.utils import get_aws_domain
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
 
 
-def get_infra_stack_outputs(stack_name):
-    cfn = boto3.client("cloudformation")
-    return {
-        entry.get("OutputKey"): entry.get("OutputValue")
-        for entry in cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["Outputs"]
-    }
-
-
 def _get_slurm_database_config_parameters(database_stack_outputs):
-    return {
-        "database_host": database_stack_outputs.get("DatabaseHost"),
-        "database_admin_user": database_stack_outputs.get("DatabaseAdminUser"),
-        "database_secret_arn": database_stack_outputs.get("DatabaseSecretArn"),
-        "database_client_security_group": database_stack_outputs.get("DatabaseClientSecurityGroup"),
-    }
+    return _get_config_parameters_from_cfn_outputs(
+        database_stack_outputs,
+        ["DatabaseHost", "DatabaseAdminUser", "DatabaseSecretArn", "DatabaseClientSecurityGroup"],
+    )
+
+
+def _get_slurm_dbd_config_parameters(database_stack_outputs):
+    return _get_config_parameters_from_cfn_outputs(
+        database_stack_outputs, ["AccountingClientSg", "SshClientSg", "SlurmdbdPrivateIp", "SlurmdbdPort"]
+    )
+
+
+def _get_config_parameters_from_cfn_outputs(database_stack_outputs, keys):
+    return {to_snake_case(key): database_stack_outputs.get(key) for key in keys}
 
 
 def _get_expected_users(remote_command_executor, test_resources_dir):
@@ -155,22 +155,14 @@ def test_slurm_accounting(
     region,
     pcluster_config_reader,
     vpc_stack_for_database,
-    database_factory,
-    request,
+    database,
     test_datadir,
     test_resources_dir,
     clusters_factory,
     scheduler_commands_factory,
 ):
-    database_stack_name = database_factory(
-        request.config.getoption("slurm_database_stack_name"),
-        str(test_datadir),
-        region,
-    )
 
-    database_stack_outputs = get_infra_stack_outputs(database_stack_name)
-
-    config_params = _get_slurm_database_config_parameters(database_stack_outputs)
+    config_params = _get_slurm_database_config_parameters(database.cfn_outputs)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
     cluster_config = pcluster_config_reader(
@@ -206,10 +198,55 @@ def test_slurm_accounting(
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_slurm_accounting_external_dbd(
+    region,
+    pcluster_config_reader,
+    munge_key,
+    vpc_stack_for_database,
+    slurm_dbd,
+    test_datadir,
+    test_resources_dir,
+    clusters_factory,
+    scheduler_commands_factory,
+):
+
+    config_params = _get_slurm_dbd_config_parameters(slurm_dbd.cfn_outputs)
+    public_subnet_id = vpc_stack_for_database.get_public_subnet()
+    private_subnet_id = vpc_stack_for_database.get_private_subnet()
+    _, munge_key_secret_arn = munge_key
+    cluster_config = pcluster_config_reader(
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        munge_key_secret_arn=munge_key_secret_arn,
+        **config_params,
+    )
+    cluster = clusters_factory(cluster_config)
+
+    headnode_remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(headnode_remote_command_executor)
+    slurmdbd_node_remote_command_executor = RemoteCommandExecutor(
+        cluster, compute_node_ip=config_params["slurmdbd_private_ip"]
+    )
+
+    _test_that_slurmdbd_is_running(headnode_remote_command_executor)
+    _test_successful_startup_in_log(slurmdbd_node_remote_command_executor)
+
+    # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
+    _require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
+        headnode_remote_command_executor,
+    )
+    _test_jobs_get_recorded(scheduler_commands)
+
+
+# TODO more testings
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_slurm_accounting_disabled_to_enabled_update(
     region,
     pcluster_config_reader,
-    database_factory,
+    database,
     vpc_stack_for_database,
     request,
     test_datadir,
@@ -217,13 +254,7 @@ def test_slurm_accounting_disabled_to_enabled_update(
     clusters_factory,
     scheduler_commands_factory,
 ):
-    database_stack_name = database_factory(
-        request.config.getoption("slurm_database_stack_name"),
-        str(test_datadir),
-        region,
-    )
 
-    database_stack_outputs = get_infra_stack_outputs(database_stack_name)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
 
@@ -235,7 +266,7 @@ def test_slurm_accounting_disabled_to_enabled_update(
 
     _test_that_slurmdbd_is_not_running(remote_command_executor)
 
-    config_params = _get_slurm_database_config_parameters(database_stack_outputs)
+    config_params = _get_slurm_database_config_parameters(database.cfn_outputs)
 
     # Then update the cluster to enable Slurm Accounting
     updated_config_file = pcluster_config_reader(

@@ -83,6 +83,10 @@ Scheduling:
       Uri: test.databaseserver.com #required
       UserName: test_admin # required
       PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx  # required
+      DatabaseName: test_database_name
+    ExternalSlurmdbd:
+      Host: test.slurmdbd.host #required
+      Port: 6819
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND

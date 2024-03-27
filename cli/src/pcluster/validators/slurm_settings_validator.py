@@ -181,3 +181,19 @@ class SlurmNodePrioritiesWarningValidator(Validator):
                 f"({max_static}): {bad_dynamic_priorities}.",
                 FailureLevel.WARNING,
             )
+
+
+class ExternalSlurmdbdVsDatabaseIncompatibility(Validator):
+    """
+    External Slurmdbd vs Database Validator.
+
+    This validator checks that ExternalSlurmdbd and Database are not defined at the same time in the cluster
+    configuration within SlurmSettings.
+    """
+
+    def _validate(self, database, external_slurmdbd):
+        if (database is not None) and (external_slurmdbd is not None):
+            self._add_failure(
+                "Database and ExternalSlurmdbd cannot be defined at the same time within SlurmSettings.",
+                FailureLevel.ERROR,
+            )
