@@ -15,14 +15,6 @@ from tests.common.utils import get_aws_domain
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
 
 
-def get_infra_stack_outputs(stack_name):
-    cfn = boto3.client("cloudformation")
-    return {
-        entry.get("OutputKey"): entry.get("OutputValue")
-        for entry in cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["Outputs"]
-    }
-
-
 def _get_slurm_database_config_parameters(database_stack_outputs):
     return {
         "database_host": database_stack_outputs.get("DatabaseHost"),
@@ -155,22 +147,14 @@ def test_slurm_accounting(
     region,
     pcluster_config_reader,
     vpc_stack_for_database,
-    database_factory,
-    request,
+    database,
     test_datadir,
     test_resources_dir,
     clusters_factory,
     scheduler_commands_factory,
 ):
-    database_stack_name = database_factory(
-        request.config.getoption("slurm_database_stack_name"),
-        str(test_datadir),
-        region,
-    )
 
-    database_stack_outputs = get_infra_stack_outputs(database_stack_name)
-
-    config_params = _get_slurm_database_config_parameters(database_stack_outputs)
+    config_params = _get_slurm_database_config_parameters(database.cfn_outputs)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
 
