@@ -1,7 +1,11 @@
+import base64
+import ipaddress
 import logging
+import os
 import random
 import string
 
+import boto3
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from conftest_networking import (
@@ -13,6 +17,8 @@ from conftest_networking import (
 )
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import generate_stack_name
+
+from tests.common.utils import retrieve_latest_ami
 
 
 @pytest.fixture(scope="class")
@@ -149,6 +155,89 @@ def database(request, vpc_stack_for_database, region):
             region,
         )
         stack_factory.delete_stack(stack_name, region)
+
+
+@pytest.fixture(scope="class")
+def slurm_dbd(request, database, region, os, vpc_stack_for_database, munge_key):
+    stack_factory = CfnStacksFactory(request.config.getoption("credential"))
+
+    logging.info("Setting up database fixture")
+    existing_slurm_dbd_stack_name = request.config.getoption("slurm_dbd_stack_name")
+
+    if existing_slurm_dbd_stack_name:
+        logging.info("Using pre-existing database stack named %s", existing_slurm_dbd_stack_name)
+        slurm_dbd_stack_name = existing_slurm_dbd_stack_name
+        slurm_dbd_stack = CfnStack(name=slurm_dbd_stack_name, region=region, template=None)
+    else:
+        logging.info("Creating default database stack")
+
+        logging.info("Creating stack for database")
+        slurm_dbd_stack_name = generate_stack_name(
+            "integ-tests-slurm-dbd", request.config.getoption("stackname_suffix")
+        )
+
+        slurm_dbd_stack_template_path = "../../cloudformation/external-slurmdbd/cdk.out/ExternalSlurmdbdStack.template.json"  # TODO fix this constant value
+        logging.info("Creating stack %s", slurm_dbd_stack_name)
+        subnet_id = vpc_stack_for_database.get_public_subnet()
+        subnet = boto3.client("ec2", region_name=region).describe_subnets(SubnetIds=[subnet_id])["Subnets"][0]
+        vpc_id = subnet["VpcId"]
+        ipaddresses = ipaddress.IPv4Network(subnet["CidrBlock"])
+        ip = str(random.choice(list(ipaddresses)))
+        _, munge_key_secret_arn = munge_key
+
+        with open(slurm_dbd_stack_template_path) as slurmdbd_template:
+            custom_ami = request.config.getoption("custom_ami")
+            stack_parameters = [
+                {
+                    "ParameterKey": "AmiId",
+                    "ParameterValue": (
+                        custom_ami if custom_ami else retrieve_latest_ami(region, os, ami_type="pcluster")
+                    ),
+                },
+                {"ParameterKey": "DBMSClientSG", "ParameterValue": database.cfn_outputs["DatabaseClientSecurityGroup"]},
+                {"ParameterKey": "DBMSDatabaseName", "ParameterValue": "slurm_database"},
+                {"ParameterKey": "DBMSPasswordSecretArn", "ParameterValue": database.cfn_outputs["DatabaseSecretArn"]},
+                {"ParameterKey": "DBMSUri", "ParameterValue": database.cfn_outputs["DatabaseHost"]},
+                {"ParameterKey": "DBMSUsername", "ParameterValue": database.cfn_outputs["DatabaseAdminUser"]},
+                {"ParameterKey": "InstanceType", "ParameterValue": "c5.large"},
+                {"ParameterKey": "KeyName", "ParameterValue": request.config.getoption("key_name")},
+                {"ParameterKey": "MungeKeySecretArn", "ParameterValue": munge_key_secret_arn},
+                {"ParameterKey": "PrivateIp", "ParameterValue": ip},
+                {"ParameterKey": "PrivatePrefix", "ParameterValue": subnet["CidrBlock"].split("/")[1]},
+                {"ParameterKey": "SubnetId", "ParameterValue": subnet_id},
+                {"ParameterKey": "SlurmdbdPort", "ParameterValue": "6819"},
+                {"ParameterKey": "VPCId", "ParameterValue": vpc_id},
+            ]
+            custom_cookbook_url = request.config.getoption("custom_chef_cookbook")
+            if custom_cookbook_url:
+                stack_parameters.append({"ParameterKey": "CustomCookbookUrl", "ParameterValue": custom_cookbook_url})
+            slurm_dbd_stack = CfnStack(
+                name=slurm_dbd_stack_name,
+                region=region,
+                template=slurmdbd_template.read(),
+                parameters=stack_parameters,
+                capabilities=["CAPABILITY_AUTO_EXPAND", "CAPABILITY_NAMED_IAM"],
+            )
+        stack_factory.create_stack(slurm_dbd_stack)
+        logging.info("Creation of stack %s complete", slurm_dbd_stack_name)
+
+        logging.info("Using slurm dbd stack %s", slurm_dbd_stack_name)
+
+    yield slurm_dbd_stack
+
+    if request.config.getoption("no_delete"):
+        logging.info(
+            "Not deleting database stack %s in region %s because --no-delete option was specified",
+            slurm_dbd_stack_name,
+            region,
+        )
+    else:
+        logging.info(
+            "Deleting database stack %s in region %s",
+            slurm_dbd_stack_name,
+            region,
+        )
+        stack_factory.delete_stack(slurm_dbd_stack_name, region)
 
 
 @pytest.fixture(scope="function")
