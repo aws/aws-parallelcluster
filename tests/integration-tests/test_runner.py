@@ -86,6 +86,7 @@ TEST_DEFAULTS = {
     "directory_stack_name": None,
     "ldaps_nlb_stack_name": None,
     "slurm_database_stack_name": None,
+    "slurm_dbd_stack_name": None,
     "external_shared_storage_stack_name": None,
     "custom_security_groups_stack_name": None,
     "cluster_custom_resource_service_token": None,
@@ -402,6 +403,11 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("slurm_database_stack_name"),
     )
     debug_group.add_argument(
+        "--slurm-dbd-stack-name",
+        help="Name of CFN stack providing external Slurm dbd stack to be used for testing Slurm accounting feature.",
+        default=TEST_DEFAULTS.get("slurm_dbd_stack_name"),
+    )
+    debug_group.add_argument(
         "--external-shared-storage-stack-name",
         help="Name of existing external shared storage stack.",
         default=TEST_DEFAULTS.get("external_shared_storage_stack_name"),
@@ -612,7 +618,7 @@ def _set_ami_args(args, pytest_args):
         pytest_args.extend(["--ami-owner", args.ami_owner])
 
 
-def _set_custom_stack_args(args, pytest_args):
+def _set_custom_stack_args(args, pytest_args):  # noqa: C901
     if args.vpc_stack:
         pytest_args.extend(["--vpc-stack", args.vpc_stack])
 
@@ -633,6 +639,9 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.slurm_database_stack_name:
         pytest_args.extend(["--slurm-database-stack-name", args.slurm_database_stack_name])
+
+    if args.slurm_dbd_stack_name:
+        pytest_args.extend(["--slurm-dbd-stack-name", args.slurm_dbd_stack_name])
 
     if args.external_shared_storage_stack_name:
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
