@@ -1,7 +1,6 @@
 import logging
 import random
 import string
-from collections import defaultdict
 
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
@@ -119,46 +118,37 @@ def _create_database_stack(stack_factory, request, region, vpc_stack_for_databas
 
 
 @pytest.fixture(scope="class")
-def database_factory(request, vpc_stack_for_database):
-    created_database_stacks = defaultdict(dict)
+def database(request, vpc_stack_for_database, region):
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    logging.info("Setting up database_factory fixture")
+    logging.info("Setting up database fixture")
+    existing_database_stack_name = request.config.getoption("slurm_database_stack_name")
 
-    def _database_factory(
-        existing_database_stack_name,
-        test_resources_dir,
-        region,
-    ):
-        if existing_database_stack_name:
-            logging.info("Using pre-existing database stack named %s", existing_database_stack_name)
-            return existing_database_stack_name
+    if existing_database_stack_name:
+        logging.info("Using pre-existing database stack named %s", existing_database_stack_name)
+        database_stack = CfnStack(name=existing_database_stack_name, region=region, template=None)
+    else:
+        logging.info("Creating default database stack")
+        database_stack = _create_database_stack(stack_factory, request, region, vpc_stack_for_database)
 
-        if not created_database_stacks.get(region, {}).get("default"):
-            logging.info("Creating default database stack")
-            database_stack = _create_database_stack(stack_factory, request, region, vpc_stack_for_database)
-            created_database_stacks[region]["default"] = database_stack.name
+        logging.info("Using database stack %s", database_stack.name)
 
-        logging.info("Using database stack %s", created_database_stacks.get(region, {}).get("default"))
-        return created_database_stacks.get(region, {}).get("default")
+    yield database_stack
 
-    yield _database_factory
-
-    for region, stack_dict in created_database_stacks.items():
-        stack_name = stack_dict["default"]
-        if request.config.getoption("no_delete"):
-            logging.info(
-                "Not deleting database stack %s in region %s because --no-delete option was specified",
-                stack_name,
-                region,
-            )
-        else:
-            logging.info(
-                "Deleting database stack %s in region %s",
-                stack_name,
-                region,
-            )
-            stack_factory.delete_stack(stack_name, region)
+    stack_name = database_stack.name
+    if request.config.getoption("no_delete"):
+        logging.info(
+            "Not deleting database stack %s in region %s because --no-delete option was specified",
+            stack_name,
+            region,
+        )
+    else:
+        logging.info(
+            "Deleting database stack %s in region %s",
+            stack_name,
+            region,
+        )
+        stack_factory.delete_stack(stack_name, region)
 
 
 @pytest.fixture(scope="function")
