@@ -9,9 +9,6 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import base64
-import os
-import random
 
 import boto3
 import pytest
@@ -25,6 +22,7 @@ from utils import wait_for_computefleet_changed
 @pytest.mark.usefixtures("instance", "os")
 def test_custom_munge_key(
     region,
+    munge_key,
     pcluster_config_reader,
     clusters_factory,
     scheduler_commands_factory,
@@ -49,11 +47,7 @@ def test_custom_munge_key(
     7. Roll back with failure: Update cluster to add back the custom munge key. But let the cluster update fail after
        the custom munge key has been added. Trigger cluster roll back. Test if munge key is fully functional.
     """
-    encoded_custom_munge_key = create_base64_encoded_key()
-    custom_munge_key_arn = store_secret_in_secret_manager(
-        region,
-        secret_string=encoded_custom_munge_key,
-    )
+    encoded_custom_munge_key, custom_munge_key_arn = munge_key
     cluster_config = pcluster_config_reader(custom_munge_key_arn=custom_munge_key_arn)
     cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
 
@@ -126,14 +120,6 @@ def test_custom_munge_key(
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
     scheduler_commands.submit_command_and_assert_job_succeeded(job_command_args)
-
-
-def create_base64_encoded_key():
-    key_length = random.randrange(32, 1024)
-    random_key = os.urandom(key_length)
-    base64_encoded_key = base64.b64encode(random_key).decode("utf-8")
-
-    return base64_encoded_key
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))
