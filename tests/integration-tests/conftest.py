@@ -20,15 +20,13 @@ import os
 import re
 from functools import partial
 from itertools import product
-from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import boto3
 import pytest
 import yaml
-from _pytest._code import ExceptionInfo
 from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
@@ -42,6 +40,7 @@ from conftest_markers import (
 )
 from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
+from conftest_utils import add_filename_markers
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
@@ -66,7 +65,6 @@ from troposphere.fsx import (
 )
 from utils import (
     InstanceTypesData,
-    SetupError,
     create_s3_bucket,
     delete_s3_bucket,
     dict_add_nested_key,
@@ -79,7 +77,6 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
-    set_logger_formatter,
     to_pascal_case,
 )
 from xdist import get_xdist_worker_id
@@ -98,7 +95,7 @@ from tests.common.utils import (
 )
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 
-pytest_plugins = ["conftest_networking", "conftest_resource_bucket"]
+pytest_plugins = ["conftest_networking", "conftest_resource_bucket", "conftest_runtest_hooks"]
 
 
 def pytest_addoption(parser):
@@ -256,34 +253,12 @@ def pytest_sessionstart(session):
     os.environ["AWS_MAX_ATTEMPTS"] = "10"
 
 
-def pytest_runtest_logstart(nodeid: str, location: Tuple[str, Optional[int], str]):
-    """Called to execute the test item."""
-    test_name = location[2]
-    set_logger_formatter(
-        logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {test_name} - %(module)s - %(message)s")
-    )
-    logging.info("Running test %s", test_name)
-
-
-def pytest_runtest_logfinish(nodeid: str, location: Tuple[str, Optional[int], str]):
-    logging.info("Completed test %s", location[2])
-    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(process)d - %(module)s - %(message)s"))
-
-
-def pytest_runtest_setup(item):
-    logging.info("Starting setup for test %s", item.name)
-
-
-def pytest_runtest_teardown(item, nextitem):
-    logging.info("Starting teardown for test %s", item.name)
-
-
 def pytest_fixture_setup(fixturedef: FixtureDef[Any], request: SubRequest) -> Optional[object]:
     logging.info("Setting up fixture %s", fixturedef)
     return None
 
 
-def pytest_collection_modifyitems(session, config, items):
+def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config, items: List[pytest.Item]):
     """Called after collection has been performed, may filter or re-order the items in-place."""
     if config.getoption("tests_config", None):
         # Remove tests not declared in config file from the collected ones
@@ -304,7 +279,7 @@ def pytest_collection_modifyitems(session, config, items):
         check_marker_dimensions(items)
         check_marker_skip_dimensions(items)
 
-    _add_filename_markers(items, config)
+    add_filename_markers(items, config)
 
 
 def pytest_collection_finish(session):
@@ -332,7 +307,11 @@ def _log_collected_tests(session):
             out_f.write("\n")
 
 
-def pytest_exception_interact(node, call, report):
+def pytest_exception_interact(
+    node: Union[pytest.Item, pytest.Collector],
+    call: pytest.CallInfo,
+    report: Union[pytest.CollectReport, pytest.TestReport],
+):
     """Called when an exception was raised which can potentially be interactively handled.."""
     logging.error(
         "Exception raised while executing %s: %s\n%s",
@@ -340,22 +319,6 @@ def pytest_exception_interact(node, call, report):
         call.excinfo.value,
         "".join(format_tb(call.excinfo.tb)),
     )
-
-
-def _extract_tested_component_from_filename(item):
-    """Extract portion of test item's filename identifying the component it tests."""
-    test_location = os.path.splitext(os.path.basename(item.location[0]))[0]
-    return re.sub(r"test_|_test", "", test_location)
-
-
-def _add_filename_markers(items, config):
-    """Add a marker based on the name of the file where the test case is defined."""
-    for item in items:
-        marker = _extract_tested_component_from_filename(item)
-        # This dynamically registers markers in pytest so that warning for the usage of undefined markers are not
-        # displayed
-        config.addinivalue_line("markers", marker)
-        item.add_marker(marker)
 
 
 def _parametrize_from_option(metafunc, test_arg_name, option_name):
@@ -376,23 +339,6 @@ def _setup_custom_logger(log_file):
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-
-
-def _add_properties_to_report(item):
-    props = []
-
-    # Add properties for test dimensions, obtained from fixtures passed to tests
-    for dimension in DIMENSIONS_MARKER_ARGS:
-        value = item.funcargs.get(dimension)
-        if value:
-            props.append((dimension, value))
-
-    # Add property for feature tested, obtained from filename containing the test
-    props.append(("feature", _extract_tested_component_from_filename(item)))
-
-    for dimension_value_pair in props:
-        if dimension_value_pair not in item.user_properties:
-            item.user_properties.append(dimension_value_pair)
 
 
 @pytest.fixture(scope="class")
@@ -1111,29 +1057,6 @@ def s3_bucket_key_prefix():
     return random_alphanumeric()
 
 
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    """Making test result information available in fixtures"""
-    # add dimension properties to report
-    _add_properties_to_report(item)
-
-    # execute all other hooks to obtain the report object
-    outcome = yield
-    rep = outcome.get_result()
-    # set a report attribute for each phase of a call, which can
-    # be "setup", "call", "teardown"
-    setattr(item, "rep_" + rep.when, rep)
-
-    if rep.when in ["setup", "call"] and rep.failed:
-        exception_info: ExceptionInfo = call.excinfo
-        if exception_info.value and isinstance(exception_info.value, SetupError):
-            rep.when = "setup"
-        try:
-            update_failed_tests_config(item)
-        except Exception as e:
-            logging.error("Failed when generating config for failed tests: %s", e, exc_info=True)
-
-
 @pytest.fixture(scope="class")
 def serial_execution_by_instance(request, instance):
     """Enforce serial execution of tests, according to the adopted instance."""
@@ -1151,39 +1074,6 @@ def serial_execution_by_instance(request, instance):
     else:
         logging.info("Ignoring serial execution for instance %s", instance)
         yield
-
-
-def update_failed_tests_config(item):
-    out_dir = Path(item.config.getoption("output_dir"))
-    if not str(out_dir).endswith(".out"):
-        # Navigate to the parent dir in case of parallel run so that we can access the shared parent dir
-        out_dir = out_dir.parent
-
-    out_file = out_dir / "failed_tests_config.yaml"
-    logging.info("Updating failed tests config file %s", out_file)
-    # We need to acquire a lock first to prevent concurrent edits to this file
-    with FileLock(str(out_file) + ".lock"):
-        failed_tests = {"test-suites": {}}
-        if out_file.is_file():
-            with open(str(out_file), encoding="utf-8") as f:
-                failed_tests = yaml.safe_load(f)
-
-        # item.node.nodeid example:
-        # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
-        feature, test_id = item.nodeid.split("/", 1)
-        test_id = test_id.split("[", 1)[0]
-        dimensions = {}
-        for dimension in DIMENSIONS_MARKER_ARGS:
-            value = item.callspec.params.get(dimension)
-            if value:
-                dimensions[dimension + "s"] = [value]
-
-        if not dict_has_nested_key(failed_tests, ("test-suites", feature, test_id)):
-            dict_add_nested_key(failed_tests, [], ("test-suites", feature, test_id, "dimensions"))
-        if dimensions not in failed_tests["test-suites"][feature][test_id]["dimensions"]:
-            failed_tests["test-suites"][feature][test_id]["dimensions"].append(dimensions)
-            with open(out_file, "w", encoding="utf-8") as f:
-                yaml.dump(failed_tests, f)
 
 
 @pytest.fixture()
