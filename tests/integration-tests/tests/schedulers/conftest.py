@@ -176,7 +176,7 @@ def slurm_dbd(request, database, region, os, vpc_stack_for_database, munge_key):
             "integ-tests-slurm-dbd", request.config.getoption("stackname_suffix")
         )
 
-        slurm_dbd_stack_template_path = "../../cloudformation/external-slurmdbd/cdk.out/ExternalSlurmdbdStack.template.json"  # TODO fix this constant value
+        slurm_dbd_stack_template_path = "../../cloudformation/external-slurmdbd/external-slurmdbd.json"
         logging.info("Creating stack %s", slurm_dbd_stack_name)
         subnet_id = vpc_stack_for_database.get_public_subnet()
         subnet = boto3.client("ec2", region_name=region).describe_subnets(SubnetIds=[subnet_id])["Subnets"][0]

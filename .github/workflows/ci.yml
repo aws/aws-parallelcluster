@@ -191,6 +191,24 @@ jobs:
       - name: Verify Generation of API client
         run: |
           git diff --exit-code --quiet -- api/client/src/ ':!api/client/src/.openapi-generator/FILES'
+  validate-external-slurmdbd-template:
+    name: External SlurmDBD Template Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+      - name: Install AWS CDK
+        run: |
+          npm install -g aws-cdk
+          pip install -r cloudformation/external-slurmdbd/requirements.txt
+      - working-directory: cloudformation/external-slurmdbd
+        run: cdk synth --no-version-reporting
+      - name: Verify External SlurmDBD Template
+        run:
+          git diff --exit-code --quiet cloudformation/external-slurmdbd/external-slurmdbd.json cloudformation/external-slurmdbd/cdk.out/ExternalSlurmdbdStack.template.json
   api-docker-test:
     name: API Docker Tests
     runs-on: ubuntu-latest
