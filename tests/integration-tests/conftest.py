@@ -185,6 +185,10 @@ def pytest_addoption(parser):
         "--slurm-dbd-stack-name",
         help="Name of CFN stack providing external Slurm dbd stack to be used for testing Slurm accounting feature.",
     )
+    parser.addoption(
+        "--munge-key-secret-arn",
+        help="ARN of the secret containing the munge key to be used for testing Slurm accounting feature.",
+    )
     parser.addoption("--external-shared-storage-stack-name", help="Name of existing external shared storage stack.")
     parser.addoption("--custom-security-groups-stack-name", help="Name of existing custom security groups stack.")
     parser.addoption(

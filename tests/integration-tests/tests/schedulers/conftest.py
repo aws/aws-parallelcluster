@@ -246,9 +246,14 @@ def test_resources_dir(datadir):
 
 
 @pytest.fixture(scope="class")
-def munge_key(store_secret_in_secret_manager, region):
-    key_length = random.randrange(32, 1024)
-    random_key = os.urandom(key_length)
-    encoded_munge_key = base64.b64encode(random_key).decode("utf-8")
-    munge_key_secret_arn = store_secret_in_secret_manager(region, secret_string=encoded_munge_key)
-    yield encoded_munge_key, munge_key_secret_arn
+def munge_key(store_secret_in_secret_manager, region, request):
+    existing_munge_key_secret_arn = request.config.getoption("munge_key_secret_arn")
+    if existing_munge_key_secret_arn:
+        logging.info("Using pre-existing munge key secret ARN %s", existing_munge_key_secret_arn)
+        yield None, existing_munge_key_secret_arn
+    else:
+        key_length = random.randrange(32, 1024)
+        random_key = os.urandom(key_length)
+        encoded_munge_key = base64.b64encode(random_key).decode("utf-8")
+        munge_key_secret_arn = store_secret_in_secret_manager(region, secret_string=encoded_munge_key)
+        yield encoded_munge_key, munge_key_secret_arn
