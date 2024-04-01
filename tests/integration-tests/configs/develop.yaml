@@ -467,16 +467,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
-      dimensions:
-        - regions: ["ap-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
       dimensions:
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
@@ -542,12 +532,6 @@ test-suites:
         - regions: ["ap-south-1"]
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
-    test_slurm_accounting.py::test_slurm_accounting_disabled_to_enabled_update:
-      dimensions:
-        - regions: ["us-west-2"]
-          instances:  {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_custom_partitions:
       dimensions:

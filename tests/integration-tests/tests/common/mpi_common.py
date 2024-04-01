@@ -29,7 +29,8 @@ def _test_mpi(
     verify_scaling=False,
     partition=None,
     verify_pmix=None,
-    num_computes=None):
+    num_computes=None,
+):
     logging.info("Testing mpi job")
     mpi_module = "openmpi"
     # Compile mpi script

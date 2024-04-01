@@ -64,7 +64,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         scaledown_idletime,
         verify_scaling=False,
         verify_pmix=True,
-        num_computes=max_queue_size
+        num_computes=max_queue_size,
     )
 
 
