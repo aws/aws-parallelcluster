@@ -96,10 +96,10 @@ def add_filename_markers(items: List[pytest.Item], config: pytest.Config):
 def runtest_hook_start_end_time(item: pytest.Item, when: str):
     """Generator function to store start and end times for test phases."""
     logging.info(f"Starting {when} for test {item.name}")
-    item.user_properties.append((f"start_time_{when}", datetime.now(timezone.utc)))
+    item.user_properties.append((f"start_time_{when}", datetime.timestamp(datetime.now(timezone.utc))))
     # execute all other hooks to obtain the call object
     outcome: pluggy.Result = yield
-    item.user_properties.append((f"end_time_{when}", datetime.now(timezone.utc)))
+    item.user_properties.append((f"end_time_{when}", datetime.timestamp(datetime.now(timezone.utc))))
     call_list: List[pytest.CallInfo] = outcome.get_result()
     logging.info(f"{when} list {call_list}")
 
@@ -119,19 +119,14 @@ def publish_test_metrics(when: str, item: pytest.Item, rep: pytest.TestReport):
     ]
     dimensions.append({"Name": "test_name", "Value": item.location[2]})
     # Create a list of metrics
-    logging.info("create metrics")
     metrics = create_phase_metrics(when, item, rep, dimensions)
-    logging.info("publish metrics")
     pub.publish_metrics_to_cloudwatch("ParallelCluster/IntegrationTests", metrics)
 
 
 def get_user_prop(item: pytest.Item, prop: str) -> Any:
     """From a list of tuples, get the desired user property."""
-    logging.info(f"getting user prop {prop}")
     for user_prop in item.user_properties:
-        logging.info(f"checking prop {user_prop}")
         if user_prop[0] == prop:
-            logging.info(f"returning {user_prop[1]}")
             return user_prop[1]
 
 
@@ -140,13 +135,7 @@ def create_phase_metrics(when: str, item: pytest.Item, rep: pytest.TestReport, d
         Metric(f"{when}_result", int(rep.passed), "None", dimensions),
         Metric(
             f"{when}_time",
-            int(
-                microseconds(
-                    (
-                        get_user_prop(item, f"end_time_{when}") - get_user_prop(item, f"start_time_{when}")
-                    ).total_seconds()
-                )
-            ),
+            int(microseconds(get_user_prop(item, f"end_time_{when}") - get_user_prop(item, f"start_time_{when}"))),
             "Microseconds",
             dimensions,
         ),
@@ -155,13 +144,7 @@ def create_phase_metrics(when: str, item: pytest.Item, rep: pytest.TestReport, d
         metrics.append(
             Metric(
                 "total_time",
-                int(
-                    microseconds(
-                        (
-                            get_user_prop(item, "end_time_teardown") - get_user_prop(item, "start_time_setup")
-                        ).total_seconds()
-                    )
-                ),
+                int(microseconds(get_user_prop(item, "end_time_teardown") - get_user_prop(item, "start_time_setup"))),
                 "Microseconds",
                 dimensions,
             )
