@@ -52,9 +52,14 @@ class MetricsPublisher:
     def publish_metrics_to_cloudwatch(self, namespace: str, metrics: List[Metric]):
         """Pushes a list of metrics to cloudwatch using a single namespace."""
         try:
+            logging.info(
+                f"publishing metrics to cloudwatch {[metric.generate_metric_data_entry() for metric in metrics]}"
+            )
             self.client.put_metric_data(
                 Namespace=namespace,
                 MetricData=[metric.generate_metric_data_entry() for metric in metrics],
             )
         except botocore.exceptions.ParamValidationError:
             logging.error("Invalid params for metric")
+        except Exception as exc:
+            logging.error(f"A {type(exc)} occurred with {exc}")

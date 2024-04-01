@@ -11,17 +11,41 @@
 import datetime
 import json
 import logging
+import os
 import pathlib
 import time
 
 import boto3
+import yaml
 from framework.metrics_publisher import Metric, MetricsPublisher
+from pykwalify.core import Core
 from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import get_compute_nodes_instance_count
 
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
+
+
+def validate_and_get_scaling_test_config(scaling_test_config_file):
+    """Get and validate the scaling test parameters"""
+    scaling_test_schema = str(SCALING_COMMON_DATADIR / "scaling_test_config_schema.yaml")
+    logging.info("Parsing scaling test config file: %s", scaling_test_config_file)
+    with open(scaling_test_config_file) as file:
+        scaling_test_config = yaml.safe_load(file)
+        logging.info(scaling_test_config)
+
+        # Validate scaling test config file against defined schema
+        logging.info("Validating config file against the schema")
+        try:
+            c = Core(source_data=scaling_test_config, schema_files=[scaling_test_schema])
+            c.validate(raise_exception=True)
+        except Exception as e:
+            logging.error("Failed when validating schema: %s", e)
+            logging.info("Dumping rendered template:\n%s", yaml.dump(scaling_test_config, default_flow_style=False))
+            raise
+
+    return scaling_test_config
 
 
 def retry_if_scaling_target_not_reached(
@@ -39,6 +63,58 @@ def retry_if_scaling_target_not_reached(
         or (use_ec2_limit and max(ec2_capacity_time_series) == 0)
         or (use_compute_nodes_limit and max(compute_nodes_time_series) == 0)
     )
+
+
+def _check_no_node_log_exists_for_ip_address(path, ip_address):
+    for file_name in os.listdir(path):
+        if file_name.startswith(ip_address):
+            return False
+    return True
+
+
+def _sort_instances_by_launch_time(describe_instances_page_iterator):
+    instances = []
+    for page in describe_instances_page_iterator:
+        for reservation in page["Reservations"]:
+            for instance in reservation["Instances"]:
+                instances.append(instance)
+    instances.sort(key=lambda inst: inst["LaunchTime"])
+    return instances
+
+
+def get_bootstrap_errors(remote_command_executor: RemoteCommandExecutor, cluster_name, output_dir, region):
+    logging.info("Checking for bootstrap errors...")
+    remote_command_executor.run_remote_script(script_file=str(SCALING_COMMON_DATADIR / "get_bootstrap_errors.sh"))
+    ip_addresses_with_bootstrap_errors = remote_command_executor.run_remote_command(
+        command="cat $HOME/bootstrap_errors.txt"
+    ).stdout
+
+    path = os.path.join(output_dir, "bootstrap_errors")
+    os.makedirs(path, exist_ok=True)
+
+    client = boto3.client("ec2", region_name=region)
+    for ip_address in ip_addresses_with_bootstrap_errors.splitlines():
+        # Since the same cluster is re-used for multiple scale up tests, the script may find the same bootstrap error
+        # multiple times and then get the wrong instance logs since the IP address would be attached to a new instance.
+        # Therefore, only write the compute node logs for the IP address if the file doesn't exist yet.
+        if _check_no_node_log_exists_for_ip_address(path, ip_address):
+            try:
+                logging.warning(f"Compute node with IP {ip_address} had bootstrap errors. Getting instance id...")
+                # Get the latest launched instance with the IP address since the most recent one should have the error
+                paginator = client.get_paginator("describe_instances")
+                instance_id = _sort_instances_by_launch_time(
+                    paginator.paginate(Filters=[{"Name": "private-ip-address", "Values": [ip_address]}])
+                )[-1]["InstanceId"]
+                logging.warning(f"Instance {instance_id} had bootstrap errors. Check the test outputs for details.")
+                compute_node_log = client.get_console_output(InstanceId=instance_id, Latest=True)["Output"]
+                with open(os.path.join(path, f"{ip_address}-{cluster_name}-{instance_id}-{region}-log.txt"), "w") as f:
+                    f.write(compute_node_log)
+            except IndexError:
+                # If the instance with the IP address can't be found, continue to get any other bootstrap errors
+                logging.warning("Couldn't find instance with IP %s but could have a bootstrap error.", ip_address)
+            except Exception:
+                logging.error("Error when retrieving the compute node logs for instance with ip address %s", ip_address)
+                raise
 
 
 def get_scaling_metrics(

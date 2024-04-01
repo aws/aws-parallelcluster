@@ -15,6 +15,7 @@
 import boto3
 import botocore
 import json
+import urllib.parse
 
 
 def sigv4_auth(method, host, path, queries, body, headers):
@@ -22,7 +23,7 @@ def sigv4_auth(method, host, path, queries, body, headers):
     endpoint = host.replace('https://', '').replace('http://', '')
     _api_id, _service, region, _domain = endpoint.split('.', maxsplit=3)
 
-    request_parameters = '&'.join([f"{k}={v}" for k, v in queries])
+    request_parameters = urllib.parse.urlencode(queries)
     url = f"{host}{path}?{request_parameters}"
 
     session = botocore.session.Session()
