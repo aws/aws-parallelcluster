@@ -91,6 +91,8 @@ def generate_json_report(test_results_dir, save_to_file=True):
 
             if hasattr(testcase, "properties"):
                 for property in testcase.properties.children:
+                    if property["name"] not in ["region", "os", "instance", "scheduler", "feature"]:
+                        continue
                     _record_result(results, property["name"], property["value"], label)
 
     if save_to_file:
