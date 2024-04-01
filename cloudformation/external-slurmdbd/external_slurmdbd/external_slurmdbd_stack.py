@@ -118,11 +118,13 @@ class ExternalSlurmdbdStack(Stack):
             "dbms_database_name": self.dbms_database_name.value_as_string,
             "dbms_password_secret_arn": self.dbms_password_secret_arn.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
-            "region": self.region,
-            "log_group_name": self._log_group.log_group_name,
-            "stack_name": self.stack_name,
-            "is_external_slurmdbd": True,
             "slurmdbd_conf_bucket": self.s3_bucket.bucket_name,
+            "cluster": {
+                "region": self.region,
+                "log_group_name": self._log_group.log_group_name,
+                "stack_name": self.stack_name,
+                "node_type": "ExternalSlurmDbd",
+            },
         }
 
         return {
