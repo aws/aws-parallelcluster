@@ -2224,7 +2224,9 @@ def _test_disable_fast_capacity_failover(
     scheduler_commands.assert_job_state(job_id, "NODE_FAIL")
     # wait for nodes reset
     if len(cr_static_nodes) > 0:
-        wait_for_compute_nodes_states(scheduler_commands, cr_static_nodes, expected_states=["idle"])
+        wait_for_compute_nodes_states(
+            scheduler_commands, cr_static_nodes, expected_states=["idle"], stop_max_delay_secs=600
+        )
     if len(cr_dynamic_nodes) > 0:
         wait_for_compute_nodes_states(scheduler_commands, cr_dynamic_nodes, expected_states=["idle~"])
 
