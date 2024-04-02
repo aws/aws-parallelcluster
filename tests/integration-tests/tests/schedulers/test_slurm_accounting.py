@@ -174,7 +174,7 @@ def test_slurm_accounting(
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
 
-    # First create a cluster without Slurm Accounting disabled
+    # First create a cluster without Slurm Accounting
     cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
     cluster = clusters_factory(cluster_config)
 
@@ -189,6 +189,7 @@ def test_slurm_accounting(
         private_subnet_id=private_subnet_id,
         **config_params,
     )
+    # Force update because update is not support unless the compute fleet is stopped
     cluster.update(str(updated_config_file), force_update="true")
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -212,6 +213,8 @@ def test_slurm_accounting(
         custom_database_name=custom_database_name,
         **config_params,
     )
+
+    # Force update because update is not support unless the compute fleet is stopped
     cluster.update(str(updated_config_file), force_update="true")
     _test_slurm_accounting_password(remote_command_executor)
     _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
