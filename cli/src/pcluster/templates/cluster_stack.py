@@ -317,6 +317,8 @@ class ClusterCdkStack:
         # Alarms
         if self.config.are_alarms_enabled:
             self._add_head_node_alarms()
+        else:
+            self.head_node_alarms = []
 
         # CloudWatch Dashboard
         if self.config.is_cw_dashboard_enabled:

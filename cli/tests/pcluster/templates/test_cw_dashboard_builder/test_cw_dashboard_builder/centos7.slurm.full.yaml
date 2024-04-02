@@ -122,3 +122,5 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true
+  Alarms:
+    Enabled: false
