@@ -69,7 +69,7 @@ class ExternalSlurmdbdStack(Stack):
             self, "CustomCookbookUrl", type="String", description="URL of the custom Chef Cookbook.", default=""
         )
 
-        # create management security group with SSH access from anywhere (TEMPORARY!)
+        # create management security group with SSH access from SSH client SG
         self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
 
         # create a pair of security groups for the slurm accounting traffic across
@@ -128,7 +128,7 @@ class ExternalSlurmdbdStack(Stack):
         }
 
         return {
-            "configSets": {"default": ["setup", "configure"]},
+            "configSets": {"default": ["setup"]},
             "setup": {
                 "files": {
                     "/etc/chef/dna.json": {
@@ -149,35 +149,6 @@ class ExternalSlurmdbdStack(Stack):
                         "cwd": "/etc/chef",
                     }
                 },
-            },
-            # TODO: delete the cfn-hup hook
-            "configure": {
-                "files": {
-                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
-                        "content": Fn.sub(
-                            "[cfn-auto-reloader-hook]\n"
-                            "triggers=post.update\n"
-                            "path=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
-                            "action=/usr/bin/echo 'I was triggered by a change in AWS::CloudFormation::Init metadata!' > /tmp/cfn_init_metadata_update.log\n"  # noqa: E501
-                            "runas=root\n"
-                        ),
-                        "mode": "000400",
-                        "owner": "root",
-                        "group": "root",
-                    },
-                    "/etc/cfn/cfn-hup.conf": {
-                        "content": Fn.sub(
-                            "[main]\n" "stack=${StackId}\n" "region=${Region}\n" "interval=2\n",
-                            {
-                                "StackId": self.stack_id,
-                                "Region": self.region,
-                            },
-                        ),
-                        "mode": "000400",
-                        "owner": "root",
-                        "group": "root",
-                    },
-                }
             },
         }
 
