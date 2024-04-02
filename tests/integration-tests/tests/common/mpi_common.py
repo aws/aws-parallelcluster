@@ -28,13 +28,19 @@ def _test_mpi(
     scaledown_idletime=None,
     verify_scaling=False,
     partition=None,
-    verify_pmix=None,
     num_computes=None,
 ):
     logging.info("Testing mpi job")
     mpi_module = "openmpi"
     # Compile mpi script
     compile_mpi_ring(mpi_module, remote_command_executor)
+
+    # Verifies PMIx worked
+    mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
+    assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
+
+    interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
+    remote_command_executor.run_remote_command(interactive_command)
 
     if partition:
         # submit script using additional files
@@ -52,40 +58,33 @@ def _test_mpi(
 
     if verify_scaling:
         assert_scaling_worked(
-            scheduler_commands, region, stack_name, scaledown_idletime, expected_max=2, expected_final=0
+            scheduler_commands, region, stack_name, scaledown_idletime, expected_max=3, expected_final=0
         )
         # not checking assert_job_succeeded after cluster scale down cause the scheduler history might be gone
     else:
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)
 
-    if verify_pmix:
-        mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
-        assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
-
-        interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
-        remote_command_executor.run_remote_command(interactive_command)
+    mpi_out = remote_command_executor.run_remote_command("cat /shared/mpi.out").stdout
+    # mpi_out expected output
+    # Hello world from processor ip-192-168-53-169, rank 0 out of 2 processors
+    # Process 0 received token -1 from process 1
+    # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
+    # Process 1 received token -1 from process 0
+    assert_that(mpi_out.splitlines()).is_length(4)
+    # Slurm HIT DNS name is the same as nodename and starts with partition
+    # Example: efa-enabled-st-c5n18xlarge-2
+    if partition:
+        nodename_prefix = partition
+    elif scheduler == "slurm":
+        nodename_prefix = ""
     else:
-        mpi_out = remote_command_executor.run_remote_command("cat /shared/mpi.out").stdout
-        # mpi_out expected output
-        # Hello world from processor ip-192-168-53-169, rank 0 out of 2 processors
-        # Process 0 received token -1 from process 1
-        # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
-        # Process 1 received token -1 from process 0
-        assert_that(mpi_out.splitlines()).is_length(4)
-        # Slurm HIT DNS name is the same as nodename and starts with partition
-        # Example: efa-enabled-st-c5n18xlarge-2
-        if partition:
-            nodename_prefix = partition
-        elif scheduler == "slurm":
-            nodename_prefix = ""
-        else:
-            nodename_prefix = "ip-"
-        assert_that(mpi_out).matches(
-            r"Hello world from processor {0}.+, rank 0 out of 2 processors".format(nodename_prefix)
-        )
-        assert_that(mpi_out).matches(
-            r"Hello world from processor {0}.+, rank 1 out of 2 processors".format(nodename_prefix)
-        )
-        assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
-        assert_that(mpi_out).contains("Process 1 received token -1 from process 0")
+        nodename_prefix = "ip-"
+    assert_that(mpi_out).matches(
+        r"Hello world from processor {0}.+, rank 0 out of 2 processors".format(nodename_prefix)
+    )
+    assert_that(mpi_out).matches(
+        r"Hello world from processor {0}.+, rank 1 out of 2 processors".format(nodename_prefix)
+    )
+    assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
+    assert_that(mpi_out).contains("Process 1 received token -1 from process 0")

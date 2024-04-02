@@ -39,6 +39,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         cluster.cfn_name,
         scaledown_idletime,
         verify_scaling=False,
+        num_computes=max_queue_size,
     )
 
     # This verifies that scaling worked
@@ -51,19 +52,6 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         cluster.cfn_name,
         scaledown_idletime,
         verify_scaling=True,
-    )
-
-    # This verifies PMIx worked
-    _test_mpi(
-        remote_command_executor,
-        slots_per_instance,
-        scheduler,
-        scheduler_commands,
-        region,
-        cluster.cfn_name,
-        scaledown_idletime,
-        verify_scaling=False,
-        verify_pmix=True,
         num_computes=max_queue_size,
     )
 
