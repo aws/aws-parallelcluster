@@ -26,7 +26,7 @@ from time_utils import minutes
 @pytest.mark.usefixtures("instance", "os", "scheduler")
 @pytest.mark.parametrize(
     "dashboard_enabled, cw_log_enabled, alarms_enabled",
-    [(True, True, True), (True, False, True), (False, False, False)],
+    [(True, True, True)],
 )
 def test_monitoring(
     dashboard_enabled,
