@@ -197,3 +197,15 @@ class ExternalSlurmdbdVsDatabaseIncompatibility(Validator):
                 "Database and ExternalSlurmdbd cannot be defined at the same time within SlurmSettings.",
                 FailureLevel.ERROR,
             )
+
+
+class ExternalSlurmdbdTrafficNotEncrypted(Validator):
+    """Inform users about unencrypted connections."""
+
+    def _validate(self, external_slurmdbd):
+        if external_slurmdbd is not None:
+            self._add_failure(
+                "Traffic between ParallelCluster and the external Slurmdbd is not encrypted. "
+                "It is recommended to run the cluster and the external Slurmdbd in a trusted network.",
+                FailureLevel.WARNING,
+            )
