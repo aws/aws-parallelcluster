@@ -8,6 +8,7 @@ CHANGELOG
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
 - Consider Compute fleet clean-up completed during cluster deletion when instances are either in shutting-down or terminated state.
   This is to avoid cluster deletion failure for instance types with longer termination cycles.
+- Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
 
 3.9.0
 ------
