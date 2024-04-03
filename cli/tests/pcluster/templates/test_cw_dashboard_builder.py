@@ -63,8 +63,6 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
 
         if cluster_config.are_alarms_enabled:
             assert_that(output_yaml).contains("Cluster Alarms")
-        else:
-            assert_that(output_yaml).does_not_contain("Cluster Alarms")
 
         if cluster_config.shared_storage:
             _verify_ec2_metrics_conditions(cluster_config, output_yaml)
@@ -80,8 +78,33 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
         _verify_metric_filter_dimensions(metric_filters)
     else:
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
-        assert_that(output_yaml).does_not_contain("Cluster Alarms")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
+
+    _verify_alarms(output_yaml, cluster_config.are_alarms_enabled)
+
+    if cluster_config.is_cw_logging_enabled:
+        assert_that(output_yaml).contains("ClusterCWLogGroup")
+    else:
+        assert_that(output_yaml).does_not_contain("ClusterCWLogGroup")
+
+
+def _verify_alarms(output_yaml, alarms_enabled):
+    if alarms_enabled:
+        assert_that(output_yaml).contains("HeadNodeHealthAlarm")
+        assert_that(output_yaml).contains("StatusCheckFailed")
+
+        assert_that(output_yaml).contains("HeadNodeCpuAlarm")
+        assert_that(output_yaml).contains("CPUUtilization")
+
+        assert_that(output_yaml).contains("HeadNodeMemAlarm")
+        assert_that(output_yaml).contains("mem_used_percent")
+
+        assert_that(output_yaml).contains("HeadNodeDiskAlarm")
+        assert_that(output_yaml).contains("disk_used_percent")
+
+    else:
+        assert_that(output_yaml).does_not_contain("Cluster Alarms")
+        assert_that(output_yaml).does_not_contain("AWS::CloudWatch::Alarm")
 
 
 def _extract_metric_filters(generated_template):
