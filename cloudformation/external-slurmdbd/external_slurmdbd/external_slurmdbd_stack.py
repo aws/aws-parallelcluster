@@ -2,7 +2,7 @@ import hashlib
 import json
 
 import pkg_resources
-from aws_cdk import CfnOutput, CfnParameter, Fn, Stack
+from aws_cdk import Aws, CfnOutput, CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
@@ -122,7 +122,7 @@ class ExternalSlurmdbdStack(Stack):
             "cluster": {
                 "region": self.region,
                 "log_group_name": self._log_group.log_group_name,
-                "stack_name": self.stack_name,
+                "stack_name": Aws.STACK_NAME,
                 "node_type": "ExternalSlurmDbd",
             },
         }
@@ -276,7 +276,7 @@ class ExternalSlurmdbdStack(Stack):
                     {
                         **{
                             "CustomCookbookUrl": self.custom_cookbook_url_param.value_as_string,
-                            "StackName": self.stack_name,
+                            "StackName": Aws.STACK_NAME,
                             "Region": self.region,
                             "PrivateIp": self.slurmdbd_private_ip.value_as_string,
                             "SubnetPrefix": self.slurmdbd_private_prefix.value_as_string,
@@ -409,7 +409,7 @@ class ExternalSlurmdbdStack(Stack):
             log_group_name=Fn.join(
                 "-",
                 [
-                    f"/aws/parallelcluster/external-slurmdbd/{self.stack_name}",
+                    f"/aws/parallelcluster/external-slurmdbd/{Aws.STACK_NAME}",
                     Fn.select(4, Fn.split("-", Fn.select(2, Fn.split("/", self.stack_id)))),
                 ],
             ),
@@ -420,7 +420,7 @@ class ExternalSlurmdbdStack(Stack):
         return s3.CfnBucket(
             self,
             id="ExternalSlurmdbdS3Bucket",
-            bucket_name=self.stack_name.lower() + "-" + hashlib.sha256((self.account + self.region).encode()).hexdigest()[0:16],
+            bucket_name=Aws.STACK_NAME + "-" + hashlib.sha256((self.account + self.region).encode()).hexdigest()[0:16],
             public_access_block_configuration=s3.CfnBucket.PublicAccessBlockConfigurationProperty(
                 block_public_acls=True,
                 block_public_policy=True,
