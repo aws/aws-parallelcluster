@@ -174,7 +174,17 @@
      "Fn::Join": [
       "-",
       [
-       "/aws/parallelcluster/external-slurmdbd/ExternalSlurmdbdStack",
+       {
+        "Fn::Join": [
+         "",
+         [
+          "/aws/parallelcluster/external-slurmdbd/",
+          {
+           "Ref": "AWS::StackName"
+          }
+         ]
+        ]
+       },
        {
         "Fn::Select": [
          4,
@@ -212,7 +222,17 @@
   "ExternalSlurmdbdS3Bucket": {
    "Type": "AWS::S3::Bucket",
    "Properties": {
-    "BucketName": "externalslurmdbdstack-430789882085f1c9",
+    "BucketName": {
+     "Fn::Join": [
+      "",
+      [
+       {
+        "Ref": "AWS::StackName"
+       },
+       "-cf55004ab3dc0560"
+      ]
+     ]
+    },
     "PublicAccessBlockConfiguration": {
      "BlockPublicAcls": true,
      "BlockPublicPolicy": true,
@@ -291,11 +311,22 @@
        "Sid": "CloudWatchLogsPolicy"
       },
       {
-       "Action": [
-        "ec2:AssignPrivateIpAddresses",
-        "ec2:DescribeInstances",
-        "ec2:DescribeNetworkInterfaces"
-       ],
+       "Action": "ec2:AssignPrivateIpAddresses",
+       "Condition": {
+        "StringLike": {
+         "ec2:Subnet": {
+          "Fn::Join": [
+           "",
+           [
+            "*",
+            {
+             "Ref": "SubnetId"
+            }
+           ]
+          ]
+         }
+        }
+       },
        "Effect": "Allow",
        "Resource": "*",
        "Sid": "IPAssignmentPolicy"
@@ -405,12 +436,14 @@
      "UserData": {
       "Fn::Base64": {
        "Fn::Sub": [
-        "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\nMIME-Version: 1.0\n\n--==BOUNDARY==\nContent-Type: text/cloud-config; charset=us-ascii\nMIME-Version: 1.0\n\npackage_update: false\npackage_upgrade: false\nrepo_upgrade: none\ndatasource_list: [ Ec2, None ]\n\n--==BOUNDARY==\nContent-Type: text/x-shellscript; charset=\"us-ascii\"\nMIME-Version: 1.0\n#!/bin/bash -x\n\nfunction vendor_cookbook\n{\n  mkdir /tmp/cookbooks\n  cd /tmp/cookbooks\n  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n  HOME_BAK=\"${!HOME}\"\n  export HOME=\"/tmp\"\n  for d in /tmp/cookbooks/*; do\n    cd \"$d\" || continue\n    LANG=en_US.UTF-8 /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete\n  done;\n  export HOME=\"${!HOME_BAK}\"\n}\n\nfunction wait_for_private_ip_assignment\n{\n  rc=1\n  retries=10\n  retry=1\n  sleeptime=1\n  while [ \\( $rc -eq 1 \\) -a \\( $retry -le $retries \\) ]; do\n    aws ec2 describe-network-interfaces --network-interface-ids \"${!ENI_ID}\" --region \"${AWS::Region}\" | jq .NetworkInterfaces[0].PrivateIpAddresses | grep -q '\"PrivateIpAddress\": \"${PrivateIp}\"'\n    rc=$?\n    retry=$((retry+1))\n    sleep $sleeptime\n  done\n  return $rc\n}\n\nTOKEN=`curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\"`\nINSTANCE_ID=$(curl -H \"X-aws-ec2-metadata-token: $TOKEN\" -v http://169.254.169.254/latest/meta-data/instance-id)\nENI_ID=$(aws ec2 describe-instances --instance-ids ${!INSTANCE_ID} --region \"${AWS::Region}\" | jq .Reservations[0].Instances[0].NetworkInterfaces[0].NetworkInterfaceId | tr -d '\"')\n\naws ec2 assign-private-ip-addresses --region \"${AWS::Region}\" --network-interface-id \"${!ENI_ID}\" --private-ip-addresses ${PrivateIp} --allow-reassignment\n\nwait_for_private_ip_assignment || echo \"Assignment of private IP ${PrivateIp} was not successful.\"\n\nip addr add ${PrivateIp}/${SubnetPrefix} dev eth0\n\nif [ \"${CustomCookbookUrl}\" != \"NONE\" ]; then\n  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${CustomCookbookUrl}\n  vendor_cookbook\nfi\n\n# This is necessary to find the cfn-init application\nexport PATH=/opt/aws/bin:${!PATH}\n[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh\n\ncfn-init -s ${AWS::StackName} -v -c default -r LaunchTemplate --region \"${AWS::Region}\"\n",
+        "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\nMIME-Version: 1.0\n\n--==BOUNDARY==\nContent-Type: text/cloud-config; charset=us-ascii\nMIME-Version: 1.0\n\npackage_update: false\npackage_upgrade: false\nrepo_upgrade: none\ndatasource_list: [ Ec2, None ]\n\n--==BOUNDARY==\nContent-Type: text/x-shellscript; charset=\"us-ascii\"\nMIME-Version: 1.0\n#!/bin/bash -x\n\nfunction vendor_cookbook\n{\n  mkdir /tmp/cookbooks\n  cd /tmp/cookbooks\n  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n  HOME_BAK=\"${!HOME}\"\n  export HOME=\"/tmp\"\n  for d in /tmp/cookbooks/*; do\n    cd \"$d\" || continue\n    LANG=en_US.UTF-8 /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete\n  done;\n  export HOME=\"${!HOME_BAK}\"\n}\n\nfunction wait_for_private_ip_assignment\n{\n  rc=1\n  retries=10\n  retry=1\n  sleeptime=1\n  while [ \\( $rc -eq 1 \\) -a \\( $retry -le $retries \\) ]; do\n    number_of_ips=$(curl -H \"X-aws-ec2-metadata-token: $TOKEN\" -v http://169.254.169.254/latest/meta-data/network/interfaces/macs/\"$MAC\"/local-ipv4s | wc -l)\n    ((number_of_ips>0))\n    rc=$?\n    retry=$((retry+1))\n    sleep $sleeptime\n  done\n  return $rc\n}\n\nTOKEN=`curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\"`\nMAC=$(curl -H \"X-aws-ec2-metadata-token: $TOKEN\" -v http://169.254.169.254/latest/meta-data/mac)\nENI_ID=$(curl -H \"X-aws-ec2-metadata-token: $TOKEN\" -v http://169.254.169.254/latest/meta-data/network/interfaces/macs/\"$MAC\"/interface-id)\n\naws ec2 assign-private-ip-addresses --region \"${AWS::Region}\" --network-interface-id \"${!ENI_ID}\" --private-ip-addresses ${PrivateIp} --allow-reassignment\n\nwait_for_private_ip_assignment || echo \"Assignment of private IP ${PrivateIp} was not successful.\"\n\nip addr add ${PrivateIp}/${SubnetPrefix} dev eth0\n\nif [ \"${CustomCookbookUrl}\" != \"NONE\" ]; then\n  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${CustomCookbookUrl}\n  vendor_cookbook\nfi\n\n# This is necessary to find the cfn-init application\nexport PATH=/opt/aws/bin:${!PATH}\n[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh\n\ncfn-init -s ${AWS::StackName} -v -c default -r LaunchTemplate --region \"${AWS::Region}\"\n",
         {
          "CustomCookbookUrl": {
           "Ref": "CustomCookbookUrl"
          },
-         "StackName": "ExternalSlurmdbdStack",
+         "StackName": {
+          "Ref": "AWS::StackName"
+         },
          "Region": {
           "Ref": "AWS::Region"
          },
@@ -431,8 +464,7 @@
     "AWS::CloudFormation::Init": {
      "configSets": {
       "default": [
-       "setup",
-       "configure"
+       "setup"
       ]
      },
      "setup": {
@@ -470,7 +502,11 @@
            {
             "Ref": "MungeKeySecretArn"
            },
-           "\", \"region\": \"",
+           "\", \"slurmdbd_conf_bucket\": \"",
+           {
+            "Ref": "AWS::StackName"
+           },
+           "-cf55004ab3dc0560\", \"cluster\": {\"region\": \"",
            {
             "Ref": "AWS::Region"
            },
@@ -478,7 +514,11 @@
            {
             "Ref": "SlurmdbdLogGroup7510BC34"
            },
-           "\", \"stack_name\": \"ExternalSlurmdbdStack\", \"is_external_slurmdbd\": true, \"slurmdbd_conf_bucket\": \"externalslurmdbdstack-430789882085f1c9\"}"
+           "\", \"stack_name\": \"",
+           {
+            "Ref": "AWS::StackName"
+           },
+           "\", \"node_type\": \"ExternalSlurmDbd\"}}"
           ]
          ]
         },
@@ -491,36 +531,6 @@
        "chef": {
         "command": "cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster-entrypoints::external_slurmdbd_config",
         "cwd": "/etc/chef"
-       }
-      }
-     },
-     "configure": {
-      "files": {
-       "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
-        "content": {
-         "Fn::Sub": "[cfn-auto-reloader-hook]\ntriggers=post.update\npath=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init\naction=/usr/bin/echo 'I was triggered by a change in AWS::CloudFormation::Init metadata!' > /tmp/cfn_init_metadata_update.log\nrunas=root\n"
-        },
-        "mode": "000400",
-        "owner": "root",
-        "group": "root"
-       },
-       "/etc/cfn/cfn-hup.conf": {
-        "content": {
-         "Fn::Sub": [
-          "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2\n",
-          {
-           "StackId": {
-            "Ref": "AWS::StackId"
-           },
-           "Region": {
-            "Ref": "AWS::Region"
-           }
-          }
-         ]
-        },
-        "mode": "000400",
-        "owner": "root",
-        "group": "root"
        }
       }
      }
@@ -568,13 +578,13 @@
     "Ref": "SlurmdbdPort"
    }
   },
-  "AccountingClientSg": {
+  "AccountingClientSecurityGroup": {
    "Description": "Security Group ID that allows traffic from the slurmctld to slurmdbd",
    "Value": {
     "Ref": "SlurmdbdClientSecurityGroup"
    }
   },
-  "SshClientSg": {
+  "SshClientSecurityGroup": {
    "Description": "Security Group ID that allows SSH traffic from the HeadNode to slurmdbd instance",
    "Value": {
     "Ref": "SSHClientSecurityGroup"
@@ -582,7 +592,17 @@
   },
   "SlurmdbdConfigS3BucketName": {
    "Description": "S3 Bucket where a copy of the slurmdbd configuration files can be stored and re-used when re-provisioning the slurmdbd instance",
-   "Value": "externalslurmdbdstack-430789882085f1c9"
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      {
+       "Ref": "AWS::StackName"
+      },
+      "-cf55004ab3dc0560"
+     ]
+    ]
+   }
   }
  }
 }
