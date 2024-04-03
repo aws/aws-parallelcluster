@@ -89,6 +89,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    ExternalSlurmdbdTrafficNotEncrypted,
     ExternalSlurmdbdVsDatabaseIncompatibility,
     SlurmNodePrioritiesWarningValidator,
 )
@@ -377,6 +378,24 @@ def test_custom_slurm_settings_include_file_only_validator(
 )
 def test_external_slurmdbd_vs_database_incompatibility_validator(database, external_slurmdbd, expected_message):
     actual_failures = ExternalSlurmdbdVsDatabaseIncompatibility().execute(database, external_slurmdbd)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "external_slurmdbd, expected_message",
+    [
+        pytest.param(None, None),
+        pytest.param(
+            ExternalSlurmdbd(
+                host="test.slurmdbd.host",
+                port=6819,
+            ),
+            "Traffic between ParallelCluster and the external Slurmdbd is not encrypted",
+        ),
+    ],
+)
+def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, expected_message):
+    actual_failures = ExternalSlurmdbdTrafficNotEncrypted().execute(external_slurmdbd)
     assert_failure_messages(actual_failures, expected_message)
 
 

@@ -197,6 +197,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    ExternalSlurmdbdTrafficNotEncrypted,
     ExternalSlurmdbdVsDatabaseIncompatibility,
     SlurmNodePrioritiesWarningValidator,
 )
@@ -2784,6 +2785,10 @@ class SlurmSettings(Resource):
         self._register_validator(
             ExternalSlurmdbdVsDatabaseIncompatibility,
             database=self.database,
+            external_slurmdbd=self.external_slurmdbd,
+        )
+        self._register_validator(
+            ExternalSlurmdbdTrafficNotEncrypted,
             external_slurmdbd=self.external_slurmdbd,
         )
 
