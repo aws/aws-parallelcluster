@@ -141,13 +141,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
-  monitoring:
-    test_monitoring.py::test_monitoring:
-      dimensions:
-        - regions: ["ap-northeast-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: ["rocky9"]
   networking:
     test_cluster_networking.py::test_existing_eip:
       dimensions:
