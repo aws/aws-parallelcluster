@@ -1203,12 +1203,16 @@ def test_dynamic_file_systems_update(
         ebs_mount_dirs=[],
         new_raid_mount_dir=[],
         efs_mount_dirs=[existing_efs_mount_dir],
-        fsx_mount_dirs=[
-            existing_fsx_lustre_mount_dir,
-            existing_fsx_open_zfs_mount_dir,
-            existing_fsx_ontap_mount_dir,
-            existing_file_cache_mount_dir,
-        ],
+        fsx_mount_dirs=(
+            [
+                existing_fsx_lustre_mount_dir,
+                existing_fsx_open_zfs_mount_dir,
+                existing_fsx_ontap_mount_dir,
+                existing_file_cache_mount_dir,
+            ]
+            if fsx_supported
+            else []
+        ),
         file_cache_path=file_cache_path,
     )
     for mount_dir in all_mount_dirs_update_1:
