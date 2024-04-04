@@ -28,11 +28,19 @@ def _test_mpi(
     scaledown_idletime=None,
     verify_scaling=False,
     partition=None,
+    num_computes=None,
 ):
     logging.info("Testing mpi job")
     mpi_module = "openmpi"
     # Compile mpi script
     compile_mpi_ring(mpi_module, remote_command_executor)
+
+    # Verifies PMIx worked
+    mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
+    assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
+
+    interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
+    remote_command_executor.run_remote_command(interactive_command)
 
     if partition:
         # submit script using additional files
@@ -50,7 +58,7 @@ def _test_mpi(
 
     if verify_scaling:
         assert_scaling_worked(
-            scheduler_commands, region, stack_name, scaledown_idletime, expected_max=2, expected_final=0
+            scheduler_commands, region, stack_name, scaledown_idletime, expected_max=3, expected_final=0
         )
         # not checking assert_job_succeeded after cluster scale down cause the scheduler history might be gone
     else:

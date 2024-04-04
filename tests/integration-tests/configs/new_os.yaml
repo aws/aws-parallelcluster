@@ -182,16 +182,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_pmix:
-      dimensions:
-        - regions: ["ap-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
-        - regions: ["ap-southeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
   storage:
     # Commercial regions that can't test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
     # The checks performed in test_multiple_fsx is the same as test_fsx_lustre.

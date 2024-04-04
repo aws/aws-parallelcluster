@@ -4,8 +4,6 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    AdditionalSecurityGroups:
-      - {{ database_client_security_group }}
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -15,11 +13,6 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  SlurmSettings:
-    Database:
-      Uri: {{ database_host }}
-      UserName: {{ database_admin_user }}
-      PasswordSecretArn: {{ database_secret_arn }}
   SlurmQueues:
     - Name: compute
       ComputeResources:

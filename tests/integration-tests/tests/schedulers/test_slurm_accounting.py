@@ -173,10 +173,24 @@ def test_slurm_accounting(
     config_params = _get_slurm_database_config_parameters(database_stack_outputs)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
-    cluster_config = pcluster_config_reader(
-        public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id, **config_params
-    )
+
+    # First create a cluster without Slurm Accounting
+    cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
     cluster = clusters_factory(cluster_config)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    _test_that_slurmdbd_is_not_running(remote_command_executor)
+
+    # Then update the cluster to enable Slurm Accounting
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        **config_params,
+    )
+    # Force update because update is not support unless the compute fleet is stopped
+    cluster.update(str(updated_config_file), force_update="true")
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -193,65 +207,15 @@ def test_slurm_accounting(
     # Re-use the same update to test the modification of DatabaseName.
     custom_database_name = "test_custom_dbname"
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml",
+        config_file="pcluster.config.update2.yaml",
         public_subnet_id=public_subnet_id,
         private_subnet_id=private_subnet_id,
         custom_database_name=custom_database_name,
         **config_params,
     )
+
+    # Force update because update is not support unless the compute fleet is stopped
     cluster.update(str(updated_config_file), force_update="true")
     _test_slurm_accounting_password(remote_command_executor)
     _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
     _test_that_slurmdbd_is_running(remote_command_executor)
-
-
-@pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_slurm_accounting_disabled_to_enabled_update(
-    region,
-    pcluster_config_reader,
-    database_factory,
-    vpc_stack_for_database,
-    request,
-    test_datadir,
-    test_resources_dir,
-    clusters_factory,
-    scheduler_commands_factory,
-):
-    database_stack_name = database_factory(
-        request.config.getoption("slurm_database_stack_name"),
-        str(test_datadir),
-        region,
-    )
-
-    database_stack_outputs = get_infra_stack_outputs(database_stack_name)
-    public_subnet_id = vpc_stack_for_database.get_public_subnet()
-    private_subnet_id = vpc_stack_for_database.get_private_subnet()
-
-    # First create a cluster without Slurm Accounting enabled
-    cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
-    cluster = clusters_factory(cluster_config)
-
-    remote_command_executor = RemoteCommandExecutor(cluster)
-
-    _test_that_slurmdbd_is_not_running(remote_command_executor)
-
-    config_params = _get_slurm_database_config_parameters(database_stack_outputs)
-
-    # Then update the cluster to enable Slurm Accounting
-    updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml",
-        public_subnet_id=public_subnet_id,
-        private_subnet_id=private_subnet_id,
-        **config_params,
-    )
-    cluster.update(str(updated_config_file), force_update="true")
-
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
-
-    # Test for successful Slurm Accounting start up
-    _test_that_slurmdbd_is_running(remote_command_executor)
-    _test_successful_startup_in_log(remote_command_executor)
-    _test_slurmdbd_log_exists_in_log_group(cluster)
-    _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir)
-    _test_jobs_get_recorded(scheduler_commands)

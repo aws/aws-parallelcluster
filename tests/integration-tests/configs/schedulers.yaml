@@ -40,12 +40,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_pmix:  # TODO: include in main test_slurm to reduce number of created clusters
-      dimensions:
-        - regions: ["ap-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
       dimensions:
         - regions: ["us-west-1"]
@@ -115,12 +109,6 @@ test-suites:
     test_slurm_accounting.py::test_slurm_accounting:
       dimensions:
         - regions: ["us-east-1", "ap-south-1"]
-          instances:  {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
-    test_slurm_accounting.py::test_slurm_accounting_disabled_to_enabled_update:
-      dimensions:
-        - regions: ["us-west-2"]
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]

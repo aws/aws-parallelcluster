@@ -26,12 +26,6 @@ test-suites:
           instances: {{ NEW_INSTANCE_TYPES }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
-    test_slurm.py::test_slurm_pmix:
-      dimensions:
-        - regions: {{ NEW_REGIONS }}
-          instances: {{ NEW_INSTANCE_TYPES }}
-          oss: ["ubuntu2004"]
-          schedulers: ["slurm"]
     test_awsbatch.py::test_awsbatch:
       dimensions:
         - regions: {{ NEW_REGIONS }}

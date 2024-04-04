@@ -55,7 +55,6 @@ from tests.common.hit_common import (
     wait_for_compute_nodes_states,
     wait_for_num_nodes_in_scheduler,
 )
-from tests.common.mpi_common import compile_mpi_ring
 from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 
@@ -246,40 +245,6 @@ def test_slurm_from_login_nodes_in_private_network(
     _test_torque_job_submit(remote_command_executor, test_datadir)
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm")
-
-
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-@pytest.mark.parametrize("use_login_node", [True, False])
-def test_slurm_pmix(pcluster_config_reader, scheduler, clusters_factory, use_login_node):
-    """Test interactive job submission using PMIx."""
-    if use_login_node and scheduler != "slurm":
-        pytest.skip(f"Skipping test because scheduler: {scheduler} is not supported for login nodes. Please use Slurm.")
-    num_computes = 2
-    cluster_config = pcluster_config_reader(queue_size=num_computes, use_login_node=use_login_node)
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-
-    # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
-    # Sample output:
-    # [ec2-user@ip-172-31-33-187 ~]$ srun 2>&1 --mpi=list
-    # srun: MPI types are...
-    # srun: none
-    # srun: openmpi
-    # srun: pmi2
-    # srun: pmix
-    # srun: pmix_vX
-    #
-    # _vX is the Major number of the PMIx version installed and used to compile slurm.
-    # We check this in the cookbook, so we do not repeat the check here
-    mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
-    assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
-
-    # Compile and run an MPI program interactively
-    mpi_module = "openmpi"
-    binary_path = "/shared/ring"
-    compile_mpi_ring(mpi_module, remote_command_executor, binary_path=binary_path)
-    interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} {binary_path}"
-    remote_command_executor.run_remote_command(interactive_command)
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
