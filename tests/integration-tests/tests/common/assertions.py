@@ -67,7 +67,8 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         log_files = []
 
     for log_file in log_files:
-        log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+        log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+        log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
         log = "\n".join(
             [line for line in log.splitlines() if not any(pattern in line for pattern in patterns_to_ignore)]
         )
@@ -80,7 +81,8 @@ def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_fi
     __tracebackhide__ = True
     log = ""
     for log_file in log_files:
-        log += remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+        log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+        log += remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
     for message in log_msg:
         assert_that(log).does_not_contain(message)
 
@@ -88,7 +90,8 @@ def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_fi
 def assert_msg_in_log(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str):
     """Assert message is in log_file."""
     __tracebackhide__ = True
-    log = remote_command_executor.run_remote_command(f"sudo cat {log_file}", hide=True).stdout
+    log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+    log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
     assert_that(log).contains(message)
 
 
@@ -98,7 +101,8 @@ def assert_lines_in_logs(remote_command_executor: RemoteCommandExecutor, log_fil
 
     log = ""
     for log_file in log_files:
-        log += remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+        log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+        log += remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
     for message in expected_errors:
         assert_that(log).matches(message)
 
