@@ -40,6 +40,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         scaledown_idletime,
         verify_scaling=False,
         num_computes=max_queue_size,
+        verify_pmix=True,
     )
 
     # This verifies that scaling worked
