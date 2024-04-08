@@ -282,12 +282,6 @@ test-suites:
           instances: [{{ common.instance("instance_type_1") }}]
           oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
-    test_fabric.py::test_fabric:
-      dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
