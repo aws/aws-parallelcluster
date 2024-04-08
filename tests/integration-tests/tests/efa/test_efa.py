@@ -12,13 +12,18 @@
 import logging
 
 import pytest
-from assertpy import assert_that
+import xmltodict
+from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
-from tests.common.utils import fetch_instance_slots, run_system_analyzer
+from tests.common.utils import fetch_instance_slots, read_remote_file, run_system_analyzer, wait_process_completion
+
+FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
+
+FABTESTS_GDRCOPY_TESTS = ["runt"]
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -61,7 +66,69 @@ def test_efa(
     if instance in ["p4d.24xlarge", "p5.48xlarge"] and os != "centos7":
         _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands, instance)
 
-    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
+    with soft_assertions():
+        assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
+
+    # Run Fabric tests
+    run_system_analyzer(cluster, scheduler_commands_factory, request, partition="efa-enabled")
+
+    fabtests_report = _execute_fabtests(remote_command_executor, test_datadir, instance)
+
+    num_tests = int(fabtests_report.get("testsuites", {}).get("@tests", None))
+    num_failures = int(fabtests_report.get("testsuites", {}).get("@failures", None))
+    num_errors = int(fabtests_report.get("testsuites", {}).get("@errors", None))
+
+    with soft_assertions():
+        assert_that(num_tests, description="Cannot read number of tests from Fabtests report").is_not_none()
+        assert_that(num_failures, description="Cannot read number of failures from Fabtests report").is_not_none()
+        assert_that(num_errors, description="Cannot read number of errors from Fabtests report").is_not_none()
+
+    if num_failures + num_errors > 0:
+        logging.info(f"Fabtests report:\n{fabtests_report}")
+
+    with soft_assertions():
+        assert_that(num_failures, description=f"{num_failures}/{num_tests} libfabric tests are failing").is_equal_to(0)
+        assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
+        assert_no_errors_in_logs(remote_command_executor, scheduler)
+
+
+def _execute_fabtests(remote_command_executor, test_datadir, instance):
+    fabtests_dir = "/shared/fabtests"
+    fabtests_pid_file = f"{fabtests_dir}/outputs/fabtests.pid"
+    fabtests_log_file = f"{fabtests_dir}/outputs/fabtests.log"
+    fabtests_report_file = f"{fabtests_dir}/outputs/fabtests.report"
+
+    logging.info("Installing Fabtests")
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "install-fabtests.sh"), args=[fabtests_dir], timeout=600
+    )
+
+    logging.info("Running Fabtests")
+    test_cases = FABTESTS_BASIC_TESTS + FABTESTS_GDRCOPY_TESTS if instance == "p4d.24xlarge" else FABTESTS_BASIC_TESTS
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "run-fabtests.sh"),
+        args=[
+            fabtests_dir,
+            fabtests_pid_file,
+            fabtests_log_file,
+            fabtests_report_file,
+            "efa-enabled-st-efa-enabled-i1-1",
+            "efa-enabled-st-efa-enabled-i1-2",
+            ",".join(test_cases),
+            "enable-gdr" if instance == "p4d.24xlarge" else "skip-gdr",
+        ],
+        timeout=60,
+        pty=False,
+    )
+
+    pid = read_remote_file(remote_command_executor, fabtests_pid_file)
+
+    wait_process_completion(remote_command_executor, pid)
+
+    logging.info("Retrieving Fabtests report")
+    report_content = read_remote_file(remote_command_executor, fabtests_report_file)
+    logging.info("Parsing Fabtests report")
+    return xmltodict.parse(report_content)
 
 
 def _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition=None):

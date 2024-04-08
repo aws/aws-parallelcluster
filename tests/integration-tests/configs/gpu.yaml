@@ -35,7 +35,7 @@ test-suites:
           oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
   efa:
-    test_fabric.py::test_fabric:
+    test_efa.py::test_efa:
       dimensions:
         - regions: {{ NEW_REGIONS }}
           instances: {{ NEW_INSTANCE_TYPES }}
