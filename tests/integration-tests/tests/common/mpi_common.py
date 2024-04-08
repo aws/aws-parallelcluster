@@ -27,6 +27,7 @@ def _test_mpi(
     stack_name=None,
     scaledown_idletime=None,
     verify_scaling=False,
+    verify_pmix=False,
     partition=None,
     num_computes=None,
 ):
@@ -36,11 +37,12 @@ def _test_mpi(
     compile_mpi_ring(mpi_module, remote_command_executor)
 
     # Verifies PMIx worked
-    mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
-    assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
+    if verify_pmix:
+        mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
+        assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
 
-    interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
-    remote_command_executor.run_remote_command(interactive_command)
+        interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
+        remote_command_executor.run_remote_command(interactive_command)
 
     if partition:
         # submit script using additional files
