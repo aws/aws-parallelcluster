@@ -10,6 +10,13 @@ CHANGELOG
   This is to avoid cluster deletion failure for instance types with longer termination cycles.
 - Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
 
+3.9.1
+------
+
+**BUG FIXES**
+- Fix an issue that may cause data loss when a shared storage is unmounted as part of a cluster update
+  while it is in use and with no backup strategy in place.
+
 3.9.0
 ------
 
