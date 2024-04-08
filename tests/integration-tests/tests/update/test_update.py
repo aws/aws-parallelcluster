@@ -1187,13 +1187,17 @@ def test_dynamic_file_systems_update(
     scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
 
     # Check that the mounted storage is visible on all cluster nodes right after the update.
-    all_mount_dirs_update_1 = [
-        existing_efs_mount_dir,
-        existing_fsx_lustre_mount_dir,
-        existing_fsx_ontap_mount_dir,
-        existing_fsx_open_zfs_mount_dir,
-        existing_file_cache_mount_dir,
-    ]
+    all_mount_dirs_update_1 = (
+        [existing_efs_mount_dir]
+        + [
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_file_cache_mount_dir,
+        ]
+        if fsx_supported
+        else []
+    )
     _test_shared_storages_mount_on_headnode(
         remote_command_executor,
         cluster,
@@ -1353,26 +1357,36 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    all_mount_dirs_update_2 = [
-        new_ebs_mount_dir,
-        new_raid_mount_dir,
-        new_efs_mount_dir,
-        new_lustre_mount_dir,
-        existing_ebs_mount_dir,
-        existing_efs_mount_dir,
-        existing_fsx_lustre_mount_dir,
-        existing_fsx_ontap_mount_dir,
-        existing_fsx_open_zfs_mount_dir,
-        existing_file_cache_mount_dir,
-    ]
+    all_mount_dirs_update_2 = (
+        [
+            new_ebs_mount_dir,
+            new_raid_mount_dir,
+            new_efs_mount_dir,
+            new_lustre_mount_dir,
+            existing_ebs_mount_dir,
+            existing_efs_mount_dir,
+        ]
+        + [
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_file_cache_mount_dir,
+        ]
+        if fsx_supported
+        else []
+    )
 
-    mount_dirs_requiring_replacement = [
-        new_ebs_mount_dir,
-        new_raid_mount_dir,
-        new_efs_mount_dir,
-        new_lustre_mount_dir,
-        existing_ebs_mount_dir,
-    ]
+    mount_dirs_requiring_replacement = (
+        [
+            new_ebs_mount_dir,
+            new_raid_mount_dir,
+            new_efs_mount_dir,
+            existing_ebs_mount_dir,
+        ]
+        + [new_lustre_mount_dir]
+        if fsx_supported
+        else []
+    )
 
     logging.info("Checking that previously mounted storage is visible on all compute nodes")
     for mount_dir in all_mount_dirs_update_1:
