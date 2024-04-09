@@ -20,7 +20,7 @@ from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.usefixtures("os")
-def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, scheduler_commands_factory):
+def test_mpi(scheduler, region, instance, pcluster_config_reader, test_datadir, clusters_factory, scheduler_commands_factory):
     scaledown_idletime = 3
     max_queue_size = 3
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -55,6 +55,8 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
         verify_scaling=True,
         num_computes=max_queue_size,
     )
+
+    _test_mpi_ssh(remote_command_executor, test_datadir, scheduler_commands_factory)
 
 
 @pytest.mark.usefixtures("region", "instance", "os", "scheduler")

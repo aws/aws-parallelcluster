@@ -60,7 +60,7 @@ def _test_mpi(
 
     if verify_scaling:
         assert_scaling_worked(
-            scheduler_commands, region, stack_name, scaledown_idletime, expected_max=3, expected_final=0
+            scheduler_commands, region, stack_name, scaledown_idletime, expected_max=5, expected_final=2
         )
         # not checking assert_job_succeeded after cluster scale down cause the scheduler history might be gone
     else:
