@@ -131,12 +131,12 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
     # force log rotate without waiting for logs to reach certain size
     _run_command_on_node(remote_command_executor, "sudo logrotate -f /etc/logrotate.conf", compute_node_ip)
     # check if logs are rotated
-    if os in ["alinux2", "centos7"]:
+    if "ubuntu" in os:
+        result = _run_command_on_node(remote_command_executor, "cat /var/lib/logrotate/status", compute_node_ip)
+    else:
         result = _run_command_on_node(
             remote_command_executor, "cat /var/lib/logrotate/logrotate.status", compute_node_ip
         )
-    else:
-        result = _run_command_on_node(remote_command_executor, "cat /var/lib/logrotate/status", compute_node_ip)
     for log in logs:
         assert_that(result).contains(log.get("log_path"))
         if log.get("existence"):
