@@ -274,19 +274,7 @@ test-suites:
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
   scaling:
-    test_mpi.py::test_mpi:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
     test_scaling.py::test_multiple_jobs_submission:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
-    test_mpi.py::test_mpi_ssh:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}

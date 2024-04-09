@@ -400,22 +400,6 @@ test-suites:
           oss: ["alinux2"]
           schedulers: ["slurm"]
   scaling:
-    test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
-      dimensions:
-        - regions: ["ap-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
-        - regions: ["ca-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["ubuntu2004"]
-          schedulers: ["slurm"]
-    test_mpi.py::test_mpi_ssh:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
         - regions: ["us-west-2"]
