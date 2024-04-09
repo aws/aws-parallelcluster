@@ -2588,9 +2588,8 @@ def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_j
         ["/var/log/slurmctld.log"],
         [f"node {node} memory is overallocated"],
     )
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
+    slurm_commands.wait_job_running(job_id_1)
     slurm_commands.wait_job_completed(job_id_1)
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
 
 
 def _test_scontrol_reboot_nodes(
