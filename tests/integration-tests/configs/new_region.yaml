@@ -2,6 +2,17 @@
 {%- set NEW_REGION = ["##PLACEHOLDER##"] -%}
 ---
 test-suites:
+  basic:
+    test_essential_features.py::test_essential_features:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm"]
   scaling:
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
@@ -13,16 +24,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: {{ common.SCHEDULERS_TRAD }}
-    test_mpi.py::test_mpi:
-      dimensions:
-        - regions: {{ NEW_REGION }}
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
-        - regions: {{ NEW_REGION }}
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:

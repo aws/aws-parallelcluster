@@ -13,7 +13,7 @@ import logging
 
 import boto3
 import pytest
-from assertpy import soft_assertions
+from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from utils import check_status, is_dcv_supported, test_cluster_health_metric
 
@@ -26,6 +26,7 @@ from tests.common.assertions import (
     wait_for_num_instances_in_queue,
     wait_instance_replaced_or_terminating,
 )
+from tests.common.mpi_common import _test_mpi
 from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
@@ -52,12 +53,30 @@ def test_essential_features(
     bucket.upload_file(str(test_datadir / "post_install.sh"), "scripts/post_install.sh")
 
     dcv_enabled = is_dcv_supported(region)
+    scaledown_idletime = 3
+    max_queue_size = 3
 
-    cluster_config = pcluster_config_reader(bucket_name=bucket_name, dcv_enabled=dcv_enabled)
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name,
+        dcv_enabled=dcv_enabled,
+        max_queue_size=max_queue_size,
+        scaledown_idletime=scaledown_idletime,
+    )
     cluster = clusters_factory(cluster_config)
 
     with soft_assertions():
         _test_custom_bootstrap_scripts_args_quotes(cluster)
+
+    _test_mpi_job(
+        scheduler,
+        region,
+        instance,
+        cluster,
+        test_datadir,
+        scheduler_commands_factory,
+        scaledown_idletime,
+        max_queue_size,
+    )
 
     # We cannot use soft assertion for this test because "wait_" functions are relying on assertion failures for retries
     _test_replace_compute_on_failure(cluster, region, scheduler_commands_factory)
@@ -67,6 +86,77 @@ def test_essential_features(
     _test_disable_hyperthreading(
         cluster, region, instance, scheduler, default_threads_per_core, request, scheduler_commands_factory
     )
+
+
+def _test_mpi_job(
+    scheduler, region, instance, cluster, test_datadir, scheduler_commands_factory, scaledown_idletime, max_queue_size
+):
+    slots_per_instance = fetch_instance_slots(region, instance)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    # This verifies that the job completes correctly
+    _test_mpi(
+        remote_command_executor,
+        slots_per_instance,
+        scheduler,
+        scheduler_commands,
+        region,
+        cluster.cfn_name,
+        scaledown_idletime,
+        verify_scaling=False,
+        num_computes=max_queue_size,
+        verify_pmix=True,
+    )
+
+    # This verifies that scaling worked
+    _test_mpi(
+        remote_command_executor,
+        slots_per_instance,
+        scheduler,
+        scheduler_commands,
+        region,
+        cluster.cfn_name,
+        scaledown_idletime,
+        verify_scaling=True,
+        num_computes=max_queue_size,
+    )
+
+    _test_mpi_ssh(remote_command_executor, test_datadir, scheduler_commands_factory)
+
+
+def _test_mpi_ssh(remote_command_executor, test_datadir, scheduler_commands_factory):
+    logging.info("Testing mpi SSH")
+    mpi_module = "openmpi"
+
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    compute_node = scheduler_commands.get_compute_nodes()
+    assert_that(len(compute_node)).is_equal_to(2)
+    remote_host = compute_node[0]
+
+    # Gets remote host ip from hostname
+    remote_host_ip = remote_command_executor.run_remote_command(
+        "getent hosts {0} | cut -d' ' -f1".format(remote_host), timeout=20
+    ).stdout
+
+    # Below job will timeout if the IP address is not in known_hosts
+    mpirun_out_ip = remote_command_executor.run_remote_script(
+        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host_ip], timeout=20
+    ).stdout.splitlines()
+
+    # mpirun_out_ip = ["Warning: Permanently added '192.168.60.89' (ECDSA) to the list of known hosts.",
+    # '', 'ip-192-168-60-89']
+    assert_that(len(mpirun_out_ip)).is_equal_to(3)
+    assert_that(mpirun_out_ip[-1]).is_equal_to(remote_host)
+
+    mpirun_out = remote_command_executor.run_remote_script(
+        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host], timeout=20
+    ).stdout.splitlines()
+
+    # mpirun_out = ["Warning: Permanently added 'ip-192-168-60-89,192.168.60.89' (ECDSA) to the list of known hosts.",
+    # '', 'ip-192-168-60-89']
+    assert_that(len(mpirun_out)).is_equal_to(3)
+    assert_that(mpirun_out[-1]).is_equal_to(remote_host)
 
 
 def _test_logging(cluster, region, scheduler_commands_factory, dcv_enabled, os):

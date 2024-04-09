@@ -116,9 +116,10 @@ Scheduling:
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
+          MaxCount: {{ max_queue_size }}
           {% endif %}
   SlurmSettings:
-    ScaledownIdletime: 2 # Use shorter scaledown time to test logs in slurm_suspend
+    ScaledownIdletime: {{ scaledown_idletime }} # Use shorter scaledown time to test logs in slurm_suspend
 Monitoring:
   Logs:
     CloudWatch:
