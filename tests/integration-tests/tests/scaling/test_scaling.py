@@ -29,74 +29,6 @@ from tests.schedulers.test_slurm import _assert_job_state
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_multiple_jobs_submission(
-    scheduler,
-    region,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    scheduler_commands_factory,
-    test_custom_config,
-):
-    scaledown_idletime = 4
-    # Test jobs should take at most 9 minutes to be executed.
-    # These guarantees that the jobs are executed in parallel.
-    max_jobs_execution_time = 9
-    # Test using the max no of queues because the scheduler and node daemon operations take slight longer
-    # with multiple queues
-    no_of_queues = 50
-
-    cluster_config = pcluster_config_reader(
-        scaledown_idletime=scaledown_idletime,
-        no_of_queues=no_of_queues,
-    )
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
-
-    # Check if the multiple partitions were created on Slurm
-    partitions = scheduler_commands.get_partitions()
-    assert_that(partitions).is_length(no_of_queues)
-
-    scheduler = "slurm" if scheduler == "slurm_plugin" else scheduler
-
-    logging.info("Executing sleep job to start a dynamic node")
-    result = scheduler_commands.submit_command("sleep 1")
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
-        scheduler_commands, job_id, job_state="COMPLETED"
-    )
-
-    logging.info("Executing test jobs on cluster")
-    remote_command_executor.run_remote_script(test_datadir / "cluster-check.sh", args=["submit", scheduler])
-
-    logging.info("Monitoring ec2 capacity and compute nodes")
-    monitoring_buffer_minutes = 10 if "us-iso" in region else 5
-    ec2_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
-        scheduler_commands=scheduler_commands,
-        region=region,
-        stack_name=cluster.cfn_name,
-        max_monitoring_time=minutes(max_jobs_execution_time)
-        + minutes(scaledown_idletime)
-        + minutes(monitoring_buffer_minutes),
-    )
-
-    logging.info("Verifying test jobs completed successfully and in the expected time")
-    _assert_test_jobs_completed(remote_command_executor, max_jobs_execution_time * 60)
-
-    logging.info("Verifying auto-scaling worked correctly")
-    _assert_scaling_results_match_expected_range(
-        ec2_capacity_time_series=ec2_capacity_time_series,
-        compute_nodes_time_series=compute_nodes_time_series,
-        expected_ec2_capacity=(0, 3),
-        expected_compute_nodes=(0, 3),
-    )
-
-    logging.info("Verifying no error in logs")
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-
-
-@pytest.mark.usefixtures("os", "instance")
 @pytest.mark.parametrize(
     "scaling_strategy, scaling_behaviour_by_capacity",
     [
@@ -261,8 +193,8 @@ def test_job_level_scaling(
     scaling_behaviour_by_capacity,
 ):
     scaledown_idletime = 4
-    # Test using the max no of queues because the scheduler and node daemon operations take slight longer
-    # with multiple queues
+    # Test using the max no of compute resources because the scheduler and node daemon operations take slight longer
+    # with multiple compute resources. (2 queues with 2 compute resources + 46 queues with 1 compute resource)
     no_of_queues = 46
 
     cluster_config = pcluster_config_reader(
@@ -331,8 +263,8 @@ def _test_multiple_jobs(cluster, remote_command_executor, test_datadir, region, 
         region=region,
         stack_name=cluster.cfn_name,
         max_monitoring_time=minutes(max_jobs_execution_time)
-                            + minutes(scaledown_idletime)
-                            + minutes(monitoring_buffer_minutes),
+        + minutes(scaledown_idletime)
+        + minutes(monitoring_buffer_minutes),
     )
 
     logging.info("Verifying test jobs completed successfully and in the expected time")
