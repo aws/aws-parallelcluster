@@ -1329,10 +1329,10 @@ def test_dynamic_file_systems_update(
     logging.info("Checking the status of compute nodes in queue2")
     # All compute nodes in queue2 are expected to be in idle or drained
     # because they have not jobs running, hence we expect them to have been replaced (idle)
-    # or under replacement (drained).
+    # or under replacement (drained, draining).
     queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
     assert_compute_node_states(
-        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*"]
+        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*", "draining"]
     )
 
     logging.info("Checking that shared storage is visible on the head node")
