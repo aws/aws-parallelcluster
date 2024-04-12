@@ -303,6 +303,7 @@ Resources:
               - ec2:CreateSecurityGroup
               - ec2:CreateSnapshot
               - ec2:CreateTags
+              - ec2:DeleteTags
               - ec2:CreateVolume
               - ec2:DeleteLaunchTemplate
               - ec2:DeleteNetworkInterface
