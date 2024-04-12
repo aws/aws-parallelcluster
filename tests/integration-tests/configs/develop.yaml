@@ -400,7 +400,7 @@ test-suites:
           oss: ["alinux2"]
           schedulers: ["slurm"]
   scaling:
-    test_scaling.py::test_multiple_jobs_submission:
+    test_scaling.py::test_job_level_scaling:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -413,12 +413,6 @@ test-suites:
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rocky8"]
-          schedulers: ["slurm"]
-    test_scaling.py::test_job_level_scaling:
-      dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "alinux2" ]
           schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:

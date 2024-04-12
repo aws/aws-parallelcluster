@@ -10,6 +10,8 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
   ScalingStrategy: {{ scaling_strategy }}
   SlurmQueues:
     - Name: queue-jls-1-full
@@ -34,3 +36,13 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+  {% for q in range(no_of_queues) %}
+    - Name: queue-{{q}}
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+  {% endfor %}

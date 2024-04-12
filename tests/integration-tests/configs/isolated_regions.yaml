@@ -274,12 +274,6 @@ test-suites:
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
   scaling:
-    test_scaling.py::test_multiple_jobs_submission:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
     test_scaling.py::test_job_level_scaling:
       dimensions:
         - regions: {{ REGIONS }}

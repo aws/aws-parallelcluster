@@ -131,7 +131,7 @@ test-suites:
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
   scaling:
-    test_scaling.py::test_multiple_jobs_submission:
+    test_scaling.py::test_job_level_scaling:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
