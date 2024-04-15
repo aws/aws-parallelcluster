@@ -865,7 +865,7 @@ Resources:
               try:
                 iam.delete_server_certificate(CertificateArn=certificate_arn)
                 break
-              except iam.exceptions.ResourceInUseException as e:
+              except iam.exceptions.DeleteConflictException as e:
                 logger.info(f"(Attempt {attempt}/{max_attempts}) Cannot delete IAM certificate because it is in use. Retrying in {sleep_time} seconds...")
                 if attempt == max_attempts:
                   raise Exception(f"Cannot delete certificate {certificate_arn}: {e}")
