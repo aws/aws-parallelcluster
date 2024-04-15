@@ -857,13 +857,13 @@ Resources:
             alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
             return ''.join(random.choice(alnum) for _ in range(16))
 
-          def delete_certificate(certificate_arn):
+          def delete_certificate(domain_name, certificate_arn):
             logger.info(f"Deleting iam certificate {certificate_arn}...")
             max_attempts = 10
             sleep_time = 60
             for attempt in range(1, max_attempts+1):
               try:
-                iam.delete_server_certificate(CertificateArn=certificate_arn)
+                iam.delete_server_certificate(ServerCertificateName=domain_name)
                 break
               except iam.exceptions.DeleteConflictException as e:
                 logger.info(f"(Attempt {attempt}/{max_attempts}) Cannot delete IAM certificate because it is in use. Retrying in {sleep_time} seconds...")
@@ -886,7 +886,8 @@ Resources:
             try:
               if event['RequestType'] == 'Delete':
                 certificate_arn = event['ResourceProperties']['DomainCertificateArn']
-                delete_certificate(certificate_arn)
+                domain_name = event['ResourceProperties']['DomainName']
+                delete_certificate(domain_name, certificate_arn)
             except Exception as e:
               response_status = cfnresponse.FAILED
               reason = str(e)
@@ -898,6 +899,7 @@ Resources:
       - DomainCertificateSetup
     Properties:
       ServiceToken: !GetAtt CleanupLambda.Arn
+      DomainName: !Ref DomainName
       DomainCertificateArn: !GetAtt DomainCertificateSetup.DomainCertificateArn
 
   DomainCertificateSecretReadPolicy:
