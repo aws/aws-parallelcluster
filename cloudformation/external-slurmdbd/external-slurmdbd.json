@@ -229,7 +229,14 @@
        {
         "Ref": "AWS::StackName"
        },
-       "-cf55004ab3dc0560"
+       "-",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       "-",
+       {
+        "Ref": "AWS::Region"
+       }
       ]
      ]
     },
@@ -506,7 +513,15 @@
            {
             "Ref": "AWS::StackName"
            },
-           "-cf55004ab3dc0560\", \"cluster\": {\"region\": \"",
+           "-",
+           {
+            "Ref": "AWS::AccountId"
+           },
+           "-",
+           {
+            "Ref": "AWS::Region"
+           },
+           "\", \"cluster\": {\"region\": \"",
            {
             "Ref": "AWS::Region"
            },
@@ -599,7 +614,14 @@
       {
        "Ref": "AWS::StackName"
       },
-      "-cf55004ab3dc0560"
+      "-",
+      {
+       "Ref": "AWS::AccountId"
+      },
+      "-",
+      {
+       "Ref": "AWS::Region"
+      }
      ]
     ]
    }
