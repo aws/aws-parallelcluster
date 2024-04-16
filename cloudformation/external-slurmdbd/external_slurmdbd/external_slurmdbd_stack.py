@@ -1,4 +1,3 @@
-import hashlib
 import json
 
 import pkg_resources
@@ -420,7 +419,7 @@ class ExternalSlurmdbdStack(Stack):
         return s3.CfnBucket(
             self,
             id="ExternalSlurmdbdS3Bucket",
-            bucket_name=Aws.STACK_NAME + "-" + hashlib.sha256((self.account + self.region).encode()).hexdigest()[0:16],
+            bucket_name=Aws.STACK_NAME + "-" + Aws.ACCOUNT_ID + "-" + Aws.REGION,
             public_access_block_configuration=s3.CfnBucket.PublicAccessBlockConfigurationProperty(
                 block_public_acls=True,
                 block_public_policy=True,
