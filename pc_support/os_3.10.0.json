@@ -1,28 +1,32 @@
 {
   "os": [
     {
-      "name": "alinux2",
-      "description": "Amazon Linux 2"
+      "description": "Amazon Linux 2",
+      "name": "alinux2"
     },
     {
-      "name": "ubuntu2004",
-      "description": "Ubuntu 20.04 LTS"
+      "description": "Amazon Linux 2023",
+      "name": "alinux2023"
     },
     {
-      "name": "ubuntu2204",
-      "description": "Ubuntu 22.04 LTS"
+      "description": "Ubuntu 20.04 LTS",
+      "name": "ubuntu2004"
     },
     {
-      "name": "centos7",
-      "description": "CentOS 7"
+      "description": "Ubuntu 22.04 LTS",
+      "name": "ubuntu2204"
     },
     {
-      "name": "rhel8",
-      "description": "Red Hat Enterprise Linux 8"
+      "description": "CentOS 7",
+      "name": "centos7"
     },
     {
-      "name": "rhel9",
-      "description": "Red Hat Enterprise Linux 9"
+      "description": "Red Hat Enterprise Linux 8",
+      "name": "rhel8"
+    },
+    {
+      "description": "Red Hat Enterprise Linux 9",
+      "name": "rhel9"
     }
   ]
 }

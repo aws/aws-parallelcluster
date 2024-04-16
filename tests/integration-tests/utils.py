@@ -509,6 +509,7 @@ def get_username_for_os(os):
     """Return username for a given os."""
     usernames = {
         "alinux2": "ec2-user",
+        "alinux2023": "ec2-user",
         "centos7": "centos",
         "ubuntu2004": "ubuntu",
         "ubuntu2204": "ubuntu",
