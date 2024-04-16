@@ -23,8 +23,8 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
-SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
+SUPPORTED_OSES = ["alinux2", "alinux2023", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
+SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -39,6 +39,7 @@ AWSBATCH = "awsbatch"
 OS_MAPPING = {
     "centos7": {"user": "centos"},
     "alinux2": {"user": "ec2-user"},
+    "alinux2023": {"user": "ec2-user"},
     "ubuntu2004": {"user": "ubuntu"},
     "ubuntu2204": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
@@ -49,6 +50,7 @@ OS_MAPPING = {
 
 OS_TO_IMAGE_NAME_PART_MAP = {
     "alinux2": "amzn2-hvm",
+    "alinux2023": "amzn2023-hvm",
     "centos7": "centos7-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",

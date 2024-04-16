@@ -36,6 +36,8 @@ phases:
 
               if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
+              elif [ `echo "${RELEASE}" | grep -w '^amzn\.2023'` ]; then
+                OS='alinux2023'
               elif [ `echo "${RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
