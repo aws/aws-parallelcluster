@@ -2,6 +2,7 @@ import logging
 import os
 import re
 
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -122,7 +123,11 @@ def _test_jobs_get_recorded(scheduler_commands):
     job_id = scheduler_commands.assert_job_submitted(job_submission_output)
     logging.info(" Submitted Job ID: %s", job_id)
     scheduler_commands.wait_job_completed(job_id)
-    results = scheduler_commands.get_accounting_job_records(job_id)
+    _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands)
+
+
+def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
+    results = scheduler_commands.get_accounting_job_records(job_id, clusters=clusters)
     for row in results:
         logging.info(" Result: %s", row)
         assert_that(row.get("state")).is_equal_to("COMPLETED")
@@ -238,12 +243,18 @@ def test_slurm_accounting_external_dbd(
         **config_params,
     )
     cluster = clusters_factory(cluster_config)
+    # Don't wait on the second cluster creation so that we can test the first cluster in the meantime.
     cluster_2 = clusters_factory(cluster_config, wait=False)
 
+    logging.info("Testing the first cluster")
     _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir)
 
+    logging.info("Testing the second cluster")
     cluster_2.wait_cluster_status("CREATE_COMPLETE")
     _check_cluster_external_dbd(cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir)
+
+    logging.info("Testing the inter-clusters slurm accounting information")
+    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory)
 
 
 def _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir):
@@ -262,3 +273,42 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
         headnode_remote_command_executor,
     )
     _test_jobs_get_recorded(scheduler_commands)
+
+
+def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory):
+    """
+    Verify accounting information can be retrieved from another cluster
+    and information is not lost after AutoScaling group replaces Slurm DBD instance.
+    """
+    headnode_remote_command_executor_1 = RemoteCommandExecutor(cluster_1)
+    scheduler_commands_1 = scheduler_commands_factory(headnode_remote_command_executor_1)
+    headnode_remote_command_executor_2 = RemoteCommandExecutor(cluster_2)
+    scheduler_commands_2 = scheduler_commands_factory(headnode_remote_command_executor_2)
+
+    job_ids = []
+    for index in range(20):  # 20 is an arbitrary number and can be changed.
+        job_submission_output = scheduler_commands_1.submit_command(
+            'echo "$(hostname) ${SLURM_JOB_ACCOUNT} ${SLURM_JOB_ID} ${SLURM_JOB_NAME}"',
+        ).stdout
+        job_id = scheduler_commands_1.assert_job_submitted(job_submission_output)
+        job_ids.append(job_id)
+        logging.info(" Submitted Job ID: %s", job_id)
+        if index == 10:
+            logging.info(
+                "Terminating the Slurm DBD instance to test robustness of the setup: "
+                "Job information should be synced after AutoScaling group launches another Slurm DBD instance."
+            )
+            ec2_client = boto3.client("ec2")
+            slurm_dbd_instance_id = ec2_client.describe_instances(
+                Filters=[
+                    {"Name": "instance-state-name", "Values": ["running"]},
+                    {"Name": "tag:aws:cloudformation:logical-id", "Values": ["ExternalSlurmdbdASG"]},
+                ]
+            )["Reservations"][0]["Instances"][0]["InstanceId"]
+            ec2_client.terminate_instances(InstanceIds=[slurm_dbd_instance_id])
+
+    logging.info("Checking jobs information from another cluster.")
+    for job_id in job_ids:
+        retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
+            job_id, scheduler_commands_2, clusters=cluster_1.name
+        )
