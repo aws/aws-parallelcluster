@@ -33,7 +33,8 @@ NODE_CONFIG_PATH = "/etc/chef/dna.json"
 HEAD_NODE_ROLE_NAME = "HeadNode"
 COMPUTE_NODE_ROLE_NAME = "ComputeFleet"
 LOGIN_NODE_ROLE_NAME = "LoginNode"
-NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME, LOGIN_NODE_ROLE_NAME}
+EXTERNAL_SLURM_DBD_ROLE_NAME = "ExternalSlurmDbd"
+NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME, LOGIN_NODE_ROLE_NAME, EXTERNAL_SLURM_DBD_ROLE_NAME}
 
 
 def _get_log_group_name_for_cluster(cluster_name):
@@ -227,12 +228,19 @@ class CloudWatchLoggingClusterState:
         # TODO add logic to execute remote commands on LoginNodes
         return login_node_config
 
+    def _read_external_dbd_node_config(self):
+        """Read the node configuration JSON file at NODE_CONFIG_PATH on a external dbd node."""
+        external_dbd_node_config = {}
+        # TODO add logic to execute remote commands on ExternalDbd node
+        return external_dbd_node_config
+
     def _read_node_configs(self):
         """Return a dict mapping node role names to the config at NODE_CONFIG_PATH."""
         return {
             HEAD_NODE_ROLE_NAME: self._read_head_node_config(),
             COMPUTE_NODE_ROLE_NAME: self._read_compute_node_config(),
             LOGIN_NODE_ROLE_NAME: self._read_login_node_config(),
+            EXTERNAL_SLURM_DBD_ROLE_NAME: self._read_external_dbd_node_config(),
         }
 
     @staticmethod
