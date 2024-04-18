@@ -505,6 +505,12 @@ test-suites:
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
+    test_slurm_accounting.py::test_slurm_accounting_external_dbd:
+      dimensions:
+        - regions: [ "ap-south-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
     test_slurm.py::test_slurm_custom_partitions:
       dimensions:
         - regions: ["ap-northeast-2"]
