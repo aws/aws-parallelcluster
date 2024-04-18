@@ -197,6 +197,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    ExternalSlurmdbdRequiresCustomMungeKey,
     ExternalSlurmdbdTrafficNotEncrypted,
     ExternalSlurmdbdVsDatabaseIncompatibility,
     SlurmNodePrioritiesWarningValidator,
@@ -2786,6 +2787,11 @@ class SlurmSettings(Resource):
             ExternalSlurmdbdVsDatabaseIncompatibility,
             database=self.database,
             external_slurmdbd=self.external_slurmdbd,
+        )
+        self._register_validator(
+            ExternalSlurmdbdRequiresCustomMungeKey,
+            external_slurmdbd=self.external_slurmdbd,
+            munge_key_secret_arn=self.munge_key_secret_arn,
         )
         self._register_validator(
             ExternalSlurmdbdTrafficNotEncrypted,
