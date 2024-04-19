@@ -18,10 +18,10 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           Instances:
-            - InstanceType: t3.xlarge
+            - InstanceType: {{ instance }}
         - Name: compute-resource-1
           Instances:
-            - InstanceType: m5.xlarge
+            - InstanceType: {{ instance }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -29,10 +29,10 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           Instances:
-            - InstanceType: t3.xlarge
+            - InstanceType: {{ instance }}
         - Name: ice-cr-multiple
           Instances:
-            - InstanceType: m5.xlarge
+            - InstanceType: {{ instance }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
