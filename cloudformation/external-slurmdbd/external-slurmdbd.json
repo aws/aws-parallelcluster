@@ -222,24 +222,6 @@
   "ExternalSlurmdbdS3Bucket": {
    "Type": "AWS::S3::Bucket",
    "Properties": {
-    "BucketName": {
-     "Fn::Join": [
-      "",
-      [
-       {
-        "Ref": "AWS::StackName"
-       },
-       "-",
-       {
-        "Ref": "AWS::AccountId"
-       },
-       "-",
-       {
-        "Ref": "AWS::Region"
-       }
-      ]
-     ]
-    },
     "PublicAccessBlockConfiguration": {
      "BlockPublicAcls": true,
      "BlockPublicPolicy": true,
@@ -511,15 +493,7 @@
            },
            "\", \"slurmdbd_conf_bucket\": \"",
            {
-            "Ref": "AWS::StackName"
-           },
-           "-",
-           {
-            "Ref": "AWS::AccountId"
-           },
-           "-",
-           {
-            "Ref": "AWS::Region"
+            "Ref": "ExternalSlurmdbdS3Bucket"
            },
            "\", \"cluster\": {\"region\": \"",
            {
@@ -608,22 +582,7 @@
   "SlurmdbdConfigS3BucketName": {
    "Description": "S3 Bucket where a copy of the slurmdbd configuration files can be stored and re-used when re-provisioning the slurmdbd instance",
    "Value": {
-    "Fn::Join": [
-     "",
-     [
-      {
-       "Ref": "AWS::StackName"
-      },
-      "-",
-      {
-       "Ref": "AWS::AccountId"
-      },
-      "-",
-      {
-       "Ref": "AWS::Region"
-      }
-     ]
-    ]
+    "Ref": "ExternalSlurmdbdS3Bucket"
    }
   }
  }
