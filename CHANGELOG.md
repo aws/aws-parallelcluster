@@ -13,6 +13,9 @@ CHANGELOG
   This is to avoid cluster deletion failure for instance types with longer termination cycles.
 - Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
 
+**CHANGES**
+- Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+
 3.9.1
 ------
 
