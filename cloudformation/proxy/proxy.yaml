@@ -1,0 +1,355 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS ParallelCluster Proxy Environment
+
+Parameters:
+  Keypair:
+    Description: EC2 Keypair to access management instance.
+    Type: AWS::EC2::KeyPair::KeyName
+
+  VpcCidr:
+    Description: CIDR for the VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Networking
+        Parameters:
+          - VpcCidr
+      - Label:
+          default: Permissions
+        Parameters:
+          - Keypair
+
+Resources:
+
+  # VPC
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: ProxyVPC
+
+  # INTERNET GATEWAY
+  VpcIGW:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGWA:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VpcIGW
+      VpcId: !Ref Vpc
+
+  # PUBLIC SUBNET
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: !Select [ 0, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: ProxyVPC/Public
+
+  PublicSubnetRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicSubnetRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicSubnetRT
+      SubnetId: !Ref PublicSubnet
+
+  PublicSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - VpcGWA
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VpcIGW
+      RouteTableId: !Ref PublicSubnetRT
+
+  # PRIVATE SUBNET
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}b
+      CidrBlock: !Select [ 1, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: ProxyVPC/Private
+
+  PrivateSubnetRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PrivateSubnetRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateSubnetRT
+      SubnetId: !Ref PrivateSubnet
+
+  PrivateSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - Proxy
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref Proxy
+      RouteTableId: !Ref PrivateSubnetRT
+
+  # SECURITY GROUPS
+  ProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for the proxy node
+      SecurityGroupIngress:
+        - CidrIp: !GetAtt PrivateSubnet.CidrBlock
+          Description: Allow all inbound traffic from private subnet
+          IpProtocol: -1
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+          IpProtocol: -1
+      VpcId: !Ref Vpc
+
+  ProxyClientSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for proxy clients
+      SecurityGroupIngress:
+        - CidrIp: !Sub [ "${ProxyPrivateIp}/32", {ProxyPrivateIp: !GetAtt Proxy.PrivateIp}]
+          Description: Allow all inbound traffic from proxy
+          IpProtocol: -1
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+          IpProtocol: -1
+      VpcId: !Ref Vpc
+
+  # IAM PERMISSIONS
+  ProxyInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ProxyRole
+
+  ProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  ProxyClientNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ProxyClientNodeRole
+
+  ProxyClientNodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  Imdsv2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 4
+          HttpTokens: required
+
+  # PROXY
+  Proxy:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      # Dependencies required to support ENI updates when VPC, IGW and instance are defined in the same template.
+      # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-networkinterfaces
+      - VpcIGW
+      - ProxyENI
+    Properties:
+      IamInstanceProfile: !Ref ProxyInstanceProfile
+      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+      InstanceType: t2.medium
+      KeyName: !Ref Keypair
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          NetworkInterfaceId: !Ref ProxyENI
+      LaunchTemplate:
+        LaunchTemplateId: !Ref Imdsv2LaunchTemplate
+        Version: !GetAtt Imdsv2LaunchTemplate.LatestVersionNumber
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -ex
+          set -o pipefail
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+          apt-get update -y
+          apt-get install -y tinyproxy redsocks
+      
+          cat << EOF > /etc/tinyproxy/tinyproxy.conf
+          User tinyproxy
+          Group tinyproxy
+          Port 8888
+          Timeout 3600
+          DefaultErrorFile "/usr/share/tinyproxy/default.html"
+          StatFile "/usr/share/tinyproxy/stats.html"
+          Logfile "/var/log/tinyproxy/tinyproxy.log"
+          LogLevel Info
+          PidFile "/run/tinyproxy/tinyproxy.pid"
+          MaxClients 500
+          MinSpareServers 20
+          MaxSpareServers 100
+          StartServers 20
+          MaxRequestsPerChild 0
+          ViaProxyName "tinyproxy"
+          ConnectPort 443
+          ConnectPort 563
+          EOF
+          
+          /etc/init.d/tinyproxy restart
+      
+          cat << EOF > /etc/redsocks.conf
+          base {
+            log_debug = off;
+            log_info = on;
+            log = "file:/var/log/redsocks";
+            daemon = on;
+            user = redsocks;
+            group = redsocks;
+            redirector = iptables;
+          }
+                        
+          redsocks {
+            local_ip = 0.0.0.0;
+            local_port = 8889;
+            ip = localhost;
+            port = 8888;
+            type = http-connect;
+          }
+          EOF
+      
+          /etc/init.d/redsocks restart
+          
+          iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
+          iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8889
+          
+          mkdir -p /etc/iptables/
+          iptables-save > /etc/iptables/rules.v4
+          
+          # Installing iptables-persistent without manual prompt
+          # https://gist.github.com/alonisser/a2c19f5362c2091ac1e7
+          echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+          echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
+          apt-get install -y iptables-persistent
+      Tags:
+      - Key: Name
+        Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
+
+  ProxyENI:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      GroupSet:
+        - !Ref ProxySecurityGroup
+      InterfaceType: interface
+      SourceDestCheck: false
+      SubnetId: !Ref PublicSubnet
+
+  # PROXY Client
+  ProxyClient:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - Proxy
+    Properties:
+      IamInstanceProfile: !Ref ProxyClientNodeInstanceProfile
+      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+      InstanceType: t2.medium
+      KeyName: !Ref Keypair
+      SecurityGroupIds:
+        - !Ref ProxyClientSecurityGroup
+      SubnetId: !Ref PrivateSubnet
+      LaunchTemplate:
+        LaunchTemplateId: !Ref Imdsv2LaunchTemplate
+        Version: !GetAtt Imdsv2LaunchTemplate.LatestVersionNumber
+      UserData:
+        Fn::Base64:
+          !Sub
+          - |
+            #!/bin/bash -ex
+            set -o pipefail
+            exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+            
+            apt-get update -y
+            apt-get -y install python3-pip
+            pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+            
+            cat >> /home/ubuntu/test-proxy.sh <<TEST
+            http_proxy="http://${ProxyPrivateIp}:${ProxyPort}" wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
+            wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
+            TEST
+            
+            chmod +x /home/ubuntu/test-proxy.sh
+            
+            bash -ex /home/ubuntu/test-proxy.sh
+            
+            /usr/local/bin/cfn-signal --exit-code 0 --stack "${AWS::StackName}" --region "${AWS::Region}" "${ProxyVerificationWaitConditionHandle}"
+
+          - {
+              ProxyPrivateIp: !GetAtt Proxy.PrivateIp,
+              ProxyPort: 8888,
+              ProxyVerificationWaitConditionHandle: !Ref ProxyVerificationWaitConditionHandle
+            }
+      Tags:
+        - Key: Name
+          Value: !Sub [ "ProxyClient-${StackIdSuffix}", { StackIdSuffix: !Select [ 1, !Split [ '/', !Ref 'AWS::StackId' ] ] } ]
+
+  ProxyVerificationWaitConditionHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  ProxyVerificationWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Count: 1
+      Handle: !Ref ProxyVerificationWaitConditionHandle
+      Timeout: 600
+
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+  PublicSubnet:
+    Value: !Ref PublicSubnet
+  PrivateSubnet:
+    Value: !Ref PrivateSubnet
+  ProxyAddress:
+    Value: !Sub [ "http://${ProxyPrivateIp}:8888", { ProxyPrivateIp: !GetAtt Proxy.PrivateIp } ]
+  ProxyClientSecurityGroup:
+    Value: !Ref ProxyClientSecurityGroup
