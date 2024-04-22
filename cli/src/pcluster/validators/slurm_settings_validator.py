@@ -199,6 +199,17 @@ class ExternalSlurmdbdVsDatabaseIncompatibility(Validator):
             )
 
 
+class ExternalSlurmdbdRequiresCustomMungeKey(Validator):
+    """External Slurmdbd requires custom munge key."""
+
+    def _validate(self, external_slurmdbd, munge_key_secret_arn):
+        if (external_slurmdbd is not None) and (munge_key_secret_arn is None):
+            self._add_failure(
+                "When ExternalSlurmdbd is defined, MungeKeySecretArn is required.",
+                FailureLevel.ERROR,
+            )
+
+
 class ExternalSlurmdbdTrafficNotEncrypted(Validator):
     """Inform users about unencrypted connections."""
 

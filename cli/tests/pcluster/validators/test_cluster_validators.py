@@ -89,6 +89,7 @@ from pcluster.validators.slurm_settings_validator import (
     CustomSlurmSettingLevel,
     CustomSlurmSettingsIncludeFileOnlyValidator,
     CustomSlurmSettingsValidator,
+    ExternalSlurmdbdRequiresCustomMungeKey,
     ExternalSlurmdbdTrafficNotEncrypted,
     ExternalSlurmdbdVsDatabaseIncompatibility,
     SlurmNodePrioritiesWarningValidator,
@@ -378,6 +379,20 @@ def test_custom_slurm_settings_include_file_only_validator(
 )
 def test_external_slurmdbd_vs_database_incompatibility_validator(database, external_slurmdbd, expected_message):
     actual_failures = ExternalSlurmdbdVsDatabaseIncompatibility().execute(database, external_slurmdbd)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "external_slurmdbd, munge_key_secret_arn, expected_message",
+    [
+        pytest.param(None, None, None),
+        pytest.param(None, "arn", None),
+        pytest.param("external_slurmdbd", "arn", None),
+        pytest.param("external_slurmdbd", None, "When ExternalSlurmdbd is defined, MungeKeySecretArn is required."),
+    ],
+)
+def test_external_slurmdbd_requires_munge_key_validator(external_slurmdbd, munge_key_secret_arn, expected_message):
+    actual_failures = ExternalSlurmdbdRequiresCustomMungeKey().execute(external_slurmdbd, munge_key_secret_arn)
     assert_failure_messages(actual_failures, expected_message)
 
 

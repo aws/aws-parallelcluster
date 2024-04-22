@@ -117,7 +117,7 @@ class ExternalSlurmdbdStack(Stack):
             "dbms_database_name": self.dbms_database_name.value_as_string,
             "dbms_password_secret_arn": self.dbms_password_secret_arn.value_as_string,
             "munge_key_secret_arn": self.munge_key_secret_arn.value_as_string,
-            "slurmdbd_conf_bucket": self.s3_bucket.bucket_name,
+            "slurmdbd_conf_bucket": self.s3_bucket.ref,
             "cluster": {
                 "region": self.region,
                 "log_group_name": self._log_group.log_group_name,
@@ -419,7 +419,6 @@ class ExternalSlurmdbdStack(Stack):
         return s3.CfnBucket(
             self,
             id="ExternalSlurmdbdS3Bucket",
-            bucket_name=Aws.STACK_NAME + "-" + Aws.ACCOUNT_ID + "-" + Aws.REGION,
             public_access_block_configuration=s3.CfnBucket.PublicAccessBlockConfigurationProperty(
                 block_public_acls=True,
                 block_public_policy=True,
@@ -486,5 +485,5 @@ class ExternalSlurmdbdStack(Stack):
             "SlurmdbdConfigS3BucketName",
             description="S3 Bucket where a copy of the slurmdbd configuration files can be stored and re-used when "
             "re-provisioning the slurmdbd instance",
-            value=self.s3_bucket.bucket_name,
+            value=self.s3_bucket.ref,
         )
