@@ -103,8 +103,18 @@ class CloudWatchLoggingClusterState:
         self.scheduler_commands = get_scheduler_commands(
             scheduler=self.scheduler, remote_command_executor=self.remote_command_executor
         )
-        self._relevant_logs = {HEAD_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: [], LOGIN_NODE_ROLE_NAME: []}
-        self._cluster_log_state = {HEAD_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}, LOGIN_NODE_ROLE_NAME: []}
+        self._relevant_logs = {
+            HEAD_NODE_ROLE_NAME: [],
+            COMPUTE_NODE_ROLE_NAME: [],
+            LOGIN_NODE_ROLE_NAME: [],
+            EXTERNAL_SLURM_DBD_ROLE_NAME: [],
+        }
+        self._cluster_log_state = {
+            HEAD_NODE_ROLE_NAME: {},
+            COMPUTE_NODE_ROLE_NAME: {},
+            LOGIN_NODE_ROLE_NAME: [],
+            EXTERNAL_SLURM_DBD_ROLE_NAME: [],
+        }
         self._set_cluster_log_state()
 
     @property
