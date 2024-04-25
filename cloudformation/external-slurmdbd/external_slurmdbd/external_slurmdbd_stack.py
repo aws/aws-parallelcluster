@@ -67,6 +67,18 @@ class ExternalSlurmdbdStack(Stack):
         self.custom_cookbook_url_param = CfnParameter(
             self, "CustomCookbookUrl", type="String", description="URL of the custom Chef Cookbook.", default=""
         )
+        self.enable_slurm_dbd_system_service = CfnParameter(
+            self,
+            "EnableSlurmdbdSystemService",
+            type="String",
+            allowed_values=["true", "false"],
+            description="[Warning] It is not recommended to enable this if the database was created by a different "
+            "version of SlurmDBD. If the database contains a large number of entries, the SlurmDBD daemon may require "
+            "tens of minutes to update the database and be unresponsive during this time interval. "
+            "Before upgrading SlurmDBD it is strongly recommended to make a backup of the database."
+            "See Slurm documentation for details: https://slurm.schedmd.com/quickstart_admin.html#upgrade",
+            default="false",
+        )
 
         # create management security group with SSH access from SSH client SG
         self._ssh_server_sg, self._ssh_client_sg = self._add_management_security_groups()
@@ -124,6 +136,7 @@ class ExternalSlurmdbdStack(Stack):
                 "stack_name": Aws.STACK_NAME,
                 "node_type": "ExternalSlurmDbd",
                 "cw_logging_enabled": "true",
+                "slurmdbd_service_enabled": self.enable_slurm_dbd_system_service.value_as_string,
             },
         }
 

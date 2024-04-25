@@ -207,6 +207,7 @@ def slurm_dbd(request, database, region, os, vpc_stack_for_database, munge_key):
                 {"ParameterKey": "SubnetId", "ParameterValue": subnet_id},
                 {"ParameterKey": "SlurmdbdPort", "ParameterValue": "6819"},
                 {"ParameterKey": "VPCId", "ParameterValue": vpc_id},
+                {"ParameterKey": "EnableSlurmdbdSystemService", "ParameterValue": "true"},
             ]
             custom_cookbook_url = request.config.getoption("custom_chef_cookbook")
             if custom_cookbook_url:
