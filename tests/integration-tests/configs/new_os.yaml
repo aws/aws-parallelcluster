@@ -1,5 +1,10 @@
 {%- import 'common.jinja2' as common with context -%}
+{% if OSS  %}
+{%- set NEW_OS = [ OSS ] -%}
+{% else %}
 {%- set NEW_OS = ["##PLACEHOLDER##"] -%}
+{% endif %}
+
 ---
 test-suites:
   pcluster_api:
