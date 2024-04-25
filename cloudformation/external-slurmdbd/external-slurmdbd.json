@@ -33,6 +33,15 @@
    "Default": "",
    "Description": "URL of the custom Chef Cookbook."
   },
+  "EnableSlurmdbdSystemService": {
+   "Type": "String",
+   "Default": "false",
+   "AllowedValues": [
+    "true",
+    "false"
+   ],
+   "Description": "[Warning] It is not recommended to enable this if the Database was created by a different version of SlurmDBD. If the database contains a large number of entries, the SlurmDBD daemon may require tens of minutes to update the database and be unresponsive during this time interval. Before upgrading SlurmDBD it is strongly recommended to make a backup of the database.See Slurm documentation for details: https://slurm.schedmd.com/quickstart_admin.html#upgrade"
+  },
   "SlurmdbdPort": {
    "Type": "Number",
    "Default": 6819,
@@ -507,7 +516,11 @@
            {
             "Ref": "AWS::StackName"
            },
-           "\", \"node_type\": \"ExternalSlurmDbd\", \"cw_logging_enabled\": \"true\"}}"
+           "\", \"node_type\": \"ExternalSlurmDbd\", \"cw_logging_enabled\": \"true\", \"slurmdbd_service_enabled\": \"",
+           {
+            "Ref": "EnableSlurmdbdSystemService"
+           },
+           "\"}}"
           ]
          ]
         },
