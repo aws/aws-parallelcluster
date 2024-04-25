@@ -14,14 +14,14 @@ from typing import Optional, Tuple
 
 import pluggy
 import pytest
-from _pytest._code import ExceptionInfo
 from conftest_utils import (
     add_properties_to_report,
+    publish_test_metadata,
     publish_test_metrics,
     runtest_hook_start_end_time,
     update_failed_tests_config,
 )
-from utils import SetupError, set_logger_formatter
+from utils import set_logger_formatter
 
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
@@ -78,9 +78,14 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
     setattr(item, "rep_" + rep.when, rep)
 
     if rep.when in ["setup", "call"] and rep.failed:
-        exception_info: ExceptionInfo = call.excinfo
-        if exception_info.value and isinstance(exception_info.value, SetupError):
-            rep.when = "setup"
+        # TODO clean this up to not use the exception info here.  Reassigning the
+        # call to setup messes up timestamps for setup vs call.  For now this will
+        # count setup errors in the call phase as failures. We should probably make this
+        # more robust.
+        #
+        # exception_info: ExceptionInfo = call.excinfo
+        # if exception_info.value and isinstance(exception_info.value, SetupError):
+        #     rep.when = "setup"
         try:
             update_failed_tests_config(item)
         except Exception as e:
@@ -88,6 +93,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
     # Set the approximate start time for the test
     logging.info(f"Report keys {list(item.keywords)}")
     try:
-        publish_test_metrics(rep.when, item, rep)
+        publish_test_metrics(item, rep)
+        publish_test_metadata(item, rep)
     except Exception as exc:
-        logging.info(f"There was a {type(exc)} error with {exc} publishing the report!")
+        logging.info(f"There was a '{type(exc)}' error with '{exc}' when publishing the report!")
