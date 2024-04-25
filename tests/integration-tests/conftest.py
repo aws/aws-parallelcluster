@@ -45,6 +45,8 @@ from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.fixture_utils import xdist_session_fixture
+from framework.framework_constants import METADATA_DEFAULT_REGION, METADATA_TABLE
+from framework.metadata_table_manager import MetadataTableManager
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -259,6 +261,11 @@ def pytest_sessionstart(session):
     os.environ["AWS_METADATA_SERVICE_NUM_ATTEMPTS"] = "5"
     # Increasing default max attempts retry
     os.environ["AWS_MAX_ATTEMPTS"] = "10"
+    try:
+        # Setup the metadata table in case it doesn't exist
+        MetadataTableManager(METADATA_DEFAULT_REGION, METADATA_TABLE).create_metadata_table()
+    except Exception as exc:
+        logging.info(f"There was a '{type(exc)}' error with '{exc}' when creating the table!")
 
 
 def pytest_fixture_setup(fixturedef: FixtureDef[Any], request: SubRequest) -> Optional[object]:
