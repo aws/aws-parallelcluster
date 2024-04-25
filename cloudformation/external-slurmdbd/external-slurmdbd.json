@@ -507,7 +507,7 @@
            {
             "Ref": "AWS::StackName"
            },
-           "\", \"node_type\": \"ExternalSlurmDbd\"}}"
+           "\", \"node_type\": \"ExternalSlurmDbd\", \"cw_logging_enabled\": \"true\"}}"
           ]
          ]
         },

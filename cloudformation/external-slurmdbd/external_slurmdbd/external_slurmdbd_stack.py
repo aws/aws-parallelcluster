@@ -123,6 +123,7 @@ class ExternalSlurmdbdStack(Stack):
                 "log_group_name": self._log_group.log_group_name,
                 "stack_name": Aws.STACK_NAME,
                 "node_type": "ExternalSlurmDbd",
+                "cw_logging_enabled": "true",
             },
         }
 
