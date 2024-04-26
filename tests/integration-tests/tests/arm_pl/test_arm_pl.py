@@ -30,8 +30,8 @@ def test_arm_pl(os, pcluster_config_reader, clusters_factory, test_datadir):
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # arm performance library version and gcc version
-    armpl_version = "23.04.1" if os == "ubuntu2204" else "21.0.0"
-    gcc_version = "11.3" if os == "ubuntu2204" else "9.3"
+    armpl_version = "23.10.0"
+    gcc_version = "11.3" if os in ["ubuntu2204", "alinux2023", "redhat9", "rocky9"] else "9.3"
 
     # loading module armpl/{armpl_version} will load module armpl/gcc-{gcc_version}
     # and armpl/{armpl_version}_gcc-{gcc_vesion}  sequentially
