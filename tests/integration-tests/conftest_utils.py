@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
 
+import jsonpickle
 import pluggy
 import pytest
 import yaml
@@ -177,11 +178,12 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
                 end_time=get_user_prop(item, f"end_time_{rep.when}"),
             ),
         )
-        item.user_properties.append(("metadata", test_metadata))
+        # This prop needs to be serialized before saving to the user_props
+        item.user_properties.append(("metadata", jsonpickle.encode(test_metadata)))
         metadata_table_mgr.create_metadata_table()
     if rep.when == "call":
         # Update the call test data
-        test_metadata = get_user_prop(item, "metadata")
+        test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
         test_metadata.call_metadata = PhaseMetadata(
             rep.when,
             status=rep.outcome,
@@ -190,7 +192,7 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
         )
     if rep.when == "teardown":
         # Update the teardown test data
-        test_metadata = get_user_prop(item, "metadata")
+        test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
         test_metadata.teardown_metadata = PhaseMetadata(
             rep.when,
             status=rep.outcome,

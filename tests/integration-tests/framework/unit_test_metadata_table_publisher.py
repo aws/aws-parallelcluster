@@ -7,6 +7,7 @@
 #  limitations under the License.
 import logging
 
+import jsonpickle
 from framework_constants import METADATA_TABLE
 from metadata_table_manager import MetadataTableManager, PhaseMetadata, TestMetadata
 
@@ -21,7 +22,12 @@ print(sample_setup)
 print(sample_call)
 print(sample_teardown)
 sample_test = TestMetadata("test_name")
-print(sample_test)
+print(f"sample {sample_test}")
 pub.publish_metadata([sample_test])
 pub.get_metadata([sample_test.id])
+frozen = jsonpickle.encode(sample_test)
+print(f"frozen {frozen}")
+thawed = jsonpickle.decode(frozen)
+print(f"thawed {thawed}")
+assert sample_test == thawed
 # pub.publish_phase_metadata(PhaseMetadata("test_phase", "test_phase_description"))
