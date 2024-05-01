@@ -4,6 +4,9 @@ CHANGELOG
 3.10.0
 ------
 
+**ENHANCEMENTS**
+- Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
+
 **BUG FIXES**
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
 - Consider Compute fleet clean-up completed during cluster deletion when instances are either in shutting-down or terminated state.
