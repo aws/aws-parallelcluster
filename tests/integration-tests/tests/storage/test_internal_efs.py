@@ -23,11 +23,14 @@ from tests.storage.storage_common import (
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_internal_efs(
-    region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+    region, scheduler, pcluster_config_reader, architecture, clusters_factory, vpc_stack, scheduler_commands_factory
 ):
     """Verify the internal shared storage fs is available when set to Efs"""
-    compute_shared_dirs = ["/opt/parallelcluster/shared", "/opt/slurm", "/opt/intel", "/home"]
-    login_shared_dirs = ["/opt/parallelcluster/shared_login_nodes", "/opt/slurm", "/opt/intel", "/home"]
+    compute_shared_dirs = ["/opt/parallelcluster/shared", "/opt/slurm", "/home"]
+    login_shared_dirs = ["/opt/parallelcluster/shared_login_nodes", "/opt/slurm", "/home"]
+    if architecture == "x86_64":
+        compute_shared_dirs.append("/opt/intel")
+        login_shared_dirs.append("/opt/intel")
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
