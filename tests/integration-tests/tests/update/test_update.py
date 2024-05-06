@@ -1484,6 +1484,61 @@ def test_dynamic_file_systems_update(
                 expected_states=managed_storage_ids[storage_type]["expected_states"],
             )
 
+
+@pytest.mark.usefixtures("instance")
+def test_dynamic_file_systems_update_rollback(
+    region,
+    os,
+    pcluster_config_reader,
+    ami_copy,
+    clusters_factory,
+    scheduler_commands_factory,
+    request,
+    vpc_stack,
+    key_name,
+    s3_bucket_factory,
+    test_datadir,
+    delete_storage_on_teardown,
+    external_shared_storage_stack,
+):
+    """Test the rollback path when the cluster is updated with invalid shared storage."""
+
+    # Create cluster without any shared storage.
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
+    )
+    cluster = clusters_factory(init_config_file)
+
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    file_cache_path = "/file-cache-path/"
+
+    fsx_supported = is_fsx_supported(region)
+    existing_ebs_mount_dir = "/existing_ebs_mount_dir"
+    new_ebs_mount_dir = "/new_ebs_mount_dir"
+    new_efs_mount_dir = "/new_efs_mount_dir"
+    new_lustre_mount_dir = "/new_lustre_mount_dir"
+
+    (
+        existing_ebs_volume_id,
+        existing_efs_id,
+        existing_fsx_lustre_fs_id,
+        existing_fsx_ontap_volume_id,
+        existing_fsx_open_zfs_volume_id,
+        existing_file_cache_id,
+    ) = _create_shared_storages_resources(
+        request,
+        vpc_stack,
+        region,
+        bucket_name,
+        external_shared_storage_stack,
+        file_cache_path,
+    )
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
     _test_shared_storage_rollback(
         cluster,
         existing_ebs_volume_id,
