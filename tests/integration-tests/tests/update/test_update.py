@@ -1084,6 +1084,13 @@ def test_dynamic_file_systems_update(
     external_shared_storage_stack,
 ):
     """Test update shared storages."""
+
+    # Create cluster without any shared storage.
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
+    )
+    cluster = clusters_factory(init_config_file, wait=False)
+
     fsx_supported = is_fsx_supported(region)
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
     existing_efs_mount_dir = "/existing_efs_mount_dir"
@@ -1129,11 +1136,8 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    # Create cluster without any shared storage.
-    init_config_file = pcluster_config_reader(
-        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
-    )
-    cluster = clusters_factory(init_config_file)
+    cluster.wait_cluster_status("CREATE_COMPLETE")
+
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
@@ -1257,7 +1261,7 @@ def test_dynamic_file_systems_update(
     # In particular, we add here: external EBS, managed EBS/EFS/FsxLustre with DRAIN strategy
     logging.info(
         "Updating the cluster with DRAIN strategy to mount external EBS and managed EBS/EFS/FsxLustre "
-        "with DeletionPolicy set to Delete"
+        "with DeletionPolicy set to Retain"
     )
     update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
@@ -1276,13 +1280,13 @@ def test_dynamic_file_systems_update(
         existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
-        new_ebs_deletion_policy="Delete",
+        new_ebs_deletion_policy="Retain",
         new_raid_mount_dir=new_raid_mount_dir,
-        new_raid_deletion_policy="Delete",
+        new_raid_deletion_policy="Retain",
         new_lustre_mount_dir=new_lustre_mount_dir,
-        new_lustre_deletion_policy="Delete",
+        new_lustre_deletion_policy="Retain",
         new_efs_mount_dir=new_efs_mount_dir,
-        new_efs_deletion_policy="Delete",
+        new_efs_deletion_policy="Retain",
         fsx_supported=fsx_supported,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
@@ -1411,38 +1415,6 @@ def test_dynamic_file_systems_update(
     for mount_dir in all_mount_dirs_update_2:
         verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
 
-    logging.info("Updating the cluster to set DeletionPolicy to Retain for every managed storage")
-    update_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml",
-        output_file="pcluster.config.update_retain_managed_storage_drain.yaml",
-        volume_id=existing_ebs_volume_id,
-        existing_ebs_mount_dir=existing_ebs_mount_dir,
-        existing_efs_mount_dir=existing_efs_mount_dir,
-        fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
-        fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
-        fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
-        file_cache_mount_dir=existing_file_cache_mount_dir,
-        existing_efs_id=existing_efs_id,
-        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
-        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
-        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
-        existing_file_cache_id=existing_file_cache_id,
-        bucket_name=bucket_name,
-        new_ebs_mount_dir=new_ebs_mount_dir,
-        new_ebs_deletion_policy="Retain",
-        new_raid_mount_dir=new_raid_mount_dir,
-        new_raid_deletion_policy="Retain",
-        new_lustre_mount_dir=new_lustre_mount_dir,
-        new_lustre_deletion_policy="Retain",
-        new_efs_mount_dir=new_efs_mount_dir,
-        new_efs_deletion_policy="Retain",
-        fsx_supported=fsx_supported,
-        queue_update_strategy="DRAIN",
-        login_nodes_count=0,
-    )
-
-    cluster.update(update_cluster_config)
-
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
     cluster.stop()
@@ -1507,7 +1479,7 @@ def test_dynamic_file_systems_update_rollback(
     init_config_file = pcluster_config_reader(
         config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
     )
-    cluster = clusters_factory(init_config_file)
+    cluster = clusters_factory(init_config_file, wait=False)
 
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -1535,6 +1507,8 @@ def test_dynamic_file_systems_update_rollback(
         external_shared_storage_stack,
         file_cache_path,
     )
+
+    cluster.wait_cluster_status("CREATE_COMPLETE")
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
