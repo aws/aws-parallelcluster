@@ -133,6 +133,14 @@ def get_user_prop(item: pytest.Item, prop: str) -> Any:
             return user_prop[1]
 
 
+def update_user_prop(item: pytest.Item, prop: str, new_data: Any) -> Any:
+    """From a list of tuples, get the desired user property and update it"""
+    for index, user_prop in enumerate(item.user_properties):
+        if user_prop[0] == prop:
+            item.user_properties[index] = (prop, new_data)
+            return item.user_properties[index][1]
+
+
 def create_phase_metrics(item: pytest.Item, rep: pytest.TestReport, dimensions: List[dict[str, str]]):
     metrics = [
         Metric(f"{rep.when}_result", int(rep.passed), "None", dimensions),
@@ -162,6 +170,7 @@ def create_phase_metrics(item: pytest.Item, rep: pytest.TestReport, dimensions: 
 def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
     """Publish test metadata to the metadata table."""
     metadata_table_mgr = MetadataTableManager(METADATA_DEFAULT_REGION, METADATA_TABLE)
+    logging.info(f"Publishing test metadata: item {item} rep {rep}")
     test_metadata = None
     if rep.when == "setup":
         # Initialize the test data
@@ -178,8 +187,7 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
                 end_time=get_user_prop(item, f"end_time_{rep.when}"),
             ),
         )
-        # This prop needs to be serialized before saving to the user_props
-        item.user_properties.append(("metadata", jsonpickle.encode(test_metadata)))
+        # Create the metadata table on the fly if it doesn't exist
         metadata_table_mgr.create_metadata_table()
     if rep.when == "call":
         # Update the call test data
@@ -199,4 +207,10 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
             start_time=get_user_prop(item, f"start_time_{rep.when}"),
             end_time=get_user_prop(item, f"end_time_{rep.when}"),
         )
+    # This prop needs to be serialized before saving to the user_props
+    if update_user_prop(item, "metadata", jsonpickle.encode(test_metadata)):
+        logging.info(f"Updated the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
+    else:
+        item.user_properties.append(("metadata", jsonpickle.encode(test_metadata)))
+        logging.info(f"Added the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
     metadata_table_mgr.publish_metadata([test_metadata])
