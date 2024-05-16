@@ -33,17 +33,21 @@ SharedStorage:
   - MountDir: /efs
     Name: efs
     StorageType: Efs
-  {% if fsx_supported %}
+  {% if fsx_lustre_supported %}
   - MountDir: /fsxlustre
     Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 2400
+  {% endif %}
+  {% if fsx_openzfs_supported %}
   - MountDir: /fsxopenzfs
     Name: existingopenzfs
     StorageType: FsxOpenZfs
     FsxOpenZfsSettings:
       VolumeId: {{ fsx_open_zfs_volume_id }}
+  {% endif %}
+  {% if fsx_ontap_supported %}
   - MountDir: /fsxontap
     Name: existingontap
     StorageType: FsxOntap

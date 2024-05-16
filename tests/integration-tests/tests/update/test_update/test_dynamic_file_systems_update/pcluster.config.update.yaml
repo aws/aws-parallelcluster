@@ -100,7 +100,6 @@ SharedStorage:
     EfsSettings:
       FileSystemId: {{ existing_efs_id }}
 {% endif %}
-{% if fsx_supported %}
 {% if new_lustre_mount_dir %}
   - MountDir: {{ new_lustre_mount_dir }}
     Name: manage-fsx
@@ -140,6 +139,5 @@ SharedStorage:
     StorageType: FileCache
     FileCacheSettings:
       FileCacheId: {{ existing_file_cache_id }}
-{% endif %}
 {% endif %}
 

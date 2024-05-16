@@ -15,7 +15,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import is_fsx_supported
+from utils import is_fsx_lustre_supported, is_fsx_ontap_supported, is_fsx_openzfs_supported
 
 from tests.storage.storage_common import (
     check_fsx,
@@ -57,8 +57,13 @@ def test_shared_home(
     """Verify the shared /home storage fs is available when set"""
     mount_dir = "/home"
     bucket_name = None
-    if is_fsx_supported(region) or storage_type in ["Efs", "Ebs"]:
-        if storage_type == "FsxOpenZfs":
+
+    fsx_supported = (
+        is_fsx_lustre_supported(region) or is_fsx_ontap_supported(region) or is_fsx_openzfs_supported(region)
+    )
+
+    if fsx_supported or storage_type in ["Efs", "Ebs"]:
+        if is_fsx_openzfs_supported(region) and storage_type == "FsxOpenZfs":
             fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
             fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
             cluster_config = pcluster_config_reader(
@@ -67,7 +72,7 @@ def test_shared_home(
                 volume_id=fsx_open_zfs_volume_id,
                 shared_storage_type=shared_storage_type,
             )
-        elif storage_type == "FsxOntap":
+        elif is_fsx_ontap_supported(region) and storage_type == "FsxOntap":
             fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
             fsx_on_tap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
             cluster_config = pcluster_config_reader(
