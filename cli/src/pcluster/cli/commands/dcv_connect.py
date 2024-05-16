@@ -117,7 +117,10 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
             raise DCVConnectionError(e.output)
 
     return "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
-        IP=head_node_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
+        IP=head_node_ip,
+        PORT=dcv_server_port,  # pylint: disable=E0606
+        TOKEN=dcv_session_token,  # pylint: disable=E0606
+        SESSION_ID=dcv_session_id,  # pylint: disable=E0606
     )
 
 
