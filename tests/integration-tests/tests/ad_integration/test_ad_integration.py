@@ -521,7 +521,7 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
     ],
 )
 @pytest.mark.usefixtures("os", "instance")
-def test_ad_integration(
+def test_ad_integration(  # noqa: C901
     region,
     scheduler,
     scheduler_commands_factory,
