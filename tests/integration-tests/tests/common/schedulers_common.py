@@ -435,9 +435,7 @@ class SlurmCommands(SchedulerCommands):
 
     def get_unique_static_nodes(self):
         """Get list of unique static node names (useful if custom partitions are included in a cluster)"""
-        command = (
-            "scontrol show nodes -o  | grep -iE '*State=IDLE\+CLOUD ' | awk '/^NodeName/ {print $1}'"  # noqa: W605
-        )
+        command = "scontrol show nodes -o  | grep -iE 'State=IDLE\+CLOUD ' | awk '/^NodeName/ {print $1}'"  # noqa: W605
         result = self._remote_command_executor.run_remote_command(command)
         return result.stdout.splitlines()
 
