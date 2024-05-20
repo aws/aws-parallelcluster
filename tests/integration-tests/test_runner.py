@@ -86,6 +86,7 @@ TEST_DEFAULTS = {
     "ldaps_nlb_stack_name": None,
     "slurm_database_stack_name": None,
     "external_shared_storage_stack_name": None,
+    "bucket_name": None,
     "custom_security_groups_stack_name": None,
     "cluster_custom_resource_service_token": None,
     "resource_bucket": None,
@@ -401,6 +402,11 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("external_shared_storage_stack_name"),
     )
     debug_group.add_argument(
+        "--bucket-name",
+        help="Name of existing bucket.",
+        default=TEST_DEFAULTS.get("bucket_name"),
+    )
+    debug_group.add_argument(
         "--custom-security-groups-stack-name",
         help="Name of existing custom security groups stack.",
         default=TEST_DEFAULTS.get("custom_security_groups_stack_name"),
@@ -632,6 +638,9 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.external_shared_storage_stack_name:
         pytest_args.extend(["--external-shared-storage-stack-name", args.external_shared_storage_stack_name])
+
+    if args.bucket_name:
+        pytest_args.extend(["--bucket-name", args.bucket_name])
 
     if args.retain_ad_stack:
         pytest_args.append("--retain-ad-stack")
