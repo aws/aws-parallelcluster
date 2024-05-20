@@ -8,7 +8,7 @@
 
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 import boto3
@@ -35,9 +35,9 @@ class TestMetadata:
     os: str = ""
     feature: str = ""
     instance_type: str = ""
-    setup_metadata: PhaseMetadata = PhaseMetadata(name="setup")
-    call_metadata: PhaseMetadata = PhaseMetadata(name="call")
-    teardown_metadata: PhaseMetadata = PhaseMetadata(name="teardown")
+    setup_metadata: PhaseMetadata = field(default_factory=lambda: PhaseMetadata(name="setup"))
+    call_metadata: PhaseMetadata = field(default_factory=lambda: PhaseMetadata(name="call"))
+    teardown_metadata: PhaseMetadata = field(default_factory=lambda: PhaseMetadata(name="teardown"))
     cli_commit: str = ""
     cookbook_commit: str = ""
     node_commit: str = ""
