@@ -15,6 +15,7 @@ import os.path as os_path
 import re
 import time
 from collections import defaultdict
+from datetime import datetime
 
 import boto3
 import pytest
@@ -33,6 +34,7 @@ from utils import (
     get_arn_partition,
     get_root_volume_id,
     is_fsx_supported,
+    random_alphanumeric,
     retrieve_cfn_resources,
     wait_for_computefleet_changed,
 )
@@ -51,12 +53,14 @@ from tests.common.storage.assertions import assert_storage_existence
 from tests.common.storage.constants import StorageType
 from tests.common.utils import generate_random_string, get_deployed_config_version, retrieve_latest_ami
 from tests.storage.storage_common import (
+    assert_file_exists,
     check_fsx,
     test_ebs_correctly_mounted,
     test_efs_correctly_mounted,
     test_raid_correctly_configured,
     test_raid_correctly_mounted,
     verify_directory_correctly_shared,
+    write_file,
 )
 
 
@@ -1527,6 +1531,113 @@ def test_dynamic_file_systems_update_rollback(
         region,
         fsx_supported,
     )
+
+
+@pytest.mark.usefixtures("instance")
+def test_dynamic_file_systems_update_data_loss(
+    region,
+    os,
+    pcluster_config_reader,
+    ami_copy,
+    clusters_factory,
+    scheduler_commands_factory,
+    request,
+    vpc_stack,
+    key_name,
+    s3_bucket_factory,
+    test_datadir,
+    delete_storage_on_teardown,
+    external_shared_storage_stack,
+):
+    """Test that the dynamic file systems update does not cause any data loss.
+
+    The test executes the following steps:
+      1. Creates the external shared storage stack
+      2. Creates a cluster with all the external shared storage
+      3. Writes a file in every external shared storage mount dir
+      4. Updates the cluster to unmount all the external shared storage
+      5. Updates the cluster to re-mount all the external shared storage
+      6. Verifies that all files previously written where still there
+    """
+
+    bucket_name = s3_bucket_factory()
+    file_cache_path = "/file-cache-path/"
+
+    existing_ebs_mount_dir = "/shared-storage/ebs/existing-1"
+    existing_efs_mount_dir = "/shared-storage/efs/existing-1"
+    existing_fsx_lustre_mount_dir = "/shared-storage/fsx-lustre/existing-1"
+    existing_fsx_ontap_mount_dir = "/shared-storage/fsx-ontap/existing-1"
+    existing_fsx_open_zfs_mount_dir = "/shared-storage/fsx-open-zfs/existing-1"
+    existing_file_cache_mount_dir = "/shared-storage/file-cache/existing-1"
+
+    (
+        existing_ebs_id,
+        existing_efs_id,
+        existing_fsx_lustre_id,
+        existing_fsx_ontap_id,
+        existing_fsx_openzfs_id,
+        existing_file_cache_id,
+    ) = _create_shared_storages_resources(
+        request,
+        vpc_stack,
+        region,
+        bucket_name,
+        external_shared_storage_stack,
+        file_cache_path,
+    )
+
+    logging.info("Creating the cluster with all shared storage")
+    cluster_config_all_storage = pcluster_config_reader(
+        config_file="pcluster.config.yaml",
+        output_file="pcluster.config.all_storage.yaml",
+        existing_ebs_mount_dir=existing_ebs_mount_dir,
+        existing_ebs_id=existing_ebs_id,
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
+        existing_fsx_lustre_id=existing_fsx_lustre_id,
+        existing_fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
+        existing_fsx_ontap_id=existing_fsx_ontap_id,
+        existing_fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
+        existing_fsx_open_zfs_id=existing_fsx_openzfs_id,
+        existing_file_cache_mount_dir=existing_file_cache_mount_dir,
+        existing_file_cache_id=existing_file_cache_id,
+        bucket_name=bucket_name,
+    )
+    cluster = clusters_factory(cluster_config_all_storage)
+
+    mount_dirs = [
+        existing_ebs_mount_dir,
+        existing_efs_mount_dir,
+        existing_fsx_lustre_mount_dir,
+        existing_fsx_ontap_mount_dir,
+        existing_fsx_open_zfs_mount_dir,
+        existing_file_cache_mount_dir,
+    ]
+
+    test_id = f"{request.node.name}/{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}-{random_alphanumeric()}"
+    created_files = []
+    for mount_dir in mount_dirs:
+        file_name = f"{mount_dir}/{test_id}/test_file.txt"
+        created_files.append(file_name)
+        write_file(cluster, file_name)
+
+    logging.info("Updating the cluster to remove all the shared storage")
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster_config_no_storage = pcluster_config_reader(
+        config_file="pcluster.config.no-storage.yaml",
+        bucket_name=bucket_name,
+    )
+    cluster.update(cluster_config_no_storage)
+
+    logging.info("Updating the cluster to re-mount all shared storage")
+    cluster.update(cluster_config_all_storage)
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+
+    for file_path in created_files:
+        assert_file_exists(cluster, file_path)
 
 
 def _retrieve_managed_storage_ids(cluster, existing_ebs_ids, existing_efs_ids, existing_fsx_ids, fsx_supported):
