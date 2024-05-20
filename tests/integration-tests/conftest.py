@@ -184,6 +184,7 @@ def pytest_addoption(parser):
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
     )
     parser.addoption("--external-shared-storage-stack-name", help="Name of existing external shared storage stack.")
+    parser.addoption("--bucket-name", help="Name of existing bucket.")
     parser.addoption("--custom-security-groups-stack-name", help="Name of existing custom security groups stack.")
     parser.addoption(
         "--force-run-instances",
@@ -1042,10 +1043,15 @@ def s3_bucket_factory(request, region):
     created_buckets = []
 
     def _create_bucket():
-        bucket_name = "integ-tests-" + random_alphanumeric()
-        logging.info("Creating S3 bucket {0}".format(bucket_name))
-        create_s3_bucket(bucket_name, region)
-        created_buckets.append((bucket_name, region))
+        option = "bucket_name"
+        if request.config.getoption(option):
+            bucket_name = request.config.getoption(option)
+            logging.info("Using existing S3 bucket {0}".format(bucket_name))
+        else:
+            bucket_name = "integ-tests-" + random_alphanumeric()
+            logging.info("Creating S3 bucket {0}".format(bucket_name))
+            create_s3_bucket(bucket_name, region)
+            created_buckets.append((bucket_name, region))
         return bucket_name
 
     yield _create_bucket
@@ -1071,10 +1077,15 @@ def s3_bucket_factory_shared(request):
     created_buckets = []
 
     def _create_bucket(region):
-        bucket_name = "integ-tests-" + random_alphanumeric()
-        logging.info("Creating S3 bucket {0}".format(bucket_name))
-        create_s3_bucket(bucket_name, region)
-        created_buckets.append((bucket_name, region))
+        option = "bucket_name"
+        if request.config.getoption(option):
+            bucket_name = request.config.getoption(option)
+            logging.info("Using existing S3 bucket {0}".format(bucket_name))
+        else:
+            bucket_name = "integ-tests-" + random_alphanumeric()
+            logging.info("Creating S3 bucket {0}".format(bucket_name))
+            create_s3_bucket(bucket_name, region)
+            created_buckets.append((bucket_name, region))
         return bucket_name
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
