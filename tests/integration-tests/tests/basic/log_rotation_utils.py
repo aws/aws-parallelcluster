@@ -137,7 +137,7 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
         result = _run_command_on_node(remote_command_executor, "cat /var/lib/logrotate/status", compute_node_ip)
     else:
         result = _run_command_on_node(
-            remote_command_executor, "cat /var/lib/logrotate/logrotate.status", compute_node_ip
+            remote_command_executor, "sudo cat /var/lib/logrotate/logrotate.status", compute_node_ip
         )
     for log in logs:
         log_path = log.get("log_path")
