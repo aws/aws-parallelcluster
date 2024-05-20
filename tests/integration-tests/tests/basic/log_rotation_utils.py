@@ -117,9 +117,11 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
     # Write a log message to log file before log rotation in case of log file is empty and not rotate
     for log in logs:
         if log.get("existence"):
+            log_path = log.get("log_path")
+            log_file_user = remote_command_executor.get_user_to_operate_on_file(log_path)
             _run_command_on_node(
                 remote_command_executor,
-                f"echo '{before_log_rotation_message}' | sudo tee --append {log.get('log_path')}",
+                f"echo '{before_log_rotation_message}' | sudo -u {log_file_user} tee --append {log_path}",
                 compute_node_ip,
             )
     # Flush changes to the disk using sync to ensure file is not detected as empty by mistake and not rotate
@@ -138,11 +140,13 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
             remote_command_executor, "cat /var/lib/logrotate/logrotate.status", compute_node_ip
         )
     for log in logs:
-        assert_that(result).contains(log.get("log_path"))
+        log_path = log.get("log_path")
+        assert_that(result).contains(log_path)
         if log.get("existence"):
             # assert logs before rotation are in the rotated log files
+            log_file_user = remote_command_executor.get_user_to_operate_on_file(f"{log_path}.1")
             rotate_log = _run_command_on_node(
-                remote_command_executor, f"sudo cat {log.get('log_path')}.1", compute_node_ip
+                remote_command_executor, f"sudo -u {log_file_user} cat {log_path}.1", compute_node_ip
             )
             assert_that(rotate_log).contains(before_log_rotation_message)
 
