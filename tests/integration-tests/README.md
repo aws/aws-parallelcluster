@@ -44,6 +44,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
                       [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI] [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--lambda-layer-source LAMBDA_LAYER_SOURCE]
                       [--no-delete] [--retain-ad-stack] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME] [--external-shared-storage-stack-name SHARED_STORAGE_STACK_NAME]
+                      [--bucket-name BUCKET_NAME]
 
 Run integration tests suite.
 
@@ -173,6 +174,8 @@ Debugging/Development options:
                         Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
   --external-shared-storage-stack-name
                         Name of an existing external shared storage stack. (default: None)
+  --bucket-name
+                        Name of an existing bucket. (default: None)
 ```
 
 Here is an example of tests submission:
