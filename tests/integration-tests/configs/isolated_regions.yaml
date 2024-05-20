@@ -5,7 +5,11 @@
 {%- set REGIONS = ["us-isob-east-1","us-iso-east-1"] -%}
 {% endif %}
 {%- set INSTANCES = ["c5.xlarge"] -%}
+{% if OSS  %}
+{%- set OSS = [ OSS ] -%}
+{% else %}
 {%- set OSS = ["alinux2"] -%}
+{% endif %}
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
 test-suites:
