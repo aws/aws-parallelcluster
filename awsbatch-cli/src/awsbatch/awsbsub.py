@@ -245,7 +245,7 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config
         command = [args.command] + args.arguments
     else:
         fail("Unexpected error. Command cannot be empty.")
-    log.info("Command: %s" % shell_join(command))
+    log.info("Command: %s" % shell_join(command))  # pylint: disable=E0606
     return command
 
 

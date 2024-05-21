@@ -88,7 +88,7 @@ def _resolve_body(spec, operation):
 
 def package_spec():
     """Load the OpenAPI specification from the package."""
-    with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
+    with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:  # pylint: disable=W4902
         return yaml_load(spec_file.read())
 
 

@@ -155,7 +155,7 @@ class Boto3Client:
         """
         paginator = self._client.get_paginator(method.__name__)
         for page in paginator.paginate(**kwargs).result_key_iters():
-            for result in page:
+            for result in page:  # pylint: disable=R1737
                 yield result
 
 

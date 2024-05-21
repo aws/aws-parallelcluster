@@ -92,7 +92,11 @@ class PasswordSecretArnValidator(Validator):
                 resource_type = resource.split("/")[0]
             if service == "secretsmanager" and resource == "secret":
                 AWSApi.instance().secretsmanager.describe_secret(password_secret_arn)
-            elif service == "ssm" and resource_type == "parameter" and region == "us-isob-east-1":
+            elif (
+                service == "ssm"
+                and resource_type == "parameter"  # pylint: disable=E0606
+                and region == "us-isob-east-1"
+            ):
                 parameter_name = resource.split("/")[1]
                 AWSApi.instance().ssm.get_parameter(parameter_name)
             else:
