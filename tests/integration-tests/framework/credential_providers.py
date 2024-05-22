@@ -100,6 +100,7 @@ def _retrieve_sts_credential(region, credential_arn, sts, credential_external_id
     assume_role_kwargs = {
         "RoleArn": credential_arn,
         "RoleSessionName": region + "_integration_tests_session",
+        "DurationSeconds": 10000,
     }
     if credential_external_id:
         assume_role_kwargs["ExternalId"] = credential_external_id

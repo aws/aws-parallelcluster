@@ -89,6 +89,7 @@ Resources:
         - !Ref ParallelClusterDescribeImageManagedPolicy
         - !Ref ParallelClusterLogRetrievalPolicy
         - !Ref ParallelClusterLoginNodesStack
+      MaxSessionDuration: 20000
 
   ### IAM POLICIES
 
