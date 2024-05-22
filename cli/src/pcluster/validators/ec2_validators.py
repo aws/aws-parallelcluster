@@ -158,8 +158,8 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
             self._add_failure(
                 f"The instance type '{instance_type}' is not supported by NVIDIA OpenRM drivers. "
                 f"OpenRM can only be used on any Turing or later GPU architectures. "
-                f"Please consider using a different instance type or building a custom AMI "
-                f"with closed source NVIDIA drivers.",
+                f"Please consider building a custom AMI with closed source NVIDIA drivers "
+                f"and then suppress this validator or using a different instance type.",
                 FailureLevel.ERROR,
             )
 
