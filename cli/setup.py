@@ -23,7 +23,7 @@ def readme():
 VERSION = "3.9.2"
 CDK_VERSION = "1.164"
 REQUIRES = [
-    "setuptools",
+    "setuptools<70.0.0",
     "boto3>=1.16.14",
     "tabulate>=0.8.8,<=0.8.10",
     "PyYAML>=5.3.1,!=5.4",
