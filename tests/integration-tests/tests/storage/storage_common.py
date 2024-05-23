@@ -738,3 +738,22 @@ def create_fsx_open_zfs(fsx_factory, num, vpc=None, subnet=None):
         "Volumes"
     ]
     return [volume["VolumeId"] for volume in volume_list]
+
+
+def write_file(cluster, file_path, body="", run_sudo=False):
+    """Write a file to a path in the cluster."""
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    logging.info(f"Writing file {file_path}")
+    sudo_cmd = "sudo" if run_sudo else ""
+    remote_command_executor.run_remote_command(
+        f"{sudo_cmd} mkdir -p $(dirname {file_path}) && {sudo_cmd} echo '{body}' > {file_path}"
+    )
+
+
+def assert_file_exists(cluster, file_path, run_sudo=False):
+    """Assert that a file exists in the cluster."""
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    logging.info(f"Asserting existence for file {file_path}")
+    sudo_cmd = "sudo" if run_sudo else ""
+    result = remote_command_executor.run_remote_command(f"{sudo_cmd} ls {file_path}", raise_on_error=False)
+    assert_that(result.return_code).is_equal_to(0)
