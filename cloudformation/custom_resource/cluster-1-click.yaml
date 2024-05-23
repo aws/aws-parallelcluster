@@ -15,7 +15,7 @@ Parameters:
 Mappings:
   ParallelCluster:
     Constants:
-      Version: 3.9.1
+      Version: 3.9.2
       Bucket: '' # For debug purposes only
 
 Conditions:
