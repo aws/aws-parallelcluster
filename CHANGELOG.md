@@ -13,6 +13,7 @@ CHANGELOG
 - Consider Compute fleet clean-up completed during cluster deletion when instances are either in shutting-down or terminated state.
   This is to avoid cluster deletion failure for instance types with longer termination cycles.
 - Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
+- Allow ParallelCluster Custom Resource to suppress validators using `PclusterCluster/SuppressValidators`.
 
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.

@@ -24,7 +24,7 @@ from pcluster.utils import to_snake_case
 
 
 # The definition of the shape of model is defined in pcluster.cli.model
-def _gen_func_map(model: Dict) -> Dict[str, Callable]:
+def _gen_func_map(model: Dict) -> Dict[str, Callable]:  # noqa: C901
     """Generate a dict mapping function names to dispatch functions."""
 
     class Args:
@@ -66,6 +66,10 @@ def _gen_func_map(model: Dict) -> Dict[str, Callable]:
                 # Convert python data to strings for args of type "file"
                 elif not isinstance(kwargs.get(param_name), str) and param["type"] == "file":
                     kwargs[param_name] = yaml.dump(kwargs[param_name])
+                elif isinstance(kwargs.get(param_name), list) and all(
+                    isinstance(item, str) for item in kwargs.get(param_name)
+                ):
+                    pass
                 else:
                     kwargs[param_name] = param_coerce(param)(kwargs[param_name])
 
