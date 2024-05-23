@@ -451,6 +451,49 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    # FSxLustre is supported only in us-iso-east-1
+    test_fsx_lustre.py::test_fsx_lustre:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_fsx_lustre.py::test_fsx_lustre_dra:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_fsx_lustre.py::test_file_cache:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_fsx_lustre.py::test_multiple_fsx:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_fsx_lustre.py::test_multi_az_fsx:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_fsx_lustre.py::test_fsx_lustre_configuration_options:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_fsx_lustre.py::test_fsx_lustre_backup:
+      dimensions:
+        - regions: ["us-iso-east-1"]
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   tags:
     test_tag_propagation.py::test_tag_propagation:
       dimensions:
