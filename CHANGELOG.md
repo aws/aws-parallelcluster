@@ -17,6 +17,12 @@ CHANGELOG
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
 
+3.9.2
+------
+
+**CHANGES**
+- Upgrade Slurm to 23.11.7 (from 23.11.4).
+
 3.9.1
 ------
 
