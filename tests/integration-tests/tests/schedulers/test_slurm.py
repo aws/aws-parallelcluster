@@ -794,7 +794,7 @@ def test_scontrol_reboot(
     )
     wait_for_compute_nodes_states(
         slurm_commands,
-        ["queue1-dy-t2micro-1", "queue1-dy-t2micro-2"],
+        ["queue1-dy-cr1-1", "queue1-dy-cr1-2"],
         "idle",
         stop_max_delay_secs=330,
     )
@@ -825,7 +825,7 @@ def test_scontrol_reboot(
     _test_scontrol_reboot_powerdown_reboot_requested_node(
         remote_command_executor,
         slurm_commands,
-        "queue1-st-t2micro-1",
+        "queue1-st-cr1-1",
     )
 
     # Clear clustermgtd logs produced in previous tests
@@ -835,7 +835,7 @@ def test_scontrol_reboot(
     _test_scontrol_reboot_powerdown_reboot_issued_node(
         remote_command_executor,
         slurm_commands,
-        "queue1-st-t2micro-2",
+        "queue1-st-cr1-2",
     )
 
 
