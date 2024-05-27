@@ -50,7 +50,7 @@ Scheduling:
           MaxCount: 2
         - Name: queue1-i2
           Instances:
-            - InstanceType: t2.micro
+            - InstanceType: t3.small
           MinCount: 1
       Networking:
         SubnetIds:
