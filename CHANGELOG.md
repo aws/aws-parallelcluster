@@ -14,6 +14,8 @@ CHANGELOG
   This is to avoid cluster deletion failure for instance types with longer termination cycles.
 - Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
 - Allow ParallelCluster Custom Resource to suppress validators using `PclusterCluster/SuppressValidators`.
+- Removing `/etc/profile.d/pcluster.sh` so that it's not executed at every user login and
+  `cfn_bootstrap_virtualenv` is not added in PATH environment variable.
 
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.

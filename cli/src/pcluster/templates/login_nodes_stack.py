@@ -328,7 +328,7 @@ class Pool(Construct):
                 "commands": {
                     "chef": {
                         "command": (
-                            ". /etc/profile.d/pcluster.sh; "
+                            ". /etc/parallelcluster/pcluster_cookbook_environment.sh; "
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
