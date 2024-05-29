@@ -296,7 +296,7 @@ class AWSBstatCommand:
             fail("Error listing jobs from AWS Batch. job_ids or job_queue must be defined")
 
         sort_keys_function = self.__sort_by_status_startedat_jobid() if not job_ids else self.__sort_by_key(job_ids)
-        if details_required:
+        if details_required:  # pylint: disable=E0606
             self.output.show(sort_keys_function=sort_keys_function)
         else:
             self.output.show_table(
