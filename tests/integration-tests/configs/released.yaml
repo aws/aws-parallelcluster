@@ -148,7 +148,7 @@ test-suites:
       dimensions:
         - regions: ["il-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
   monitoring:
     test_monitoring.py::test_monitoring:
