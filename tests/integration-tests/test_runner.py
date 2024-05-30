@@ -587,8 +587,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.extend(["--scaling-test-config", args.scaling_test_config])
 
     if args.global_build_number:
-        pytest_args.append("--global-build-number")
-        pytest_args.extend(args.global_build_number)
+        pytest_args.extend(["--global-build-number", args.global_build_number])
 
     _set_custom_packages_args(args, pytest_args)
     _set_ami_args(args, pytest_args)
