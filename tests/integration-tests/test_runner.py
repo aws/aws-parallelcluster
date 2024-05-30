@@ -97,6 +97,7 @@ TEST_DEFAULTS = {
     "force_run_instances": False,
     "force_elastic_ip": False,
     "retain_ad_stack": False,
+    "global_build_number": 0,
 }
 
 
@@ -143,6 +144,11 @@ def _init_argparser():
         "--tests-root-dir",
         help="Root dir where integration tests are defined",
         default=TEST_DEFAULTS.get("tests_root_dir"),
+    )
+    parser.add_argument(
+        "--global-build-number",
+        help="The build number passed from the testing pipelines",
+        default=TEST_DEFAULTS.get("global_build_number"),
     )
 
     dimensions_group = parser.add_argument_group("Test dimensions")
@@ -579,6 +585,10 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
 
     if args.scaling_test_config:
         pytest_args.extend(["--scaling-test-config", args.scaling_test_config])
+
+    if args.global_build_number:
+        pytest_args.append("--global-build-number")
+        pytest_args.extend(args.global_build_number)
 
     _set_custom_packages_args(args, pytest_args)
     _set_ami_args(args, pytest_args)

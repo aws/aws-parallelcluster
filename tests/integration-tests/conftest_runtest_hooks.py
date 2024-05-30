@@ -44,8 +44,6 @@ def pytest_runtest_logfinish(nodeid: str, location: Tuple[str, Optional[int], st
 def pytest_runtest_logreport(report: pytest.TestReport):
     logging.info(f"Starting log report for test {report.nodeid}")
     # Set the approximate start time for the test
-    logging.info(f"Report keys {list(report.keywords)}")
-    logging.info(f"Report props {list(report.user_properties)}")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -91,7 +89,6 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
         except Exception as e:
             logging.error("Failed when generating config for failed tests: %s", e, exc_info=True)
     # Set the approximate start time for the test
-    logging.info(f"Report keys {list(item.keywords)}")
     try:
         publish_test_metrics(item, rep)
         publish_test_metadata(item, rep)

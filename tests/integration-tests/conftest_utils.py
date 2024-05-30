@@ -180,6 +180,7 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
             os=get_user_prop(item, "os"),
             feature=get_user_prop(item, "feature"),
             instance_type=get_user_prop(item, "instance"),
+            global_build_number=item.config.getoption("--global-build-number"),
             setup_metadata=PhaseMetadata(
                 rep.when,
                 status=rep.outcome,
