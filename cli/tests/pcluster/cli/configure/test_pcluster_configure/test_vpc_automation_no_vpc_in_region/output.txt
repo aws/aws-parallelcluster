@@ -31,13 +31,14 @@ Allowed values for Scheduler:
 2. awsbatch
 Allowed values for Operating System:
 1. alinux2
-2. centos7
-3. ubuntu2004
-4. ubuntu2204
-5. rhel8
-6. rocky8
-7. rhel9
-8. rocky9
+2. alinux2023
+3. centos7
+4. ubuntu2004
+5. ubuntu2204
+6. rhel8
+7. rocky8
+8. rhel9
+9. rocky9
 There are no VPC for the given region. Starting automatic creation of VPC and subnets...
 Allowed values for Availability Zone:
 1. eu-west-1a
