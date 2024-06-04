@@ -383,10 +383,16 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-# This test cannot be executed in US isolated regions
+# These tests cannot be executed in US isolated regions
 # because Spot instances are not supported in these regions.
 #  spot:
 #    test_spot.py::test_spot_default:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+#    test_spot.py::test_spot_price_capacity_optimized:
 #      dimensions:
 #        - regions: {{ REGIONS }}
 #          instances: {{ INSTANCES }}

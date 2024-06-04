@@ -23,3 +23,14 @@ def test_spot_default(scheduler_commands_factory, pcluster_config_reader, cluste
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(min_count)
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_spot_price_capacity_optimized(scheduler_commands_factory, pcluster_config_reader, clusters_factory):
+    """Test that a cluster with spot instances can be created with price-capacity-optimized allocation strategy."""
+    min_count = 1
+    cluster_config = pcluster_config_reader(min_count=min_count)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(min_count)
