@@ -24,6 +24,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from troposphere.fsx import LustreConfiguration
+from utils import is_fsx_lustre_deployment_type_supported
 
 from tests.storage.storage_common import (
     assert_fsx_lustre_correctly_mounted,
@@ -79,6 +80,11 @@ def test_fsx_lustre_configuration_options(
     storage_capacity,
     imported_file_chunk_size,
 ):
+    if not is_fsx_lustre_deployment_type_supported(region, deployment_type):
+        pytest.skip(
+            f"Skipping the test because the deployment type {deployment_type} is not supported in region {region}"
+        )
+
     mount_dir = "/fsx_mount_dir"
     bucket_name = None
     if deployment_type != "PERSISTENT_2":
