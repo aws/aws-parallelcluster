@@ -205,6 +205,11 @@ def pytest_addoption(parser):
         help="Force the usage of Elastic IP for Multi network interface EC2 instances.",
         action="store_true",
     )
+    parser.addoption(
+        "--global-build-number",
+        help="The build number passed from the testing pipelines",
+        default=0,
+    )
 
 
 def pytest_generate_tests(metafunc):
