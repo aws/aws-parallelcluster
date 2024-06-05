@@ -852,6 +852,10 @@ def is_filecache_supported(region: str):
     return "us-iso" not in region
 
 
+def is_fsx_lustre_deployment_type_supported(region: str, deployment_type: str):
+    return False if "us-iso-" in region and deployment_type in ["SCRATCH_1", "PERSISTENT_2"] else True
+
+
 def is_directory_supported(region: str, directory_type: str):
     return False if "us-iso" in region and directory_type == "SimpleAD" else True
 
