@@ -34,8 +34,8 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: {{ storage_capacity }}
-      DeploymentType: PERSISTENT_2
-      PerUnitStorageThroughput: 125
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
       DataRepositoryAssociations:
         - Name: dra
           BatchImportMetaDataOnCreate: True
