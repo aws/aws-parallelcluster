@@ -33,7 +33,7 @@ from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import retrieve_latest_ami
+from tests.common.utils import get_aws_domain, retrieve_latest_ami
 
 
 def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head_node: bool = True):
@@ -669,9 +669,13 @@ def assert_fsx_lustre_correctly_mounted(
     # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
     check_fstab_file(
         remote_command_executor,
-        r"{fsx_id}\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
+        r"{fsx_id}\.fsx\.[a-z1-9\-]+\.{aws_domain_regex}@tcp:/{mount_name}"
         r" {mount_dir} lustre {mount_options} 0 0".format(
-            fsx_id=fsx_id, mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options
+            fsx_id=fsx_id,
+            mount_name=mount_name,
+            mount_dir=mount_dir,
+            mount_options=mount_options,
+            aws_domain_regex=re.escape(get_aws_domain(region)),
         ),
     )
 
