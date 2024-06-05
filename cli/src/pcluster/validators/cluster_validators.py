@@ -36,7 +36,6 @@ from pcluster.constants import (
     RETAIN_POLICY,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
-    SUPPORTED_REGIONS,
     SUPPORTED_SCHEDULERS,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
@@ -45,6 +44,7 @@ from pcluster.utils import (
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
     remove_none_values,
+    retrieve_supported_regions,
 )
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -117,7 +117,7 @@ class RegionValidator(Validator):
     """Region validator."""
 
     def _validate(self, region):
-        if region not in SUPPORTED_REGIONS:
+        if region not in retrieve_supported_regions():
             self._add_failure(
                 f"Region '{region}' is not yet officially supported by ParallelCluster", FailureLevel.ERROR
             )
