@@ -181,3 +181,42 @@ class SlurmNodePrioritiesWarningValidator(Validator):
                 f"({max_static}): {bad_dynamic_priorities}.",
                 FailureLevel.WARNING,
             )
+
+
+class ExternalSlurmdbdVsDatabaseIncompatibility(Validator):
+    """
+    External Slurmdbd vs Database Validator.
+
+    This validator checks that ExternalSlurmdbd and Database are not defined at the same time in the cluster
+    configuration within SlurmSettings.
+    """
+
+    def _validate(self, database, external_slurmdbd):
+        if (database is not None) and (external_slurmdbd is not None):
+            self._add_failure(
+                "Database and ExternalSlurmdbd cannot be defined at the same time within SlurmSettings.",
+                FailureLevel.ERROR,
+            )
+
+
+class ExternalSlurmdbdRequiresCustomMungeKey(Validator):
+    """External Slurmdbd requires custom munge key."""
+
+    def _validate(self, external_slurmdbd, munge_key_secret_arn):
+        if (external_slurmdbd is not None) and (munge_key_secret_arn is None):
+            self._add_failure(
+                "When ExternalSlurmdbd is defined, MungeKeySecretArn is required.",
+                FailureLevel.ERROR,
+            )
+
+
+class ExternalSlurmdbdTrafficNotEncrypted(Validator):
+    """Inform users about unencrypted connections."""
+
+    def _validate(self, external_slurmdbd):
+        if external_slurmdbd is not None:
+            self._add_failure(
+                "Traffic between ParallelCluster and the external Slurmdbd is not encrypted. "
+                "It is recommended to run the cluster and the external Slurmdbd in a trusted network.",
+                FailureLevel.WARNING,
+            )

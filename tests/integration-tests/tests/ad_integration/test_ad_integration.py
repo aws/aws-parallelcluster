@@ -27,7 +27,15 @@ from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, is_fsx_supported, random_alphanumeric
+from utils import (
+    find_stack_by_tag,
+    generate_stack_name,
+    is_directory_supported,
+    is_fsx_lustre_supported,
+    is_fsx_ontap_supported,
+    is_fsx_openzfs_supported,
+    random_alphanumeric,
+)
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
@@ -513,7 +521,7 @@ def _check_ssh_key(user, ssh_generation_enabled, remote_command_executor, schedu
     ],
 )
 @pytest.mark.usefixtures("os", "instance")
-def test_ad_integration(
+def test_ad_integration(  # noqa: C901
     region,
     scheduler,
     scheduler_commands_factory,
@@ -541,9 +549,14 @@ def test_ad_integration(
     if not is_directory_supported(region, directory_type):
         pytest.skip(f"Skipping the test because directory type {directory_type} is not supported in region {region}")
 
-    fsx_supported = is_fsx_supported(region)
+    fsx_lustre_supported = is_fsx_lustre_supported(region)
+    fsx_ontap_supported = is_fsx_ontap_supported(region)
+    fsx_openzfs_supported = is_fsx_openzfs_supported(region)
+
     config_params = {
-        "fsx_supported": fsx_supported,
+        "fsx_lustre_supported": fsx_lustre_supported,
+        "fsx_ontap_supported": fsx_ontap_supported,
+        "fsx_openzfs_supported": fsx_openzfs_supported,
     }
     directory_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
@@ -616,8 +629,12 @@ def test_ad_integration(
             )
         )
     shared_storage_mount_dirs = ["/shared", "/efs"]
-    if fsx_supported:
-        shared_storage_mount_dirs.extend(["/fsxlustre", "/fsxontap", "/fsxopenzfs"])
+    if fsx_lustre_supported:
+        shared_storage_mount_dirs.extend(["/fsxlustre"])
+    if fsx_ontap_supported:
+        shared_storage_mount_dirs.extend(["/fsxontap"])
+    if fsx_openzfs_supported:
+        shared_storage_mount_dirs.extend(["/fsxopenzfs"])
     _run_user_workloads(users, test_datadir, shared_storage_mount_dirs)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)

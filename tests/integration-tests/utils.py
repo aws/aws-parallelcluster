@@ -798,7 +798,19 @@ def is_dcv_supported(region: str):
     return "us-iso" not in region
 
 
-def is_fsx_supported(region: str):
+def is_fsx_lustre_supported(region: str):
+    return "us-isob" not in region
+
+
+def is_fsx_ontap_supported(region: str):
+    return "us-iso" not in region
+
+
+def is_fsx_openzfs_supported(region: str):
+    return "us-iso" not in region
+
+
+def is_filecache_supported(region: str):
     return "us-iso" not in region
 
 

@@ -4,6 +4,9 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+    AdditionalSecurityGroups:
+      - {{ accounting_client_security_group }}
+      - {{ ssh_client_security_group }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -11,18 +14,18 @@ HeadNode:
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmSettings:
-    ScaledownIdletime: {{ scaledown_idletime }}
+    MungeKeySecretArn: {{ munge_key_secret_arn }}
+    ExternalSlurmdbd:
+      Host: {{ slurmdbd_private_ip }}
+      Port: {{ slurmdbd_port }}
   SlurmQueues:
-    - Name: queue-0
+    - Name: compute
       ComputeResources:
-        - Name: compute-resource-0
+        - Name: cit
           Instances:
             - InstanceType: {{ instance }}
-          MaxCount: {{ max_queue_size }}
+          MinCount: 0
+          MaxCount: 10
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
-SharedStorage:
-  - MountDir: /shared
-    Name: name1
-    StorageType: Ebs
+          - {{ private_subnet_id }}

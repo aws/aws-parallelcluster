@@ -794,7 +794,7 @@ def test_scontrol_reboot(
     )
     wait_for_compute_nodes_states(
         slurm_commands,
-        ["queue1-dy-t2micro-1", "queue1-dy-t2micro-2"],
+        ["queue1-dy-cr1-1", "queue1-dy-cr1-2"],
         "idle",
         stop_max_delay_secs=330,
     )
@@ -825,7 +825,7 @@ def test_scontrol_reboot(
     _test_scontrol_reboot_powerdown_reboot_requested_node(
         remote_command_executor,
         slurm_commands,
-        "queue1-st-t2micro-1",
+        "queue1-st-cr1-1",
     )
 
     # Clear clustermgtd logs produced in previous tests
@@ -835,7 +835,7 @@ def test_scontrol_reboot(
     _test_scontrol_reboot_powerdown_reboot_issued_node(
         remote_command_executor,
         slurm_commands,
-        "queue1-st-t2micro-2",
+        "queue1-st-cr1-2",
     )
 
 
@@ -2588,9 +2588,8 @@ def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_j
         ["/var/log/slurmctld.log"],
         [f"node {node} memory is overallocated"],
     )
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
+    slurm_commands.wait_job_running(job_id_1)
     slurm_commands.wait_job_completed(job_id_1)
-    assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("COMPLETED")
 
 
 def _test_scontrol_reboot_nodes(

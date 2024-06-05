@@ -8,6 +8,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
+from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.utils import get_aws_domain
@@ -15,21 +16,22 @@ from tests.common.utils import get_aws_domain
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
 
 
-def get_infra_stack_outputs(stack_name):
-    cfn = boto3.client("cloudformation")
-    return {
-        entry.get("OutputKey"): entry.get("OutputValue")
-        for entry in cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["Outputs"]
-    }
-
-
 def _get_slurm_database_config_parameters(database_stack_outputs):
-    return {
-        "database_host": database_stack_outputs.get("DatabaseHost"),
-        "database_admin_user": database_stack_outputs.get("DatabaseAdminUser"),
-        "database_secret_arn": database_stack_outputs.get("DatabaseSecretArn"),
-        "database_client_security_group": database_stack_outputs.get("DatabaseClientSecurityGroup"),
-    }
+    return _get_config_parameters_from_cfn_outputs(
+        database_stack_outputs,
+        ["DatabaseHost", "DatabaseAdminUser", "DatabaseSecretArn", "DatabaseClientSecurityGroup"],
+    )
+
+
+def _get_slurm_dbd_config_parameters(database_stack_outputs):
+    return _get_config_parameters_from_cfn_outputs(
+        database_stack_outputs,
+        ["AccountingClientSecurityGroup", "SshClientSecurityGroup", "SlurmdbdPrivateIp", "SlurmdbdPort"],
+    )
+
+
+def _get_config_parameters_from_cfn_outputs(database_stack_outputs, keys):
+    return {to_snake_case(key): database_stack_outputs.get(key) for key in keys}
 
 
 def _get_expected_users(remote_command_executor, test_resources_dir):
@@ -121,7 +123,11 @@ def _test_jobs_get_recorded(scheduler_commands):
     job_id = scheduler_commands.assert_job_submitted(job_submission_output)
     logging.info(" Submitted Job ID: %s", job_id)
     scheduler_commands.wait_job_completed(job_id)
-    results = scheduler_commands.get_accounting_job_records(job_id)
+    _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands)
+
+
+def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
+    results = scheduler_commands.get_accounting_job_records(job_id, clusters=clusters)
     for row in results:
         logging.info(" Result: %s", row)
         assert_that(row.get("state")).is_equal_to("COMPLETED")
@@ -155,22 +161,14 @@ def test_slurm_accounting(
     region,
     pcluster_config_reader,
     vpc_stack_for_database,
-    database_factory,
-    request,
+    database,
     test_datadir,
     test_resources_dir,
     clusters_factory,
     scheduler_commands_factory,
 ):
-    database_stack_name = database_factory(
-        request.config.getoption("slurm_database_stack_name"),
-        str(test_datadir),
-        region,
-    )
 
-    database_stack_outputs = get_infra_stack_outputs(database_stack_name)
-
-    config_params = _get_slurm_database_config_parameters(database_stack_outputs)
+    config_params = _get_slurm_database_config_parameters(database.cfn_outputs)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
 
@@ -219,3 +217,98 @@ def test_slurm_accounting(
     _test_slurm_accounting_password(remote_command_executor)
     _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
     _test_that_slurmdbd_is_running(remote_command_executor)
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_slurm_accounting_external_dbd(
+    region,
+    pcluster_config_reader,
+    munge_key,
+    vpc_stack_for_database,
+    slurm_dbd,
+    test_datadir,
+    test_resources_dir,
+    clusters_factory,
+    scheduler_commands_factory,
+):
+
+    config_params = _get_slurm_dbd_config_parameters(slurm_dbd.cfn_outputs)
+    public_subnet_id = vpc_stack_for_database.get_public_subnet()
+    private_subnet_id = vpc_stack_for_database.get_private_subnet()
+    _, munge_key_secret_arn = munge_key
+    cluster_config = pcluster_config_reader(
+        public_subnet_id=public_subnet_id,
+        private_subnet_id=private_subnet_id,
+        munge_key_secret_arn=munge_key_secret_arn,
+        **config_params,
+    )
+    cluster = clusters_factory(cluster_config)
+    # Don't wait on the second cluster creation so that we can test the first cluster in the meantime.
+    cluster_2 = clusters_factory(cluster_config, wait=False)
+
+    logging.info("Testing the first cluster")
+    _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir)
+
+    logging.info("Testing the second cluster")
+    cluster_2.wait_cluster_status("CREATE_COMPLETE")
+    _check_cluster_external_dbd(cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir)
+
+    logging.info("Testing the inter-clusters slurm accounting information")
+    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory)
+
+
+def _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir):
+    headnode_remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(headnode_remote_command_executor)
+    slurmdbd_node_remote_command_executor = RemoteCommandExecutor(
+        cluster, compute_node_ip=config_params["slurmdbd_private_ip"]
+    )
+
+    _test_that_slurmdbd_is_running(headnode_remote_command_executor)
+    _test_successful_startup_in_log(slurmdbd_node_remote_command_executor)
+
+    # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
+    _require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
+        headnode_remote_command_executor,
+    )
+    _test_jobs_get_recorded(scheduler_commands)
+
+
+def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory):
+    """
+    Verify accounting information can be retrieved from another cluster
+    and information is not lost after AutoScaling group replaces Slurm DBD instance.
+    """
+    headnode_remote_command_executor_1 = RemoteCommandExecutor(cluster_1)
+    scheduler_commands_1 = scheduler_commands_factory(headnode_remote_command_executor_1)
+    headnode_remote_command_executor_2 = RemoteCommandExecutor(cluster_2)
+    scheduler_commands_2 = scheduler_commands_factory(headnode_remote_command_executor_2)
+
+    job_ids = []
+    for index in range(20):  # 20 is an arbitrary number and can be changed.
+        job_submission_output = scheduler_commands_1.submit_command(
+            'echo "$(hostname) ${SLURM_JOB_ACCOUNT} ${SLURM_JOB_ID} ${SLURM_JOB_NAME}"',
+        ).stdout
+        job_id = scheduler_commands_1.assert_job_submitted(job_submission_output)
+        job_ids.append(job_id)
+        logging.info(" Submitted Job ID: %s", job_id)
+        if index == 10:
+            logging.info(
+                "Terminating the Slurm DBD instance to test robustness of the setup: "
+                "Job information should be synced after AutoScaling group launches another Slurm DBD instance."
+            )
+            ec2_client = boto3.client("ec2")
+            slurm_dbd_instance_id = ec2_client.describe_instances(
+                Filters=[
+                    {"Name": "instance-state-name", "Values": ["running"]},
+                    {"Name": "tag:aws:cloudformation:logical-id", "Values": ["ExternalSlurmdbdASG"]},
+                ]
+            )["Reservations"][0]["Instances"][0]["InstanceId"]
+            ec2_client.terminate_instances(InstanceIds=[slurm_dbd_instance_id])
+
+    logging.info("Checking jobs information from another cluster.")
+    for job_id in job_ids:
+        retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
+            job_id, scheduler_commands_2, clusters=cluster_1.name
+        )

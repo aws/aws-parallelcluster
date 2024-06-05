@@ -32,7 +32,10 @@ from utils import (
     generate_stack_name,
     get_arn_partition,
     get_root_volume_id,
-    is_fsx_supported,
+    is_filecache_supported,
+    is_fsx_lustre_supported,
+    is_fsx_ontap_supported,
+    is_fsx_openzfs_supported,
     retrieve_cfn_resources,
     wait_for_computefleet_changed,
 )
@@ -51,12 +54,14 @@ from tests.common.storage.assertions import assert_storage_existence
 from tests.common.storage.constants import StorageType
 from tests.common.utils import generate_random_string, get_deployed_config_version, retrieve_latest_ami
 from tests.storage.storage_common import (
+    assert_file_exists,
     check_fsx,
     test_ebs_correctly_mounted,
     test_efs_correctly_mounted,
     test_raid_correctly_configured,
     test_raid_correctly_mounted,
     verify_directory_correctly_shared,
+    write_file,
 )
 
 
@@ -125,7 +130,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                 "queue1-i2": {
                     "instances": [
                         {
-                            "instance_type": "t2.micro",
+                            "instance_type": "t3.small",
                         }
                     ],
                     "expected_running_instances": 1,
@@ -231,7 +236,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                 "queue1-i3": {
                     "instances": [
                         {
-                            "instance_type": "t2.micro",
+                            "instance_type": "t3.small",
                         }
                     ],
                     "expected_running_instances": 0,
@@ -310,7 +315,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     # Launch a new instance for queue1 and test updated pre/post install script execution and extra json update
     # Add a new dynamic node t2.micro to queue1-i3
-    new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t2.micro")
+    new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t3.small")
 
     logging.info(f"New compute node: {new_compute_node}")
 
@@ -1024,7 +1029,11 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             vpc = vpc_stack.cfn_outputs["VpcId"]
             import_path = "s3://{0}".format(bucket_name)
             export_path = "s3://{0}/export_dir".format(bucket_name)
-            fsx_supported = is_fsx_supported(region)
+
+            fsx_lustre_supported = is_fsx_lustre_supported(region)
+            fsx_ontap_supported = is_fsx_ontap_supported(region)
+            fsx_openzfs_supported = is_fsx_openzfs_supported(region)
+            filecache_supported = is_filecache_supported(region)
 
             params = [
                 # Networking
@@ -1038,15 +1047,15 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
                 # EFS
                 {"ParameterKey": "CreateEfs", "ParameterValue": "true"},
                 # FSxLustre
-                {"ParameterKey": "CreateFsxLustre", "ParameterValue": str(fsx_supported).lower()},
+                {"ParameterKey": "CreateFsxLustre", "ParameterValue": str(fsx_lustre_supported).lower()},
                 {"ParameterKey": "FsxLustreImportPath", "ParameterValue": import_path},
                 {"ParameterKey": "FsxLustreExportPath", "ParameterValue": export_path},
                 # FSxOntap
-                {"ParameterKey": "CreateFsxOntap", "ParameterValue": str(fsx_supported).lower()},
+                {"ParameterKey": "CreateFsxOntap", "ParameterValue": str(fsx_ontap_supported).lower()},
                 # FSxOpenZfs
-                {"ParameterKey": "CreateFsxOpenZfs", "ParameterValue": str(fsx_supported).lower()},
+                {"ParameterKey": "CreateFsxOpenZfs", "ParameterValue": str(fsx_openzfs_supported).lower()},
                 # FileCache
-                {"ParameterKey": "CreateFileCache", "ParameterValue": str(fsx_supported).lower()},
+                {"ParameterKey": "CreateFileCache", "ParameterValue": str(filecache_supported).lower()},
                 {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
                 {"ParameterKey": "FileCacheS3BucketName", "ParameterValue": bucket_name},
             ]
@@ -1067,6 +1076,10 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
     yield create_stack
 
 
+def remove_none_items(items: list):
+    return [item for item in items if item is not None]
+
+
 @pytest.mark.usefixtures("instance")
 def test_dynamic_file_systems_update(
     region,
@@ -1084,30 +1097,28 @@ def test_dynamic_file_systems_update(
     external_shared_storage_stack,
 ):
     """Test update shared storages."""
-    fsx_supported = is_fsx_supported(region)
+
+    # Create cluster without any shared storage.
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
+    )
+    cluster = clusters_factory(init_config_file, wait=False)
+
+    fsx_lustre_supported = is_fsx_lustre_supported(region)
+    fsx_ontap_supported = is_fsx_ontap_supported(region)
+    fsx_openzfs_supported = is_fsx_openzfs_supported(region)
+    filecache_supported = is_filecache_supported(region)
+
     existing_ebs_mount_dir = "/existing_ebs_mount_dir"
     existing_efs_mount_dir = "/existing_efs_mount_dir"
-    existing_fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir"
-    existing_fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir"
-    existing_fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir"
-    existing_file_cache_mount_dir = "/existing_file_cache_mount_dir"
+    existing_fsx_lustre_mount_dir = "/existing_fsx_lustre_mount_dir" if fsx_lustre_supported else None
+    existing_fsx_ontap_mount_dir = "/existing_fsx_ontap_mount_dir" if fsx_ontap_supported else None
+    existing_fsx_open_zfs_mount_dir = "/existing_fsx_open_zfs_mount_dir" if fsx_openzfs_supported else None
+    existing_file_cache_mount_dir = "/existing_file_cache_mount_dir" if filecache_supported else None
     new_ebs_mount_dir = "/new_ebs_mount_dir"
     new_raid_mount_dir = "/new_raid_dir"
     new_efs_mount_dir = "/new_efs_mount_dir"
-    new_lustre_mount_dir = "/new_lustre_mount_dir"
-    ebs_mount_dirs = [new_ebs_mount_dir, existing_ebs_mount_dir]
-    efs_mount_dirs = [existing_efs_mount_dir, new_efs_mount_dir]
-    fsx_mount_dirs = (
-        [
-            new_lustre_mount_dir,
-            existing_fsx_lustre_mount_dir,
-            existing_fsx_open_zfs_mount_dir,
-            existing_fsx_ontap_mount_dir,
-            existing_file_cache_mount_dir,
-        ]
-        if fsx_supported
-        else []
-    )
+    new_lustre_mount_dir = "/new_lustre_mount_dir" if fsx_lustre_supported else None
 
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -1129,11 +1140,8 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    # Create cluster without any shared storage.
-    init_config_file = pcluster_config_reader(
-        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
-    )
-    cluster = clusters_factory(init_config_file)
+    cluster.wait_cluster_status("CREATE_COMPLETE")
+
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
@@ -1170,7 +1178,6 @@ def test_dynamic_file_systems_update(
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
         existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
-        fsx_supported=fsx_supported,
         queue_update_strategy="DRAIN",
         login_nodes_count=1,
     )
@@ -1187,13 +1194,16 @@ def test_dynamic_file_systems_update(
     scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
 
     # Check that the mounted storage is visible on all cluster nodes right after the update.
-    all_mount_dirs_update_1 = [
-        existing_efs_mount_dir,
-        existing_fsx_lustre_mount_dir,
-        existing_fsx_ontap_mount_dir,
-        existing_fsx_open_zfs_mount_dir,
-        existing_file_cache_mount_dir,
-    ]
+    efs_mount_dirs = [existing_efs_mount_dir]
+    fsx_mount_dirs = remove_none_items(
+        [
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_file_cache_mount_dir,
+        ]
+    )
+    all_mount_dirs_update_1 = efs_mount_dirs + fsx_mount_dirs
     _test_shared_storages_mount_on_headnode(
         remote_command_executor,
         cluster,
@@ -1202,13 +1212,8 @@ def test_dynamic_file_systems_update(
         scheduler_commands_factory,
         ebs_mount_dirs=[],
         new_raid_mount_dir=[],
-        efs_mount_dirs=[existing_efs_mount_dir],
-        fsx_mount_dirs=[
-            existing_fsx_lustre_mount_dir,
-            existing_fsx_open_zfs_mount_dir,
-            existing_fsx_ontap_mount_dir,
-            existing_file_cache_mount_dir,
-        ],
+        efs_mount_dirs=efs_mount_dirs,
+        fsx_mount_dirs=fsx_mount_dirs,
         file_cache_path=file_cache_path,
     )
     for mount_dir in all_mount_dirs_update_1:
@@ -1232,7 +1237,6 @@ def test_dynamic_file_systems_update(
         fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
         existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
-        fsx_supported=fsx_supported,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
     )
@@ -1249,7 +1253,7 @@ def test_dynamic_file_systems_update(
     # In particular, we add here: external EBS, managed EBS/EFS/FsxLustre with DRAIN strategy
     logging.info(
         "Updating the cluster with DRAIN strategy to mount external EBS and managed EBS/EFS/FsxLustre "
-        "with DeletionPolicy set to Delete"
+        "with DeletionPolicy set to Retain"
     )
     update_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
@@ -1268,14 +1272,13 @@ def test_dynamic_file_systems_update(
         existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
         new_ebs_mount_dir=new_ebs_mount_dir,
-        new_ebs_deletion_policy="Delete",
+        new_ebs_deletion_policy="Retain",
         new_raid_mount_dir=new_raid_mount_dir,
-        new_raid_deletion_policy="Delete",
+        new_raid_deletion_policy="Retain",
         new_lustre_mount_dir=new_lustre_mount_dir,
-        new_lustre_deletion_policy="Delete",
+        new_lustre_deletion_policy="Retain",
         new_efs_mount_dir=new_efs_mount_dir,
-        new_efs_deletion_policy="Delete",
-        fsx_supported=fsx_supported,
+        new_efs_deletion_policy="Retain",
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
     )
@@ -1284,24 +1287,31 @@ def test_dynamic_file_systems_update(
 
     # Retrieve created shared storage ids to remove them at teardown
     logging.info("Retrieve managed storage ids and mark them for deletion on teardown")
+    ebs_mount_dirs = [new_ebs_mount_dir, existing_ebs_mount_dir]
+    fsx_mount_dirs = remove_none_items(
+        [
+            new_lustre_mount_dir,
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_file_cache_mount_dir,
+        ]
+    )
     existing_ebs_ids = [existing_ebs_volume_id]
     existing_efs_ids = [existing_efs_id]
-    existing_fsx_ids = (
+    existing_fsx_ids = remove_none_items(
         [
             existing_fsx_lustre_fs_id,
             existing_fsx_ontap_volume_id,
             existing_fsx_open_zfs_volume_id,
             existing_file_cache_id,
         ]
-        if fsx_supported
-        else []
     )
     managed_storage_ids = _retrieve_managed_storage_ids(
         cluster,
         existing_ebs_ids,
         existing_efs_ids,
         existing_fsx_ids,
-        fsx_supported,
     )
     for storage_type in managed_storage_ids:
         for storage_id in managed_storage_ids[storage_type]["ids"]:
@@ -1329,10 +1339,10 @@ def test_dynamic_file_systems_update(
     logging.info("Checking the status of compute nodes in queue2")
     # All compute nodes in queue2 are expected to be in idle or drained
     # because they have not jobs running, hence we expect them to have been replaced (idle)
-    # or under replacement (drained).
+    # or under replacement (drained, draining).
     queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
     assert_compute_node_states(
-        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*"]
+        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*", "draining"]
     )
 
     logging.info("Checking that shared storage is visible on the head node")
@@ -1349,26 +1359,30 @@ def test_dynamic_file_systems_update(
         file_cache_path,
     )
 
-    all_mount_dirs_update_2 = [
-        new_ebs_mount_dir,
-        new_raid_mount_dir,
-        new_efs_mount_dir,
-        new_lustre_mount_dir,
-        existing_ebs_mount_dir,
-        existing_efs_mount_dir,
-        existing_fsx_lustre_mount_dir,
-        existing_fsx_ontap_mount_dir,
-        existing_fsx_open_zfs_mount_dir,
-        existing_file_cache_mount_dir,
-    ]
+    all_mount_dirs_update_2 = remove_none_items(
+        [
+            new_ebs_mount_dir,
+            new_raid_mount_dir,
+            new_efs_mount_dir,
+            new_lustre_mount_dir,
+            existing_ebs_mount_dir,
+            existing_efs_mount_dir,
+            existing_fsx_lustre_mount_dir,
+            existing_fsx_ontap_mount_dir,
+            existing_fsx_open_zfs_mount_dir,
+            existing_file_cache_mount_dir,
+        ]
+    )
 
-    mount_dirs_requiring_replacement = [
-        new_ebs_mount_dir,
-        new_raid_mount_dir,
-        new_efs_mount_dir,
-        new_lustre_mount_dir,
-        existing_ebs_mount_dir,
-    ]
+    mount_dirs_requiring_replacement = remove_none_items(
+        [
+            new_ebs_mount_dir,
+            new_raid_mount_dir,
+            new_efs_mount_dir,
+            existing_ebs_mount_dir,
+            new_lustre_mount_dir,
+        ]
+    )
 
     logging.info("Checking that previously mounted storage is visible on all compute nodes")
     for mount_dir in all_mount_dirs_update_1:
@@ -1392,38 +1406,6 @@ def test_dynamic_file_systems_update(
     logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue1)")
     for mount_dir in all_mount_dirs_update_2:
         verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
-
-    logging.info("Updating the cluster to set DeletionPolicy to Retain for every managed storage")
-    update_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml",
-        output_file="pcluster.config.update_retain_managed_storage_drain.yaml",
-        volume_id=existing_ebs_volume_id,
-        existing_ebs_mount_dir=existing_ebs_mount_dir,
-        existing_efs_mount_dir=existing_efs_mount_dir,
-        fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
-        fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
-        fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
-        file_cache_mount_dir=existing_file_cache_mount_dir,
-        existing_efs_id=existing_efs_id,
-        existing_fsx_lustre_fs_id=existing_fsx_lustre_fs_id,
-        fsx_ontap_volume_id=existing_fsx_ontap_volume_id,
-        fsx_open_zfs_volume_id=existing_fsx_open_zfs_volume_id,
-        existing_file_cache_id=existing_file_cache_id,
-        bucket_name=bucket_name,
-        new_ebs_mount_dir=new_ebs_mount_dir,
-        new_ebs_deletion_policy="Retain",
-        new_raid_mount_dir=new_raid_mount_dir,
-        new_raid_deletion_policy="Retain",
-        new_lustre_mount_dir=new_lustre_mount_dir,
-        new_lustre_deletion_policy="Retain",
-        new_efs_mount_dir=new_efs_mount_dir,
-        new_efs_deletion_policy="Retain",
-        fsx_supported=fsx_supported,
-        queue_update_strategy="DRAIN",
-        login_nodes_count=0,
-    )
-
-    cluster.update(update_cluster_config)
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
@@ -1466,6 +1448,62 @@ def test_dynamic_file_systems_update(
                 expected_states=managed_storage_ids[storage_type]["expected_states"],
             )
 
+
+@pytest.mark.usefixtures("instance")
+def test_dynamic_file_systems_update_rollback(
+    region,
+    os,
+    pcluster_config_reader,
+    ami_copy,
+    clusters_factory,
+    scheduler_commands_factory,
+    request,
+    vpc_stack,
+    key_name,
+    s3_bucket_factory,
+    test_datadir,
+    delete_storage_on_teardown,
+    external_shared_storage_stack,
+):
+    """Test the rollback path when the cluster is updated with invalid shared storage."""
+
+    # Create cluster without any shared storage.
+    init_config_file = pcluster_config_reader(
+        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
+    )
+    cluster = clusters_factory(init_config_file, wait=False)
+
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    file_cache_path = "/file-cache-path/"
+
+    existing_ebs_mount_dir = "/existing_ebs_mount_dir"
+    new_ebs_mount_dir = "/new_ebs_mount_dir"
+    new_efs_mount_dir = "/new_efs_mount_dir"
+    new_lustre_mount_dir = "/new_lustre_mount_dir" if is_fsx_lustre_supported(region) else None
+
+    (
+        existing_ebs_volume_id,
+        existing_efs_id,
+        existing_fsx_lustre_fs_id,
+        existing_fsx_ontap_volume_id,
+        existing_fsx_open_zfs_volume_id,
+        existing_file_cache_id,
+    ) = _create_shared_storages_resources(
+        request,
+        vpc_stack,
+        region,
+        bucket_name,
+        external_shared_storage_stack,
+        file_cache_path,
+    )
+
+    cluster.wait_cluster_status("CREATE_COMPLETE")
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
     _test_shared_storage_rollback(
         cluster,
         existing_ebs_volume_id,
@@ -1478,11 +1516,117 @@ def test_dynamic_file_systems_update(
         pcluster_config_reader,
         scheduler_commands,
         region,
-        fsx_supported,
     )
 
 
-def _retrieve_managed_storage_ids(cluster, existing_ebs_ids, existing_efs_ids, existing_fsx_ids, fsx_supported):
+@pytest.mark.usefixtures("instance")
+def test_dynamic_file_systems_update_data_loss(
+    region,
+    os,
+    pcluster_config_reader,
+    ami_copy,
+    clusters_factory,
+    scheduler_commands_factory,
+    request,
+    vpc_stack,
+    key_name,
+    s3_bucket_factory,
+    test_datadir,
+    delete_storage_on_teardown,
+    external_shared_storage_stack,
+):
+    """Test that the dynamic file systems update does not cause any data loss.
+
+    The test executes the following steps:
+      1. Creates the external shared storage stack
+      2. Creates a cluster with all the external shared storage
+      3. Writes a file in every external shared storage mount dir
+      4. Updates the cluster to unmount all the external shared storage
+      5. Updates the cluster to re-mount all the external shared storage
+      6. Verifies that all files previously written where still there
+    """
+
+    bucket_name = s3_bucket_factory()
+    file_cache_path = "/file-cache-path/"
+
+    existing_ebs_mount_dir = "/shared-storage/ebs/existing-1"
+    existing_efs_mount_dir = "/shared-storage/efs/existing-1"
+    existing_fsx_lustre_mount_dir = "/shared-storage/fsx-lustre/existing-1"
+    existing_fsx_ontap_mount_dir = "/shared-storage/fsx-ontap/existing-1"
+    existing_fsx_open_zfs_mount_dir = "/shared-storage/fsx-open-zfs/existing-1"
+    existing_file_cache_mount_dir = "/shared-storage/file-cache/existing-1"
+
+    (
+        existing_ebs_id,
+        existing_efs_id,
+        existing_fsx_lustre_id,
+        existing_fsx_ontap_id,
+        existing_fsx_openzfs_id,
+        existing_file_cache_id,
+    ) = _create_shared_storages_resources(
+        request,
+        vpc_stack,
+        region,
+        bucket_name,
+        external_shared_storage_stack,
+        file_cache_path,
+    )
+
+    logging.info("Creating the cluster with all shared storage")
+    cluster_config_all_storage = pcluster_config_reader(
+        config_file="pcluster.config.yaml",
+        output_file="pcluster.config.all_storage.yaml",
+        existing_ebs_mount_dir=existing_ebs_mount_dir,
+        existing_ebs_id=existing_ebs_id,
+        existing_efs_mount_dir=existing_efs_mount_dir,
+        existing_efs_id=existing_efs_id,
+        existing_fsx_lustre_mount_dir=existing_fsx_lustre_mount_dir,
+        existing_fsx_lustre_id=existing_fsx_lustre_id,
+        existing_fsx_ontap_mount_dir=existing_fsx_ontap_mount_dir,
+        existing_fsx_ontap_id=existing_fsx_ontap_id,
+        existing_fsx_open_zfs_mount_dir=existing_fsx_open_zfs_mount_dir,
+        existing_fsx_open_zfs_id=existing_fsx_openzfs_id,
+        existing_file_cache_mount_dir=existing_file_cache_mount_dir,
+        existing_file_cache_id=existing_file_cache_id,
+        bucket_name=bucket_name,
+    )
+    cluster = clusters_factory(cluster_config_all_storage)
+
+    mount_dirs = [
+        existing_ebs_mount_dir,
+        existing_efs_mount_dir,
+        existing_fsx_lustre_mount_dir,
+        existing_fsx_ontap_mount_dir,
+        existing_fsx_open_zfs_mount_dir,
+        existing_file_cache_mount_dir,
+    ]
+
+    test_id = f"{request.node.name}/{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}-{random_alphanumeric()}"
+    created_files = []
+    for mount_dir in mount_dirs:
+        file_name = f"{mount_dir}/{test_id}/test_file.txt"
+        created_files.append(file_name)
+        write_file(cluster, file_name)
+
+    logging.info("Updating the cluster to remove all the shared storage")
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster_config_no_storage = pcluster_config_reader(
+        config_file="pcluster.config.no-storage.yaml",
+        bucket_name=bucket_name,
+    )
+    cluster.update(cluster_config_no_storage)
+
+    logging.info("Updating the cluster to re-mount all shared storage")
+    cluster.update(cluster_config_all_storage)
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+
+    for file_path in created_files:
+        assert_file_exists(cluster, file_path)
+
+
+def _retrieve_managed_storage_ids(cluster, existing_ebs_ids, existing_efs_ids, existing_fsx_ids):
     """Retrieve all the shared storages part of the cluster and exclude provided existing storage ids."""
     managed_ebs_noraid_volume_ids = [
         id for id in cluster.cfn_outputs["EBSIds"].split(",") if id not in existing_ebs_ids
@@ -1490,9 +1634,9 @@ def _retrieve_managed_storage_ids(cluster, existing_ebs_ids, existing_efs_ids, e
     managed_ebs_raid_volume_ids = [id for id in cluster.cfn_outputs["RAIDIds"].split(",") if id not in existing_ebs_ids]
     managed_ebs_volume_ids = managed_ebs_noraid_volume_ids + managed_ebs_raid_volume_ids
     managed_efs_filesystem_ids = [id for id in cluster.cfn_outputs["EFSIds"].split(",") if id not in existing_efs_ids]
-    managed_fsx_filesystem_ids = (
-        [id for id in cluster.cfn_outputs["FSXIds"].split(",") if id not in existing_fsx_ids] if fsx_supported else []
-    )
+    managed_fsx_filesystem_ids = [
+        id for id in cluster.cfn_outputs.get("FSXIds", "").split(",") if id not in existing_fsx_ids
+    ]
     managed_storage = {
         StorageType.STORAGE_EBS: dict(ids=managed_ebs_volume_ids, expected_states=["available"]),
         StorageType.STORAGE_EFS: dict(ids=managed_efs_filesystem_ids, expected_states=["available"]),
@@ -1514,12 +1658,12 @@ def _create_shared_storages_resources(
     storage_stack = external_shared_storage_stack(vpc_stack, bucket_name, file_cache_path)
 
     return (
-        storage_stack.cfn_outputs["EbsId"],
-        storage_stack.cfn_outputs["EfsId"],
-        storage_stack.cfn_outputs["FsxLustreFsId"],
-        storage_stack.cfn_outputs["FsxOntapVolumeId"],
-        storage_stack.cfn_outputs["FsxOpenZfsVolumeId"],
-        storage_stack.cfn_outputs["FileCacheId"],
+        storage_stack.cfn_outputs.get("EbsId"),
+        storage_stack.cfn_outputs.get("EfsId"),
+        storage_stack.cfn_outputs.get("FsxLustreFsId"),
+        storage_stack.cfn_outputs.get("FsxOntapVolumeId"),
+        storage_stack.cfn_outputs.get("FsxOpenZfsVolumeId"),
+        storage_stack.cfn_outputs.get("FileCacheId"),
     )
 
 
@@ -1616,7 +1760,6 @@ def _test_shared_storage_rollback(
     pcluster_config_reader,
     scheduler_commands,
     region,
-    fsx_supported,
 ):
     # update cluster with adding non-existing ebs and skip validator
     problematic_volume_id = "vol-00000000000000000"
@@ -1631,7 +1774,6 @@ def _test_shared_storage_rollback(
         new_ebs_mount_dir=new_ebs_mount_dir,
         new_lustre_mount_dir=new_lustre_mount_dir,
         new_efs_mount_dir=new_efs_mount_dir,
-        fsx_supported=fsx_supported,
         queue_update_strategy="TERMINATE",
         login_nodes_count=0,
     )
@@ -1653,7 +1795,7 @@ def _test_shared_storage_rollback(
 
     # Check shared storages are not on headnode
     ebs_mount_dirs = [existing_ebs_mount_dir, new_ebs_mount_dir, problematic_ebs_mount_dir]
-    fs_mount_dirs = [new_lustre_mount_dir, new_efs_mount_dir] if fsx_supported else [new_efs_mount_dir]
+    fs_mount_dirs = list(filter(lambda item: item is not None, [new_lustre_mount_dir, new_efs_mount_dir]))
     _test_ebs_not_mounted(remote_command_executor, ebs_mount_dirs)
     _test_directory_not_mounted(remote_command_executor, fs_mount_dirs)
 
@@ -1679,7 +1821,7 @@ def _test_shared_storage_rollback(
     ]
     managed_fsx = (
         [fs.get("fsx_fs_id") for fs in failed_share_storages.get("fsx") if fs.get("mount_dir") == new_lustre_mount_dir]
-        if fsx_supported
+        if new_lustre_mount_dir
         else []
     )
 
@@ -1692,7 +1834,7 @@ def _test_shared_storage_rollback(
     with pytest.raises(ClientError, match="FileSystemNotFound"):
         boto3.client("efs", region).describe_file_systems(FileSystemId=managed_efs[0])
     # assert the managed FSX is clean up
-    if fsx_supported:
+    if new_lustre_mount_dir:
         logging.info("Checking managed FSX is deleted after stack rollback")
         with pytest.raises(ClientError, match="FileSystemNotFound"):
             boto3.client("fsx", region).describe_file_systems(FileSystemIds=managed_fsx)

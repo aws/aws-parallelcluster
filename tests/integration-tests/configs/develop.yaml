@@ -282,12 +282,6 @@ test-suites:
           instances: [{{ common.instance("instance_type_1") }}]
           oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
-    test_fabric.py::test_fabric:
-      dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: ["alinux2"]
-          schedulers: ["slurm"]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
@@ -406,23 +400,7 @@ test-suites:
           oss: ["alinux2"]
           schedulers: ["slurm"]
   scaling:
-    test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
-      dimensions:
-        - regions: ["ap-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
-        - regions: ["ca-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["ubuntu2004"]
-          schedulers: ["slurm"]
-    test_mpi.py::test_mpi_ssh:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
-    test_scaling.py::test_multiple_jobs_submission:
+    test_scaling.py::test_job_level_scaling:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -435,12 +413,6 @@ test-suites:
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rocky8"]
-          schedulers: ["slurm"]
-    test_scaling.py::test_job_level_scaling:
-      dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "alinux2" ]
           schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
@@ -532,6 +504,12 @@ test-suites:
         - regions: ["ap-south-1"]
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
+    test_slurm_accounting.py::test_slurm_accounting_external_dbd:
+      dimensions:
+        - regions: [ "ap-south-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_custom_partitions:
       dimensions:
@@ -716,7 +694,7 @@ test-suites:
     test_internal_efs.py::test_internal_efs:
       dimensions:
         - regions: [ "us-west-2" ]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          instances: {{ common.INSTANCES_DEFAULT }}
           oss: [ "ubuntu2204" ]
           schedulers: [ "slurm" ]
     test_shared_home.py::test_shared_home:
@@ -798,6 +776,18 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
+    test_update.py::test_dynamic_file_systems_update_data_loss:
+      dimensions:
+        - regions: [ "eu-west-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "centos7" ]
+          schedulers: [ "slurm" ]
+    test_update.py::test_dynamic_file_systems_update_rollback:
+      dimensions:
+        - regions: [ "eu-west-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "centos7" ]
+          schedulers: [ "slurm" ]
     test_update.py::test_multi_az_create_and_update:
       dimensions:
         - regions: ["eu-west-2"]

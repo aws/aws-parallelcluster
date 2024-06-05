@@ -100,11 +100,18 @@ def _retrieve_sts_credential(region, credential_arn, sts, credential_external_id
     assume_role_kwargs = {
         "RoleArn": credential_arn,
         "RoleSessionName": region + "_integration_tests_session",
+        "DurationSeconds": 10000,
     }
     if credential_external_id:
         assume_role_kwargs["ExternalId"] = credential_external_id
 
-    assumed_role_object = sts.assume_role(**assume_role_kwargs)
+    try:
+        assumed_role_object = sts.assume_role(**assume_role_kwargs)
+    except Exception:
+        # Roles assumed by role chaining have 1-hour session limit.
+        # This exception handling block retries with default session duration.
+        assume_role_kwargs.pop("DurationSeconds", None)
+        assumed_role_object = sts.assume_role(**assume_role_kwargs)
     aws_credentials = assumed_role_object["Credentials"]
 
     return aws_credentials

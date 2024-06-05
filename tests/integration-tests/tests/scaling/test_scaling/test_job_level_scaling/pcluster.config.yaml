@@ -10,16 +10,18 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
   ScalingStrategy: {{ scaling_strategy }}
   SlurmQueues:
     - Name: queue-jls-1-full
       ComputeResources:
         - Name: compute-resource-0
           Instances:
-            - InstanceType: t3.xlarge
+            - InstanceType: {{ instance }}
         - Name: compute-resource-1
           Instances:
-            - InstanceType: m5.xlarge
+            - InstanceType: {{ instance }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -27,10 +29,20 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           Instances:
-            - InstanceType: t3.xlarge
+            - InstanceType: {{ instance }}
         - Name: ice-cr-multiple
           Instances:
-            - InstanceType: m5.xlarge
+            - InstanceType: {{ instance }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+  {% for q in range(no_of_queues) %}
+    - Name: queue-{{q}}
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+  {% endfor %}

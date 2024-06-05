@@ -1,0 +1,74 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+Scheduling:
+  SlurmSettings:
+    QueueUpdateStrategy: TERMINATE
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q1
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      ComputeResources:
+        - Name: cr1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+{% if existing_ebs_mount_dir %}
+  - MountDir: {{ existing_ebs_mount_dir }}
+    Name: existing_ebs
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+      VolumeId: {{ existing_ebs_id }}
+{% endif %}
+{% if existing_efs_mount_dir %}
+  - MountDir: {{ existing_efs_mount_dir }}
+    Name: existing_efs
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: {{ existing_efs_id }}
+{% endif %}
+{% if existing_fsx_lustre_mount_dir %}
+  - MountDir: {{ existing_fsx_lustre_mount_dir }}
+    Name: existingfsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      FileSystemId: {{ existing_fsx_lustre_id }}
+{% endif %}
+{% if existing_fsx_open_zfs_mount_dir %}
+  - MountDir: {{ existing_fsx_open_zfs_mount_dir }}
+    Name: existingopenzfs
+    StorageType: FsxOpenZfs
+    FsxOpenZfsSettings:
+      VolumeId: {{ existing_fsx_open_zfs_id }}
+{% endif %}
+{% if existing_fsx_ontap_mount_dir %}
+  - MountDir: {{ existing_fsx_ontap_mount_dir }}
+    Name: existingontap
+    StorageType: FsxOntap
+    FsxOntapSettings:
+      VolumeId: {{ existing_fsx_ontap_id }}
+{% endif %}
+{% if existing_file_cache_mount_dir %}
+  - MountDir: {{ existing_file_cache_mount_dir }}
+    Name: existingfilecache
+    StorageType: FileCache
+    FileCacheSettings:
+      FileCacheId: {{ existing_file_cache_id }}
+{% endif %}
+

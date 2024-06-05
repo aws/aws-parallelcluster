@@ -45,6 +45,8 @@ from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.fixture_utils import xdist_session_fixture
+from framework.framework_constants import METADATA_DEFAULT_REGION, METADATA_TABLE
+from framework.metadata_table_manager import MetadataTableManager
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -181,7 +183,16 @@ def pytest_addoption(parser):
         "--slurm-database-stack-name",
         help="Name of CFN stack providing database stack to be used for testing Slurm accounting feature.",
     )
+    parser.addoption(
+        "--slurm-dbd-stack-name",
+        help="Name of CFN stack providing external Slurm dbd stack to be used for testing Slurm accounting feature.",
+    )
+    parser.addoption(
+        "--munge-key-secret-arn",
+        help="ARN of the secret containing the munge key to be used for testing Slurm accounting feature.",
+    )
     parser.addoption("--external-shared-storage-stack-name", help="Name of existing external shared storage stack.")
+    parser.addoption("--bucket-name", help="Name of existing bucket.")
     parser.addoption("--custom-security-groups-stack-name", help="Name of existing custom security groups stack.")
     parser.addoption(
         "--force-run-instances",
@@ -193,6 +204,11 @@ def pytest_addoption(parser):
         "--force-elastic-ip",
         help="Force the usage of Elastic IP for Multi network interface EC2 instances.",
         action="store_true",
+    )
+    parser.addoption(
+        "--global-build-number",
+        help="The build number passed from the testing pipelines",
+        default=0,
     )
 
 
@@ -251,6 +267,11 @@ def pytest_sessionstart(session):
     os.environ["AWS_METADATA_SERVICE_NUM_ATTEMPTS"] = "5"
     # Increasing default max attempts retry
     os.environ["AWS_MAX_ATTEMPTS"] = "10"
+    try:
+        # Setup the metadata table in case it doesn't exist
+        MetadataTableManager(METADATA_DEFAULT_REGION, METADATA_TABLE).create_metadata_table()
+    except Exception as exc:
+        logging.info(f"There was a '{type(exc)}' error with '{exc}' when creating the table!")
 
 
 def pytest_fixture_setup(fixturedef: FixtureDef[Any], request: SubRequest) -> Optional[object]:
@@ -989,10 +1010,15 @@ def s3_bucket_factory(request, region):
     created_buckets = []
 
     def _create_bucket():
-        bucket_name = "integ-tests-" + random_alphanumeric()
-        logging.info("Creating S3 bucket {0}".format(bucket_name))
-        create_s3_bucket(bucket_name, region)
-        created_buckets.append((bucket_name, region))
+        option = "bucket_name"
+        if request.config.getoption(option):
+            bucket_name = request.config.getoption(option)
+            logging.info("Using existing S3 bucket {0}".format(bucket_name))
+        else:
+            bucket_name = "integ-tests-" + random_alphanumeric()
+            logging.info("Creating S3 bucket {0}".format(bucket_name))
+            create_s3_bucket(bucket_name, region)
+            created_buckets.append((bucket_name, region))
         return bucket_name
 
     yield _create_bucket
@@ -1018,10 +1044,15 @@ def s3_bucket_factory_shared(request):
     created_buckets = []
 
     def _create_bucket(region):
-        bucket_name = "integ-tests-" + random_alphanumeric()
-        logging.info("Creating S3 bucket {0}".format(bucket_name))
-        create_s3_bucket(bucket_name, region)
-        created_buckets.append((bucket_name, region))
+        option = "bucket_name"
+        if request.config.getoption(option):
+            bucket_name = request.config.getoption(option)
+            logging.info("Using existing S3 bucket {0}".format(bucket_name))
+        else:
+            bucket_name = "integ-tests-" + random_alphanumeric()
+            logging.info("Creating S3 bucket {0}".format(bucket_name))
+            create_s3_bucket(bucket_name, region)
+            created_buckets.append((bucket_name, region))
         return bucket_name
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))

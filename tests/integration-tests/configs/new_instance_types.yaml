@@ -12,8 +12,8 @@
 
 ---
 test-suites:
-  scaling:
-    test_mpi.py::test_mpi:
+  basic:
+    test_essential_features.py::test_essential_features:
       dimensions:
         - regions: {{ NEW_REGIONS }}
           instances: {{ NEW_INSTANCE_TYPES }}

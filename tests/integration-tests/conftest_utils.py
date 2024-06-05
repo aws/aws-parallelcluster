@@ -17,11 +17,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
 
+import jsonpickle
 import pluggy
 import pytest
 import yaml
 from conftest_markers import DIMENSIONS_MARKER_ARGS
 from filelock import FileLock
+from framework.framework_constants import METADATA_DEFAULT_REGION, METADATA_TABLE
+from framework.metadata_table_manager import MetadataTableManager, PhaseMetadata, TestMetadata
 from framework.metrics_publisher import Metric, MetricsPublisher
 from time_utils import microseconds
 from utils import dict_add_nested_key, dict_has_nested_key
@@ -104,7 +107,7 @@ def runtest_hook_start_end_time(item: pytest.Item, when: str):
     logging.info(f"{when} list {call_list}")
 
 
-def publish_test_metrics(when: str, item: pytest.Item, rep: pytest.TestReport):
+def publish_test_metrics(item: pytest.Item, rep: pytest.TestReport):
     """
     Publish test metrics specific to a given test execution.
 
@@ -119,7 +122,7 @@ def publish_test_metrics(when: str, item: pytest.Item, rep: pytest.TestReport):
     ]
     dimensions.append({"Name": "test_name", "Value": item.location[2]})
     # Create a list of metrics
-    metrics = create_phase_metrics(when, item, rep, dimensions)
+    metrics = create_phase_metrics(item, rep, dimensions)
     pub.publish_metrics_to_cloudwatch("ParallelCluster/IntegrationTests", metrics)
 
 
@@ -130,17 +133,29 @@ def get_user_prop(item: pytest.Item, prop: str) -> Any:
             return user_prop[1]
 
 
-def create_phase_metrics(when: str, item: pytest.Item, rep: pytest.TestReport, dimensions: List[dict[str, str]]):
+def update_user_prop(item: pytest.Item, prop: str, new_data: Any) -> Any:
+    """From a list of tuples, get the desired user property and update it"""
+    for index, user_prop in enumerate(item.user_properties):
+        if user_prop[0] == prop:
+            item.user_properties[index] = (prop, new_data)
+            return item.user_properties[index][1]
+
+
+def create_phase_metrics(item: pytest.Item, rep: pytest.TestReport, dimensions: List[dict[str, str]]):
     metrics = [
-        Metric(f"{when}_result", int(rep.passed), "None", dimensions),
+        Metric(f"{rep.when}_result", int(rep.passed), "None", dimensions),
         Metric(
-            f"{when}_time",
-            int(microseconds(get_user_prop(item, f"end_time_{when}") - get_user_prop(item, f"start_time_{when}"))),
+            f"{rep.when}_time",
+            int(
+                microseconds(
+                    get_user_prop(item, f"end_time_{rep.when}") - get_user_prop(item, f"start_time_{rep.when}")
+                )
+            ),
             "Microseconds",
             dimensions,
         ),
     ]
-    if when == "teardown":
+    if rep.when == "teardown":
         metrics.append(
             Metric(
                 "total_time",
@@ -150,3 +165,56 @@ def create_phase_metrics(when: str, item: pytest.Item, rep: pytest.TestReport, d
             )
         )
     return metrics
+
+
+def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
+    """Publish test metadata to the metadata table."""
+    metadata_table_mgr = MetadataTableManager(METADATA_DEFAULT_REGION, METADATA_TABLE)
+    logging.info(f"Publishing test metadata: item {item} rep {rep}")
+    test_metadata = None
+    if rep.when == "setup":
+        # Initialize the test data
+        test_metadata = TestMetadata(
+            item.location[2],
+            region=get_user_prop(item, "region"),
+            os=get_user_prop(item, "os"),
+            feature=get_user_prop(item, "feature"),
+            instance_type=get_user_prop(item, "instance"),
+            global_build_number=item.config.getoption("--global-build-number"),
+            cli_commit=item.config.getoption("--pcluster-git-ref"),
+            cookbook_commit=item.config.getoption("--cookbook-git-ref"),
+            node_commit=item.config.getoption("--node-git-ref"),
+            setup_metadata=PhaseMetadata(
+                rep.when,
+                status=rep.outcome,
+                start_time=get_user_prop(item, f"start_time_{rep.when}"),
+                end_time=get_user_prop(item, f"end_time_{rep.when}"),
+            ),
+        )
+        # Create the metadata table on the fly if it doesn't exist
+        metadata_table_mgr.create_metadata_table()
+    if rep.when == "call":
+        # Update the call test data
+        test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
+        test_metadata.call_metadata = PhaseMetadata(
+            rep.when,
+            status=rep.outcome,
+            start_time=get_user_prop(item, f"start_time_{rep.when}"),
+            end_time=get_user_prop(item, f"end_time_{rep.when}"),
+        )
+    if rep.when == "teardown":
+        # Update the teardown test data
+        test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
+        test_metadata.teardown_metadata = PhaseMetadata(
+            rep.when,
+            status=rep.outcome,
+            start_time=get_user_prop(item, f"start_time_{rep.when}"),
+            end_time=get_user_prop(item, f"end_time_{rep.when}"),
+        )
+    # This prop needs to be serialized before saving to the user_props
+    if update_user_prop(item, "metadata", jsonpickle.encode(test_metadata)):
+        logging.info(f"Updated the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
+    else:
+        item.user_properties.append(("metadata", jsonpickle.encode(test_metadata)))
+        logging.info(f"Added the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
+    metadata_table_mgr.publish_metadata([test_metadata])

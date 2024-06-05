@@ -178,23 +178,6 @@ test-suites:
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
-  scaling:
-    test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
-      dimensions:
-        - regions: ["ap-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["ubuntu2204"]
-          schedulers: ["slurm"]
-    test_mpi.py::test_mpi_ssh:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:

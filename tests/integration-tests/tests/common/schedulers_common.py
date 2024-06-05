@@ -588,12 +588,16 @@ class SlurmCommands(SchedulerCommands):
         return (dict(zip(fields, columns)) for columns in SlurmCommands._split_accounting_results(users))
 
     def get_accounting_job_records(
-        self, job_id, fields=("jobid", "jobname", "partition", "account", "alloccpus", "state", "exitcode")
+        self,
+        job_id,
+        fields=("jobid", "jobname", "partition", "account", "alloccpus", "state", "exitcode"),
+        clusters=None,
     ):
         """Return job steps of {job_id} as a series of dicts."""
-        records = self._remote_command_executor.run_remote_command(
-            f"sacct -nP -j {job_id} -o {','.join(fields)}"
-        ).stdout
+        command = f"sacct -nP -j {job_id} -o {','.join(fields)}"
+        if clusters:
+            command = command + f" --clusters {clusters}"
+        records = self._remote_command_executor.run_remote_command(command).stdout
         return (dict(zip(fields, columns)) for columns in SlurmCommands._split_accounting_results(records))
 
     @staticmethod

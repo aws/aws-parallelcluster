@@ -436,7 +436,7 @@ Resources:
                 echo "Registering user: $username"
                 echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="$username" "$username"
               done
-              
+
               echo "Creating domain certificate..."
               PRIVATE_KEY="${DirectoryDomain}.key"
               CERTIFICATE="${DirectoryDomain}.crt"
@@ -705,9 +705,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - acm:ImportCertificate
-                  - acm:AddTagsToCertificate
-                Resource: !Sub arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/*
+                  - iam:UploadServerCertificate
+                  - iam:TagServerCertificate
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:server-certificate/*
                 Condition:
                   StringEquals:
                     aws:RequestTag/StackId: !Sub ${AWS::StackId}
@@ -721,7 +721,7 @@ Resources:
   DomainCertificateSetupLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: !Sub "${AWS::StackName}: custom resource handler to import the domain certificate into ACM."
+      Description: !Sub "${AWS::StackName}: custom resource handler to import the domain certificate into IAM."
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt DomainCertificateSetupLambdaRole.Arn
@@ -739,21 +739,24 @@ Resources:
           import string
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
-          acm = boto3.client("acm")
+          iam = boto3.client("iam")
           sm = boto3.client("secretsmanager")
 
           def create_physical_resource_id():
               alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
               return ''.join(random.choice(alnum) for _ in range(16))
 
-          def import_certificate(certificate_secret_arn, private_key_secret_arn, tags):
+          def import_certificate(certificate_secret_arn, private_key_secret_arn, domain_name, tags):
             logger.info('Reading secrets from Secrets Manager...')
             domain_certificate = sm.get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
             domain_private_key = sm.get_secret_value(SecretId=private_key_secret_arn)["SecretString"]
-            logger.info('Importing certificate into ACM...')
-            certificate_arn = acm.import_certificate(
-              Certificate=domain_certificate, PrivateKey=domain_private_key, Tags=tags
-            )["CertificateArn"]
+            logger.info('Importing certificate into IAM...')
+
+            certificate_arn = iam.upload_server_certificate(
+              ServerCertificateName=domain_name,
+              CertificateBody=domain_certificate,
+              PrivateKey=domain_private_key, Tags=tags
+            )["ServerCertificateMetadata"]["Arn"]
             return certificate_arn
 
           def handler(event, context):
@@ -774,9 +777,10 @@ Resources:
 
               try:
                 if event['RequestType'] == 'Create':
-                  certificate_arn = import_certificate(certificate_secret_arn, private_key_secret_arn, tags)
+                  certificate_arn = import_certificate(certificate_secret_arn, private_key_secret_arn, domain_name, tags)
+                  time.sleep(60)
                   response_data['DomainCertificateArn'] = certificate_arn
-                  response_data['Message'] = f"Resource creation successful! ACM certificate imported: {certificate_arn}"
+                  response_data['Message'] = f"Resource creation successful! IAM certificate imported: {certificate_arn}"
               except Exception as e:
                 response_status = cfnresponse.FAILED
                 reason = str(e)
@@ -823,7 +827,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - acm:DeleteCertificate
+                  - iam:DeleteServerCertificate
                 Resource: !GetAtt DomainCertificateSetup.DomainCertificateArn
 
   CleanupLambda:
@@ -847,22 +851,22 @@ Resources:
           import string
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
-          acm = boto3.client("acm")
+          iam = boto3.client("iam")
 
           def create_physical_resource_id():
             alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
             return ''.join(random.choice(alnum) for _ in range(16))
 
-          def delete_certificate(certificate_arn):
-            logger.info(f"Deleting ACM certificate {certificate_arn}...")
+          def delete_certificate(domain_name, certificate_arn):
+            logger.info(f"Deleting iam certificate {certificate_arn}...")
             max_attempts = 10
             sleep_time = 60
             for attempt in range(1, max_attempts+1):
               try:
-                acm.delete_certificate(CertificateArn=certificate_arn)
+                iam.delete_server_certificate(ServerCertificateName=domain_name)
                 break
-              except acm.exceptions.ResourceInUseException as e:
-                logger.info(f"(Attempt {attempt}/{max_attempts}) Cannot delete ACM certificate because it is in use. Retrying in {sleep_time} seconds...")
+              except iam.exceptions.DeleteConflictException as e:
+                logger.info(f"(Attempt {attempt}/{max_attempts}) Cannot delete IAM certificate because it is in use. Retrying in {sleep_time} seconds...")
                 if attempt == max_attempts:
                   raise Exception(f"Cannot delete certificate {certificate_arn}: {e}")
                 else:
@@ -882,7 +886,8 @@ Resources:
             try:
               if event['RequestType'] == 'Delete':
                 certificate_arn = event['ResourceProperties']['DomainCertificateArn']
-                delete_certificate(certificate_arn)
+                domain_name = event['ResourceProperties']['DomainName']
+                delete_certificate(domain_name, certificate_arn)
             except Exception as e:
               response_status = cfnresponse.FAILED
               reason = str(e)
@@ -894,6 +899,7 @@ Resources:
       - DomainCertificateSetup
     Properties:
       ServiceToken: !GetAtt CleanupLambda.Arn
+      DomainName: !Ref DomainName
       DomainCertificateArn: !GetAtt DomainCertificateSetup.DomainCertificateArn
 
   DomainCertificateSecretReadPolicy:

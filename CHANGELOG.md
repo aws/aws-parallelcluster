@@ -4,11 +4,30 @@ CHANGELOG
 3.10.0
 ------
 
+**ENHANCEMENTS**
+- Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
+- Add support for FSx Lustre as a shared storage type in us-iso-east-1.
+
 **BUG FIXES**
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
 - Consider Compute fleet clean-up completed during cluster deletion when instances are either in shutting-down or terminated state.
   This is to avoid cluster deletion failure for instance types with longer termination cycles.
 - Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
+
+**CHANGES**
+- Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+
+3.9.2
+------
+
+**CHANGES**
+- Upgrade Slurm to 23.11.7 (from 23.11.4).
+
+3.9.1
+------
+
+**BUG FIXES**
+- Remove recursive deletion of shared storage mountdir when unmounting filesystems as part of update-cluster operation.
 
 3.9.0
 ------

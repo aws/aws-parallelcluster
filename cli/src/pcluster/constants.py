@@ -132,7 +132,7 @@ MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.10.0",
     "cookbook": "aws-parallelcluster-cookbook-3.10.0",
-    "chef": "18.2.7",
+    "chef": "18.4.12",
     "berkshelf": "8.0.7",
     "ami": "dev",
 }
@@ -271,7 +271,7 @@ class Feature(Enum):
 UNSUPPORTED_FEATURES_MAP = {
     Feature.BATCH: ["ap-northeast-3", "us-iso"],
     Feature.DCV: ["us-iso"],
-    Feature.FSX_LUSTRE: ["us-iso"],
+    Feature.FSX_LUSTRE: ["us-isob"],
     Feature.FILE_CACHE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],

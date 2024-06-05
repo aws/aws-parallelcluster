@@ -58,7 +58,7 @@ Scheduling:
           # Removed MinCount
         - Name: queue1-i3 # New compute resource
           Instances:
-            - InstanceType: t2.micro
+            - InstanceType: t3.small
               # Removed MinCount
       Networking:
         SubnetIds:

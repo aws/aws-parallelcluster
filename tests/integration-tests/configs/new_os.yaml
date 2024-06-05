@@ -131,7 +131,7 @@ test-suites:
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
   scaling:
-    test_scaling.py::test_multiple_jobs_submission:
+    test_scaling.py::test_job_level_scaling:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -157,18 +157,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
-    test_mpi.py::test_mpi:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
-    test_mpi.py::test_mpi_ssh:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:
