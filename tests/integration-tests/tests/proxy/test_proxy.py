@@ -14,8 +14,6 @@ from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from utils import generate_stack_name
 
-from tests.common.assertions import assert_no_errors_in_logs
-
 
 @pytest.fixture(scope="class")
 def proxy_stack(region, request, cfn_stacks_factory):
