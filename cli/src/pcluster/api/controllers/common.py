@@ -29,10 +29,10 @@ from pcluster.api.errors import (
 )
 from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFoundError, get_region
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
-from pcluster.constants import SUPPORTED_REGIONS, UNSUPPORTED_OPERATIONS_MAP, Operation
+from pcluster.constants import UNSUPPORTED_OPERATIONS_MAP, Operation
 from pcluster.models.cluster import Cluster
 from pcluster.models.common import BadRequest, Conflict, LimitExceeded, NotFound, parse_config
-from pcluster.utils import get_installed_version, to_utc_datetime
+from pcluster.utils import get_installed_version, retrieve_supported_regions, to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,11 +40,15 @@ LOGGER = logging.getLogger(__name__)
 def _set_region(region):
     if not region:
         raise BadRequestException("region needs to be set")
-    if region not in SUPPORTED_REGIONS:
-        raise BadRequestException(f"invalid or unsupported region '{region}'")
-
+    region_backup = os.environ.get("AWS_DEFAULT_REGION")
     LOGGER.info("Setting AWS Region to %s", region)
     os.environ["AWS_DEFAULT_REGION"] = region
+    if region not in retrieve_supported_regions():
+        if region_backup:
+            os.environ["AWS_DEFAULT_REGION"] = region_backup
+        else:
+            del os.environ["AWS_DEFAULT_REGION"]
+        raise BadRequestException(f"invalid or unsupported region '{region}'")
 
 
 def configure_aws_region_from_config(region: Union[None, str], config_str: str):

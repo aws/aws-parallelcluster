@@ -20,13 +20,16 @@ import re
 import string
 import sys
 import time
+import urllib
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from shlex import quote
 from typing import Callable, NoReturn
+from urllib.error import URLError
 from urllib.parse import urlparse
 
+import boto3
 import dateutil.parser
 import pkg_resources
 import yaml
@@ -558,3 +561,21 @@ class AsyncUtils:
             )
 
         return wrapper
+
+
+def retrieve_supported_regions():
+    """Retrieve the list of supported regions."""
+    if not hasattr(retrieve_supported_regions, "cache"):
+        region = boto3.Session().region_name or "us-east-1"
+        try:
+            url = "https://{region}-aws-parallelcluster.s3.{region}.{aws_domain}/supported-regions".format(
+                region=region,
+                aws_domain=get_partition(region),
+            )
+            with urllib.request.urlopen(url) as f:  # nosec B310 nosemgrep
+                retrieve_supported_regions.cache = f.read().decode("utf-8").split("\n")
+        except URLError:
+            # When the file is not found on the URL, use local file. This is useful when developing new versions.
+            with open(pkg_resources.resource_filename(__name__, "/resources/supported-regions"), encoding="utf-8") as f:
+                retrieve_supported_regions.cache = f.read().split("\n")
+    return retrieve_supported_regions.cache
