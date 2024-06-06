@@ -9,10 +9,12 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import boto3
 import pytest
+from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
-from utils import generate_stack_name
+from utils import generate_stack_name, get_username_for_os
 
 
 @pytest.fixture(scope="class")
@@ -51,8 +53,15 @@ def proxy_stack(region, request, cfn_stacks_factory):
         cfn_stacks_factory.delete_stack(proxy_stack.name, region)
 
 
-@pytest.mark.usefixtures("os", "instance")
-def test_proxy(scheduler, pcluster_config_reader, clusters_factory, proxy_stack, scheduler_commands_factory):
+def get_instance_public_ip(instance_id, region):
+    ec2_client = boto3.client("ec2", region_name=region)
+    response = ec2_client.describe_instances(InstanceIds=[instance_id])
+    instance = response["Reservations"][0]["Instances"][0]
+    return instance.get("PublicIpAddress")
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_proxy(pcluster_config_reader, clusters_factory, proxy_stack, scheduler_commands_factory):
     """
     Test the creation and functionality of a ParallelCluster using a proxy environment.
 
@@ -63,11 +72,19 @@ def test_proxy(scheduler, pcluster_config_reader, clusters_factory, proxy_stack,
     """
     proxy_address = proxy_stack.cfn_outputs["ProxyAddress"]
     subnet_with_proxy = proxy_stack.cfn_outputs["PrivateSubnet"]
+    proxy_instance_id = proxy_stack.cfn_resources.get("Proxy")
+    assert_that(proxy_instance_id).is_not_none().described_as("Proxy instance ID should not be None")
+    proxy_public_ip = get_instance_public_ip(proxy_instance_id, proxy_stack.region)
+    assert_that(proxy_public_ip).is_not_none().described_as("Proxy public IP should not be None")
 
     cluster_config = pcluster_config_reader(proxy_address=proxy_address, subnet_with_proxy=subnet_with_proxy)
     cluster = clusters_factory(cluster_config)
 
-    remote_command_executor = RemoteCommandExecutor(cluster)
+    username = get_username_for_os(cluster.os)
+
+    bastion = f"{username}@{proxy_public_ip}"
+
+    remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     job_id = scheduler_commands.submit_command_and_assert_job_accepted(

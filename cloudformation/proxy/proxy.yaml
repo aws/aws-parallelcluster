@@ -120,6 +120,11 @@ Resources:
         - CidrIp: !GetAtt PrivateSubnet.CidrBlock
           Description: Allow all inbound traffic from private subnet
           IpProtocol: -1
+        - CidrIp: 0.0.0.0/0
+          Description: Allow SSH access from anywhere
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic
