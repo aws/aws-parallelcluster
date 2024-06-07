@@ -87,6 +87,7 @@ from pcluster.templates.cdk_builder_utils import (
     apply_permissions_boundary,
     convert_deletion_policy,
     create_hash_suffix,
+    dict_to_cfn_tags,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
     get_common_user_data_env,
@@ -1240,7 +1241,12 @@ class ClusterCdkStack:
                 tag_specifications=[
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
-                        tags=get_default_volume_tags(self._stack_name, "HeadNode") + get_custom_tags(self.config),
+                        tags=dict_to_cfn_tags(
+                            {
+                                **get_default_volume_tags(self._stack_name, "HeadNode", raw_dict=True),
+                                **get_custom_tags(self.config, raw_dict=True),
+                            }
+                        ),
                     ),
                 ],
             ),
