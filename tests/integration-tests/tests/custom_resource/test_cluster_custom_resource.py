@@ -170,15 +170,18 @@ def test_cluster_update_invalid(
     reason = failure_reason(stack_error.value.stack_events)
     assert_that(reason).contains("Cannot update the ClusterName")
 
-    for cluster_config_path, error in [
+    for cluster_config_path, error, suppress_validators in [
         # CloudFormation truncates error messages,
         # so we cannot specify the full error message here, but only a part of it.
-        ("pcluster.config.reducemaxcount.yaml", "Stop the compute fleet or set QueueUpdateStrategy:TERMINATE"),
-        ("pcluster.config.negativemaxcount.yaml", "Must be greater than or equal to 1."),
-        ("pcluster.config.wrongscripturi.yaml", "s3 url 's3://invalid' is invalid."),
+        ("pcluster.config.reducemaxcount.yaml", "Stop the compute fleet or set QueueUpdateStrategy:TERMINATE", None),
+        ("pcluster.config.negativemaxcount.yaml", "Must be greater than or equal to 1.", None),
+        ("pcluster.config.invalidprofile.yaml", "cannot be found", ["type:InstanceProfileValidator"]),
+        ("pcluster.config.wrongscripturi.yaml", "s3 url 's3://invalid' is invalid.", None),
     ]:
         template = get_custom_resource_template(
-            pcluster_config_reader(cluster_config_path), cluster_custom_resource_template
+            cluster_config_path=pcluster_config_reader(cluster_config_path),
+            cluster_custom_resource_template=cluster_custom_resource_template,
+            suppress_validators=suppress_validators,
         )
         with pytest.raises(StackError) as stack_error:
             stack.factory.update_stack(
@@ -189,8 +192,11 @@ def test_cluster_update_invalid(
                 stack_is_under_test=True,
                 wait_for_rollback=True,
             )
-        reason = failure_reason(stack_error.value.stack_events)
-        assert_that(reason).contains(error)
+        if suppress_validators:
+            assert_that(stack.cfn_outputs.get("ValidationMessages", "")).does_not_contain(error)
+        else:
+            reason = failure_reason(stack_error.value.stack_events)
+            assert_that(reason).contains(error)
 
     cluster = pc().list_clusters(query=f"clusters[?clusterName=='{cluster_name}']|[0]")
     assert_that(cluster["clusterName"]).is_equal_to(cluster_name)

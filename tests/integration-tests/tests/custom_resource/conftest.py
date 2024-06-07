@@ -116,12 +116,16 @@ def cluster_1_click_fixture(cfn_stacks_factory, request, region, key_name, clust
     return stack
 
 
-def get_custom_resource_template(cluster_config_path, cluster_custom_resource_template, deletion_policy="Delete"):
+def get_custom_resource_template(
+    cluster_config_path, cluster_custom_resource_template, deletion_policy="Delete", suppress_validators=None
+):
     with open(cluster_custom_resource_template, "r", encoding="utf-8") as f:
         template = TemplateGenerator(cfn_tools.load_yaml(f.read()))
     with open(cluster_config_path, encoding="utf-8") as cluster_config:
         template.resources["PclusterCluster"].properties["ClusterConfiguration"] = yaml.safe_load(cluster_config.read())
     template.resources["PclusterCluster"].properties["DeletionPolicy"] = deletion_policy
+    if suppress_validators:
+        template.resources["PclusterCluster"].properties["SuppressValidators"] = suppress_validators
     return template
 
 
