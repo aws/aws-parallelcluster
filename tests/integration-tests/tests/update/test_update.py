@@ -37,6 +37,7 @@ from utils import (
     is_fsx_lustre_supported,
     is_fsx_ontap_supported,
     is_fsx_openzfs_supported,
+    random_alphanumeric,
     retrieve_cfn_resources,
     wait_for_computefleet_changed,
 )
