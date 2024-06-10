@@ -103,7 +103,7 @@ SharedStorage:
       Raid:
         Type: 0
         NumberOfVolumes: 2
-{% if "-iso" not in region %}
+{% if "us-isob" not in region %}
   - MountDir: fsx
     Name: fsx
     StorageType: FsxLustre
