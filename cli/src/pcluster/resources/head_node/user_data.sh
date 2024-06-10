@@ -70,7 +70,7 @@ function error_exit
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
   cutoff=$(expr 4096 - $(stat --printf="%s" /tmp/wait_condition_handle.txt))
   reason=$(head --bytes=${!cutoff} /var/log/parallelcluster/bootstrap_error_msg 2>/dev/null) || reason="$1"
-  cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
+  $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
   exit 1
 }
 function vendor_cookbook
@@ -94,10 +94,10 @@ function vendor_cookbook
 # deploy config files
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 # Load ParallelCluster environment variables
-[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
+[ -f /etc/parallelcluster/pcluster_cookbook_environment.sh ] && . /etc/parallelcluster/pcluster_cookbook_environment.sh
 
 cd /tmp
-cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl}
+$CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl}
 wait_condition_handle_presigned_url=$(cat /tmp/wait_condition_handle.txt)
 
 custom_cookbook=${CustomChefCookbook}
@@ -134,7 +134,7 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
 fi
 
 # Call CloudFormation
-cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log and /var/log/chef-client.log in the head node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
-cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
+$CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl} || error_exit 'Failed to bootstrap the head node. Please check /var/log/cfn-init.log and /var/log/chef-client.log in the head node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
+$CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
 # End of file
 --==BOUNDARY==
