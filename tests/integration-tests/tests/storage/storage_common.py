@@ -33,7 +33,7 @@ from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import get_aws_domain, retrieve_latest_ami
+from tests.common.utils import CLASSIC_AWS_DOMAIN, get_aws_domain, retrieve_latest_ami
 
 
 def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head_node: bool = True):
@@ -675,9 +675,18 @@ def assert_fsx_lustre_correctly_mounted(
             mount_name=mount_name,
             mount_dir=mount_dir,
             mount_options=mount_options,
-            aws_domain_regex=re.escape(get_aws_domain(region)),
+            aws_domain_regex=re.escape(get_aws_domain_for_fsx(region)),
         ),
     )
+
+
+def get_aws_domain_for_fsx(region):
+    # Return the AWS domain for FSx resources.
+    # Notice that China and GovCloud use the Commercial domain.
+    if "us-iso" in region:
+        return get_aws_domain(region)
+    else:
+        return CLASSIC_AWS_DOMAIN
 
 
 def get_mount_name(fsx_fs_id, region):
