@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.9.3
+------
+
+**CHANGES**
+- Add support for FSx Lustre in us-iso-east-1.
+
 3.9.2
 ------
 
