@@ -8,6 +8,9 @@ HeadNode:
     SubnetId: {{ subnet_with_proxy }}
     Proxy:
       HttpProxyAddress: {{ proxy_address }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -24,3 +27,6 @@ Scheduling:
         AssignPublicIp: false
         Proxy:
           HttpProxyAddress: {{ proxy_address }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status

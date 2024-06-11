@@ -98,6 +98,7 @@ TEST_DEFAULTS = {
     "force_elastic_ip": False,
     "retain_ad_stack": False,
     "global_build_number": 0,
+    "proxy_stack": None,
 }
 
 
@@ -455,6 +456,11 @@ def _init_argparser():
         help="Retain AD stack and corresponding VPC stack.",
         default=TEST_DEFAULTS.get("retain_ad_stack"),
     )
+    debug_group.add_argument(
+        "--proxy-stack",
+        help="Name of CFN stack providing a Proxy stack to be used for testing Proxy feature.",
+        default=TEST_DEFAULTS.get("proxy_stack"),
+    )
 
     return parser
 
@@ -675,6 +681,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.retain_ad_stack:
         pytest_args.append("--retain-ad-stack")
+
+    if args.proxy_stack:
+        pytest_args.extend(["--proxy-stack", args.proxy_stack])
 
 
 def _set_validate_instance_type_args(args, pytest_args):
