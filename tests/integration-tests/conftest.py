@@ -215,6 +215,7 @@ def pytest_addoption(parser):
         help="Name of CFN stack providing a Proxy stack to be used for testing Proxy feature.",
     )
 
+
 def pytest_generate_tests(metafunc):
     """Generate (multiple) parametrized calls to a test function."""
     if metafunc.config.getoption("tests_config", None):
