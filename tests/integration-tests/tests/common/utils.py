@@ -227,16 +227,22 @@ def get_installed_parallelcluster_base_version():
     return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
 
 
+CLASSIC_AWS_DOMAIN = "amazonaws.com"
+CHINA_AWS_DOMAIN = "amazonaws.com.cn"
+US_ISO_AWS_DOMAIN = "c2s.ic.gov"
+US_ISOB_AWS_DOMAIN = "sc2s.sgov.gov"
+
+
 def get_aws_domain(region: str):
     """Get AWS domain for the given region."""
     if region.startswith("cn-"):
-        return "amazonaws.com.cn"
+        return CHINA_AWS_DOMAIN
     elif region.startswith("us-iso-"):
-        return "c2s.ic.gov"
+        return US_ISO_AWS_DOMAIN
     elif region.startswith("us-isob-"):
-        return "sc2s.sgov.gov"
+        return US_ISOB_AWS_DOMAIN
     else:
-        return "amazonaws.com"
+        return CLASSIC_AWS_DOMAIN
 
 
 def get_sts_endpoint(region):
