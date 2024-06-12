@@ -1,5 +1,10 @@
 {%- import 'common.jinja2' as common with context -%}
+{% if OSS  %}
+{%- set NEW_OS = [ OSS ] -%}
+{% else %}
 {%- set NEW_OS = ["##PLACEHOLDER##"] -%}
+{% endif %}
+
 ---
 test-suites:
   pcluster_api:
@@ -72,6 +77,7 @@ test-suites:
     test_createami.py::test_build_image:
       dimensions:
         - regions: ["eu-west-3"]
+          schedulers: [ "slurm" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ NEW_OS }}
   dcv:

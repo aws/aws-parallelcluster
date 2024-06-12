@@ -36,6 +36,8 @@ phases:
 
               if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
+              elif [ `echo "${RELEASE}" | grep -w '^amzn\.2023'` ]; then
+                OS='alinux2023'
               elif [ `echo "${RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
@@ -130,7 +132,7 @@ phases:
               set -v
               ARCHITECTURE='{{ validate.OperatingSystemArchitecture.outputs.stdout }}'
               OS='{{ validate.OperatingSystemName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux2|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"

@@ -15,7 +15,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
-from constants import OSU_BENCHMARK_VERSION
+from constants import OSU_BENCHMARK_VERSION, UNSUPPORTED_OSES_FOR_DCV
 from fabric import Connection
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import Template
@@ -25,6 +25,7 @@ from utils import (
     generate_stack_name,
     get_compute_nodes_instance_ids,
     get_username_for_os,
+    is_dcv_supported,
     render_jinja_template,
 )
 
@@ -139,6 +140,7 @@ def test_cluster_in_no_internet_subnet(
     script failure, then run osu latency and checks that no failures occur.
     """
     bucket_name = s3_bucket_factory()
+    dcv_supported = is_dcv_supported(region) and os not in UNSUPPORTED_OSES_FOR_DCV
     _upload_pre_install_script(bucket_name, test_datadir)
 
     vpc_default_security_group_id = get_default_vpc_security_group(
@@ -150,6 +152,7 @@ def test_cluster_in_no_internet_subnet(
         vpc_default_security_group_id=vpc_default_security_group_id,
         bucket_name=bucket_name,
         architecture=architecture,
+        dcv_supported=dcv_supported,
     )
     cluster = clusters_factory(cluster_config)
 

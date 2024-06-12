@@ -62,6 +62,6 @@ fi
 
 # This is necessary to find the cfn-init application
 export PATH=/opt/aws/bin:${!PATH}
-[ -f /etc/profile.d/pcluster.sh ] && . /etc/profile.d/pcluster.sh
+[ -f /etc/parallelcluster/pcluster_cookbook_environment.sh ] && . /etc/parallelcluster/pcluster_cookbook_environment.sh
 
-cfn-init -s ${AWS::StackName} -v -c default -r LaunchTemplate --region "${AWS::Region}"
+$CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c default -r LaunchTemplate --region "${AWS::Region}"

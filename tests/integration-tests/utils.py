@@ -509,6 +509,7 @@ def get_username_for_os(os):
     """Return username for a given os."""
     usernames = {
         "alinux2": "ec2-user",
+        "alinux2023": "ec2-user",
         "centos7": "centos",
         "ubuntu2004": "ubuntu",
         "ubuntu2204": "ubuntu",
@@ -812,6 +813,10 @@ def is_fsx_openzfs_supported(region: str):
 
 def is_filecache_supported(region: str):
     return "us-iso" not in region
+
+
+def is_fsx_lustre_deployment_type_supported(region: str, deployment_type: str):
+    return False if "us-iso-" in region and deployment_type in ["SCRATCH_1", "PERSISTENT_2"] else True
 
 
 def is_directory_supported(region: str, directory_type: str):

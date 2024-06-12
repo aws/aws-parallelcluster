@@ -18,7 +18,7 @@ HeadNode:
     S3Access:
       - BucketName: {{ bucket_name }}
         EnableWriteAccess: false
-  {% if os != "ubuntu2004" or architechture=="x86_64" %}
+  {% if dcv_supported and (os != "ubuntu2004" or architechture=="x86_64") %}
   Dcv:
     Enabled: true
   {% endif %}
