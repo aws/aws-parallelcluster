@@ -26,6 +26,10 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add support for FSx Lustre as a shared storage type in us-iso-east-1.
 
+**BUG FIXES**
+- Remove `cloud_dns` from the `SlurmctldParameters` in the Slurm config to avoid Slurm fanout issues.  
+  This is also not required since we set the IP addresses on instance launch.
+
 3.9.2
 ------
 
