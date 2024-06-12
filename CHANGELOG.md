@@ -6,7 +6,6 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
-- Add support for FSx Lustre as a shared storage type in us-iso-east-1.
 
 **BUG FIXES**
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
@@ -19,6 +18,12 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+
+3.9.3
+------
+
+**ENHANCEMENTS**
+- Add support for FSx Lustre as a shared storage type in us-iso-east-1.
 
 3.9.2
 ------
