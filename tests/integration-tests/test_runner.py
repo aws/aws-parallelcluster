@@ -614,7 +614,7 @@ def _set_ami_args(args, pytest_args):
         pytest_args.extend(["--ami-owner", args.ami_owner])
 
 
-def _set_custom_stack_args(args, pytest_args):
+def _set_custom_stack_args(args, pytest_args):  # noqa: C901
     if args.vpc_stack:
         pytest_args.extend(["--vpc-stack", args.vpc_stack])
 
