@@ -458,7 +458,7 @@ def _init_argparser():
     )
     debug_group.add_argument(
         "--proxy-stack",
-        help="Name of CFN stack providing a Proxy stack to be used for testing Proxy feature.",
+        help="Name of CFN stack providing a Proxy environment.",
         default=TEST_DEFAULTS.get("proxy_stack"),
     )
 

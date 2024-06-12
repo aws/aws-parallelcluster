@@ -212,7 +212,7 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--proxy-stack",
-        help="Name of CFN stack providing a Proxy stack to be used for testing Proxy feature.",
+        help="Name of CFN stack providing a Proxy environment.",
     )
 
 
