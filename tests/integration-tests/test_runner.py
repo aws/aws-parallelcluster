@@ -93,6 +93,7 @@ TEST_DEFAULTS = {
     "force_run_instances": False,
     "force_elastic_ip": False,
     "retain_ad_stack": False,
+    "global_build_number": 0,
 }
 
 
@@ -423,6 +424,11 @@ def _init_argparser():
         action="store_true",
         help="Retain AD stack and corresponding VPC stack.",
         default=TEST_DEFAULTS.get("retain_ad_stack"),
+    )
+    parser.add_argument(
+        "--global-build-number",
+        help="The build number passed from the testing pipelines",
+        default=TEST_DEFAULTS.get("global_build_number"),
     )
 
     return parser

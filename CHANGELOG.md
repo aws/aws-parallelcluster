@@ -13,6 +13,9 @@ CHANGELOG
 **CHANGES**
 - Upgrade Slurm to 23.11.7 (from 23.11.4).
 
+**BUG FIXES**
+- Fix issue with `SharedStorageType: Efs` not bootstrapping on ARM instances.
+
 3.9.1
 ------
 
