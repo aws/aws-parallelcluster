@@ -206,6 +206,14 @@ class Cluster:
             logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
+    def wait_cluster_status(self, expected_status, stop_max_delay_minute=15):
+        """Wait for the cluster to reach the desired status."""
+        retry(
+            wait_fixed=seconds(10),
+            stop_max_delay=minutes(stop_max_delay_minute),
+            retry_on_result=lambda result: result["clusterStatus"] != expected_status,
+        )(self.describe_cluster)()
+
     def describe_compute_fleet(self):
         """Run pcluster describe-compute-fleet and return the result."""
         cmd_args = ["pcluster", "describe-compute-fleet", "--cluster-name", self.name]
