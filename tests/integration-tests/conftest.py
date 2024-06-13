@@ -210,6 +210,10 @@ def pytest_addoption(parser):
         help="The build number passed from the testing pipelines",
         default=0,
     )
+    parser.addoption(
+        "--proxy-stack",
+        help="Name of CFN stack providing a Proxy environment.",
+    )
 
 
 def pytest_generate_tests(metafunc):
