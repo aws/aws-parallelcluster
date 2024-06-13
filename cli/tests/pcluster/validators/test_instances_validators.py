@@ -597,7 +597,7 @@ def test_instances_networking_validator(
             CapacityType.ONDEMAND,
             AllocationStrategy.PRICE_CAPACITY_OPTIMIZED,
             "Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation Strategy "
-            "specified is price-capacity-optimized. ",
+            "specified is price-capacity-optimized. "
             "OnDemand CapacityType can only use 'lowest-price' allocation strategy.",
         ),
         (CapacityType.ONDEMAND, AllocationStrategy.LOWEST_PRICE, ""),
