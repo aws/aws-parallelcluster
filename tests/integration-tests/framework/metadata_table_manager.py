@@ -86,27 +86,43 @@ class MetadataTableManager:
                 self.client.put_item(
                     TableName=self.table,
                     Item={
-                        "id": {"S": datum.id},
-                        "name": {"S": datum.name},
-                        "region": {"S": datum.region},
-                        "os": {"S": datum.os},
-                        "feature": {"S": datum.feature},
-                        "instance_type": {"S": datum.instance_type},
-                        "setup_status": {"S": datum.setup_metadata.status},
-                        "setup_start_time": {"N": str(datum.setup_metadata.start_time)},
-                        "setup_end_time": {"N": str(datum.setup_metadata.end_time)},
-                        "call_status": {"S": datum.call_metadata.status},
-                        "call_start_time": {"N": str(datum.call_metadata.start_time)},
-                        "call_end_time": {"N": str(datum.call_metadata.end_time)},
-                        "teardown_status": {"S": datum.teardown_metadata.status},
-                        "teardown_start_time": {"N": str(datum.teardown_metadata.start_time)},
-                        "teardown_end_time": {"N": str(datum.teardown_metadata.end_time)},
-                        "cli_commit": {"S": datum.cli_commit},
-                        "cookbook_commit": {"S": datum.cookbook_commit},
-                        "node_commit": {"S": datum.node_commit},
-                        "cfn_stack_name": {"S": datum.cfn_stack_name},
-                        "cw_log_group_name": {"S": datum.cw_log_group_name},
-                        "global_build_number": {"N": str(datum.global_build_number)},
+                        "id": {"S": datum.id if datum.id else "None"},
+                        "name": {"S": datum.name if datum.name else "None"},
+                        "region": {"S": datum.region if datum.region else "None"},
+                        "os": {"S": datum.os if datum.os else "None"},
+                        "feature": {"S": datum.feature if datum.feature else "None"},
+                        "instance_type": {"S": datum.instance_type if datum.instance_type else "None"},
+                        "setup_status": {"S": datum.setup_metadata.status if datum.setup_metadata.status else "None"},
+                        "setup_start_time": {
+                            "N": str(datum.setup_metadata.start_time) if datum.setup_metadata.start_time else 0
+                        },
+                        "setup_end_time": {
+                            "N": str(datum.setup_metadata.end_time) if datum.setup_metadata.end_time else 0
+                        },
+                        "call_status": {"S": datum.call_metadata.status if datum.call_metadata.status else "None"},
+                        "call_start_time": {
+                            "N": str(datum.call_metadata.start_time) if datum.call_metadata.start_time else 0
+                        },
+                        "call_end_time": {
+                            "N": str(datum.call_metadata.end_time) if datum.call_metadata.end_time else 0
+                        },
+                        "teardown_status": {
+                            "S": datum.teardown_metadata.status if datum.teardown_metadata.status else "None"
+                        },
+                        "teardown_start_time": {
+                            "N": str(datum.teardown_metadata.start_time) if datum.teardown_metadata.start_time else 0
+                        },
+                        "teardown_end_time": {
+                            "N": str(datum.teardown_metadata.end_time) if datum.teardown_metadata.end_time else 0
+                        },
+                        "cli_commit": {"S": datum.cli_commit if datum.cli_commit else "None"},
+                        "cookbook_commit": {"S": datum.cookbook_commit if datum.cookbook_commit else "None"},
+                        "node_commit": {"S": datum.node_commit if datum.node_commit else "None"},
+                        "cfn_stack_name": {"S": datum.cfn_stack_name if datum.cfn_stack_name else "None"},
+                        "cw_log_group_name": {"S": datum.cw_log_group_name if datum.cw_log_group_name else "None"},
+                        "global_build_number": {
+                            "N": str(datum.global_build_number) if datum.global_build_number else 0
+                        },
                     },
                 )
             except Exception as e:

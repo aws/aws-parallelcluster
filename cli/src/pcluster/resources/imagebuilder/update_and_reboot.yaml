@@ -37,6 +37,8 @@ phases:
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
+              elif [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
+                OS='alinux2023'
               elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
@@ -196,19 +198,19 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
-              
+
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
                 if [[ ${!PLATFORM} == RHEL ]]; then
                   yum install -y yum-plugin-versionlock
                   # listing all the packages because wildcard does not work as expected
                   yum versionlock kernel kernel-core kernel-modules
-              
-                  if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] ; then
+
+                  if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
                     yum versionlock kernel-abi-whitelists
                   else
                     yum versionlock kernel-abi-stablelists
                   fi
-              
+
                   if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                     yum versionlock rocky-release rocky-repos
                   elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
@@ -231,7 +233,7 @@ phases:
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
 
-                if [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rhel9" ]] || [[ ${!OS} == "rocky9" ]] ; then
+                if [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rhel9" ]] || [[ ${!OS} == "rocky9" ]] || [[ ${!OS} == "alinux2023" ]] ; then
                   # package-cleanup has changed in RHEL8 and it works differently https://access.redhat.com/solutions/1227
                   yum remove $(yum repoquery --installonly --latest-limit=-2 -q)
                 else
@@ -259,12 +261,12 @@ phases:
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
-                # Install kernel-devel during OS update, so that headers are aligned with new kernel. 
+                # Install kernel-devel during OS update, so that headers are aligned with new kernel.
                 # The same is done for Debian through `apt-get -y install linux-aws`
                 if [[ ${!OS} == "rocky8" ]] ; then
                   PACKAGE="kernel-devel-$(uname -r)"
                   RELEASE_VERSION=$(source /etc/os-release && echo ${!VERSION_ID})
-              
+
                   # try to install kernel source for a specific release version
                   yum install -y ${!PACKAGE} --releasever ${!RELEASE_VERSION}
                   if [ $? -ne 0 ]; then
@@ -277,7 +279,7 @@ phases:
                 else
                   yum -y install kernel-devel
                 fi
-              
+
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
                    apt-get -y install linux-aws linux-headers-aws linux-image-aws
@@ -293,17 +295,17 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
-              
+
               # Remove kernel version lock
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
                 yum versionlock delete kernel kernel-core kernel-modules
-                
-                if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] ; then
+
+                if [[ ${!OS} == "centos7" ]] || [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
                   yum versionlock delete kernel-abi-whitelists
                 else
                   yum versionlock delete kernel-abi-stablelists
                 fi
-            
+
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release
                 elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then

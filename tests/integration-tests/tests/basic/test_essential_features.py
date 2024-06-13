@@ -14,6 +14,7 @@ import logging
 import boto3
 import pytest
 from assertpy import assert_that, soft_assertions
+from constants import UNSUPPORTED_OSES_FOR_DCV
 from remote_command_executor import RemoteCommandExecutor
 from utils import check_status, is_dcv_supported, test_cluster_health_metric
 
@@ -52,7 +53,7 @@ def test_essential_features(
     bucket.upload_file(str(test_datadir / "pre_install.sh"), "scripts/pre_install.sh")
     bucket.upload_file(str(test_datadir / "post_install.sh"), "scripts/post_install.sh")
 
-    dcv_enabled = is_dcv_supported(region)
+    dcv_enabled = is_dcv_supported(region) and os not in UNSUPPORTED_OSES_FOR_DCV
     scaledown_idletime = 3
     max_queue_size = 3
 

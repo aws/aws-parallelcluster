@@ -6,7 +6,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
-- Add support for FSx Lustre as a shared storage type in us-iso-east-1.
+- Add support for Amazon Linux 2023.
 
 **BUG FIXES**
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
@@ -20,11 +20,24 @@ CHANGELOG
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
 
+3.9.3
+------
+
+**ENHANCEMENTS**
+- Add support for FSx Lustre as a shared storage type in us-iso-east-1.
+
+**BUG FIXES**
+- Remove `cloud_dns` from the `SlurmctldParameters` in the Slurm config to avoid Slurm fanout issues.  
+  This is also not required since we set the IP addresses on instance launch.
+
 3.9.2
 ------
 
 **CHANGES**
 - Upgrade Slurm to 23.11.7 (from 23.11.4).
+
+**BUG FIXES**
+- Fix issue with `SharedStorageType: Efs` not bootstrapping on ARM instances.
 
 3.9.1
 ------

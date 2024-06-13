@@ -35,6 +35,7 @@ RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
+    "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
     "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"], "includeDeprecated": True},
     "ubuntu2004": {
@@ -81,6 +82,7 @@ PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "alinux2023": {"name": "amzn2023-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "centos7": {"name": "centos7-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
@@ -227,16 +229,22 @@ def get_installed_parallelcluster_base_version():
     return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
 
 
+CLASSIC_AWS_DOMAIN = "amazonaws.com"
+CHINA_AWS_DOMAIN = "amazonaws.com.cn"
+US_ISO_AWS_DOMAIN = "c2s.ic.gov"
+US_ISOB_AWS_DOMAIN = "sc2s.sgov.gov"
+
+
 def get_aws_domain(region: str):
     """Get AWS domain for the given region."""
     if region.startswith("cn-"):
-        return "amazonaws.com.cn"
+        return CHINA_AWS_DOMAIN
     elif region.startswith("us-iso-"):
-        return "c2s.ic.gov"
+        return US_ISO_AWS_DOMAIN
     elif region.startswith("us-isob-"):
-        return "sc2s.sgov.gov"
+        return US_ISOB_AWS_DOMAIN
     else:
-        return "amazonaws.com"
+        return CLASSIC_AWS_DOMAIN
 
 
 def get_sts_endpoint(region):
