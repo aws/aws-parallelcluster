@@ -11,6 +11,11 @@ Parameters:
     Type: String
     Default: 10.0.0.0/16
 
+  SSHCidr:
+    Description: CIDR to allow SSH traffic from
+    Type: String
+    Default: 0.0.0.0/0
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -18,6 +23,7 @@ Metadata:
           default: Networking
         Parameters:
           - VpcCidr
+          - SSHCidr
       - Label:
           default: Permissions
         Parameters:
@@ -120,6 +126,11 @@ Resources:
         - CidrIp: !GetAtt PrivateSubnet.CidrBlock
           Description: Allow all inbound traffic from private subnet
           IpProtocol: -1
+        - CidrIp: !Ref SSHCidr
+          Description: Allow SSH access from specified CIDR
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic

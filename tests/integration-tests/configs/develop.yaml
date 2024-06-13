@@ -801,3 +801,10 @@ test-suites:
           regions: [ "us-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: [ "slurm" ]
+  proxy:
+    test_proxy.py::test_proxy:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
