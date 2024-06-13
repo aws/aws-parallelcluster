@@ -41,4 +41,5 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
   {% endif %}
