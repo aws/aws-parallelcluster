@@ -321,16 +321,7 @@ class Operation(Enum):
     VERSION = "version"
 
 
-UNSUPPORTED_OPERATIONS_MAP = {
-    Operation.BUILD_IMAGE: ["us-iso"],
-    Operation.DELETE_IMAGE: ["us-iso"],
-    Operation.DESCRIBE_IMAGE: ["us-iso"],
-    Operation.LIST_IMAGES: ["us-iso"],
-    Operation.EXPORT_IMAGE_LOGS: ["us-iso"],
-    Operation.GET_IMAGE_LOG_EVENTS: ["us-iso"],
-    Operation.GET_IMAGE_STACK_EVENTS: ["us-iso"],
-    Operation.LIST_IMAGE_LOG_STREAMS: ["us-iso"],
-}
+UNSUPPORTED_OPERATIONS_MAP = {}
 
 MAX_TAGS_COUNT = 40  # Tags are limited to 50, reserve some tags for parallelcluster specified tags
 
