@@ -43,8 +43,5 @@ SharedStorage:
       StorageCapacity: {{ storage_capacity }}
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir
-      # SCRATCH_1 not available in China/GovCloud regions
-      {% if region.startswith(("cn-", "us-gov-")) %}
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
-      {% endif %}

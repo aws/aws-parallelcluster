@@ -464,12 +464,6 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-    test_fsx_lustre.py::test_file_cache:
-      dimensions:
-        - regions: ["us-iso-east-1"]
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
     test_fsx_lustre.py::test_multiple_fsx:
       dimensions:
         - regions: ["us-iso-east-1"]

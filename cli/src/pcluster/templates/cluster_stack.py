@@ -1398,8 +1398,7 @@ class ClusterCdkStack:
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' "
-                            "> /etc/chef/dna.json "
+                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
                             '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
                         )
                     },
@@ -1460,16 +1459,16 @@ class ClusterCdkStack:
                 "commands": {
                     "chef": {
                         "command": (
-                            ". /etc/profile.d/pcluster.sh; "
+                            ". /etc/parallelcluster/pcluster_cookbook_environment.sh; "
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
                             " --override-runlist aws-parallelcluster-entrypoints::update &&"
                             " /opt/parallelcluster/scripts/fetch_and_run -postupdate &&"
-                            f" cfn-signal --exit-code=0 --reason='Update complete'"
+                            f" $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-signal --exit-code=0 --reason='Update complete'"
                             f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}' ||"
-                            f" cfn-signal --exit-code=1 --reason='Update failed'"
+                            f" $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-signal --exit-code=1 --reason='Update failed'"
                             f" --region {self.stack.region} --url {cloudformation_url}"
                             f" '{self.wait_condition_handle.ref}'"
                         ),

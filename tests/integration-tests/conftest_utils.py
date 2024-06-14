@@ -180,6 +180,10 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
             os=get_user_prop(item, "os"),
             feature=get_user_prop(item, "feature"),
             instance_type=get_user_prop(item, "instance"),
+            global_build_number=item.config.getoption("--global-build-number"),
+            cli_commit=item.config.getoption("--pcluster-git-ref"),
+            cookbook_commit=item.config.getoption("--cookbook-git-ref"),
+            node_commit=item.config.getoption("--node-git-ref"),
             setup_metadata=PhaseMetadata(
                 rep.when,
                 status=rep.outcome,

@@ -19,7 +19,7 @@ from tabulate import tabulate
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.constants import SUPPORTED_REGIONS
+from pcluster.utils import retrieve_supported_regions
 
 LOGGER = logging.getLogger(__name__)
 
@@ -201,7 +201,9 @@ def get_rows_and_header(items):
 def get_regions():
     ec2 = boto3.client("ec2")
     regions = ec2.describe_regions().get("Regions")
-    regions = [region.get("RegionName") for region in regions if region.get("RegionName") in SUPPORTED_REGIONS]
+    regions = [
+        region.get("RegionName") for region in regions if region.get("RegionName") in retrieve_supported_regions()
+    ]
     regions.sort()
     return regions
 

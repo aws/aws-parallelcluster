@@ -1793,9 +1793,7 @@ def _test_torque_job_submit(remote_command_executor, test_datadir):
 def _submit_kill_networking_job(remote_command_executor, scheduler_commands, partition, node_type, num_nodes):
     """Submit job that will detach network interface on compute."""
     # Get network interface name from Head node, assuming Head node and Compute are of the same instance type
-    interface_name = remote_command_executor.run_remote_command(
-        "nmcli device status | grep ether | awk '{print $1}'"
-    ).stdout
+    interface_name = remote_command_executor.run_remote_command("ls /sys/class/net | grep e").stdout
     logging.info("Detaching network interface {} on {} Compute nodes".format(interface_name, node_type))
     # Submit job that will detach network interface on all dynamic nodes
     return scheduler_commands.submit_command_and_assert_job_accepted(

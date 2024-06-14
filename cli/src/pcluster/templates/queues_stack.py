@@ -428,8 +428,7 @@ class QueuesStack(NestedStack):
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' "
-                            "> /etc/chef/dna.json "
+                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
                             '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
                         )
                     },
@@ -439,7 +438,7 @@ class QueuesStack(NestedStack):
                 "commands": {
                     "chef": {
                         "command": (
-                            ". /etc/profile.d/pcluster.sh; "
+                            ". /etc/parallelcluster/pcluster_cookbook_environment.sh; "
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"

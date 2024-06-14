@@ -17,6 +17,8 @@ OSU_BENCHMARK_VERSION = "5.7.1"
 
 REPOSITORY_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
 
+UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
+
 
 class NodeType(Enum):
     """Categories of nodes."""

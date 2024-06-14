@@ -84,6 +84,8 @@ phases:
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
+              elif [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
+                OS='alinux2023'
               elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
@@ -160,7 +162,7 @@ phases:
                 # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu2004, Ubuntu2204, Centos7, RHEL8, Rocky8, RHEL9 and Rocky9
                 ARCH=$(uname -m)
                 if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.20\.04|ubuntu\.22\.04|rhel\.8|rocky\.8|rhel\.9|rocky\.9)'` ]; then
+                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|amzn\.2023|centos\.7|ubuntu\.20\.04|ubuntu\.22\.04|rhel\.8|rocky\.8|rhel\.9|rocky\.9)'` ]; then
                     echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                     exit {{ FailExitCode }}
                   fi

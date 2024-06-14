@@ -23,8 +23,8 @@ CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
-SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
-SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
+SUPPORTED_OSES = ["alinux2", "alinux2023", "centos7", "ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
+SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -39,6 +39,7 @@ AWSBATCH = "awsbatch"
 OS_MAPPING = {
     "centos7": {"user": "centos"},
     "alinux2": {"user": "ec2-user"},
+    "alinux2023": {"user": "ec2-user"},
     "ubuntu2004": {"user": "ubuntu"},
     "ubuntu2204": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
@@ -49,6 +50,7 @@ OS_MAPPING = {
 
 OS_TO_IMAGE_NAME_PART_MAP = {
     "alinux2": "amzn2-hvm",
+    "alinux2023": "amzn2023-hvm",
     "centos7": "centos7-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",
@@ -198,35 +200,6 @@ IAM_ROLE_PATH = "/parallelcluster/"
 
 PCLUSTER_S3_BUCKET_VERSION = "v1"
 
-SUPPORTED_REGIONS = [
-    "af-south-1",
-    "ap-east-1",
-    "ap-northeast-1",
-    "ap-northeast-2",
-    "ap-south-1",
-    "ap-southeast-1",
-    "ap-southeast-2",
-    "ca-central-1",
-    "cn-north-1",
-    "cn-northwest-1",
-    "eu-central-1",
-    "eu-north-1",
-    "eu-south-1",
-    "eu-west-1",
-    "eu-west-2",
-    "eu-west-3",
-    "il-central-1",
-    "me-south-1",
-    "sa-east-1",
-    "us-east-1",
-    "us-east-2",
-    "us-iso-east-1",
-    "us-isob-east-1",
-    "us-gov-east-1",
-    "us-gov-west-1",
-    "us-west-1",
-    "us-west-2",
-]
 
 # see https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html
 NODEJS_MIN_VERSION = "10.13.0"
