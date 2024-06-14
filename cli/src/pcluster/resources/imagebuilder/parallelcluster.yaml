@@ -53,7 +53,7 @@ phases:
           commands:
             - |
               set -v
-              CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install-1.3.0.sh"
+              CINC_URL="s3://${AWS::Region}-aws-parallelcluster/archives/cinc/cinc-install-1.3.0.sh"
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               echo "${!CINC_URL}"
 
@@ -219,13 +219,19 @@ phases:
                 apt-get -y --only-upgrade install ca-certificates
               fi
 
-              curl --retry 3 -L {{ build.CincUrl.outputs.stdout }} | bash -s -- -v {{ ChefVersion }}
+              aws s3 --region ${AWS::Region} cp {{ build.CincUrl.outputs.stdout }} - | bash -s -- -v {{ ChefVersion }}
 
               if [[ -e ${!CA_CERTS_FILE} ]]; then
+                mkdir -p /opt/cinc/embedded/ssl/certs
                 ln -sf ${!CA_CERTS_FILE} /opt/cinc/embedded/ssl/certs/cacert.pem
               fi
+              
+              aws s3 cp s3://${AWS::Region}-aws-parallelcluster/archives/dependencies/ruby/gems.tgz gems.tgz --region ${AWS::Region}
+              tar -xf gems.tgz
+              
+              cd vendor/cache
 
-              /opt/cinc/embedded/bin/gem install --no-document berkshelf:{{ BerkshelfVersion }}
+              /opt/cinc/embedded/bin/gem install --local --no-document berkshelf:{{ BerkshelfVersion }}
 
       # Download and vendor Cookbook
       - name: DownloadCookbook
@@ -235,9 +241,14 @@ phases:
             - |
               set -v
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "{{ build.CookbookUrl.outputs.stdout }}"
+              
+              if [[ "{{ build.CookbookUrl.outputs.stdout }}" =~ "s3://" ]]; then
+                aws s3 cp "{{ build.CookbookUrl.outputs.stdout }}" /etc/chef/aws-parallelcluster-cookbook.tgz --region ${AWS::Region}
+              else
+                curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "{{ build.CookbookUrl.outputs.stdout }}"
+              fi
 
-              mkdir /tmp/cookbooks
+              mkdir -p /tmp/cookbooks
               cd /tmp/cookbooks
               tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz
 
