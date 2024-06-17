@@ -29,7 +29,14 @@ class RemoteCommandExecutor:
     """Execute remote commands on the cluster head node."""
 
     def __init__(
-        self, cluster, compute_node_ip=None, username=None, bastion=None, alternate_ssh_key=None, use_login_node=False
+        self,
+        cluster,
+        compute_node_ip=None,
+        username=None,
+        bastion=None,
+        alternate_ssh_key=None,
+        use_login_node=False,
+        connection_timeout=None,
     ):
         """
         Initiate SSH connection
@@ -74,6 +81,8 @@ class RemoteCommandExecutor:
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
             connection_kwargs["connect_kwargs"]["banner_timeout"] = 60
+            if connection_timeout:
+                connection_kwargs["connect_kwargs"]["timeout"] = connection_timeout
         logging.info(
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"
