@@ -48,12 +48,13 @@ function wait_for_private_ip_assignment
 TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
 MAC=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/mac)
 ENI_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/network/interfaces/macs/"$MAC"/interface-id)
+DEVICE_NAME=$(ls /sys/class/net | grep e)
 
 aws ec2 assign-private-ip-addresses --region "${AWS::Region}" --network-interface-id "${!ENI_ID}" --private-ip-addresses ${PrivateIp} --allow-reassignment
 
 wait_for_private_ip_assignment || echo "Assignment of private IP ${PrivateIp} was not successful."
 
-ip addr add ${PrivateIp}/${SubnetPrefix} dev eth0
+ip addr add ${PrivateIp}/${SubnetPrefix} dev "${!DEVICE_NAME}"
 
 if [ "${CustomCookbookUrl}" != "NONE" ]; then
   curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${CustomCookbookUrl}
