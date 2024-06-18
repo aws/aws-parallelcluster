@@ -37,6 +37,7 @@ class RemoteCommandExecutor:
         alternate_ssh_key=None,
         use_login_node=False,
         connection_timeout=None,
+        connection_allow_agent=None,
     ):
         """
         Initiate SSH connection
@@ -83,6 +84,8 @@ class RemoteCommandExecutor:
             connection_kwargs["connect_kwargs"]["banner_timeout"] = 360
             if connection_timeout:
                 connection_kwargs["connect_kwargs"]["timeout"] = connection_timeout
+            if connection_allow_agent:
+                connection_kwargs["connect_kwargs"]["allow_agent"] = connection_allow_agent
         logging.info(
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"

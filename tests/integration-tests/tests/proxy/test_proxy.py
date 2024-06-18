@@ -98,7 +98,9 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_f
 
     bastion = f"ubuntu@{proxy_public_ip}"
 
-    remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion, connection_timeout=300)
+    remote_command_executor = RemoteCommandExecutor(
+        cluster=cluster, bastion=bastion, connection_timeout=300, connection_allow_agent=False
+    )
     slurm_commands = SlurmCommands(remote_command_executor)
 
     _check_internet_access(remote_command_executor)
