@@ -98,13 +98,6 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_f
 
     bastion = f"ubuntu@{proxy_public_ip}"
 
-    # Start the SSH agent and add SSH key
-    agent_result = run_command("eval `ssh-agent -s`", shell=True)
-    logging.info(f"SSH agent started with output: {agent_result.stdout}")
-    sleep(5)
-    add_key_result = run_command(f"ssh-add {cluster.ssh_key}", shell=True)
-    logging.info(f"SSH key add result: {add_key_result.stdout}")
-
     remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion, connection_timeout=300)
     slurm_commands = SlurmCommands(remote_command_executor)
 
