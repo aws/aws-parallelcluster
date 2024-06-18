@@ -97,19 +97,6 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_f
 
     bastion = f"ubuntu@{proxy_public_ip}"
 
-    # Start the SSH agent and add SSH key
-    agent_result = run_command("eval `ssh-agent -s`", shell=True)
-    logging.info(f"SSH agent started with output: {agent_result.stdout}")
-
-    # Set environment variables
-    for line in agent_result.stdout.splitlines():
-        if "SSH_AUTH_SOCK" in line or "SSH_AGENT_PID" in line:
-            key, value = line.replace(";", "").split("=")
-            os.environ[key.strip()] = value.strip()
-
-    add_key_result = run_command(f"ssh-add {cluster.ssh_key}", shell=True, env=os.environ)
-    logging.info(f"SSH key add result: {add_key_result.stdout}")
-
     remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion, connection_timeout=200)
     slurm_commands = SlurmCommands(remote_command_executor)
 
