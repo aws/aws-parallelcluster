@@ -16,7 +16,7 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
-from utils import generate_stack_name
+from utils import generate_stack_name, run_command
 
 from tests.common.schedulers_common import SlurmCommands
 
@@ -74,7 +74,7 @@ def get_instance_public_ip(instance_id, region):
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_factory, clusters_factory):
+def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_commands_factory, clusters_factory):
     """
     Test the creation and functionality of a Cluster using a proxy environment.
 
@@ -84,6 +84,12 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_f
     3. Submit a sleep job to the cluster and verify it completes successfully.
     4. Check Internet access by trying to access google.com
     """
+    ssh_agent_result = run_command("eval `ssh-agent -s`", shell=True)
+    logging.info(f"SSH agent started with output: {ssh_agent_result.stdout}")
+
+    ssh_add_result = run_command(f'ssh-add {request.config.getoption("key_path")}', shell=True)
+    logging.info(f"SSH key add result: {ssh_add_result.stderr}")
+
     proxy_address = proxy_stack_factory.cfn_outputs["ProxyAddress"]
     subnet_with_proxy = proxy_stack_factory.cfn_outputs["PrivateSubnet"]
     proxy_instance_id = proxy_stack_factory.cfn_resources.get("Proxy")
