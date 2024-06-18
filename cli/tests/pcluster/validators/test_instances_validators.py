@@ -593,11 +593,19 @@ def test_instances_networking_validator(
             "Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation Strategy "
             "specified is capacity-optimized. OnDemand CapacityType can only use 'lowest-price' allocation strategy.",
         ),
+        (
+            CapacityType.ONDEMAND,
+            AllocationStrategy.PRICE_CAPACITY_OPTIMIZED,
+            "Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation Strategy "
+            "specified is price-capacity-optimized. "
+            "OnDemand CapacityType can only use 'lowest-price' allocation strategy.",
+        ),
         (CapacityType.ONDEMAND, AllocationStrategy.LOWEST_PRICE, ""),
         (CapacityType.ONDEMAND, None, ""),
         # Spot Capacity type supports both "lowest-price" and "capacity-optimized" allocation strategy
         (CapacityType.SPOT, AllocationStrategy.LOWEST_PRICE, ""),
         (CapacityType.SPOT, AllocationStrategy.CAPACITY_OPTIMIZED, ""),
+        (CapacityType.SPOT, AllocationStrategy.PRICE_CAPACITY_OPTIMIZED, ""),
         (CapacityType.SPOT, None, ""),
         # Capacity Block type supports does not support any allocation strategy
         (
@@ -606,6 +614,15 @@ def test_instances_networking_validator(
             (
                 "Compute Resource TestComputeResource is using a CAPACITY_BLOCK CapacityType but the Allocation "
                 "Strategy specified is capacity-optimized. When using CAPACITY_BLOCK CapacityType, "
+                "allocation strategy should not be set."
+            ),
+        ),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            AllocationStrategy.PRICE_CAPACITY_OPTIMIZED,
+            (
+                "Compute Resource TestComputeResource is using a CAPACITY_BLOCK CapacityType but the Allocation "
+                "Strategy specified is price-capacity-optimized. When using CAPACITY_BLOCK CapacityType, "
                 "allocation strategy should not be set."
             ),
         ),

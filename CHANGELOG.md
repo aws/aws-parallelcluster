@@ -7,6 +7,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
 - Add support for Amazon Linux 2023.
+- Add support for `price-capacity-optimized` as an `AllocationStrategy`.
 
 **BUG FIXES**
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
@@ -19,6 +20,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+- Allow build-image to be run in an isolated network.
 
 3.9.3
 ------
