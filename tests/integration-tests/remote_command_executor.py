@@ -80,7 +80,7 @@ class RemoteCommandExecutor:
             )
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
-            connection_kwargs["connect_kwargs"]["banner_timeout"] = 200
+            connection_kwargs["connect_kwargs"]["banner_timeout"] = 360
             if connection_timeout:
                 connection_kwargs["connect_kwargs"]["timeout"] = connection_timeout
         logging.info(
