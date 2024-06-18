@@ -38,7 +38,7 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_compute_console_output_logging.py::test_custom_action_error:
       dimensions:
@@ -125,7 +125,7 @@ test-suites:
       dimensions:
         - regions: ["eu-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   efa:
     test_efa.py::test_efa:
@@ -152,7 +152,7 @@ test-suites:
       dimensions:
         - regions: ["ap-northeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_security_groups.py::test_overwrite_sg:
       dimensions:
@@ -276,7 +276,7 @@ test-suites:
       dimensions:
         - regions: ["use1-az4"]
           instances: ["m5d.xlarge"]  # SSD based instance
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   tags:
     test_tag_propagation.py::test_tag_propagation:
