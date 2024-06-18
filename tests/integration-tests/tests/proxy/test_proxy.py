@@ -63,14 +63,8 @@ def proxy_stack_factory(region, request, cfn_stacks_factory):
 
         yield proxy_stack
 
-        # Add finalizer to ensure proxy stack is deleted after cluster stacks
-        request.addfinalizer(lambda: delete_proxy_stack(proxy_stack, region, request, cfn_stacks_factory))
-
-
-def delete_proxy_stack(proxy_stack, region, request, cfn_stacks_factory):
-    if not request.config.getoption("no_delete") and not request.config.getoption("proxy_stack"):
-        logging.info(f"Deleting proxy stack {proxy_stack.name} in region {region}")
-        cfn_stacks_factory.delete_stack(proxy_stack.name, region)
+        if not request.config.getoption("no_delete") and not request.config.getoption("proxy_stack"):
+            cfn_stacks_factory.delete_stack(proxy_stack.name, region)
 
 
 def get_instance_public_ip(instance_id, region):
@@ -81,7 +75,7 @@ def get_instance_public_ip(instance_id, region):
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_proxy(pcluster_config_reader, clusters_factory, proxy_stack_factory, scheduler_commands_factory):
+def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_factory, clusters_factory):
     """
     Test the creation and functionality of a Cluster using a proxy environment.
 
