@@ -69,7 +69,6 @@ class RemoteCommandExecutor:
             "host": node_ip,
             "user": username,
             "forward_agent": False,
-            "connect_timeout": 360,
             "connect_kwargs": {
                 "key_filename": [alternate_ssh_key if alternate_ssh_key else cluster.ssh_key],
                 "look_for_keys": False,
