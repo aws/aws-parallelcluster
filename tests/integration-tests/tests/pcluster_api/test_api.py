@@ -45,6 +45,7 @@ from troposphere.template_generator import TemplateGenerator
 from utils import generate_stack_name
 
 from tests.common.assertions import wait_for_num_instances_in_cluster
+from tests.common.permissions import create_image_roles
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 LOGGER = logging.getLogger(__name__)
@@ -520,10 +521,15 @@ def test_official_images(region, api_client):
 
 
 @pytest.mark.usefixtures("instance")
-def test_custom_image(region, api_client, build_image, os, request, pcluster_config_reader):
+def test_custom_image(region, api_client, build_image, os, request, pcluster_config_reader, create_roles_stack):
     base_ami = retrieve_latest_ami(region, os)
+    _, cleanup_lambda_role = create_image_roles(create_roles_stack)
 
-    config_file = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami)
+    config_file = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        cleanup_lambda_role=cleanup_lambda_role,
+    )
     with open(config_file, encoding="utf-8") as config_file:
         config = config_file.read()
 
