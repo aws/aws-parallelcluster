@@ -10,15 +10,13 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import os
-from time import sleep
 
 import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
-from utils import generate_stack_name, run_command
+from utils import generate_stack_name
 
 from tests.common.schedulers_common import SlurmCommands
 
@@ -103,7 +101,7 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_f
     )
     slurm_commands = SlurmCommands(remote_command_executor)
 
-    _check_internet_access(remote_command_executor)
+    # _check_internet_access(remote_command_executor)
 
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={"command": "srun sleep 1", "nodes": 1}

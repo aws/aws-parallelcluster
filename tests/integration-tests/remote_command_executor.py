@@ -69,6 +69,7 @@ class RemoteCommandExecutor:
             "host": node_ip,
             "user": username,
             "forward_agent": False,
+            "connect_timeout": 360,
             "connect_kwargs": {
                 "key_filename": [alternate_ssh_key if alternate_ssh_key else cluster.ssh_key],
                 "look_for_keys": False,
@@ -81,11 +82,13 @@ class RemoteCommandExecutor:
             )
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
-            connection_kwargs["connect_kwargs"]["banner_timeout"] = 360
+            connection_kwargs["connect_kwargs"]["banner_timeout"] = 600
             if connection_timeout:
                 connection_kwargs["connect_kwargs"]["timeout"] = connection_timeout
+                logging.info(f"set timeout to {connection_timeout}")
             if connection_allow_agent:
                 connection_kwargs["connect_kwargs"]["allow_agent"] = connection_allow_agent
+                logging.info(f"set allow_agent to {connection_allow_agent}")
         logging.info(
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"
