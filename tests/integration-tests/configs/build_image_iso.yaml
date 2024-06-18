@@ -1,0 +1,22 @@
+{%- import 'common.jinja2' as common with context -%}
+{% if REGIONS  %}
+{%- set REGIONS = [ REGIONS ] -%}
+{% else %}
+{%- set REGIONS = ["us-isob-east-1","us-iso-east-1"] -%}
+{% endif %}
+{%- set INSTANCES = ["c5.xlarge"] -%}
+{% if OSS  %}
+{%- set OSS = [ OSS ] -%}
+{% else %}
+{%- set OSS = ["alinux2"] -%}
+{% endif %}
+{%- set SCHEDULERS = ["slurm"] -%}
+---
+test-suites:
+  createami:
+    test_createami.py::test_build_image:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          schedulers: {{ SCHEDULERS }}
+          oss: {{ OSS }}

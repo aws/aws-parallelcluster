@@ -20,6 +20,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+- Allow build-image to be run in an isolated network.
 
 3.9.3
 ------
