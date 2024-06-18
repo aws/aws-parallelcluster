@@ -196,7 +196,13 @@ def test_raid_correctly_configured(remote_command_executor, raid_type, volume_si
     mdadm_conf = remote_command_executor.run_remote_command(
         "sudo cat /etc/mdadm.conf || sudo cat /etc/mdadm/mdadm.conf"
     ).stdout
-    assert_that(mdadm_conf).contains(expected_entry)
+    # We remove from the mdadm scan output all the warning messages that are considered not problematic.
+    sanitized_expected_entry = re.sub(
+        r"mdadm: Value .* cannot be set as name\. Reason: Not POSIX compatible\. Value ignored\.\n?",
+        "",
+        expected_entry,
+    )
+    assert_that(mdadm_conf).contains(sanitized_expected_entry)
 
 
 def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size):
