@@ -187,6 +187,9 @@ def run_command(
         command = shlex.split(command)
     log_command = command if isinstance(command, str) else " ".join(str(arg) for arg in command)
     logging.info("Executing command: {}".format(log_command))
+
+    env = env if env is not None else os.environ.copy()
+
     try:
         result = subprocess.run(
             command,

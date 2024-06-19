@@ -37,7 +37,6 @@ class RemoteCommandExecutor:
         alternate_ssh_key=None,
         use_login_node=False,
         connection_timeout=None,
-        custom_env=None,
     ):
         """
         Initiate SSH connection
@@ -81,7 +80,6 @@ class RemoteCommandExecutor:
                 f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname",
                 timeout=30,
                 shell=True,
-                env=custom_env if custom_env else None,
             )
             logging.info(f"Command output: {ssh_command_result}")
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"

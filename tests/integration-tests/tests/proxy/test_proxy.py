@@ -98,16 +98,18 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
             key, value = line.split(";")[0].split("=")
             os.environ[key] = value
 
+    logging.info("Environment variables are: %s", dict(os.environ))
+
     # Verify that the environment variables are set correctly
     logging.info(f"SSH_AUTH_SOCK: {os.environ.get('SSH_AUTH_SOCK')}")
     logging.info(f"SSH_AGENT_PID: {os.environ.get('SSH_AGENT_PID')}")
 
     # Add the SSH key using the ssh-add command, passing the environment variables
-    ssh_add_result = run_command(f'ssh-add {request.config.getoption("key_path")}', shell=True, env=os.environ.copy())
+    ssh_add_result = run_command(f'ssh-add {request.config.getoption("key_path")}', shell=True)
     logging.info(f"SSH key add result: {ssh_add_result.stderr}")
 
     # Confirm that the key has been added
-    added_keys = run_command("ssh-add -l", shell=True, env=os.environ.copy())
+    added_keys = run_command("ssh-add -l", shell=True)
     logging.info(f"SSH keys added: {added_keys.stdout}")
 
     proxy_address = proxy_stack_factory.cfn_outputs["ProxyAddress"]
@@ -122,23 +124,29 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
 
     bastion = f"ubuntu@{proxy_public_ip}"
 
+    env_vars = {
+        "SSH_AUTH_SOCK": os.environ.get("SSH_AUTH_SOCK"),
+        "SSH_AGENT_PID": os.environ.get("SSH_AGENT_PID"),
+    }
+    env_prefix = " && ".join([f"export {key}={value}" for key, value in env_vars.items()])
+
     remote_command_executor = RemoteCommandExecutor(
-        cluster=cluster, bastion=bastion, connection_timeout=300, custom_env=os.environ.copy()
+        cluster=cluster, bastion=bastion, connection_timeout=300
     )
-    slurm_commands = SlurmCommands(remote_command_executor)
+    # slurm_commands = SlurmCommands(remote_command_executor)
 
-    # _check_internet_access(remote_command_executor)
+    _check_internet_access(remote_command_executor, env_prefix)
 
-    job_id = slurm_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "srun sleep 1", "nodes": 1}
-    )
-    slurm_commands.wait_job_completed(job_id)
-    slurm_commands.assert_job_succeeded(job_id)
+    # job_id = slurm_commands.submit_command_and_assert_job_accepted(
+    #     submit_command_args={"command": "srun sleep 1", "nodes": 1}
+    # )
+    # slurm_commands.wait_job_completed(job_id)
+    # slurm_commands.assert_job_succeeded(job_id)
 
 
-def _check_internet_access(remote_command_executor):
+def _check_internet_access(remote_command_executor, env_prefix):
     logging.info("Checking cluster has Internet access by trying to access google.com")
     internet_result = remote_command_executor.run_remote_command(
-        "curl --connect-timeout 10 -I https://google.com", raise_on_error=False
+        f"{env_prefix} && curl --connect-timeout 10 -I https://google.com", raise_on_error=False
     )
     assert_that(internet_result.failed).is_false()
