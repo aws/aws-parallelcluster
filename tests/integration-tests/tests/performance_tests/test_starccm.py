@@ -22,6 +22,8 @@ BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
 }
 PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
+OSS_REQUIRING_EXTRA_DEPS = ["alinux2023", "rhel8", "rocky8"]
+
 
 def get_starccm_secrets(region_name):
     secrets_manager_client = boto3.client("secretsmanager", region_name=region_name)
@@ -67,7 +69,9 @@ def test_starccm(
     s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
 
     cluster_config = pcluster_config_reader(
-        bucket_name=bucket_name, install_extra_deps=os in ["rhel8", "rocky8"], number_of_nodes=max(number_of_nodes)
+        bucket_name=bucket_name,
+        install_extra_deps=os in OSS_REQUIRING_EXTRA_DEPS,
+        number_of_nodes=max(number_of_nodes),
     )
     cluster = clusters_factory(cluster_config)
     logging.info("Cluster Created")
