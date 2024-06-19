@@ -104,7 +104,11 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
 
     # Add the SSH key using the ssh-add command, passing the environment variables
     ssh_add_result = run_command(f'ssh-add {request.config.getoption("key_path")}', shell=True, env=os.environ.copy())
-    logging.info(f"SSH key add result: {ssh_add_result.stdout}")
+    logging.info(f"SSH key add result: {ssh_add_result.stderr}")
+
+    # Confirm that the key has been added
+    added_keys = run_command("ssh-add -l", shell=True, env=os.environ.copy())
+    logging.info(f"SSH keys added: {added_keys.stdout}")
 
     proxy_address = proxy_stack_factory.cfn_outputs["ProxyAddress"]
     subnet_with_proxy = proxy_stack_factory.cfn_outputs["PrivateSubnet"]
@@ -119,7 +123,7 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
     bastion = f"ubuntu@{proxy_public_ip}"
 
     remote_command_executor = RemoteCommandExecutor(
-        cluster=cluster, bastion=bastion, connection_timeout=300, connection_allow_agent=False
+        cluster=cluster, bastion=bastion, connection_timeout=300, custom_env=os.environ.copy()
     )
     slurm_commands = SlurmCommands(remote_command_executor)
 

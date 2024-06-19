@@ -37,7 +37,7 @@ class RemoteCommandExecutor:
         alternate_ssh_key=None,
         use_login_node=False,
         connection_timeout=None,
-        connection_allow_agent=None,
+        custom_env=None,
     ):
         """
         Initiate SSH connection
@@ -77,17 +77,17 @@ class RemoteCommandExecutor:
         if bastion:
             # Need to execute simple ssh command before using Connection to avoid Paramiko _check_banner error
             run_command(
-                f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname", timeout=30, shell=True
+                f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname",
+                timeout=30,
+                shell=True,
+                env=custom_env if custom_env else None,
             )
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
-            connection_kwargs["connect_kwargs"]["banner_timeout"] = 600
+            connection_kwargs["connect_kwargs"]["banner_timeout"] = 300
             if connection_timeout:
                 connection_kwargs["connect_kwargs"]["timeout"] = connection_timeout
                 logging.info(f"set timeout to {connection_timeout}")
-            if connection_allow_agent:
-                connection_kwargs["connect_kwargs"]["allow_agent"] = connection_allow_agent
-                logging.info(f"set allow_agent to {connection_allow_agent}")
         logging.info(
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"
