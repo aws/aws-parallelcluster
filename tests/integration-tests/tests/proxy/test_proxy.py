@@ -130,9 +130,7 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
     }
     env_prefix = " && ".join([f"export {key}={value}" for key, value in env_vars.items()])
 
-    remote_command_executor = RemoteCommandExecutor(
-        cluster=cluster, bastion=bastion, connection_timeout=300
-    )
+    remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion, connection_timeout=300)
     # slurm_commands = SlurmCommands(remote_command_executor)
 
     _check_internet_access(remote_command_executor, env_prefix)
