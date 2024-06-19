@@ -278,6 +278,93 @@ def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_mess
     "config_dict, failure_message",
     [
         # Failures
+        ({"OnNodeStarted": "test"}, "Unknown field"),
+        (
+            {
+                "OnNodeStart": "test",
+                "OnNodeConfigured": "test",
+                "OnNodeUpdated": "test"
+            },
+            "Either Script or Sequence field must be provided.",
+        ),
+        (
+            {"OnNodeConfigured": {"Script": "test3", "Args": ["5", "6"], "Sequence": []}},
+            "Both Script and Sequence fields are provided. Only one is allowed.",
+        ),
+        (
+                {"OnNodeStart": {"Sequence": {"Script": "test", "Args": ["1"]}}},
+                "Invalid input type for Sequence, expected list."
+        ),
+        # Successes
+        ({}, None),
+        (
+            {
+                "OnNodeStart": {"Script": "test", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["3", "4"]},
+                "OnNodeUpdated": {"Script": "test3", "Args": ["5", "6"]},
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Sequence": []},
+                "OnNodeUpdated": {
+                    "Sequence": [
+                        {"Script": "test1", "Args": ["1", "2"]},
+                        {"Script": "test2", "Args": ["3", "4"]},
+                        {"Script": "test3", "Args": ["5", "6"]},
+                    ]
+                }
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test"},
+                "OnNodeConfigured": {"Script": "test2", "Args": ["1", "2"]},
+                "OnNodeUpdated": {"Script": "test"}
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {
+                    "Sequence": [
+                        {"Script": "test1", "Args": ["1"]},
+                        {"Script": "test2", "Args": ["1", "2", "3"]},
+                        {"Script": "test3"},
+                        {"Script": "test4", "Args": []},
+                     ]
+                },
+                "OnNodeConfigured": {"Sequence": []},
+                "OnNodeUpdated": {"Script": ""}
+            },
+            None,
+        ),
+        (
+            {
+                "OnNodeStart": {"Script": "test1", "Args": ["1", "2"]},
+                "OnNodeConfigured": {"Sequence": []},
+            },
+            None,
+        ),
+    ],
+)
+def test_login_nodes_custom_actions_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            LoginNodesCustomActionsSchema().load(config_dict)
+    else:
+        conf = LoginNodesCustomActionsSchema().load(config_dict)
+        LoginNodesCustomActionsSchema().dump(conf)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # Failures
         ({"OnNodeUpdated": "test"}, "Unknown field"),
         (
             {
