@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os
 
 import boto3
 import pytest
@@ -84,11 +85,26 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
     3. Submit a sleep job to the cluster and verify it completes successfully.
     4. Check Internet access by trying to access google.com
     """
-    ssh_agent_result = run_command("eval `ssh-agent -s`", shell=True)
+    # Start ssh-agent and capture the output
+    ssh_agent_result = run_command("ssh-agent -s", shell=True)
     logging.info(f"SSH agent started with output: {ssh_agent_result.stdout}")
 
-    ssh_add_result = run_command(f'ssh-add {request.config.getoption("key_path")}', shell=True)
-    logging.info(f"SSH key add result: {ssh_add_result.stderr}")
+    # Parse the ssh-agent output to set environment variables
+    for line in ssh_agent_result.stdout.splitlines():
+        if line.startswith("SSH_AUTH_SOCK"):
+            key, value = line.split(";")[0].split("=")
+            os.environ[key] = value
+        elif line.startswith("SSH_AGENT_PID"):
+            key, value = line.split(";")[0].split("=")
+            os.environ[key] = value
+
+    # Verify that the environment variables are set correctly
+    logging.info(f"SSH_AUTH_SOCK: {os.environ.get('SSH_AUTH_SOCK')}")
+    logging.info(f"SSH_AGENT_PID: {os.environ.get('SSH_AGENT_PID')}")
+
+    # Add the SSH key using the ssh-add command, passing the environment variables
+    ssh_add_result = run_command(f'ssh-add {request.config.getoption("key_path")}', shell=True, env=os.environ.copy())
+    logging.info(f"SSH key add result: {ssh_add_result.stdout}")
 
     proxy_address = proxy_stack_factory.cfn_outputs["ProxyAddress"]
     subnet_with_proxy = proxy_stack_factory.cfn_outputs["PrivateSubnet"]
