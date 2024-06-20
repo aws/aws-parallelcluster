@@ -13,6 +13,7 @@ STARCCM_JOB_TIMEOUT = 600
 STARCCM_LICENCE_SECRET = "starccm-license-secret"
 TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
+    "alinux2023": {8: 62.414, 16: 31.998, 32: 20.422},  # v3.10.0
     "alinux2": {8: 64.475, 16: 33.173, 32: 17.899},  # v3.1.3
     "ubuntu2204": {8: 75.502, 16: 36.353, 32: 19.688},  # v3.7.0
     "ubuntu2004": {8: 67.384, 16: 36.434, 32: 19.449},  # v3.1.3
@@ -21,6 +22,8 @@ BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "rocky8": {8: 66.859, 16: 36.184, 32: 21.090},  # v3.8.0
 }
 PERF_TEST_DIFFERENCE_TOLERANCE = 3
+
+OSS_REQUIRING_EXTRA_DEPS = ["alinux2023", "rhel8", "rocky8"]
 
 
 def get_starccm_secrets(region_name):
@@ -67,7 +70,9 @@ def test_starccm(
     s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
 
     cluster_config = pcluster_config_reader(
-        bucket_name=bucket_name, install_extra_deps=os in ["rhel8", "rocky8"], number_of_nodes=max(number_of_nodes)
+        bucket_name=bucket_name,
+        install_extra_deps=os in OSS_REQUIRING_EXTRA_DEPS,
+        number_of_nodes=max(number_of_nodes),
     )
     cluster = clusters_factory(cluster_config)
     logging.info("Cluster Created")
