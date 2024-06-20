@@ -19,6 +19,7 @@ CHANGELOG
   `cfn_bootstrap_virtualenv` is not added in PATH environment variable.
 
 **CHANGES**
+- CentOS 7 is no longer supported.
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
 - Allow build-image to be run in an isolated network.
 

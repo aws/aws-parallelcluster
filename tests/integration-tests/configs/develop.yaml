@@ -1,5 +1,4 @@
 {%- import 'common.jinja2' as common with context -%}
-{{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
 {{- common.OSS_COMMERCIAL_X86.append("rocky8") or "" -}}
 {{- common.OSS_COMMERCIAL_X86.append("rocky9") or "" -}}
 ---
@@ -13,7 +12,7 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204", "centos7"]
+          oss: ["ubuntu2204", "rhel9"]
           schedulers: ["slurm"]
   basic:
     test_essential_features.py::test_essential_features:
@@ -59,7 +58,7 @@ test-suites:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
-          oss: ["centos7"]
+          oss: ["ubuntu2004"]
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
@@ -244,7 +243,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
@@ -264,7 +263,7 @@ test-suites:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["centos7"]
+          oss: ["rhel9"]
           schedulers: ["slurm"]
         - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
@@ -319,13 +318,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [ "alinux2" ]
           schedulers: [ "slurm" ]
-  intel_hpc:
-    test_intel_hpc.py::test_intel_hpc:
-      dimensions:
-        - regions: ["us-east-2"]
-          instances: ["c5.18xlarge"]
-          oss: ["centos7"]
-          schedulers: ["slurm"]
   monitoring:
     test_monitoring.py::test_monitoring:
       dimensions:
@@ -385,7 +377,7 @@ test-suites:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     test_security_groups.py::test_overwrite_sg:
       dimensions:
@@ -461,7 +453,7 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_fast_capacity_failover:
       dimensions:
@@ -528,7 +520,7 @@ test-suites:
       dimensions:
         - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
     test_spot.py::test_spot_price_capacity_optimized:
       dimensions:
@@ -587,7 +579,7 @@ test-suites:
       dimensions:
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
     test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
@@ -640,7 +632,7 @@ test-suites:
       dimensions:
         - regions: ["ap-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
         - regions: [ "ap-south-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -774,19 +766,19 @@ test-suites:
       dimensions:
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     test_update.py::test_dynamic_file_systems_update_data_loss:
       dimensions:
         - regions: [ "eu-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "centos7" ]
+          oss: [ "alinux2023" ]
           schedulers: [ "slurm" ]
     test_update.py::test_dynamic_file_systems_update_rollback:
       dimensions:
         - regions: [ "eu-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "centos7" ]
+          oss: [ "rhel8" ]
           schedulers: [ "slurm" ]
     test_update.py::test_multi_az_create_and_update:
       dimensions:

@@ -473,8 +473,6 @@ BadKeyPairsDict = {"KeyPairs": [{"KeyType": "rsa"}]}
         ("key-name", BadKeyPairsDict, "ubuntu2204", None, "Ubuntu 22.04 does not support RSA keys"),
         ("key-name", GoodKeyPairsDict, "ubuntu2004", None, None),
         ("key-name", BadKeyPairsDict, "ubuntu2004", None, None),
-        ("key-name", GoodKeyPairsDict, "centos7", None, None),
-        ("key-name", BadKeyPairsDict, "centos7", None, None),
         ("key-name", GoodKeyPairsDict, "rhel8", None, None),
         ("key-name", BadKeyPairsDict, "rhel8", None, None),
         ("key-name", GoodKeyPairsDict, "alinux2", None, None),

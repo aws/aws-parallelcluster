@@ -154,11 +154,7 @@ def configure(args):  # noqa: C901
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
         "Head node instance type",
-        lambda x: x in AWSApi.instance().ec2.list_instance_types()
-        and (  # pcluster doesn't support CentOS7 with ARM
-            base_os != "centos7"
-            or AWSApi.instance().ec2.get_instance_type_info(x).supported_architecture()[0] == "x86_64"
-        ),
+        lambda x: x in AWSApi.instance().ec2.list_instance_types(),
         default_value=default_instance_type,
     )
     if scheduler == "awsbatch":

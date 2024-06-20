@@ -49,7 +49,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGIONS }}
           instances: {{ NEW_INSTANCE_TYPES }}
-          oss: ["centos7"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     # Ephemeral test requires instance type with instance store
     test_ephemeral.py::test_head_node_stop:
@@ -93,5 +93,5 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGIONS }}
           instances: {{ NEW_INSTANCE_TYPES }}
-          oss: ["centos7"]
+          oss: ["rhel8"]
           schedulers: ["slurm"]

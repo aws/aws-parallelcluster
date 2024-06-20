@@ -343,9 +343,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
-    architecture_os_validator.assert_has_calls(
-        [call(os="alinux2", architecture="x86_64", custom_ami="ami-12345678", ami_search_filters=None)]
-    )
+    architecture_os_validator.assert_has_calls([call(os="alinux2", architecture="x86_64")])
     _assert_instance_architecture(
         expected_instance_architecture_validator_input=[
             {"instance_types": ["t2.large"], "architecture": "x86_64"},

@@ -226,7 +226,7 @@ test-suites:
       dimensions:
         - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   storage:
     test_fsx_lustre.py::test_fsx_lustre_dra:
