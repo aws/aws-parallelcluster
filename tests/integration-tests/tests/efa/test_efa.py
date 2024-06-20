@@ -63,7 +63,7 @@ def test_efa(
 
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
-    if instance in ["p4d.24xlarge", "p5.48xlarge"] and os != "centos7":
+    if instance in ["p4d.24xlarge", "p5.48xlarge"]:
         _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands, instance)
 
     with soft_assertions():

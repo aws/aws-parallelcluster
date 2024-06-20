@@ -74,7 +74,7 @@ def test_cluster_schema_awsbatch(mocker, test_datadir, config_file_name):
     [
         (None, None, "Missing data for required field"),
         ("ubuntu2004", "ami-12345678", None),
-        ("centos7", None, None),
+        ("alinux2", None, None),
     ],
 )
 def test_image_schema(os, custom_ami, failure_message):

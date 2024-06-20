@@ -1029,7 +1029,7 @@ def test_head_node_tags_from_launch_template(
                 "Name": "HeadNode",
                 "parallelcluster:cluster-name": "clustername",
                 "parallelcluster:node-type": "HeadNode",
-                "parallelcluster:attributes": "centos7, slurm, [0-9\\.A-Za-z]+, x86_64",
+                "parallelcluster:attributes": "alinux2, slurm, [0-9\\.A-Za-z]+, x86_64",
                 "parallelcluster:filesystem": "efs=2, multiebs=1, raid=0, fsx=3",
                 "parallelcluster:networking": "EFA=NONE",
                 # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,

@@ -3,5 +3,5 @@ test-suites:
     test_startup_time.py::test_startup_time:
       dimensions:
         - regions: ["us-east-1"]
-          oss: ["alinux2", "ubuntu2204", "ubuntu2004", "centos7", "rhel8", "rocky8"]
+          oss: ["alinux2", "ubuntu2204", "ubuntu2004", "rhel8", "rocky8"]
           schedulers: ["slurm"]

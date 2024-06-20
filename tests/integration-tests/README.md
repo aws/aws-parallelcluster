@@ -560,7 +560,7 @@ def test_case_2(region, instance, os, scheduler):
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
-`("c4.xlarge", "centos7", "slurm")`
+`("c4.xlarge", "ubuntu2004", "slurm")`
 
 #### Default Invalid Dimensions
 

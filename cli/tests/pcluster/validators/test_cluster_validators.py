@@ -547,13 +547,11 @@ def test_region_validator(region, expected_message):
 @pytest.mark.parametrize(
     "os, scheduler, expected_message",
     [
-        ("centos7", "slurm", None),
         ("ubuntu2004", "slurm", None),
         ("alinux2", "slurm", None),
         ("rhel8", "slurm", None),
         ("rocky8", "slurm", None),
         ("ubuntu1804", "slurm", "scheduler supports the following operating systems"),
-        ("centos7", "awsbatch", "scheduler supports the following operating systems"),
         ("rhel8", "awsbatch", "scheduler supports the following operating systems"),
         ("rocky8", "awsbatch", "scheduler supports the following operating systems"),
         ("ubuntu1804", "awsbatch", "scheduler supports the following operating systems"),
@@ -956,50 +954,35 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
 
 
 @pytest.mark.parametrize(
-    "os, architecture, custom_ami, ami_search_filters, expected_message",
+    "os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux2", "x86_64", None, None, None),
-        ("alinux2", "x86_64", "custom-ami", None, None),
-        ("rhel8", "x86_64", None, None, None),
-        ("rhel8", "x86_64", "custom-ami", None, None),
-        ("centos7", "x86_64", None, None, None),
-        ("centos7", "x86_64", "custom-ami", None, None),
+        ("alinux2", "x86_64", None),
+        ("alinux2", "x86_64", None),
+        ("rhel8", "x86_64", None),
+        ("rhel8", "x86_64", None),
         (
             "ubuntu1804",
             "x86_64",
-            None,
-            None,
             "The architecture x86_64 is only supported for the following operating systems",
         ),
-        ("ubuntu2004", "x86_64", None, None, None),
+        ("ubuntu2004", "x86_64", None),
         # All OSes supported for ARM
-        ("alinux2", "arm64", None, None, None),
-        ("alinux2", "arm64", "custom-ami", None, None),
-        (
-            "centos7",
-            "arm64",
-            None,
-            None,
-            "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances",
-        ),
-        ("centos7", "arm64", None, {"ami_search_filters"}, None),
-        ("centos7", "arm64", "custom-ami", None, None),
+        ("alinux2", "arm64", None),
+        ("alinux2", "arm64", None),
         (
             "ubuntu1804",
             "arm64",
-            None,
-            None,
             "The architecture arm64 is only supported for the following operating systems",
         ),
-        ("ubuntu2004", "arm64", None, None, None),
-        ("rhel8", "arm64", None, None, None),
-        ("rhel8", "arm64", "custom-ami", None, None),
+        ("ubuntu2004", "arm64", None),
+        ("rhel8", "arm64", None),
+        ("rhel8", "arm64", None),
     ],
 )
-def test_architecture_os_validator(os, architecture, custom_ami, ami_search_filters, expected_message):
+def test_architecture_os_validator(os, architecture, expected_message):
     """Verify that the correct set of OSes is supported for each supported architecture."""
-    actual_failures = ArchitectureOsValidator().execute(os, architecture, custom_ami, ami_search_filters)
+    actual_failures = ArchitectureOsValidator().execute(os, architecture)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -1448,7 +1431,6 @@ def test_fsx_network_validator(
     [
         # Supported combinations
         ("x86_64", "alinux2", None),
-        ("x86_64", "centos7", None),
         ("x86_64", "rhel8", None),
         ("x86_64", "ubuntu2004", None),
         ("arm64", "ubuntu2004", None),
@@ -1658,11 +1640,9 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
 @pytest.mark.parametrize(
     "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
     [
-        (True, "centos7", "t2.medium", None, None, None),
         (True, "rhel8", "t2.medium", None, None, None),
         (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", "Please double check the os configuration"),
         (True, "ubuntu2004", "t2.medium", None, None, None),
-        (True, "centos7", "t2.medium", "0.0.0.0/0", 8443, "port 8443 to the world"),
         (True, "alinux2", "t2.medium", None, None, None),
         (True, "alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
         (True, "alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
@@ -3431,7 +3411,6 @@ def test_multi_network_interfaces_instances_validator(
         ("ami-000000000000", "rhel8", None, None),
         ("ami-000000000000", "ubuntu22", None, None),
         ("ami-000000000000", "ubuntu20", None, None),
-        ("ami-000000000000", "centos7", None, None),
         (
             None,
             "rocky8",
@@ -3445,7 +3424,6 @@ def test_multi_network_interfaces_instances_validator(
         (None, "rhel8", None, None),
         (None, "ubuntu22", None, None),
         (None, "ubuntu20", None, None),
-        (None, "centos7", None, None),
     ],
 )
 def test_compute_ami_os_compatible_validator(mocker, custom_ami_id, os, expected_message, expected_failure_level):

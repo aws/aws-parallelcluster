@@ -30,7 +30,6 @@ from common import PARTITION_TO_MAIN_REGION, PARTITIONS
 DISTROS = OrderedDict(
     [
         ("alinux2", "amzn2"),
-        ("centos7", "centos7"),
         ("ubuntu2004", "ubuntu-2004"),
     ]
 )
@@ -65,12 +64,10 @@ def get_ami_list_from_file(regions, json_amis):
       "AWSRegionOS2AMIx86": {
         "af-south-1": {
           "alinux2": "ami-xxx",
-          "centos7": "UNSUPPORTED",
           "ubuntu2004": "ami-www"
         },
         "ap-east-1": {
           "alinux2": "ami-01905ce1b2d63e7e0",
-          "centos7": "UNSUPPORTED",
           ...
       "AWSRegionOS2AMIarm64": {
          ...

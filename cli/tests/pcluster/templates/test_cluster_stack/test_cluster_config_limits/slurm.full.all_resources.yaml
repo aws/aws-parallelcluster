@@ -1,6 +1,6 @@
 Region: us-east-1
 Image:
-  Os: centos7
+  Os: alinux2
   CustomAmi: ami-12345678
 LoginNodes:
   Pools:

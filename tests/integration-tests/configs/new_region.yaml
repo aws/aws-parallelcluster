@@ -68,7 +68,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["rhel9"]
           schedulers: ["slurm"]
   dcv:
     test_dcv.py::test_dcv_configuration:
@@ -128,7 +128,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   storage:
     test_fsx_lustre.py::test_fsx_lustre:
