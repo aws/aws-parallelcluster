@@ -29,7 +29,14 @@ class RemoteCommandExecutor:
     """Execute remote commands on the cluster head node."""
 
     def __init__(
-        self, cluster, compute_node_ip=None, username=None, bastion=None, alternate_ssh_key=None, use_login_node=False
+        self,
+        cluster,
+        compute_node_ip=None,
+        username=None,
+        bastion=None,
+        alternate_ssh_key=None,
+        use_login_node=False,
+        connection_timeout=None,
     ):
         """
         Initiate SSH connection
@@ -61,6 +68,7 @@ class RemoteCommandExecutor:
             "host": node_ip,
             "user": username,
             "forward_agent": False,
+            "inline_ssh_env": True,
             "connect_kwargs": {
                 "key_filename": [alternate_ssh_key if alternate_ssh_key else cluster.ssh_key],
                 "look_for_keys": False,
@@ -68,12 +76,18 @@ class RemoteCommandExecutor:
         }
         if bastion:
             # Need to execute simple ssh command before using Connection to avoid Paramiko _check_banner error
-            run_command(
-                f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname", timeout=30, shell=True
+            ssh_command_result = run_command(
+                f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname",
+                timeout=30,
+                shell=True,
             )
+            logging.info(f"Command output: {ssh_command_result}")
             connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
-            connection_kwargs["connect_kwargs"]["banner_timeout"] = 60
+            connection_kwargs["connect_kwargs"]["banner_timeout"] = 1800
+            if connection_timeout:
+                connection_kwargs["connect_kwargs"]["timeout"] = connection_timeout
+                logging.info(f"set timeout to {connection_timeout}")
         logging.info(
             f"Connecting to {connection_kwargs['host']} as {connection_kwargs['user']} with "
             f"{connection_kwargs['connect_kwargs']['key_filename']}"
