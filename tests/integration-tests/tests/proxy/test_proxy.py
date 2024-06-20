@@ -131,6 +131,14 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
     env_prefix = " && ".join([f"export {key}={value}" for key, value in env_vars.items()])
 
     headnode_instance_ip = cluster.head_node_ip
+
+    ssh_command_result = run_command(
+        f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname",
+        timeout=30,
+        shell=True,
+    )
+    logging.info(f"Command output: {ssh_command_result}")
+
     ssh_gateway_result = run_command(f"ssh -W {headnode_instance_ip}:22 -A {bastion} -vvv", shell=True, raise_on_error=False)
     logging.info(f"SSH command output: {ssh_gateway_result}")
 
