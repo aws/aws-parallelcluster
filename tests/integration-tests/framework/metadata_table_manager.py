@@ -94,26 +94,26 @@ class MetadataTableManager:
                         "instance_type": {"S": datum.instance_type if datum.instance_type else "None"},
                         "setup_status": {"S": datum.setup_metadata.status if datum.setup_metadata.status else "None"},
                         "setup_start_time": {
-                            "N": str(datum.setup_metadata.start_time) if datum.setup_metadata.start_time else 0
+                            "N": str(datum.setup_metadata.start_time) if datum.setup_metadata.start_time else "0"
                         },
                         "setup_end_time": {
-                            "N": str(datum.setup_metadata.end_time) if datum.setup_metadata.end_time else 0
+                            "N": str(datum.setup_metadata.end_time) if datum.setup_metadata.end_time else "0"
                         },
                         "call_status": {"S": datum.call_metadata.status if datum.call_metadata.status else "None"},
                         "call_start_time": {
-                            "N": str(datum.call_metadata.start_time) if datum.call_metadata.start_time else 0
+                            "N": str(datum.call_metadata.start_time) if datum.call_metadata.start_time else "0"
                         },
                         "call_end_time": {
-                            "N": str(datum.call_metadata.end_time) if datum.call_metadata.end_time else 0
+                            "N": str(datum.call_metadata.end_time) if datum.call_metadata.end_time else "0"
                         },
                         "teardown_status": {
                             "S": datum.teardown_metadata.status if datum.teardown_metadata.status else "None"
                         },
                         "teardown_start_time": {
-                            "N": str(datum.teardown_metadata.start_time) if datum.teardown_metadata.start_time else 0
+                            "N": str(datum.teardown_metadata.start_time) if datum.teardown_metadata.start_time else "0"
                         },
                         "teardown_end_time": {
-                            "N": str(datum.teardown_metadata.end_time) if datum.teardown_metadata.end_time else 0
+                            "N": str(datum.teardown_metadata.end_time) if datum.teardown_metadata.end_time else "0"
                         },
                         "cli_commit": {"S": datum.cli_commit if datum.cli_commit else "None"},
                         "cookbook_commit": {"S": datum.cookbook_commit if datum.cookbook_commit else "None"},
@@ -121,7 +121,7 @@ class MetadataTableManager:
                         "cfn_stack_name": {"S": datum.cfn_stack_name if datum.cfn_stack_name else "None"},
                         "cw_log_group_name": {"S": datum.cw_log_group_name if datum.cw_log_group_name else "None"},
                         "global_build_number": {
-                            "N": str(datum.global_build_number) if datum.global_build_number else 0
+                            "N": str(datum.global_build_number) if datum.global_build_number else "0"
                         },
                     },
                 )
