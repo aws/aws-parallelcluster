@@ -131,7 +131,7 @@ def test_proxy(pcluster_config_reader, request, proxy_stack_factory, scheduler_c
     env_prefix = " && ".join([f"export {key}={value}" for key, value in env_vars.items()])
 
     headnode_instance_ip = cluster.head_node_ip
-    ssh_gateway_result = run_command(f"ssh -W {headnode_instance_ip}:22 -A {bastion}", shell=True, raise_on_error=False)
+    ssh_gateway_result = run_command(f"ssh -W {headnode_instance_ip}:22 -A {bastion} -vvv", shell=True, raise_on_error=False)
     logging.info(f"SSH command output: {ssh_gateway_result}")
 
     remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion, connection_timeout=300)
