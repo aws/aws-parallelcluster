@@ -81,7 +81,7 @@ Iam:
     LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Image:
   CustomAmi: ami-12345678
-  Os: centos7
+  Os: alinux2
 Imds:
   ImdsSupport: v2.0
 LoginNodes:

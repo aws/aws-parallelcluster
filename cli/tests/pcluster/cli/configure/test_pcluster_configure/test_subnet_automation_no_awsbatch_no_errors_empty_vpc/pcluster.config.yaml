@@ -1,6 +1,6 @@
 Region: eu-west-1
 Image:
-  Os: centos7
+  Os: alinux2
 HeadNode:
   InstanceType: t2.nano
   Networking:

@@ -68,11 +68,6 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 1200
       DeploymentType: SCRATCH_2
-{% if os == "centos7" and architechture=="x86_64"%}
-AdditionalPackages:
-  IntelSoftware:
-    IntelHpcPlatform: true
-{% endif %}
 Tags:
   - Key: String
     Value: String

@@ -1574,8 +1574,6 @@ class BaseClusterConfig(Resource):
             ArchitectureOsValidator,
             os=self.image.os,
             architecture=self.head_node.architecture,
-            custom_ami=self.image.custom_ami,
-            ami_search_filters=self.dev_settings.ami_search_filters if self.dev_settings else None,
         )
         if self.head_node_ami:
             self._register_validator(

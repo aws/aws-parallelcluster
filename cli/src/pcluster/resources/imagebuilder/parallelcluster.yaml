@@ -57,7 +57,7 @@ phases:
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               echo "${!CINC_URL}"
 
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
+      # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -86,8 +86,6 @@ phases:
                 OS='alinux2'
               elif [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
                 OS='alinux2023'
-              elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
-                OS='centos7'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
                 OS='ubuntu2004'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.22'` ]; then
@@ -159,10 +157,10 @@ phases:
                   exit {{ FailExitCode }}
                 fi
 
-                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu2004, Ubuntu2204, Centos7, RHEL8, Rocky8, RHEL9 and Rocky9
+                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu2004, Ubuntu2204, RHEL8, Rocky8, RHEL9 and Rocky9
                 ARCH=$(uname -m)
                 if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|amzn\.2023|centos\.7|ubuntu\.20\.04|ubuntu\.22\.04|rhel\.8|rocky\.8|rhel\.9|rocky\.9)'` ]; then
+                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|amzn\.2023|ubuntu\.20\.04|ubuntu\.22\.04|rhel\.8|rocky\.8|rhel\.9|rocky\.9)'` ]; then
                     echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                     exit {{ FailExitCode }}
                   fi
@@ -180,9 +178,6 @@ phases:
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
-                if [[ ${!OS} == centos7 ]]; then
-                  yum -y install epel-release
-                fi
                 yum -y groupinstall development && sudo yum -y install curl wget jq
 
                 if [[ ${!OS} =~ ^centos ]]; then
