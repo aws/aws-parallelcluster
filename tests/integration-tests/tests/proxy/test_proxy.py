@@ -74,7 +74,7 @@ def get_instance_public_ip(instance_id, region):
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_proxy(pcluster_config_reader, proxy_stack_factory, scheduler_commands_factory, clusters_factory):
+def test_proxy(pcluster_config_reader, proxy_stack_factory, clusters_factory, scheduler_commands_factory):
     """
     Test the creation and functionality of a Cluster using a proxy environment.
 
