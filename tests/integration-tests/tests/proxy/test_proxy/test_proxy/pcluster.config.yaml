@@ -4,6 +4,7 @@ HeadNode:
   InstanceType: {{ instance }}
   Ssh:
     KeyName: {{ key_name }}
+    AllowedIps: 0.0.0.0/0
   Networking:
     SubnetId: {{ subnet_with_proxy }}
     Proxy:
