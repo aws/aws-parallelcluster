@@ -73,8 +73,10 @@ def _test_dcv_configuration(
         # remove ssh key from jenkins user known hosts file
         remove_keys_from_known_hosts(cluster.head_node_ip, host_keys_file, env=env)
 
-    assert_that(result.stdout).matches(
+    assert_that(result.stderr).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
+    )
+    assert_that(result.stdout).matches(
         r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_port) + r"\?authToken=(.*)"
     )
     if access_from == "0.0.0.0/0":

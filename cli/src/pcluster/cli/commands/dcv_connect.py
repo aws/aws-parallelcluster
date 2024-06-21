@@ -64,10 +64,11 @@ def _dcv_connect(args):
 
         try:
             url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, head_node_ip], attempts=4)
-            url_message = f"Please use the following one-time URL in your browser within 30 seconds:\n{url}"
+            url_message = f"Please use the following one-time URL in your browser within 30 seconds:"
 
             if args.show_url:
-                print(url_message)
+                print(url_message, file=sys.stderr)
+                print(f"{url}")
                 return
 
             try:
