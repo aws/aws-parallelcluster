@@ -80,6 +80,7 @@ class DescribeClusterResponseContent(Model):
         :type scheduler: Scheduler
         :param login_nodes: The login_nodes of this DescribeClusterResponseContent.  # noqa: E501
         :type login_nodes: LoginNodesPool
+        :param failures: The failures of this DescribeClusterResponseContent.  # noqa: E501
         :type failures: List[Failure]
         """
         self.openapi_types = {
@@ -487,7 +488,7 @@ class DescribeClusterResponseContent(Model):
     def failures(self):
         """Gets the failures of this DescribeClusterResponseContent.
 
-        Failures reason and code when the stack is in CREATE_FAILED status.  # noqa: E501
+        Failures array containing failures reason and code when the stack is in CREATE_FAILED status.  # noqa: E501
 
         :return: The failures of this DescribeClusterResponseContent.
         :rtype: List[Failure]
@@ -498,7 +499,7 @@ class DescribeClusterResponseContent(Model):
     def failures(self, failures):
         """Sets the failures of this DescribeClusterResponseContent.
 
-        Failures reason and code when the stack is in CREATE_FAILED status.  # noqa: E501
+        Failures array containing failures reason and code when the stack is in CREATE_FAILED status.  # noqa: E501
 
         :param failures: The failures of this DescribeClusterResponseContent.
         :type failures: List[Failure]
