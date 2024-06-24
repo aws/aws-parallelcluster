@@ -1,5 +1,6 @@
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import boto3
 import pytest
@@ -47,6 +48,24 @@ def starccm_installed(headnode):
         return False
 
 
+def run_starccm_test(remote_command_executor, scheduler_commands, test_datadir, number_of_nodes, podkey, licpath):
+    num_of_tasks = number_of_nodes * TASK_VCPUS
+    result = remote_command_executor.run_remote_command(
+        f'sbatch --ntasks={num_of_tasks} starccm.slurm.sh "{podkey}" "{licpath}"',
+        additional_files=[str(test_datadir / "starccm.slurm.sh")],
+    )
+    logging.info(f"Submitting StarCCM+ job with {number_of_nodes} nodes")
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id, timeout=STARCCM_JOB_TIMEOUT)
+    scheduler_commands.assert_job_succeeded(job_id)
+    perf_test_result = remote_command_executor.run_remote_script(
+        (str(test_datadir / "starccm.results.sh")), args=[job_id], hide=False
+    )
+    observed_value = float(perf_test_result.stdout)
+    logging.info(f"The elapsed time for {number_of_nodes} nodes is {observed_value} seconds")
+    return observed_value
+
+
 @pytest.mark.parametrize(
     "number_of_nodes",
     [[8, 16, 32]],
@@ -88,21 +107,23 @@ def test_starccm(
     logging.info("StarCCM+ Installed")
     podkey, licpath = get_starccm_secrets(region)
     performance_degradation = {}
-    for node in number_of_nodes:
-        num_of_tasks = node * TASK_VCPUS
-        result = remote_command_executor.run_remote_command(
-            f'sbatch --ntasks={num_of_tasks} starccm.slurm.sh "{podkey}" "{licpath}"',
-            additional_files=[str(test_datadir / "starccm.slurm.sh")],
+
+    # Run 8 and 16 node tests in parallel
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_8 = executor.submit(
+            run_starccm_test, remote_command_executor, scheduler_commands, test_datadir, 8, podkey, licpath
         )
-        logging.info(f"Submitting StarCCM+ job with {node} nodes")
-        job_id = scheduler_commands.assert_job_submitted(result.stdout)
-        scheduler_commands.wait_job_completed(job_id, timeout=STARCCM_JOB_TIMEOUT)
-        scheduler_commands.assert_job_succeeded(job_id)
-        perf_test_result = remote_command_executor.run_remote_script(
-            (str(test_datadir / "starccm.results.sh")), args=[job_id], hide=False
+        future_16 = executor.submit(
+            run_starccm_test, remote_command_executor, scheduler_commands, test_datadir, 16, podkey, licpath
         )
-        observed_value = float(perf_test_result.stdout)
-        logging.info(f"The elapsed time for {node} nodes is {observed_value} seconds")
+        observed_value_8 = future_8.result()
+        observed_value_16 = future_16.result()
+
+    # Run 32 node test
+    observed_value_32 = run_starccm_test(remote_command_executor, scheduler_commands, test_datadir, 32, podkey, licpath)
+
+    # Check results and log performance degradation
+    for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
         percentage_difference = perf_test_difference(observed_value, baseline_value)
         if percentage_difference < 0:

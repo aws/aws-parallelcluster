@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
@@ -33,6 +34,23 @@ def openfoam_installed(headnode):
         return False
 
 
+def run_openfoam_test(remote_command_executor, test_datadir, number_of_nodes):
+    subspace_benchmarks_dir = "/shared/SubspaceBenchmarks"
+    logging.info(f"Submitting OpenFOAM job with {number_of_nodes} nodes")
+    remote_command_executor.run_remote_command(
+        f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{number_of_nodes}" 2>&1',
+        additional_files=[str(test_datadir / "openfoam.slurm.sh")],
+        timeout=OPENFOAM_JOB_TIMEOUT,
+    )
+    perf_test_result = remote_command_executor.run_remote_script(
+        (str(test_datadir / "openfoam.results.sh")), hide=False
+    )
+    output = perf_test_result.stdout.strip()
+    observed_value = int(output.split("\n")[-1].strip())
+    logging.info(f"The elapsed time for {number_of_nodes} nodes is {observed_value} seconds")
+    return observed_value
+
+
 @pytest.mark.parametrize(
     "number_of_nodes",
     [[8, 16, 32]],
@@ -59,19 +77,19 @@ def test_openfoam(
         )
     logging.info("OpenFOAM Installed")
     performance_degradation = {}
-    subspace_benchmarks_dir = "/shared/SubspaceBenchmarks"
-    for node in number_of_nodes:
-        logging.info(f"Submitting OpenFOAM job with {node} nodes")
-        remote_command_executor.run_remote_command(
-            f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{node}" 2>&1',
-            additional_files=[str(test_datadir / "openfoam.slurm.sh")],
-            timeout=OPENFOAM_JOB_TIMEOUT,
-        )
-        perf_test_result = remote_command_executor.run_remote_script(
-            (str(test_datadir / "openfoam.results.sh")), hide=False
-        )
-        output = perf_test_result.stdout.strip()
-        observed_value = int(output.split("\n")[-1].strip())
+
+    # Run 8 and 16 node tests in parallel
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_8 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 8)
+        future_16 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 16)
+        observed_value_8 = future_8.result()
+        observed_value_16 = future_16.result()
+
+    # Run 32 node test
+    observed_value_32 = run_openfoam_test(remote_command_executor, test_datadir, 32)
+
+    # Check results and log performance degradation
+    for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
         logging.info(f"The elapsed time for {node} nodes is {observed_value} seconds")
         percentage_difference = perf_test_difference(observed_value, baseline_value)
