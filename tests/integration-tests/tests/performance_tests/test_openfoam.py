@@ -91,7 +91,6 @@ def test_openfoam(
     # Check results and log performance degradation
     for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
-        logging.info(f"The elapsed time for {node} nodes is {observed_value} seconds")
         percentage_difference = perf_test_difference(observed_value, baseline_value)
         if percentage_difference < 0:
             outcome = "improvement"
