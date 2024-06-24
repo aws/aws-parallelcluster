@@ -20,6 +20,7 @@ from pcluster.api.models.build_image_bad_request_exception_response_content impo
 from pcluster.api.models.build_image_request_content import BuildImageRequestContent
 from pcluster.api.models.build_image_response_content import BuildImageResponseContent
 from pcluster.api.models.change import Change
+from pcluster.api.models.cloud_formation_resource_status import CloudFormationResourceStatus
 from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_info_summary import ClusterInfoSummary

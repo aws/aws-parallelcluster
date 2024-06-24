@@ -45,7 +45,7 @@ class Failure(Model):
     def failure_code(self):
         """Gets the failure_code of this Failure.
 
-        Failure code  # noqa: E501
+        Failure code when the cluster stack is in CREATE_FAILED status.  # noqa: E501
 
         :return: The failure_code of this Failure.
         :rtype: str
@@ -56,7 +56,7 @@ class Failure(Model):
     def failure_code(self, failure_code):
         """Sets the failure_code of this Failure.
 
-        Failure code  # noqa: E501
+        Failure code when the cluster stack is in CREATE_FAILED status.  # noqa: E501
 
         :param failure_code: The failure_code of this Failure.
         :type failure_code: str
@@ -68,7 +68,7 @@ class Failure(Model):
     def failure_reason(self):
         """Gets the failure_reason of this Failure.
 
-        Failure reason  # noqa: E501
+        Failure reason when the cluster stack is in CREATE_FAILED status.  # noqa: E501
 
         :return: The failure_reason of this Failure.
         :rtype: str
@@ -79,7 +79,7 @@ class Failure(Model):
     def failure_reason(self, failure_reason):
         """Sets the failure_reason of this Failure.
 
-        Failure reason  # noqa: E501
+        Failure reason when the cluster stack is in CREATE_FAILED status.  # noqa: E501
 
         :param failure_reason: The failure_reason of this Failure.
         :type failure_reason: str
