@@ -17,6 +17,8 @@ CHANGELOG
 - Allow ParallelCluster Custom Resource to suppress validators using `PclusterCluster/SuppressValidators`.
 - Removing `/etc/profile.d/pcluster.sh` so that it's not executed at every user login and
   `cfn_bootstrap_virtualenv` is not added in PATH environment variable.
+- Fix ParallelCluster API definition by adding the CloudFormation stack status that were missing:
+  `IMPORT_*`, `REVIEW_IN_PROGRESS` and `UPDATE_FAILED`.
 
 **CHANGES**
 - CentOS 7 is no longer supported.
