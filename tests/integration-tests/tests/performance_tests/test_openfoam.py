@@ -39,7 +39,6 @@ def run_openfoam_test(remote_command_executor, test_datadir, number_of_nodes):
     logging.info(f"Submitting OpenFOAM job with {number_of_nodes} nodes")
     remote_command_executor.run_remote_command(
         f'bash openfoam.slurm.sh "{subspace_benchmarks_dir}" "{number_of_nodes}" 2>&1',
-        additional_files=[str(test_datadir / "openfoam.slurm.sh")],
         timeout=OPENFOAM_JOB_TIMEOUT,
     )
     perf_test_result = remote_command_executor.run_remote_script(
@@ -78,6 +77,8 @@ def test_openfoam(
     logging.info("OpenFOAM Installed")
     performance_degradation = {}
 
+    # Copy additional files in advanced to avoid conflict when running 8 and 16 nodes tests in parallel
+    remote_command_executor._copy_additional_files([str(test_datadir / "openfoam.slurm.sh")])
     # Run 8 and 16 node tests in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_8 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 8)

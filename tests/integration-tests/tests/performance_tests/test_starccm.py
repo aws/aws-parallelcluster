@@ -51,8 +51,7 @@ def starccm_installed(headnode):
 def run_starccm_test(remote_command_executor, scheduler_commands, test_datadir, number_of_nodes, podkey, licpath):
     num_of_tasks = number_of_nodes * TASK_VCPUS
     result = remote_command_executor.run_remote_command(
-        f'sbatch --ntasks={num_of_tasks} starccm.slurm.sh "{podkey}" "{licpath}"',
-        additional_files=[str(test_datadir / "starccm.slurm.sh")],
+        f'sbatch --ntasks={num_of_tasks} starccm.slurm.sh "{podkey}" "{licpath}"'
     )
     logging.info(f"Submitting StarCCM+ job with {number_of_nodes} nodes")
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
@@ -108,6 +107,8 @@ def test_starccm(
     podkey, licpath = get_starccm_secrets(region)
     performance_degradation = {}
 
+    # Copy additional files in advanced to avoid conflict when running 8 and 16 nodes tests in parallel
+    remote_command_executor._copy_additional_files([str(test_datadir / "starccm.slurm.sh")])
     # Run 8 and 16 node tests in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_8 = executor.submit(
