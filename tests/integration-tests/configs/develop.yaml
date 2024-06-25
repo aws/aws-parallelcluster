@@ -738,7 +738,7 @@ test-suites:
       dimensions:
         - regions: ["usw2-az4"]  # do not move, unless instance type support is moved as well
           schedulers: ["slurm"]
-          oss: ["alinux2023"]
+          oss: ["ubuntu2004"]
   update:
     test_update.py::test_update_slurm:
       dimensions:
