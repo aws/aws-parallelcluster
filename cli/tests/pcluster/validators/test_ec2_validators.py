@@ -22,6 +22,7 @@ from pcluster.aws.aws_resources import (
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import CapacityReservationTarget, PlacementGroup
 from pcluster.config.common import CapacityType
+from pcluster.validators.common import FailureLevel
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
     CapacityReservationResourceGroupValidator,
@@ -36,10 +37,11 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
+    PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.validators.utils import assert_failure_messages
+from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 
 
 @pytest.mark.parametrize(
@@ -1378,6 +1380,64 @@ def test_placement_group_capacity_reservation_validator(
         subnet_id_az_mapping=subnet_id_az_mapping,
     )
     assert_failure_messages(actual_failure, expected_message)
+
+
+@pytest.mark.parametrize(
+    "capacity_type, placement_group_enabled, expected_failure_level, expected_message",
+    [
+        (
+            CapacityType.ONDEMAND,
+            True,
+            None,
+            None,
+        ),
+        (
+            CapacityType.ONDEMAND,
+            False,
+            None,
+            None,
+        ),
+        (
+            CapacityType.SPOT,
+            True,
+            None,
+            None,
+        ),
+        (
+            CapacityType.SPOT,
+            False,
+            None,
+            None,
+        ),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            True,
+            FailureLevel.WARNING,
+            "When using a capacity block reservation, a placement group constraint should not be set "
+            "as insufficient capacity errors may occur due to placement constraints outside of the "
+            "reservation even if the capacity reservation has remaining capacity. "
+            "Please remove the placement group for the compute resource.",
+        ),
+        (
+            CapacityType.CAPACITY_BLOCK,
+            False,
+            None,
+            None,
+        ),
+    ],
+)
+def test_placement_group_capacity_type_validator(
+    capacity_type,
+    placement_group_enabled,
+    expected_failure_level,
+    expected_message,
+):
+    actual_failures = PlacementGroupCapacityTypeValidator().execute(
+        capacity_type=capacity_type,
+        placement_group_enabled=placement_group_enabled,
+    )
+    assert_failure_level(actual_failures, expected_failure_level)
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(
