@@ -37,6 +37,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
+from pcluster.validators.ec2_validators import PlacementGroupCapacityTypeValidator
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 mock_compute_resources = [
@@ -381,7 +382,14 @@ class TestBaseClusterConfig:
             ),
         )
         cluster_config._register_validators()
-        assert_that(cluster_config._validators).is_not_empty()
+        actual_validators = cluster_config._validators
+        assert_that(actual_validators).is_not_empty()
+        assert_that(actual_validators).contains(
+            (
+                PlacementGroupCapacityTypeValidator().__class__,
+                {"capacity_type": CapacityType.ONDEMAND, "placement_group_enabled": False},
+            )
+        )
 
     def test_instances_in_slurm_queue(self):
         queue = SlurmQueue(

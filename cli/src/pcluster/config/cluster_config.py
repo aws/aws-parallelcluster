@@ -146,6 +146,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
+    PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.efs_validators import EfsMountOptionsValidator
@@ -3026,6 +3027,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                     efa_enabled=compute_resource.efa.enabled,
                     os=self.image.os,
                     architecture=self.head_node.architecture,
+                )
+                self._register_validator(
+                    PlacementGroupCapacityTypeValidator,
+                    capacity_type=queue.capacity_type,
+                    placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
                 )
                 # The validation below has to be in cluster config class instead of queue class
                 # to make sure the subnet APIs are cached by previous validations.

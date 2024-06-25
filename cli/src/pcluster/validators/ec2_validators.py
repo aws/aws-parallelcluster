@@ -585,6 +585,20 @@ class CapacityReservationResourceGroupValidator(Validator):
             )
 
 
+class PlacementGroupCapacityTypeValidator(Validator):
+    """Validate the placement group is compatible with the capacity type."""
+
+    def _validate(self, capacity_type: str, placement_group_enabled: bool):
+        if capacity_type == CapacityType.CAPACITY_BLOCK and placement_group_enabled:
+            self._add_failure(
+                "When using a capacity block reservation, a placement group constraint should not be set "
+                "as insufficient capacity errors may occur due to placement constraints outside of the "
+                "reservation even if the capacity reservation has remaining capacity. "
+                "Please remove the placement group for the compute resource.",
+                FailureLevel.WARNING,
+            )
+
+
 class PlacementGroupCapacityReservationValidator(Validator):
     """Validate the placement group is compatible with the capacity reservation target."""
 
