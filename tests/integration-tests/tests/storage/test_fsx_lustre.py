@@ -510,7 +510,7 @@ def create_file_cache(request, region, vpc_stack: CfnVpcStack, cfn_stacks_factor
             cfn_stacks_factory.create_stack(stack)
             logging.info("Created the FileCacheId {0}".format(stack.cfn_outputs["FileCacheId"]))
             # Immediately using the FileCacheId after its creation gives Error
-            time.sleep(100)
+            time.sleep(150)
 
         return stack.cfn_outputs["FileCacheId"]
 
