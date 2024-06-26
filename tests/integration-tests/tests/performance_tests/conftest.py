@@ -27,15 +27,15 @@ NUMBER_OF_NODES = [8, 16, 32]
 
 @pytest.fixture(scope="class")
 def shared_performance_test_cluster(
-    vpc_stack, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
+    vpc_stack, shared_pcluster_config_reader, clusters_factory, shared_test_datadir, s3_bucket_factory
 ):
 
     def _shared_performance_test_cluster(instance, os, region, scheduler):
         bucket_name = s3_bucket_factory()
         s3 = boto3.client("s3")
-        s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
+        s3.upload_file(str(shared_test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
 
-        cluster_config = pcluster_config_reader(
+        cluster_config = shared_pcluster_config_reader(
             bucket_name=bucket_name,
             install_extra_deps=os in OSS_REQUIRING_EXTRA_DEPS,
             number_of_nodes=max(NUMBER_OF_NODES),
