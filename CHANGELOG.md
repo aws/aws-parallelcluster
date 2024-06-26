@@ -13,26 +13,48 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
+- Allow build-image to be run in an isolated network.
 - Add support for Amazon Linux 2023.
 - Add support for `price-capacity-optimized` as an `AllocationStrategy`.
 - Add validator to prevent the use of Placement Groups with Capacity Blocks.
 
+**CHANGES**
+- CentOS 7 is no longer supported.
+- Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+- Upgrade munge to version 0.5.16 (from 0.5.15).
+- Upgrade Pmix to 5.0.2 (from 4.2.9).
+- Upgrade third-party cookbook dependencies:
+  - apt-7.5.22 (from apt-7.5.14)
+  - openssh-2.11.12 (from openssh-2.11.3)
+- Remove third-party cookbook: selinux-6.1.12.
+- Upgrade EFA installer to `1.32.0`.
+  - Efa-driver: `efa-2.8.0-1`
+  - Efa-config: `efa-config-1.16-1`
+  - Efa-profile: `efa-profile-1.7-1`
+  - Libfabric-aws: `libfabric-aws-1.21.0-1`
+  - Rdma-core: `rdma-core-50.0-1`
+  - Open MPI: `openmpi40-aws-4.1.6-3` and `openmpi50-aws-5.0.2-12`
+- Upgrade NVIDIA driver to version 535.183.01 (from 535.154.05).
+- Upgrade Python to 3.9.19 (from 3.9.17).
+- Upgrade Intel MPI Library to 2021.12.1.8 (from 2021.9.0.43482).
+
 **BUG FIXES**
-- Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
-- Consider Compute fleet clean-up completed during cluster deletion when instances are either in shutting-down or terminated state.
-  This is to avoid cluster deletion failure for instance types with longer termination cycles.
+- Fix Data Repository Associations configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
+- Fixed an issue during cluster deletion that now completes compute fleet cleanup when instances are either in shutting-down or terminated state.
+  This is to avoid cluster deletion failures for instance types with longer termination cycles.
 - Allow cloudwatch dashboard to be enabled and alarms to be disabled in the `Monitoring` section of the cluster config.
 - Allow ParallelCluster Custom Resource to suppress validators using `PclusterCluster/SuppressValidators`.
 - Removing `/etc/profile.d/pcluster.sh` so that it's not executed at every user login and
   `cfn_bootstrap_virtualenv` is not added in PATH environment variable.
-- Fix ParallelCluster API spec by replacing in `DescribeCluster` response the field `failureReason` with `failures`.
+- Fix ParallelCluster API spec by replacing field `failureReason` with `failures` in `DescribeCluster` response.
 - Fix ParallelCluster API spec by adding the CloudFormation stack status that were missing:
   `IMPORT_*`, `REVIEW_IN_PROGRESS` and `UPDATE_FAILED`.
-
-**CHANGES**
-- CentOS 7 is no longer supported.
-- Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
-- Allow build-image to be run in an isolated network.
+- Fix an issue that prevented cluster updates from including EFS filesystems with encryption in transit.
+- Fix an issue that prevented slurmctld and slurmdbd services from restarting on head node reboot when
+  EFS is used for shared internal data. 
+- On Ubuntu systems, remove default logrotate configuration for cloud-init log files that clashed with the
+  configuration coming from Parallelcluster.
+- Fix image build failure with RHEL 8.10 or newer.
 
 3.9.3
 ------
