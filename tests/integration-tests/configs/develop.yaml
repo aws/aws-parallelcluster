@@ -526,7 +526,7 @@ test-suites:
       dimensions:
         - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
   storage:
     test_fsx_lustre.py::test_fsx_lustre:
@@ -738,7 +738,7 @@ test-suites:
       dimensions:
         - regions: ["usw2-az4"]  # do not move, unless instance type support is moved as well
           schedulers: ["slurm"]
-          oss: ["alinux2023"]
+          oss: ["ubuntu2004"]
   update:
     test_update.py::test_update_slurm:
       dimensions:
