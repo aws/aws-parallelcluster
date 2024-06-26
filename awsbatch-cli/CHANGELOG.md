@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+1.4.0
+------
+
+**ENHANCEMENTS**
+
+- Add support for Amazon Linux 2023.
+
 1.3.0
 ------
 
