@@ -27,6 +27,7 @@ PYTEST_PARAMETERIZE_ARGUMENTS = "num_compute_nodes, num_users"
 PYTEST_PARAMETERIZE_VALUES = [(NUM_COMPUTE_NODES, 1)]
 TEST_RUNNER_SCRIPT = "/shared/assets/workloads/scale-test/run-scale-test.sh"
 ROUND_UP_FACTOR = 100_000_000
+PERF_TEST_DIFFERENCE_TOLERANCE = 3
 
 METRICS = [
     dict(name="jobRunTime", unit="ms"),
@@ -221,4 +222,30 @@ def write_results_to_output_dir(
         data_dir,
         paths["baseline"]["statistics.json"],
         paths[candidate_configuration]["statistics.json"],
+    )
+
+
+def perf_test_difference(observed_value, baseline_value):
+    percentage_difference = 100 * (observed_value - baseline_value) / baseline_value
+    return percentage_difference
+
+
+def _log_output_performance_difference(node, performance_degradation, observed_value, baseline_value):
+    percentage_difference = perf_test_difference(observed_value, baseline_value)
+    if percentage_difference < 0:
+        outcome = "improvement"
+    elif percentage_difference == 0:
+        outcome = "matching baseline"
+    elif percentage_difference <= PERF_TEST_DIFFERENCE_TOLERANCE:
+        outcome = "degradation (within tolerance)"
+    else:
+        outcome = "degradation (above tolerance)"
+        performance_degradation[node] = {
+            "baseline": baseline_value,
+            "observed": observed_value,
+            "percentage_difference": percentage_difference,
+        }
+    logging.info(
+        f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
+        f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
     )

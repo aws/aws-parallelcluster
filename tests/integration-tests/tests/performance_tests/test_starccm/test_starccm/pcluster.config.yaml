@@ -1,6 +1,8 @@
 Region: {{ region }}
 Image:
   Os: {{ os }}
+Imds:
+  ImdsSupport: v2.0
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -11,6 +13,9 @@ HeadNode:
     AdditionalIamPolicies:
       - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
     S3Access:
+      - BucketName: performance-tests-resources-for-parallelcluster
+        KeyName: openfoam/*
+        EnableWriteAccess: false
       - BucketName: performance-tests-resources-for-parallelcluster
         KeyName: starccm/*
         EnableWriteAccess: false
@@ -59,5 +64,7 @@ SharedStorage:
     FsxLustreSettings:
       StorageCapacity: 2400
       DeploymentType: PERSISTENT_1
+      AutomaticBackupRetentionDays: 30
+      DailyAutomaticBackupStartTime: 00:00
       PerUnitStorageThroughput: 100
       StorageType: SSD
