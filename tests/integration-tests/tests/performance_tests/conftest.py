@@ -19,7 +19,7 @@ OSS_REQUIRING_EXTRA_DEPS = ["alinux2023", "rhel8", "rocky8"]
 NUMBER_OF_NODES = [8, 16, 32]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def shared_performance_test_cluster(
     vpc_stack, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
 ):
