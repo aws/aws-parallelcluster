@@ -563,8 +563,10 @@ def check_head_node_security_group(region, cluster, port, expected_cidr):
     assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
 
 
-def check_status(cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None):
-    """Check the cluster's status and its head and compute status is as expected."""
+def check_status(
+        cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None, login_nodes_status=None
+):
+    """Check the cluster's status and its head, compute, and login nodes statuses are as expected."""
     cluster_info = cluster.describe_cluster()
     if cluster_status:
         assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
@@ -572,6 +574,8 @@ def check_status(cluster, cluster_status=None, head_node_status=None, compute_fl
         assert_that(cluster_info["headNode"]["state"]).is_equal_to(head_node_status)
     if compute_fleet_status:
         assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
+    if login_nodes_status:
+        assert_that(cluster_info["loginNodes"]["status"]).is_equal_to(login_nodes_status)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
