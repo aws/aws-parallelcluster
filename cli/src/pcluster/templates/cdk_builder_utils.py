@@ -936,7 +936,15 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                     "cloudformation:DescribeStackResource",
                 ],
                 effect=iam.Effect.ALLOW,
-                resources=[core.Aws.STACK_ID],
+                resources=[
+                    self._format_arn(
+                        service="cloudformation",
+                        resource=f"stack/{Stack.of(self).stack_name}/*",
+                        region=Stack.of(self).region,
+                        account=Stack.of(self).account,
+                    ),
+                    core.Aws.STACK_ID,
+                ]
             ),
             iam.PolicyStatement(
                 sid="DynamoDBTable",
