@@ -564,7 +564,7 @@ def check_head_node_security_group(region, cluster, port, expected_cidr):
 
 
 def check_status(
-        cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None, login_nodes_status=None
+    cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None, login_nodes_status=None
 ):
     """Check the cluster's status and its head, compute, and login nodes statuses are as expected."""
     cluster_info = cluster.describe_cluster()

@@ -87,6 +87,19 @@ Imds:
 LoginNodes:
   Pools:
   - Count: 1
+    CustomActions:
+      OnNodeConfigured:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeStart:
+        Args:
+        - arg0
+        Script: https://test.tgz
+      OnNodeUpdated:
+        Args:
+        - arg0
+        Script: https://test.tgz
     GracetimePeriod: 10
     Iam:
       AdditionalIamPolicies:

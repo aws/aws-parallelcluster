@@ -758,9 +758,23 @@ class IamPolicyAssertion:
                         {
                             "Action": "cloudformation:DescribeStackResource",
                             "Effect": "Allow",
-                            "Resource": {
-                                "Ref": "AWS::StackId",
-                            },
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {"Ref": "AWS::Partition"},
+                                            ":cloudformation:",
+                                            {"Ref": "AWS::Region"},
+                                            ":",
+                                            {"Ref": "AWS::AccountId"},
+                                            ":stack/clustername/*",
+                                        ],
+                                    ]
+                                },
+                                {"Ref": "AWS::StackId"},
+                            ],
                             "Sid": "CloudFormation",
                         },
                         {

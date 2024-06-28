@@ -34,6 +34,7 @@
     "hosted_zone": "{\"Ref\": \"referencetoclusternameRoute53HostedZone2388733DRef\"}",
     "log_group_name": "/aws/parallelcluster/clustername-202401151530",
     "log_rotation_enabled": "true",
+    "pool_name": "login",
     "node_type": "LoginNode",
     "proxy": "NONE",
     "raid_shared_dir": "",

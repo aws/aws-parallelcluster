@@ -944,7 +944,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                         account=Stack.of(self).account,
                     ),
                     core.Aws.STACK_ID,
-                ]
+                ],
             ),
             iam.PolicyStatement(
                 sid="DynamoDBTable",
