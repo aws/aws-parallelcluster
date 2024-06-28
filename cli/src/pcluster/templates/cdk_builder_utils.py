@@ -934,6 +934,7 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                 sid="CloudFormation",
                 actions=[
                     "cloudformation:DescribeStackResource",
+                    "cloudformation:DescribeStacks",
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=[

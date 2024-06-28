@@ -756,7 +756,7 @@ class IamPolicyAssertion:
                             "Sid": "Autoscaling",
                         },
                         {
-                            "Action": "cloudformation:DescribeStackResource",
+                            "Action": ["cloudformation:DescribeStackResource", "cloudformation:DescribeStacks"],
                             "Effect": "Allow",
                             "Resource": [
                                 {
