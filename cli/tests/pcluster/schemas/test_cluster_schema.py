@@ -280,11 +280,7 @@ def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_mess
         # Failures
         ({"OnNodeStarted": "test"}, "Unknown field"),
         (
-            {
-                "OnNodeStart": "test",
-                "OnNodeConfigured": "test",
-                "OnNodeUpdated": "test"
-            },
+            {"OnNodeStart": "test", "OnNodeConfigured": "test", "OnNodeUpdated": "test"},
             "Either Script or Sequence field must be provided.",
         ),
         (
@@ -292,8 +288,8 @@ def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_mess
             "Both Script and Sequence fields are provided. Only one is allowed.",
         ),
         (
-                {"OnNodeStart": {"Sequence": {"Script": "test", "Args": ["1"]}}},
-                "Invalid input type for Sequence, expected list."
+            {"OnNodeStart": {"Sequence": {"Script": "test", "Args": ["1"]}}},
+            "Invalid input type for Sequence, expected list.",
         ),
         # Successes
         ({}, None),
@@ -315,7 +311,7 @@ def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_mess
                         {"Script": "test2", "Args": ["3", "4"]},
                         {"Script": "test3", "Args": ["5", "6"]},
                     ]
-                }
+                },
             },
             None,
         ),
@@ -323,7 +319,7 @@ def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_mess
             {
                 "OnNodeStart": {"Script": "test"},
                 "OnNodeConfigured": {"Script": "test2", "Args": ["1", "2"]},
-                "OnNodeUpdated": {"Script": "test"}
+                "OnNodeUpdated": {"Script": "test"},
             },
             None,
         ),
@@ -335,10 +331,10 @@ def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_mess
                         {"Script": "test2", "Args": ["1", "2", "3"]},
                         {"Script": "test3"},
                         {"Script": "test4", "Args": []},
-                     ]
+                    ]
                 },
                 "OnNodeConfigured": {"Sequence": []},
-                "OnNodeUpdated": {"Script": ""}
+                "OnNodeUpdated": {"Script": ""},
             },
             None,
         ),
