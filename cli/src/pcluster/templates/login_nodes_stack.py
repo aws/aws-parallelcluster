@@ -258,6 +258,7 @@ class Pool(Construct):
                     "hosted_zone": (str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""),
                     "log_group_name": self._log_group.log_group_name,
                     "log_rotation_enabled": "true" if self._config.is_log_rotation_enabled else "false",
+                    "pool_name": self._pool.name,
                     "node_type": "LoginNode",
                     "proxy": self._pool.networking.proxy.http_proxy_address if self._pool.networking.proxy else "NONE",
                     "raid_shared_dir": to_comma_separated_string(

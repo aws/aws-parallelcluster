@@ -25,6 +25,7 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeIamSchema,
     HeadNodeRootVolumeSchema,
     ImageSchema,
+    LoginNodesCustomActionsSchema,
     QueueCustomActionsSchema,
     QueueIamSchema,
     QueueTagSchema,
@@ -259,14 +260,18 @@ DUMMY_AWSBATCH_QUEUE = {
         ),
     ],
 )
-def test_head_node_custom_actions_schema(mocker, config_dict, failure_message):
+def test_head_login_node_custom_actions_schema(mocker, config_dict, failure_message):
     mock_aws_api(mocker)
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
             HeadNodeCustomActionsSchema().load(config_dict)
+            LoginNodesCustomActionsSchema().load(config_dict)
     else:
-        conf = HeadNodeCustomActionsSchema().load(config_dict)
-        HeadNodeCustomActionsSchema().dump(conf)
+        head_conf = HeadNodeCustomActionsSchema().load(config_dict)
+        login_conf = LoginNodesCustomActionsSchema().load(config_dict)
+
+        HeadNodeCustomActionsSchema().dump(head_conf)
+        LoginNodesCustomActionsSchema().dump(login_conf)
 
 
 @pytest.mark.parametrize(

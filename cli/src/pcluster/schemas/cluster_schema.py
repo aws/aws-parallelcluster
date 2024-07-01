@@ -1315,6 +1315,19 @@ class HeadNodeCustomActionsSchema(BaseSchema):
         return CustomActions(**data)
 
 
+class LoginNodesCustomActionsSchema(BaseSchema):
+    """Represent the schema for all available custom actions in a login node pool."""
+
+    on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_updated = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomActions(**data)
+
+
 class InstanceTypeSchema(BaseSchema):
     """Schema of a compute resource that supports a pool of instance types."""
 
@@ -1422,6 +1435,7 @@ class LoginNodesPoolSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     ssh = fields.Nested(LoginNodesSshSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    custom_actions = fields.Nested(LoginNodesCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     iam = fields.Nested(LoginNodesIamSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     gracetime_period = fields.Int(
         validate=validate.Range(

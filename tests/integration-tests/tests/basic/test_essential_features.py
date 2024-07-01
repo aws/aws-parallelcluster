@@ -321,7 +321,13 @@ def _test_custom_bootstrap_scripts_args_quotes(cluster):
     The cluster should be created and running.
     """
     # Check head node and compute node status
-    check_status(cluster, "CREATE_COMPLETE", head_node_status="running", compute_fleet_status="RUNNING")
+    check_status(
+        cluster,
+        "CREATE_COMPLETE",
+        head_node_status="running",
+        compute_fleet_status="RUNNING",
+        login_nodes_status="active",
+    )
 
 
 def _test_disable_hyperthreading(
