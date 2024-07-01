@@ -21,6 +21,7 @@ import re
 from functools import partial
 from itertools import product
 from shutil import copyfile
+from time import sleep
 from traceback import format_tb
 from typing import Any, Dict, List, Optional, Union
 
@@ -366,6 +367,70 @@ def _setup_custom_logger(log_file):
     logger.addHandler(file_handler)
 
 
+class SharedClusterDetectionTimeoutError(Exception):
+    """Custom exception for shared cluster detection timeout."""
+
+    pass
+
+
+@pytest.fixture(scope="module")
+@pytest.mark.usefixtures("setup_credentials")
+def shared_clusters_factory(request):
+    """
+    Define a fixture to manage the creation and destruction of module shared clusters.
+
+    The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
+    """
+    factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
+
+    if not hasattr(request.module, "shared_existing_cluster"):
+        request.module.shared_existing_cluster = None
+        request.module.is_cluster_started_to_create = False
+
+    def _cluster_factory(cluster_config, region, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+        if request.module.is_cluster_started_to_create:
+            for retry in range(40):
+                if request.module.shared_existing_cluster:
+                    logging.info(f"Shared cluster {request.module.shared_existing_cluster.name} detected.")
+                    return request.module.shared_existing_cluster
+                else:
+                    logging.info(f"Shared cluster not detected yet. Retrying... ({retry + 1}/40)")
+                    sleep(60)
+            raise SharedClusterDetectionTimeoutError(
+                "Timeout: Failed to detect the shared cluster within the allowed retries."
+            )
+
+        request.module.is_cluster_started_to_create = True
+        cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
+        cluster = Cluster(
+            name=(
+                request.config.getoption("cluster")
+                if request.config.getoption("cluster")
+                else "integ-tests-{0}{1}{2}".format(
+                    random_alphanumeric().upper() if upper_case_cluster_name else random_alphanumeric(),
+                    "-" if request.config.getoption("stackname_suffix") else "",
+                    request.config.getoption("stackname_suffix"),
+                )
+            ),
+            config_file=cluster_config,
+            ssh_key=request.config.getoption("key_path"),
+            region=region,
+            custom_cli_credentials=custom_cli_credentials,
+        )
+        if not request.config.getoption("cluster"):
+            cluster.creation_response = factory.create_cluster(cluster, **kwargs)
+        request.module.shared_existing_cluster = cluster
+        return cluster
+
+    yield _cluster_factory
+    if not request.config.getoption("no_delete"):
+        try:
+            test_passed = request.node.rep_call.passed
+        except AttributeError:
+            test_passed = False
+        factory.destroy_all_clusters(test_passed=test_passed)
+
+
 @pytest.fixture(scope="class")
 @pytest.mark.usefixtures("setup_credentials")
 def clusters_factory(request, region):
@@ -509,9 +574,21 @@ def _write_config_to_outdir(request, config, config_dir):
     out_dir = request.config.getoption("output_dir")
 
     # Sanitize config file name to make it Windows compatible
-    # request.node.nodeid example:
+    # class scope request.node.nodeid example:
     # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
-    test_file, test_name = request.node.nodeid.split("::", 1)
+    # module scope request.node.nodeid example:
+    # 'performance_tests/test_starccm_and_openfoam.py'
+    # TODO: Find a better way to name module_scope_test
+    logging.info(f"request.node.nodeid: {request.node.nodeid}")
+    nodeid_parts = request.node.nodeid.split("::")
+    if len(nodeid_parts) == 2:
+        test_file, test_name = nodeid_parts
+    elif len(nodeid_parts) == 1:
+        test_file = nodeid_parts[0]
+        test_name = "module_scope_test"
+    else:
+        raise ValueError(f"Unexpected nodeid format: {request.node.nodeid}")
+
     config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
 
     os.makedirs(
