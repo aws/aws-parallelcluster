@@ -373,6 +373,12 @@ class SharedClusterDetectionTimeoutError(Exception):
     pass
 
 
+class SharedClusterDetectionTimeoutError(Exception):
+    """Custom exception for shared cluster detection timeout."""
+
+    pass
+
+
 @pytest.fixture(scope="module")
 @pytest.mark.usefixtures("setup_credentials")
 def shared_clusters_factory(request):
@@ -383,11 +389,17 @@ def shared_clusters_factory(request):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    if not hasattr(request.module, "shared_existing_cluster"):
-        request.module.shared_existing_cluster = None
+    if not hasattr(request.module, "is_cluster_started_to_create"):
+        logging.info("Setting is_cluster_started_to_create and shared_existing_cluster")
         request.module.is_cluster_started_to_create = False
+        request.module.shared_existing_cluster = None
 
     def _cluster_factory(cluster_config, region, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+        logging.info(
+            "Shared cluster already started to create"
+            if request.module.is_cluster_started_to_create
+            else "Start to create shared cluster"
+        )
         if request.module.is_cluster_started_to_create:
             for retry in range(40):
                 if request.module.shared_existing_cluster:
