@@ -1346,6 +1346,7 @@ class LoginNodesPool(Resource):
         networking: LoginNodesNetworking = None,
         count: int = None,
         ssh: LoginNodesSsh = None,
+        dcv: Dcv = None,
         custom_actions: CustomActions = None,
         iam: LoginNodesIam = None,
         gracetime_period: int = None,
@@ -1358,9 +1359,11 @@ class LoginNodesPool(Resource):
         self.networking = networking
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
+        self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or LoginNodesIam(implied=True)
         self.gracetime_period = Resource.init_param(gracetime_period, default=10)
+        self.__instance_type_info = None
 
     @property
     def instance_profile(self):
@@ -1371,6 +1374,23 @@ class LoginNodesPool(Resource):
     def instance_role(self):
         """Return the IAM role for login nodes, if set."""
         return self.iam.instance_role if self.iam else None
+
+    @property
+    def architecture(self):
+        """Return login node pool architecture based on instance type"""
+        return self.instance_type_info.supported_architecture()[0]
+
+    @property
+    def instance_type_info(self) -> InstanceTypeInfo:
+        """Return login node pool instance type information as returned from aws ec2 describe-instance-types."""
+        if not self.__instance_type_info:
+            self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return self.__instance_type_info
+
+    @property
+    def is_dcv_enabled(self):
+        """Return True if DCV is enabled."""
+        return self.dcv and self.dcv.enabled
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
@@ -1387,6 +1407,14 @@ class LoginNodes(Resource):
     ):
         super().__init__(**kwargs)
         self.pools = pools
+
+    @property
+    def has_dcv_configured(self):
+        """Return True if DCV is configured for a login node pool."""
+        for pool in self.pools:
+            if pool.dcv:
+                return True
+        return False
 
 
 class HeadNode(Resource):
@@ -2972,6 +3000,21 @@ class SlurmClusterConfig(BaseClusterConfig):
                         InstanceTypeOSCompatibleValidator,
                         instance_type=pool.instance_type,
                         os=self.image.os,
+                    )
+
+        if self.login_nodes and self.login_nodes.has_dcv_configured:
+            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
+
+            for pool in self.login_nodes.pools:
+                if pool.dcv:
+                    self._register_validator(
+                        DcvValidator,
+                        instance_type=pool.instance_type,
+                        dcv_enabled=pool.dcv.enabled,
+                        allowed_ips=pool.dcv.allowed_ips,
+                        port=pool.dcv.port,
+                        os=self.image.os,
+                        architecture=pool.architecture,
                     )
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
