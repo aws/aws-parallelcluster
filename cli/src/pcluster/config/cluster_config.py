@@ -1346,6 +1346,7 @@ class LoginNodesPool(Resource):
         networking: LoginNodesNetworking = None,
         count: int = None,
         ssh: LoginNodesSsh = None,
+        custom_actions: CustomActions = None,
         iam: LoginNodesIam = None,
         gracetime_period: int = None,
         **kwargs,
@@ -1357,6 +1358,7 @@ class LoginNodesPool(Resource):
         self.networking = networking
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
+        self.custom_actions = custom_actions
         self.iam = iam or LoginNodesIam(implied=True)
         self.gracetime_period = Resource.init_param(gracetime_period, default=10)
 

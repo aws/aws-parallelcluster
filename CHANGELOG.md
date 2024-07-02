@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.11.0
+------
+
+**ENHANCEMENTS**
+
+- Add support for custom actions on login nodes.
+
 3.10.0
 ------
 

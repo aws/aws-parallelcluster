@@ -756,11 +756,25 @@ class IamPolicyAssertion:
                             "Sid": "Autoscaling",
                         },
                         {
-                            "Action": "cloudformation:DescribeStackResource",
+                            "Action": ["cloudformation:DescribeStackResource", "cloudformation:DescribeStacks"],
                             "Effect": "Allow",
-                            "Resource": {
-                                "Ref": "AWS::StackId",
-                            },
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {"Ref": "AWS::Partition"},
+                                            ":cloudformation:",
+                                            {"Ref": "AWS::Region"},
+                                            ":",
+                                            {"Ref": "AWS::AccountId"},
+                                            ":stack/clustername/*",
+                                        ],
+                                    ]
+                                },
+                                {"Ref": "AWS::StackId"},
+                            ],
                             "Sid": "CloudFormation",
                         },
                         {

@@ -20,6 +20,26 @@ LoginNodes:
         HttpProxyAddress: https://proxy-address:port
     Ssh:
       KeyName: validate_key_name
+    CustomActions:
+      OnNodeStart:
+        Script: https://test.tgz
+        Args:
+          # Number of args doesn't impact number of resources, just the size of the template
+          {% for i in range(number_of_script_args) %}
+          - arg{{ i }}
+          {% endfor %}
+      OnNodeConfigured:
+        Script: https://test.tgz
+        Args:
+          {% for i in range(number_of_script_args) %}
+          - arg{{ i }}
+          {% endfor %}
+      OnNodeUpdated:
+        Script: https://test.tgz
+        Args:
+          {% for i in range(number_of_script_args) %}
+          - arg{{ i }}
+          {% endfor %}
     Iam:
       AdditionalIamPolicies:
         - Policy: arn:aws:iam::aws:policy/AdministratorAccess
