@@ -369,13 +369,6 @@ def _setup_custom_logger(log_file):
 
 class SharedClusterDetectionTimeoutError(Exception):
     """Custom exception for shared cluster detection timeout."""
-
-    pass
-
-
-class SharedClusterDetectionTimeoutError(Exception):
-    """Custom exception for shared cluster detection timeout."""
-
     pass
 
 
