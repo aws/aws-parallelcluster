@@ -387,6 +387,10 @@ def shared_clusters_factory(request):
         request.session.shared_existing_clusters = {}
         request.session.shared_existing_clusters_started_to_create = set()
 
+    yield from _cluster_factory_wrapper(request, factory)
+
+
+def _cluster_factory_wrapper(request, factory):
     def _cluster_factory(cluster_config, region, instance, os, scheduler, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
         cluster_key = f"{region}-{instance}-{os}-{scheduler}"
         logging.info(
