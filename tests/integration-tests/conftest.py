@@ -372,32 +372,33 @@ class SharedClusterDetectionTimeoutError(Exception):
     pass
 
 
-@pytest.fixture(scope="module")
+@xdist_session_fixture(autouse=True)
 @pytest.mark.usefixtures("setup_credentials")
 def shared_clusters_factory(request):
     """
-    Define a fixture to manage the creation and destruction of module shared clusters.
+    Define a fixture to manage the creation and destruction of session shared clusters.
 
     The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    if not hasattr(request.module, "is_cluster_started_to_create"):
-        logging.info("Setting is_cluster_started_to_create and shared_existing_cluster")
-        request.module.is_cluster_started_to_create = False
-        request.module.shared_existing_cluster = None
+    if not hasattr(request.session, "shared_existing_clusters"):
+        logging.info("Setting shared_existing_clusters_started_to_create and shared_existing_clusters")
+        request.session.shared_existing_clusters = {}
+        request.session.shared_existing_clusters_started_to_create = set()
 
-    def _cluster_factory(cluster_config, region, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+    def _cluster_factory(cluster_config, region, instance, os, scheduler, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+        cluster_key = f"{region}-{instance}-{os}-{scheduler}"
         logging.info(
-            "Shared cluster already started to create"
-            if request.module.is_cluster_started_to_create
-            else "Start to create shared cluster"
+            "Eligible for using shared cluster, start to detect."
+            if cluster_key in request.session.shared_existing_clusters_started_to_create
+            else "Start to create shared cluster for specific region, instance type, os and scheduler"
         )
-        if request.module.is_cluster_started_to_create:
+        if cluster_key in request.session.shared_existing_clusters_started_to_create:
             for retry in range(40):
-                if request.module.shared_existing_cluster:
-                    logging.info(f"Shared cluster {request.module.shared_existing_cluster.name} detected.")
-                    return request.module.shared_existing_cluster
+                if cluster_key in request.session.shared_existing_clusters:
+                    logging.info(f"Shared cluster {request.session.shared_existing_clusters[cluster_key].name} detected.")
+                    return request.session.shared_existing_clusters[cluster_key]
                 else:
                     logging.info(f"Shared cluster not detected yet. Retrying... ({retry + 1}/40)")
                     sleep(60)
@@ -405,7 +406,7 @@ def shared_clusters_factory(request):
                 "Timeout: Failed to detect the shared cluster within the allowed retries."
             )
 
-        request.module.is_cluster_started_to_create = True
+        request.session.shared_existing_clusters_started_to_create.add(cluster_key)
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=(
@@ -424,10 +425,11 @@ def shared_clusters_factory(request):
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, **kwargs)
-        request.module.shared_existing_cluster = cluster
+        request.session.shared_existing_clusters[cluster_key] = cluster
         return cluster
 
     yield _cluster_factory
+
     if not request.config.getoption("no_delete"):
         try:
             test_passed = request.node.rep_call.passed
@@ -583,14 +585,14 @@ def _write_config_to_outdir(request, config, config_dir):
     # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
     # module scope request.node.nodeid example:
     # 'performance_tests/test_starccm_and_openfoam.py'
-    # TODO: Find a better way to name module_scope_test
+    # TODO: Find a better way to name module_scope_test/session_scope_test
     logging.info(f"request.node.nodeid: {request.node.nodeid}")
     nodeid_parts = request.node.nodeid.split("::")
     if len(nodeid_parts) == 2:
         test_file, test_name = nodeid_parts
     elif len(nodeid_parts) == 1:
         test_file = nodeid_parts[0]
-        test_name = "module_scope_test"
+        test_name = "module_scope_test" + random_alphanumeric()
     else:
         raise ValueError(f"Unexpected nodeid format: {request.node.nodeid}")
 
