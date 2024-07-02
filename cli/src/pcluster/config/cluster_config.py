@@ -146,6 +146,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
+    PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
 )
 from pcluster.validators.efs_validators import EfsMountOptionsValidator
@@ -1345,6 +1346,7 @@ class LoginNodesPool(Resource):
         networking: LoginNodesNetworking = None,
         count: int = None,
         ssh: LoginNodesSsh = None,
+        custom_actions: CustomActions = None,
         iam: LoginNodesIam = None,
         gracetime_period: int = None,
         **kwargs,
@@ -1356,6 +1358,7 @@ class LoginNodesPool(Resource):
         self.networking = networking
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
+        self.custom_actions = custom_actions
         self.iam = iam or LoginNodesIam(implied=True)
         self.gracetime_period = Resource.init_param(gracetime_period, default=10)
 
@@ -3026,6 +3029,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                     efa_enabled=compute_resource.efa.enabled,
                     os=self.image.os,
                     architecture=self.head_node.architecture,
+                )
+                self._register_validator(
+                    PlacementGroupCapacityTypeValidator,
+                    capacity_type=queue.capacity_type,
+                    placement_group_enabled=queue.is_placement_group_enabled_for_compute_resource(compute_resource),
                 )
                 # The validation below has to be in cluster config class instead of queue class
                 # to make sure the subnet APIs are cached by previous validations.

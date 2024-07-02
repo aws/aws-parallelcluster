@@ -2,7 +2,7 @@ openapi: 3.0.2
 info:
   description: ParallelCluster API
   title: ParallelCluster
-  version: 3.10.0
+  version: 3.11.0
 servers:
 - url: /
 # override: auth is defined the the API GW level
@@ -2017,15 +2017,22 @@ components:
       - CREATE_IN_PROGRESS
       - CREATE_FAILED
       - CREATE_COMPLETE
+      - IMPORT_IN_PROGRESS
+      - IMPORT_COMPLETE
+      - IMPORT_ROLLBACK_IN_PROGRESS
+      - IMPORT_ROLLBACK_FAILED
+      - IMPORT_ROLLBACK_COMPLETE
       - ROLLBACK_IN_PROGRESS
       - ROLLBACK_FAILED
       - ROLLBACK_COMPLETE
       - DELETE_IN_PROGRESS
       - DELETE_FAILED
       - DELETE_COMPLETE
+      - REVIEW_IN_PROGRESS
       - UPDATE_IN_PROGRESS
       - UPDATE_COMPLETE_CLEANUP_IN_PROGRESS
       - UPDATE_COMPLETE
+      - UPDATE_FAILED
       - UPDATE_ROLLBACK_IN_PROGRESS
       - UPDATE_ROLLBACK_FAILED
       - UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS
@@ -2348,6 +2355,11 @@ components:
       type: object
     DescribeClusterResponseContent:
       example:
+        failures:
+        - failureCode: failureCode
+          failureReason: failureReason
+        - failureCode: failureCode
+          failureReason: failureReason
         creationTime: 2000-01-23T04:56:07.000+00:00
         loginNodes:
           unhealthyNodes: 6
@@ -2431,11 +2443,13 @@ components:
           $ref: '#/components/schemas/EC2Instance'
         loginNodes:
           $ref: '#/components/schemas/LoginNodesPool'
-        failureReason:
-          description: "Reason of the failure when the stack is in CREATE_FAILED,\
-            \ UPDATE_FAILED or DELETE_FAILED status."
-          title: failureReason
-          type: string
+        failures:
+          description: Failures array containing failures reason and code when the
+            stack is in CREATE_FAILED status.
+          items:
+            $ref: '#/components/schemas/Failure'
+          title: failures
+          type: array
       required:
       - cloudFormationStackStatus
       - cloudformationStackArn
@@ -2682,6 +2696,21 @@ components:
       - ERROR
       title: Ec2AmiState
       type: string
+    Failure:
+      example:
+        failureCode: failureCode
+        failureReason: failureReason
+      properties:
+        failureCode:
+          description: Failure code when the cluster stack is in CREATE_FAILED status.
+          title: failureCode
+          type: string
+        failureReason:
+          description: Failure reason when the cluster stack is in CREATE_FAILED status.
+          title: failureReason
+          type: string
+      title: Failure
+      type: object
     GetClusterLogEventsResponseContent:
       example:
         nextToken: nextToken

@@ -28,6 +28,30 @@ HeadNode:
   Dcv:
     Enabled: True
   {% endif %}
+LoginNodes:
+  Pools:
+    - Name: pool
+      InstanceType: {{ instance }}
+      Count: 3
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket_name }}/scripts/pre_install.sh
+          Args:
+            - "R curl wget"
+            - arg2
+            - 'arg3 arg3'
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/scripts/post_install.sh
+          Args:
+            - "R curl wget"
+            - arg2
+            - 'arg3 arg3'
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 Scheduling:
   Scheduler: {{ scheduler }}
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}

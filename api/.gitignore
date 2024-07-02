@@ -18,3 +18,6 @@ cdk.out
 build
 node_modules
 package.json
+
+# Generated code
+generated

@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.11.0
+------
+
+**ENHANCEMENTS**
+
+- Add support for custom actions on login nodes.
+
 3.10.0
 ------
 
@@ -8,6 +15,7 @@ CHANGELOG
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
 - Add support for Amazon Linux 2023.
 - Add support for `price-capacity-optimized` as an `AllocationStrategy`.
+- Add validator to prevent the use of Placement Groups with Capacity Blocks.
 
 **BUG FIXES**
 - Fix DRA configuration to make `AutoExportPolicy` and `AutoImportPolicy` optional.
@@ -17,6 +25,9 @@ CHANGELOG
 - Allow ParallelCluster Custom Resource to suppress validators using `PclusterCluster/SuppressValidators`.
 - Removing `/etc/profile.d/pcluster.sh` so that it's not executed at every user login and
   `cfn_bootstrap_virtualenv` is not added in PATH environment variable.
+- Fix ParallelCluster API spec by replacing in `DescribeCluster` response the field `failureReason` with `failures`.
+- Fix ParallelCluster API spec by adding the CloudFormation stack status that were missing:
+  `IMPORT_*`, `REVIEW_IN_PROGRESS` and `UPDATE_FAILED`.
 
 **CHANGES**
 - CentOS 7 is no longer supported.
