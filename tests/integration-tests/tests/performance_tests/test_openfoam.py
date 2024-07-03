@@ -79,15 +79,16 @@ def test_openfoam(
 
     # Copy additional files in advanced to avoid conflict when running 8 and 16 nodes tests in parallel
     remote_command_executor._copy_additional_files([str(test_datadir / "openfoam.slurm.sh")])
+
+    # Run 32 node test first to avoid spack: command not found error when run 8 and 16 node tests in parallel
+    observed_value_32 = run_openfoam_test(remote_command_executor, test_datadir, 32)
+
     # Run 8 and 16 node tests in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_8 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 8)
         future_16 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 16)
         observed_value_8 = future_8.result()
         observed_value_16 = future_16.result()
-
-    # Run 32 node test
-    observed_value_32 = run_openfoam_test(remote_command_executor, test_datadir, 32)
 
     # Check results and log performance degradation
     for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
