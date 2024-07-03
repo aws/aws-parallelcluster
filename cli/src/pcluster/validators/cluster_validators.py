@@ -373,8 +373,16 @@ class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
     def _validate(
-        self, efa_enabled: bool, placement_group_key: str, placement_group_disabled: bool, multi_az_enabled: bool
+        self,
+        efa_enabled: bool,
+        placement_group_key: str,
+        placement_group_disabled: bool,
+        multi_az_enabled: bool,
+        capacity_type: str,
     ):
+        # Capacity Blocks do not require the configuration of a Placement Group
+        if capacity_type == CapacityType.CAPACITY_BLOCK:
+            return
         # if multi_az is enabled suggestions about PlacementGroups will be suppressed
         if efa_enabled and placement_group_disabled and not multi_az_enabled:
             self._add_failure(
