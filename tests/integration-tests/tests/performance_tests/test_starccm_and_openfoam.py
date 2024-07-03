@@ -127,7 +127,7 @@ def test_starccm(
         install_extra_deps=os in OSS_REQUIRING_EXTRA_DEPS,
         number_of_nodes=max(number_of_nodes),
     )
-    cluster = shared_clusters_factory(cluster_config, region, instance, os, scheduler)
+    cluster = shared_clusters_factory.cluster_factory(cluster_config, region, instance, os, scheduler)
     logging.info("Cluster Created")
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -197,7 +197,7 @@ def test_openfoam(
         install_extra_deps=os in number_of_nodes,
         number_of_nodes=max(number_of_nodes),
     )
-    cluster = shared_clusters_factory(cluster_config, region, instance, os, scheduler)
+    cluster = shared_clusters_factory.cluster_factory(cluster_config, region, instance, os, scheduler)
     logging.info("Cluster Created")
     remote_command_executor = RemoteCommandExecutor(cluster)
     if not openfoam_installed(remote_command_executor):

@@ -454,7 +454,7 @@ def shared_clusters_factory(request):
 
     manager = ClusterManager(request, factory)
 
-    yield manager.cluster_factory
+    yield manager
 
     if not request.config.getoption("no_delete"):
         try:
