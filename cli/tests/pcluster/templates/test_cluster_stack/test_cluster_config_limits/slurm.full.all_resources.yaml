@@ -20,6 +20,10 @@ LoginNodes:
         HttpProxyAddress: https://proxy-address:port
     Ssh:
       KeyName: validate_key_name
+    Dcv:
+      Enabled: true
+      Port: 8443
+      AllowedIps: 0.0.0.0/0
     CustomActions:
       OnNodeStart:
         Script: https://test.tgz
