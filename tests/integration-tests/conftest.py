@@ -369,30 +369,32 @@ def _setup_custom_logger(log_file):
 
 class SharedClusterDetectionTimeoutError(Exception):
     """Custom exception for shared cluster detection timeout."""
+
     pass
 
 
-@xdist_session_fixture(autouse=True)
-@pytest.mark.usefixtures("setup_credentials")
-def shared_clusters_factory(request):
-    """
-    Define a fixture to manage the creation and destruction of session shared clusters.
+class ClusterManager:
+    """Cluster Manager for shared cluster fixture to avoid AttributeError: Can't pickle local object"""
 
-    The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
-    """
-    factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
+    def __init__(self, request, factory):
+        self.request = request
+        self.factory = factory
 
-    if not hasattr(request.session, "shared_existing_clusters"):
-        logging.info("Setting shared_existing_clusters_started_to_create and shared_existing_clusters")
-        request.session.shared_existing_clusters = {}
-        request.session.shared_existing_clusters_started_to_create = set()
-
-    yield from _cluster_factory_wrapper(request, factory)
-
-
-def _cluster_factory_wrapper(request, factory):
-    def _cluster_factory(cluster_config, region, instance, os, scheduler, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+    def cluster_factory(
+        self,
+        cluster_config,
+        region,
+        instance,
+        os,
+        scheduler,
+        upper_case_cluster_name=False,
+        custom_cli_credentials=None,
+        **kwargs,
+    ):
+        """Create cluster or use existing cluster."""
         cluster_key = f"{region}-{instance}-{os}-{scheduler}"
+        request = self.request
+        factory = self.factory
         logging.info(
             "Eligible for using shared cluster, start to detect."
             if cluster_key in request.session.shared_existing_clusters_started_to_create
@@ -401,7 +403,9 @@ def _cluster_factory_wrapper(request, factory):
         if cluster_key in request.session.shared_existing_clusters_started_to_create:
             for retry in range(40):
                 if cluster_key in request.session.shared_existing_clusters:
-                    logging.info(f"Shared cluster {request.session.shared_existing_clusters[cluster_key].name} detected.")
+                    logging.info(
+                        f"Shared cluster {request.session.shared_existing_clusters[cluster_key].name} detected."
+                    )
                     return request.session.shared_existing_clusters[cluster_key]
                 else:
                     logging.info(f"Shared cluster not detected yet. Retrying... ({retry + 1}/40)")
@@ -432,7 +436,25 @@ def _cluster_factory_wrapper(request, factory):
         request.session.shared_existing_clusters[cluster_key] = cluster
         return cluster
 
-    yield _cluster_factory
+
+@xdist_session_fixture(autouse=True)
+@pytest.mark.usefixtures("setup_credentials")
+def shared_clusters_factory(request):
+    """
+    Define a fixture to manage the creation and destruction of session shared clusters.
+
+    The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
+    """
+    factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
+
+    if not hasattr(request.session, "shared_existing_clusters"):
+        logging.info("Setting shared_existing_clusters_started_to_create and shared_existing_clusters")
+        request.session.shared_existing_clusters = {}
+        request.session.shared_existing_clusters_started_to_create = set()
+
+    manager = ClusterManager(request, factory)
+
+    yield manager.cluster_factory
 
     if not request.config.getoption("no_delete"):
         try:
