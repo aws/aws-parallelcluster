@@ -89,7 +89,7 @@ test-suites:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: [ "slurm" ]
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: ["alinux2", "alinux2023", "ubuntu2004", "rhel8", "rhel9"]
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
