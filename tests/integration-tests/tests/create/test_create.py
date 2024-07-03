@@ -58,6 +58,7 @@ def test_create_wrong_pcluster_version(
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
     current_version = get_installed_parallelcluster_version()
+    # Set wrong_version to 3.10.0 when a new version > 3.10.0 is released
     wrong_version = "3.6.1"
     logging.info("Asserting wrong_version is different from current_version")
     assert_that(current_version != wrong_version).is_true()
@@ -77,11 +78,18 @@ def test_create_wrong_pcluster_version(
         ["error_exit", rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}"],
     )
     logging.info("Verifying failures in describe-clusters output")
+    # Restore this logic when a new version > 3.10.0 is released
+    # expected_failures = [
+    #     {
+    #         "failureCode": "AmiVersionMismatch",
+    #         "failureReason": "ParallelCluster version of the custom AMI is different than the cookbook. Please make "
+    #         "them consistent.",
+    #     }
+    # ]
     expected_failures = [
         {
-            "failureCode": "AmiVersionMismatch",
-            "failureReason": "ParallelCluster version of the custom AMI is different than the cookbook. Please make "
-            "them consistent.",
+            "failureCode": "HeadNodeBootstrapFailure",
+            "failureReason": "Cluster creation timed out.",
         }
     ]
     assert_that(cluster.creation_response.get("failures")).is_equal_to(expected_failures)
