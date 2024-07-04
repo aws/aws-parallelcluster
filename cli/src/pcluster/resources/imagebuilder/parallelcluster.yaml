@@ -221,7 +221,7 @@ phases:
                 ln -sf ${!CA_CERTS_FILE} /opt/cinc/embedded/ssl/certs/cacert.pem
               fi
               
-              curl --retry 3 -L -o gems.tgz https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.amazonaws.com/archives/dependencies/ruby/gems.tgz
+              curl --retry 3 -L -o gems.tgz https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/dependencies/ruby/gems.tgz
               tar -xf gems.tgz
               
               cd vendor/cache
