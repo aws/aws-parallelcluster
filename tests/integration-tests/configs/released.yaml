@@ -94,6 +94,10 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
           oss: ["rocky8"]
+        - regions: ["cn-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          schedulers: ["slurm"]
+          oss: ["alinux2"]
     test_createami.py::test_build_image_custom_components:
       # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
       # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
@@ -102,6 +106,9 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2004"]
         - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["alinux2"]
+        - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
     test_createami.py::test_build_image_wrong_pcluster_version:
