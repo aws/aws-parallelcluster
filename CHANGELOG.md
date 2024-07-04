@@ -8,6 +8,12 @@ CHANGELOG
 
 - Add support for custom actions on login nodes.
 
+3.10.1
+------
+
+**BUG FIXES**
+- Fix image build failure in China regions.
+
 3.10.0
 ------
 
