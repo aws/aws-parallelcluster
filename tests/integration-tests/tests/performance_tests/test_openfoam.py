@@ -77,13 +77,14 @@ def test_openfoam(
     logging.info("OpenFOAM Installed")
     performance_degradation = {}
 
-    # Copy additional files in advanced to avoid conflict when running 8 and 16 nodes tests in parallel
+    # Copy additional files in advanced to avoid conflict when running tests in parallel
     remote_command_executor._copy_additional_files([str(test_datadir / "openfoam.slurm.sh")])
 
-    # Run 32 node test first to avoid spack: command not found error when run 8 and 16 node tests in parallel
+    # Run 32 node test first to avoid spack: command not found error when running tests in parallel
     observed_value_32 = run_openfoam_test(remote_command_executor, test_datadir, 32)
 
     # Run 8 and 16 node tests in parallel
+    # Use ThreadPoolExecutor due to openfoam_test is submitted by bash script rather than sbatch
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_8 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 8)
         future_16 = executor.submit(run_openfoam_test, remote_command_executor, test_datadir, 16)
