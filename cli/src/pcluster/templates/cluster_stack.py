@@ -887,11 +887,23 @@ class ClusterCdkStack:
             return ec2.CfnSecurityGroup.IngressProperty(ip_protocol="tcp", from_port=22, to_port=22, cidr_ip=setting)
 
     def _add_login_nodes_security_group(self):
+        # TODO review this once we allow more pools to be defined in the LoginNodes section
         login_nodes_security_group_ingress = [
             # SSH access
-            # TODO review this once we allow more pools to be defined in the LoginNodes section
             self._get_source_ingress_rule(self.config.login_nodes.pools[0].ssh.allowed_ips)
         ]
+
+        if self.config.login_nodes.has_dcv_enabled:
+            login_nodes_security_group_ingress.append(
+                # DCV access
+                ec2.CfnSecurityGroup.IngressProperty(
+                    ip_protocol="tcp",
+                    from_port=self.config.login_nodes.pools[0].dcv.port,
+                    to_port=self.config.login_nodes.pools[0].dcv.port,
+                    cidr_ip=self.config.login_nodes.pools[0].dcv.allowed_ips,
+                )
+            )
+
         return ec2.CfnSecurityGroup(
             self.stack,
             "LoginNodesSecurityGroup",

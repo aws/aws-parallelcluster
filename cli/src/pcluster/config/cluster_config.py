@@ -1377,7 +1377,7 @@ class LoginNodesPool(Resource):
 
     @property
     def architecture(self):
-        """Return login node pool architecture based on instance type"""
+        """Return login node pool architecture based on instance type."""
         return self.instance_type_info.supported_architecture()[0]
 
     @property
@@ -1388,7 +1388,7 @@ class LoginNodesPool(Resource):
         return self.__instance_type_info
 
     @property
-    def is_dcv_enabled(self):
+    def has_dcv_enabled(self):
         """Return True if DCV is enabled."""
         return self.dcv and self.dcv.enabled
 
@@ -1409,10 +1409,9 @@ class LoginNodes(Resource):
         self.pools = pools
 
     @property
-    def has_dcv_configured(self):
-        """Return True if DCV is configured for a login node pool."""
+    def has_dcv_enabled(self):
         for pool in self.pools:
-            if pool.dcv:
+            if pool.has_dcv_enabled:
                 return True
         return False
 
@@ -2966,6 +2965,46 @@ class SlurmClusterConfig(BaseClusterConfig):
                 subnet_ids_set.add(subnet_id)
         return list(subnet_ids_set)
 
+    def _register_login_node_validators(self):
+        """Register all login node validators to ensure that the resource parameters are valid."""
+        has_dcv_configured = False
+        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
+        self._register_validator(
+            SubnetsValidator,
+            subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id],
+        )
+        self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
+
+        for pool in self.login_nodes.pools:
+            # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
+            if pool.image and pool.image.custom_ami:
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=pool.image.custom_ami)
+                self._register_validator(
+                    InstanceTypeBaseAMICompatibleValidator,
+                    instance_type=pool.instance_type,
+                    image=self.login_nodes_ami[pool.name],
+                )
+                self._register_validator(
+                    InstanceTypeOSCompatibleValidator,
+                    instance_type=pool.instance_type,
+                    os=self.image.os,
+                )
+            # Check pool instance compatability with NICE DCV.
+            if pool.dcv:
+                self._register_validator(
+                    DcvValidator,
+                    instance_type=pool.instance_type,
+                    dcv_enabled=pool.dcv.enabled,
+                    allowed_ips=pool.dcv.allowed_ips,
+                    port=pool.dcv.port,
+                    os=self.image.os,
+                    architecture=pool.architecture,
+                )
+                has_dcv_configured = True
+
+        if has_dcv_configured:
+            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
+
     def _register_validators(self, context: ValidatorContext = None):  # noqa: C901
         super()._register_validators(context)
         self._register_validator(
@@ -2974,48 +3013,8 @@ class SlurmClusterConfig(BaseClusterConfig):
             queues=self.scheduling.queues,
         )
 
-        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
         if self.login_nodes:
-            self._register_validator(
-                SubnetsValidator,
-                subnet_ids=self.login_nodes_subnet_ids
-                + self.compute_subnet_ids
-                + [self.head_node.networking.subnet_id],
-            )
-
-        if self.login_nodes:
-            self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
-
-        # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
-        if self.login_nodes:
-            for pool in self.login_nodes.pools:
-                if pool.image and pool.image.custom_ami:
-                    self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=pool.image.custom_ami)
-                    self._register_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=pool.instance_type,
-                        image=self.login_nodes_ami[pool.name],
-                    )
-                    self._register_validator(
-                        InstanceTypeOSCompatibleValidator,
-                        instance_type=pool.instance_type,
-                        os=self.image.os,
-                    )
-
-        if self.login_nodes and self.login_nodes.has_dcv_configured:
-            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
-
-            for pool in self.login_nodes.pools:
-                if pool.dcv:
-                    self._register_validator(
-                        DcvValidator,
-                        instance_type=pool.instance_type,
-                        dcv_enabled=pool.dcv.enabled,
-                        allowed_ips=pool.dcv.allowed_ips,
-                        port=pool.dcv.port,
-                        os=self.image.os,
-                        architecture=pool.architecture,
-                    )
+            self._register_login_node_validators()
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(

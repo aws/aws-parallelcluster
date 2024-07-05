@@ -27,6 +27,7 @@ from pcluster.utils import error
 
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 LOGGER = logging.getLogger(__name__)
+IPV4_REGEX = r"^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
 
 
 class DCVConnectionError(Exception):
@@ -42,28 +43,57 @@ def _check_command_output(cmd):
     return sub.check_output(cmd, shell=True, universal_newlines=True, stderr=sub.STDOUT).strip()  # nosec B602 nosemgrep
 
 
+def _validate_login_node_ip_arg(ip, login_nodes):
+    """Check if ip is a valid IPv4 address and belongs to a login node."""
+
+    if not re.match(IPV4_REGEX, ip):
+        error(f"{ip} is not a valid IPv4 address.")
+
+    login_node_ips = set()
+
+    for node in login_nodes:
+        login_node_ips.update([node.public_ip, node.private_ip])
+
+    if ip not in login_node_ips:
+        error(f"{ip} is not an IP address of a login node.")
+
+
 def _dcv_connect(args):
     """
     Execute pcluster dcv connect command.
 
     :param args: pcluster cli arguments.
     """
+
     try:
-        head_node = Cluster(args.cluster_name).head_node_instance
+        cluster = Cluster(args.cluster_name)
+
+        if args.login_node_ip:
+            login_nodes = cluster.login_node_instances
+            _validate_login_node_ip_arg(args.login_node_ip, login_nodes)
+
+            node_ip = args.login_node_ip
+            default_user = login_nodes[0].default_user
+        else:
+            head_node = cluster.head_node_instance
+
+            node_ip = head_node.public_ip or head_node.private_ip
+            default_user = head_node.default_user
+
     except Exception as e:
         error(f"Unable to connect to the cluster.\n{e}")
     else:
-        head_node_ip = head_node.public_ip or head_node.private_ip
+
         # Prepare ssh command to execute in the head node instance
-        cmd = 'ssh {CFN_USER}@{HEAD_NODE_IP} {KEY} "{REMOTE_COMMAND} /home/{CFN_USER}"'.format(
-            CFN_USER=head_node.default_user,
-            HEAD_NODE_IP=head_node_ip,
+        cmd = 'ssh {CFN_USER}@{NODE_IP} {KEY} "{REMOTE_COMMAND} /home/{CFN_USER}"'.format(
+            CFN_USER=default_user,
+            NODE_IP=node_ip,
             KEY="-i {0}".format(args.key_path) if args.key_path else "",
             REMOTE_COMMAND=DCV_CONNECT_SCRIPT,
         )
 
         try:
-            url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, head_node_ip], attempts=4)
+            url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, node_ip], attempts=4)
             url_message = f"Please use the following one-time URL in your browser within 30 seconds:\n{url}"
 
             if args.show_url:
@@ -84,8 +114,8 @@ def _dcv_connect(args):
             )
 
 
-def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
-    """Connect by ssh to the head node instance, prepare DCV session and return the DCV session URL."""
+def _retrieve_dcv_session_url(ssh_cmd, cluster_name, node_ip):
+    """Connect by ssh to the head or login node instance, prepare DCV session and return the DCV session URL."""
     try:
         LOGGER.debug("SSH command: %s", ssh_cmd)
         output = _check_command_output(ssh_cmd)
@@ -104,7 +134,7 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
             error(
                 "Something went wrong during DCV connection. Please manually execute the command:\n{0}\n"
                 "If the problem persists, please check the logs in the /var/log/parallelcluster/ folder "
-                "of the head node and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
+                "of the node and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
             )
 
     except sub.CalledProcessError as e:
@@ -117,7 +147,7 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
             raise DCVConnectionError(e.output)
 
     return "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
-        IP=head_node_ip,
+        IP=node_ip,
         PORT=dcv_server_port,  # pylint: disable=E0606
         TOKEN=dcv_session_token,  # pylint: disable=E0606
         SESSION_ID=dcv_session_id,  # pylint: disable=E0606
@@ -152,7 +182,7 @@ class DcvConnectCommand(CliCommand):
 
     # CLI
     name = "dcv-connect"
-    help = "Permits to connect to the head node through an interactive session by using NICE DCV."
+    help = "Permits connection to the head and login nodes through an interactive session by using NICE DCV."
     description = help
 
     def __init__(self, subparsers):
@@ -162,6 +192,9 @@ class DcvConnectCommand(CliCommand):
         parser.add_argument("-n", "--cluster-name", help="Name of the cluster to connect to", required=True)
         parser.add_argument("--key-path", dest="key_path", help="Key path of the SSH key to use for the connection")
         parser.add_argument("--show-url", action="store_true", default=False, help="Print URL and exit")
+        parser.add_argument(
+            "--login-node-ip", dest="login_node_ip", help="The IP address of a specific login node to connect to"
+        )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         _dcv_connect(args)
