@@ -1,6 +1,5 @@
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 import boto3
 import pytest
@@ -113,15 +112,21 @@ def test_starccm(
         f'sbatch --ntasks={number_of_nodes[1] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
     )
     logging.info(f"Submitting StarCCM+ job with {number_of_nodes[1]} nodes")
-    observed_value_8 = calculate_observed_value(result_8, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[0])
-    observed_value_16 = calculate_observed_value(result_16, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[1])
+    observed_value_8 = calculate_observed_value(
+        result_8, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[0]
+    )
+    observed_value_16 = calculate_observed_value(
+        result_16, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[1]
+    )
 
     # Run 32 node test
     result_32 = remote_command_executor.run_remote_command(
         f'sbatch --ntasks={number_of_nodes[2] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
     )
     logging.info(f"Submitting StarCCM+ job with {number_of_nodes[2]} nodes")
-    observed_value_32 = calculate_observed_value(result_32, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[2])
+    observed_value_32 = calculate_observed_value(
+        result_32, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[2]
+    )
 
     # Check results and log performance degradation
     for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
