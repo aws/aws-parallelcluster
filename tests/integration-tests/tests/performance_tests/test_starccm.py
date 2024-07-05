@@ -48,12 +48,7 @@ def starccm_installed(headnode):
         return False
 
 
-def run_starccm_test(remote_command_executor, scheduler_commands, test_datadir, number_of_nodes, podkey, licpath):
-    num_of_tasks = number_of_nodes * TASK_VCPUS
-    result = remote_command_executor.run_remote_command(
-        f'sbatch --ntasks={num_of_tasks} starccm.slurm.sh "{podkey}" "{licpath}"'
-    )
-    logging.info(f"Submitting StarCCM+ job with {number_of_nodes} nodes")
+def calculate_observed_value(result, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes):
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id, timeout=STARCCM_JOB_TIMEOUT)
     scheduler_commands.assert_job_succeeded(job_id)
@@ -110,18 +105,23 @@ def test_starccm(
     # Copy additional files in advanced to avoid conflict when running 8 and 16 nodes tests in parallel
     remote_command_executor._copy_additional_files([str(test_datadir / "starccm.slurm.sh")])
     # Run 8 and 16 node tests in parallel
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_8 = executor.submit(
-            run_starccm_test, remote_command_executor, scheduler_commands, test_datadir, 8, podkey, licpath
-        )
-        future_16 = executor.submit(
-            run_starccm_test, remote_command_executor, scheduler_commands, test_datadir, 16, podkey, licpath
-        )
-        observed_value_8 = future_8.result()
-        observed_value_16 = future_16.result()
+    result_8 = remote_command_executor.run_remote_command(
+        f'sbatch --ntasks={number_of_nodes[0] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
+    )
+    logging.info(f"Submitting StarCCM+ job with {number_of_nodes[0]} nodes")
+    result_16 = remote_command_executor.run_remote_command(
+        f'sbatch --ntasks={number_of_nodes[1] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
+    )
+    logging.info(f"Submitting StarCCM+ job with {number_of_nodes[1]} nodes")
+    observed_value_8 = calculate_observed_value(result_8, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[0])
+    observed_value_16 = calculate_observed_value(result_16, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[1])
 
     # Run 32 node test
-    observed_value_32 = run_starccm_test(remote_command_executor, scheduler_commands, test_datadir, 32, podkey, licpath)
+    result_32 = remote_command_executor.run_remote_command(
+        f'sbatch --ntasks={number_of_nodes[2] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
+    )
+    logging.info(f"Submitting StarCCM+ job with {number_of_nodes[2]} nodes")
+    observed_value_32 = calculate_observed_value(result_32, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[2])
 
     # Check results and log performance degradation
     for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
