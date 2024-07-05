@@ -11,17 +11,28 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+      - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
     S3Access:
       - BucketName: performance-tests-resources-for-parallelcluster
         KeyName: openfoam/*
         EnableWriteAccess: false
+      - BucketName: performance-tests-resources-for-parallelcluster
+        KeyName: starccm/*
+        EnableWriteAccess: false
+{% if install_extra_deps %}
+      - BucketName: {{ bucket_name }}
+        KeyName: scripts/dependencies.install.sh
+        EnableWriteAccess: false
+  CustomActions:
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/scripts/dependencies.install.sh
+{% endif %}
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
     - Name: q1
       ComputeResources:
-        - Name: c5n18xl-efa
+        - Name: c5n-18xl-efa
           InstanceType: {{ instance }}
           MinCount: {{ number_of_nodes }}
           MaxCount: {{ number_of_nodes }}
@@ -36,7 +47,16 @@ Scheduling:
           {% if instance == "c5n.18xlarge" %}Name: c5n_capacity_reservation{% endif %}
       Iam:
         AdditionalIamPolicies:
-          - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore # Required to report patching status
+          - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
+{% if install_extra_deps %}
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            KeyName: scripts/dependencies.install.sh
+            EnableWriteAccess: false
+      CustomActions:
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/scripts/dependencies.install.sh
+{% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: shared-fsx
