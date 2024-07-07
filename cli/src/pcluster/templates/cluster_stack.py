@@ -964,7 +964,11 @@ class ClusterCdkStack:
                     drive_cache_type = shared_fsx.drive_cache_type
                 else:
                     drive_cache_type = "NONE"
-            file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
+            if shared_fsx.fsx_security_groups:
+                managed_file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
+                file_system_security_groups = [sg.ref for sg in managed_file_system_security_groups]
+            else:
+                file_system_security_groups = shared_fsx.fsx_security_groups
             fsx_resource = fsx.CfnFileSystem(
                 self.stack,
                 id,
@@ -988,7 +992,7 @@ class ClusterCdkStack:
                 file_system_type=LUSTRE,
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids[0:1],
-                security_group_ids=[sg.ref for sg in file_system_security_groups],
+                security_group_ids=file_system_security_groups,
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
