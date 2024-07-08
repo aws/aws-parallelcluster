@@ -1,8 +1,9 @@
 usage: pcluster dcv-connect [-h] [--debug] [-r REGION] -n CLUSTER_NAME
                             [--key-path KEY_PATH] [--show-url]
+                            [--login-node-ip LOGIN_NODE_IP]
 
-Permits to connect to the head node through an interactive session by using
-NICE DCV.
+Permits connection to the head and login nodes through an interactive session
+by using NICE DCV.
 
 options:
   -h, --help            show this help message and exit
@@ -13,3 +14,5 @@ options:
                         Name of the cluster to connect to
   --key-path KEY_PATH   Key path of the SSH key to use for the connection
   --show-url            Print URL and exit
+  --login-node-ip LOGIN_NODE_IP
+                        IP address of a login node to connect to

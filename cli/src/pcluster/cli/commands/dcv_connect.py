@@ -84,7 +84,7 @@ def _dcv_connect(args):
         error(f"Unable to connect to the cluster.\n{e}")
     else:
 
-        # Prepare ssh command to execute in the head node instance
+        # Prepare ssh command to execute in the node instance
         cmd = 'ssh {CFN_USER}@{NODE_IP} {KEY} "{REMOTE_COMMAND} /home/{CFN_USER}"'.format(
             CFN_USER=default_user,
             NODE_IP=node_ip,
@@ -110,7 +110,7 @@ def _dcv_connect(args):
             error(
                 "Something went wrong during DCV connection.\n{0}"
                 "Please check the logs in the /var/log/parallelcluster/ folder "
-                "of the head node and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
+                "of the node and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
             )
 
 
@@ -192,9 +192,7 @@ class DcvConnectCommand(CliCommand):
         parser.add_argument("-n", "--cluster-name", help="Name of the cluster to connect to", required=True)
         parser.add_argument("--key-path", dest="key_path", help="Key path of the SSH key to use for the connection")
         parser.add_argument("--show-url", action="store_true", default=False, help="Print URL and exit")
-        parser.add_argument(
-            "--login-node-ip", dest="login_node_ip", help="The IP address of a specific login node to connect to"
-        )
+        parser.add_argument("--login-node-ip", dest="login_node_ip", help="IP address of a login node to connect to")
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         _dcv_connect(args)

@@ -18,12 +18,7 @@ import requests
 from assertpy import assert_that
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from utils import (
-    add_keys_to_known_hosts,
-    check_node_security_group,
-    get_username_for_os,
-    remove_keys_from_known_hosts,
-)
+from utils import add_keys_to_known_hosts, check_node_security_group, get_username_for_os, remove_keys_from_known_hosts
 
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
 
@@ -63,7 +58,7 @@ def _test_dcv_configuration(
 
     # test dcv connect show url for head and login node
     _test_show_url(cluster, region, dcv_port, access_from)
-    _test_show_url(cluster, region, dcv_port, access_from,  use_login_node=True)
+    _test_show_url(cluster, region, dcv_port, access_from, use_login_node=True)
 
     # check error cases
     _check_error_cases(head_node_remote_command_executor, dcv_authenticator_port)
@@ -152,7 +147,7 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
     dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
 
     if use_login_node:
-        dcv_connect_args.append(["--login-node-ip", node_ip])
+        dcv_connect_args.extend(["--login-node-ip", node_ip])
 
     try:
         result = run_pcluster_command(dcv_connect_args, env=env)
