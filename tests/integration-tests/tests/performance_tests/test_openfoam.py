@@ -4,6 +4,8 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
+from tests.performance_tests.common import _log_output_performance_difference
+
 # timeout in seconds
 OPENFOAM_INSTALLATION_TIMEOUT = 300
 OPENFOAM_JOB_TIMEOUT = 5400  # Takes long time because during the first time, it's not only execute the job but also
@@ -17,20 +19,15 @@ BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "rhel8": {8: 742, 16: 376, 32: 185},  # v3.6.0 just a placeholder, RHEL8 not supported
     "rocky8": {8: 742, 16: 376, 32: 185},  # v3.8.0 just a placeholder, Rocky8 not supported
 }
-PERF_TEST_DIFFERENCE_TOLERANCE = 3
-
-
-def perf_test_difference(observed_value, baseline_value):
-    percentage_difference = 100 * (observed_value - baseline_value) / baseline_value
-    return percentage_difference
 
 
 def openfoam_installed(headnode):
     cmd = '[ -d "/shared/SubspaceBenchmarks" ]'
     try:
-        headnode.run_remote_command(cmd)
+        headnode.run_remote_command(cmd, log_error=False)
         return True
     except RemoteCommandExecutionError:
+        logging.info("OpenFOAM is not installed on the head node.")
         return False
 
 
@@ -94,22 +91,7 @@ def test_openfoam(
     # Check results and log performance degradation
     for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
-        percentage_difference = perf_test_difference(observed_value, baseline_value)
-        if percentage_difference < 0:
-            outcome = "improvement"
-        elif percentage_difference <= PERF_TEST_DIFFERENCE_TOLERANCE:
-            outcome = "degradation (within tolerance)"
-        else:
-            outcome = "degradation (above tolerance)"
-            performance_degradation[node] = {
-                "baseline": baseline_value,
-                "observed": observed_value,
-                "percentage_difference": percentage_difference,
-            }
-        logging.info(
-            f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
-            f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
-        )
+        _log_output_performance_difference(node, performance_degradation, observed_value, baseline_value)
 
     if performance_degradation:
         pytest.fail(f"Performance degradation detected: {performance_degradation}")
