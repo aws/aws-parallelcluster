@@ -600,7 +600,8 @@ Resources:
           - Action:
               - autoscaling:DeleteAutoScalingGroup
               - autoscaling:DeleteLifecycleHook
-              - autoscaling:Describe*
+              - autoscaling:DescribeAutoScalingGroups
+              - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
               - elasticloadbalancing:CreateListener
@@ -608,7 +609,9 @@ Resources:
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
-              - elasticloadbalancing:Describe*
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeTargetGroups
               - elasticloadbalancing:ModifyLoadBalancerAttributes
             Resource: '*'
             Condition:
