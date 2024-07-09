@@ -780,6 +780,7 @@ class ClusterCdkStack:
             group_description=f"Allow access to {storage_type} file system {storage_cfn_id}",
             vpc_id=self.config.vpc_id,
         )
+        rules = []
         storage_deletion_policy = convert_deletion_policy(storage.deletion_policy)
         storage_security_group.cfn_options.deletion_policy = (
             storage_security_group.cfn_options.update_replace_policy
@@ -812,12 +813,14 @@ class ClusterCdkStack:
                     ip_protocol=ingress_protocol,
                     port=ingress_port,
                 )
+                rules.append(ingress_rule)
 
                 egress_rule = self._allow_all_egress(
                     description=f"{storage_cfn_id}SecurityGroup{sg_type}Egress{sg_ref_id}",
                     destination_security_group_id=sg_ref,
                     group_id=storage_security_group.ref,
                 )
+                rules.append(egress_rule)
 
                 if sg_type == "Storage":
                     ingress_rule.cfn_options.deletion_policy = ingress_rule.cfn_options.update_replace_policy = (
@@ -827,7 +830,7 @@ class ClusterCdkStack:
                         storage_deletion_policy
                     )
 
-        return storage_security_group
+        return storage_security_group, rules
 
     def _add_compute_security_group(self):
         compute_security_group = ec2.CfnSecurityGroup(
@@ -964,7 +967,7 @@ class ClusterCdkStack:
                     drive_cache_type = shared_fsx.drive_cache_type
                 else:
                     drive_cache_type = "NONE"
-            file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
+            file_system_security_group, security_group_rules = self._add_storage_security_group(id, shared_fsx)
             fsx_resource = fsx.CfnFileSystem(
                 self.stack,
                 id,
@@ -988,10 +991,12 @@ class ClusterCdkStack:
                 file_system_type=LUSTRE,
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids[0:1],
-                security_group_ids=[sg.ref for sg in file_system_security_groups],
+                security_group_ids=[file_system_security_group.ref],
                 file_system_type_version=shared_fsx.file_system_type_version,
                 tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
+            for rule in security_group_rules:
+                fsx_resource.add_depends_on(rule)
             fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
                 convert_deletion_policy(shared_fsx.deletion_policy)
             )
@@ -1077,13 +1082,13 @@ class ClusterCdkStack:
 
             # Mount Targets for Compute Fleet
             compute_subnet_ids = self.config.compute_subnet_ids
-            file_system_security_groups = [self._add_storage_security_group(id, shared_efs)]
+            file_system_security_group, _ = self._add_storage_security_group(id, shared_efs)
 
             for subnet_id in compute_subnet_ids:
                 self._add_efs_mount_target(
                     id,
                     efs_id,
-                    file_system_security_groups,
+                    [file_system_security_group],
                     subnet_id,
                     checked_availability_zones,
                     deletion_policy,
@@ -1093,7 +1098,7 @@ class ClusterCdkStack:
             self._add_efs_mount_target(
                 id,
                 efs_id,
-                file_system_security_groups,
+                [file_system_security_group],
                 self.config.head_node.networking.subnet_id,
                 checked_availability_zones,
                 deletion_policy,
