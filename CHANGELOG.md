@@ -8,6 +8,10 @@ CHANGELOG
 
 - Add support for custom actions on login nodes.
 
+**BUG FIXES**
+
+- Fix cluster deletion failure when enable placement group.
+
 3.10.1
 ------
 
