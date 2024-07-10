@@ -8,7 +8,7 @@
 {% if OSS  %}
 {%- set OSS = [ OSS ] -%}
 {% else %}
-{%- set OSS = ["alinux2"] -%}
+{%- set OSS = ["alinux2", "rhel8"] -%}
 {% endif %}
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
