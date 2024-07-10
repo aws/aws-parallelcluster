@@ -2639,6 +2639,7 @@ class SlurmQueue(_CommonQueue):
                 ).enabled
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
+                capacity_type=self.capacity_type,
             )
             self._register_validator(
                 ComputeResourceSizeValidator,
