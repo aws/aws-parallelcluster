@@ -10,7 +10,7 @@ CHANGELOG
 
 **BUG FIXES**
 
-- Fix cluster deletion failure when enable placement group.
+- Fix cluster deletion failure when placement group is enabled.
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.
 
 3.10.1
