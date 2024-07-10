@@ -133,6 +133,8 @@ Resources:
             Sid: IamRole
           - Action:
               - iam:CreateRole
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
@@ -142,19 +144,7 @@ Resources:
                   iam:PermissionsBoundary:
                     - !Ref PermissionsBoundaryPolicy
               - !Ref AWS::NoValue
-            Sid: IamCreateRole
-          - Action:
-              - iam:PutRolePolicy
-              - iam:DeleteRolePolicy
-            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-            Effect: Allow
-            Sid: IamInlinePolicy
-            Condition: !If
-              - EnablePermissionsBoundary
-              - StringEquals:
-                  iam:PermissionsBoundary:
-                    - !Ref PermissionsBoundaryPolicy
-              - !Ref AWS::NoValue
+            Sid: IamInlinePolicyAndCreateRole
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
@@ -339,16 +329,6 @@ Resources:
         Statement:
           - Action:
               - ec2:Describe*
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: EC2Read
-          - Action:
               - ec2:AllocateAddress
               - ec2:AssociateAddress
               - ec2:AttachNetworkInterface
@@ -387,7 +367,7 @@ Resources:
               - StringEquals:
                   aws:RequestedRegion:
                     - !Ref Region
-            Sid: EC2Write
+            Sid: EC2ReadAndWrite
           - Action:
               - dynamodb:DescribeTable
               - dynamodb:ListTagsOfResource
@@ -415,15 +395,6 @@ Resources:
             Sid: Route53HostedZones
           - Action:
               - cloudformation:CreateStack
-            Resource: !Sub
-              - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
-              - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
-            Effect: Allow
-            Condition:
-              ForAnyValue:StringEquals:
-                aws:TagKeys: ["parallelcluster:cluster-name"]
-            Sid: CloudFormationCreate
-          - Action:
               - cloudformation:UpdateStack
             Resource: !Sub
               - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
@@ -431,8 +402,8 @@ Resources:
             Effect: Allow
             Condition:
               ForAnyValue:StringEquals:
-                aws:TagKeys: [ "parallelcluster:cluster-name" ]
-            Sid: CloudFormationUpdate
+                aws:TagKeys: ["parallelcluster:cluster-name"]
+            Sid: CloudFormationCreateAndUpdate
           - Action:
               - cloudformation:DeleteStack
               - cloudformation:DescribeStacks
