@@ -49,7 +49,7 @@ repo_upgrade: none
 datasource_list: [ Ec2, None ]
 
 output:
-  all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
+  all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/ttyS0"
 write_files:
   - path: /tmp/bootstrap.sh
     permissions: '0744'
