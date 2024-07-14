@@ -958,6 +958,21 @@ class LoginNodesIamResources(NodeIamResourcesBase):
                     )
                 ],
             ),
+            iam.PolicyStatement(
+                sid="DcvLicense",
+                actions=[
+                    "s3:GetObject",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(
+                        service="s3",
+                        resource="dcv-license.{0}/*".format(Stack.of(self).region),
+                        region="",
+                        account="",
+                    )
+                ],
+            ),
         ]
 
 
