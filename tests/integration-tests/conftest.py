@@ -40,12 +40,12 @@ from conftest_markers import (
 )
 from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
-from conftest_utils import add_filename_markers
+from conftest_utils import add_filename_markers, get_reporting_region
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.fixture_utils import xdist_session_fixture
-from framework.framework_constants import METADATA_DEFAULT_REGION, METADATA_TABLE
+from framework.framework_constants import METADATA_TABLE
 from framework.metadata_table_manager import MetadataTableManager
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
@@ -258,7 +258,7 @@ def pytest_configure(config):
     _setup_custom_logger(config.getoption("tests_log_file"))
 
 
-def pytest_sessionstart(session):
+def pytest_sessionstart(session: pytest.Session):
     # The number of seconds before a connection to the instance metadata service should time out.
     # When attempting to retrieve credentials on an Amazon EC2 instance that is configured with an IAM role,
     # a connection to the instance metadata service will time out after 1 second by default. If you know you're
@@ -271,11 +271,6 @@ def pytest_sessionstart(session):
     os.environ["AWS_METADATA_SERVICE_NUM_ATTEMPTS"] = "5"
     # Increasing default max attempts retry
     os.environ["AWS_MAX_ATTEMPTS"] = "10"
-    try:
-        # Setup the metadata table in case it doesn't exist
-        MetadataTableManager(METADATA_DEFAULT_REGION, METADATA_TABLE).create_metadata_table()
-    except Exception as exc:
-        logging.info(f"There was a '{type(exc)}' error with '{exc}' when creating the table!")
 
 
 def pytest_fixture_setup(fixturedef: FixtureDef[Any], request: SubRequest) -> Optional[object]:
@@ -309,6 +304,17 @@ def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config
 
 def pytest_collection_finish(session):
     _log_collected_tests(session)
+    # Create the metadata table after the regions are collected
+    try:
+        region = session.config.getoption("regions") or get_all_regions(session.config.getoption("tests_config"))
+        region = [unmarshal_az_override(az) for az in region]
+        # Use the first element of the list of regions, since there must be at least one
+        reporting_region = get_reporting_region(region[0])
+        logging.info(f"Metadata reporting region {reporting_region}")
+        # Setup the metadata table in case it doesn't exist
+        MetadataTableManager(reporting_region, METADATA_TABLE).create_metadata_table()
+    except Exception as exc:
+        logging.info(f"There was a '{type(exc)}' error with '{exc}' when creating the table!")
 
 
 def _log_collected_tests(session):

@@ -36,6 +36,14 @@ PARTITION_MAP = {
     "us-iso-": "aws-iso",
     "us-isob": "aws-iso-b",
 }
+DEFAULT_REPORTING_REGION = "us-east-1"
+# This map is based on where jenkins is deployed
+REPORTING_REGION_MAP = {
+    "aws-cn": "cn-north-1",
+    "aws-us-gov": "us-gov-west-1",
+    "aws-iso": "us-iso-east-1",
+    "aws-iso-b": "us-isob-east-1",
+}
 
 
 def _format_stack_error(message, stack_events=None, cluster_details=None) -> str:
