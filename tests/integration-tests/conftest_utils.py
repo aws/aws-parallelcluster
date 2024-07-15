@@ -23,11 +23,18 @@ import pytest
 import yaml
 from conftest_markers import DIMENSIONS_MARKER_ARGS
 from filelock import FileLock
-from framework.framework_constants import METADATA_DEFAULT_REGION, METADATA_TABLE
+from framework.framework_constants import METADATA_TABLE
 from framework.metadata_table_manager import MetadataTableManager, PhaseMetadata, TestMetadata
 from framework.metrics_publisher import Metric, MetricsPublisher
 from time_utils import microseconds
-from utils import dict_add_nested_key, dict_has_nested_key
+from utils import (
+    DEFAULT_PARTITION,
+    DEFAULT_REPORTING_REGION,
+    PARTITION_MAP,
+    REPORTING_REGION_MAP,
+    dict_add_nested_key,
+    dict_has_nested_key,
+)
 
 
 def add_properties_to_report(item: pytest.Item):
@@ -169,8 +176,9 @@ def create_phase_metrics(item: pytest.Item, rep: pytest.TestReport, dimensions: 
 
 def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
     """Publish test metadata to the metadata table."""
-    metadata_table_mgr = MetadataTableManager(METADATA_DEFAULT_REGION, METADATA_TABLE)
-    logging.info(f"Publishing test metadata: item {item} rep {rep}")
+    reporting_region = get_reporting_region(get_user_prop(item, "region"))
+    metadata_table_mgr = MetadataTableManager(reporting_region, METADATA_TABLE)
+    logging.info(f"Publishing test metadata: item {item} rep {rep} to {METADATA_TABLE} in {reporting_region}")
     test_metadata = None
     if rep.when == "setup":
         # Initialize the test data
@@ -218,3 +226,15 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
         item.user_properties.append(("metadata", jsonpickle.encode(test_metadata)))
         logging.info(f"Added the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
     metadata_table_mgr.publish_metadata([test_metadata])
+
+
+def get_reporting_region(region: str):
+    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    curr_partition = next(
+        (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
+        DEFAULT_PARTITION,
+    )
+    return next(
+        (region for partition, region in REPORTING_REGION_MAP.items() if partition == curr_partition),
+        DEFAULT_REPORTING_REGION,
+    )
