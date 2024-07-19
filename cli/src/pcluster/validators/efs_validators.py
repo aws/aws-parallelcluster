@@ -18,7 +18,7 @@ class EfsMountOptionsValidator(Validator):
     IAM Authorization requires Encryption in Transit.
     """
 
-    def _validate(self, encryption_in_transit: bool, iam_authorization: bool, name: str):
+    def _validate(self, encryption_in_transit: bool, iam_authorization: bool, accesspoint_id: str, name: str):
         if iam_authorization and not encryption_in_transit:
             self._add_failure(
                 "EFS IAM authorization cannot be enabled when encryption in-transit is disabled. "
