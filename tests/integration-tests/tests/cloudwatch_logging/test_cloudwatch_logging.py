@@ -89,6 +89,7 @@ class CloudWatchLoggingClusterState:
                 "agent_status": "running"
             }
         }
+    }
     """
 
     def __init__(self, scheduler, os, cluster, feature_key=None, shared_dir=DEFAULT_SHARED_DIR):
@@ -213,7 +214,7 @@ class CloudWatchLoggingClusterState:
         self._cluster_log_state[LOGIN_NODE_ROLE_NAME][login_hostname] = {
             "node_role": LOGIN_NODE_ROLE_NAME,
             "hostname": instance.get("PrivateDnsName"),
-            "instance_id": instance.get("instanceId"),
+            "instance_id": instance.get("InstanceId"),
         }
 
     def _get_initial_cluster_log_state(self):
@@ -252,7 +253,7 @@ class CloudWatchLoggingClusterState:
         # Do not try to fetch dna.json from compute if batch
         if self.scheduler == "awsbatch":
             return compute_node_config
-        compute_hostname_to_config = self._run_command_on_computes("cat {0}".format(NODE_CONFIG_PATH))
+        compute_hostname_to_config = self._run_command_on_computes("cat {{redirect}} {0}".format(NODE_CONFIG_PATH))
 
         # Use first one, since ParallelCluster-specific node config should be the same on every compute node
         for _, config_json in compute_hostname_to_config.items():
@@ -271,7 +272,7 @@ class CloudWatchLoggingClusterState:
         login_node_hostname_to_config = self._run_command_on_login_nodes("cat {0}".format(NODE_CONFIG_PATH))
         # TODO Support multiple login node pools different configurations and logging requirements
         for _, config_json in login_node_hostname_to_config.items():
-            login_node_configs = json.loads(config_json)
+            login_node_configs = json.loads(config_json).get("cluster", {})
 
         assert_that(login_node_configs).is_not_empty()
         LOGGER.info("DNA config read from login node: {0}".format(_dump_json(login_node_configs)))
@@ -382,7 +383,7 @@ class CloudWatchLoggingClusterState:
         logs = self._read_log_configs_from_head_node()
         self._filter_logs(logs)
         self._create_log_entries_for_nodes()
-        LOGGER.debug("After populating relevant logs:\n{0}".format(self._dump_cluster_log_state()))
+        LOGGER.debug("After getting relevant logs:\n{0}".format(self._dump_cluster_log_state()))
 
     def _run_command_on_head_node(self, cmd):
         """Run cmd on cluster's head node."""
