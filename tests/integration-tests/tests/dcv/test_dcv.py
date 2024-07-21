@@ -18,7 +18,6 @@ import requests
 from assertpy import assert_that
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from retrying import retry
 from utils import add_keys_to_known_hosts, check_node_security_group, get_username_for_os, remove_keys_from_known_hosts
 
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
@@ -60,11 +59,11 @@ def _test_dcv_configuration(
 
     shared_dir = f"/home/{get_username_for_os(os)}"
 
-    # test --show-url
+    # test dcv connect show url for head and login node
     _test_show_url(cluster, region, dcv_port, access_from)
     _test_show_url(cluster, region, dcv_port, access_from, use_login_node=True)
 
-    # verify authenticator
+    # launch a session and verify the authenticator works
     _test_authenticator(head_node_remote_command_executor, dcv_authenticator_port, shared_dir, os)
     _test_authenticator(login_node_remote_command_executor, dcv_authenticator_port, shared_dir, os)
 
@@ -81,9 +80,9 @@ def _test_dcv_configuration(
     _check_no_crashes(login_node_remote_command_executor, test_datadir)
 
     # Check that logs are stored in CloudWatch as expected
-    # FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
-    #     cluster, scheduler, os, "dcv_enabled", region, shared_dir
-    # )
+    FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
+        cluster, scheduler, os, "dcv_enabled", region, shared_dir
+    )
 
 
 def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
