@@ -214,6 +214,14 @@ def pytest_addoption(parser):
         "--proxy-stack",
         help="Name of CFN stack providing a Proxy environment.",
     )
+    parser.addoption(
+        "--build-image-roles-stack",
+        help="Name of CFN stack providing the build image permissions.",
+    )
+    parser.addoption(
+        "--api-stack",
+        help="Name of CFN stack providing the ParallelCluster API infrastructure.",
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -420,38 +428,44 @@ def api_server_factory(
     api_servers = {}
 
     def _api_server_factory(server_region):
-        api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
-
-        params = [
-            {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
-            {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
-        ]
-        if api_definition_s3_uri:
-            params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
-        if policies_uri:
-            params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
-        if resource_bucket:
-            params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
-
-        template = (
-            api_infrastructure_s3_uri
-            or f"https://{resource_bucket}.s3.{server_region}.amazonaws.com"
-            f"{'.cn' if server_region.startswith('cn') else ''}"
-            f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
-        )
-        if server_region not in api_servers:
-            logging.info(f"Creating API Server stack: {api_stack_name} in {server_region} with template {template}")
-            stack = CfnStack(
-                name=api_stack_name,
-                region=server_region,
-                parameters=params,
-                capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-                template=template,
-            )
-            cfn_stacks_factory.create_stack(stack)
-            api_servers[server_region] = stack
+        option = "api_stack"
+        if request.config.getoption(option):
+            api_stack_name = request.config.getoption(option)
+            logging.info(f"Using existing ParallelCluster API stack in {server_region}: {api_stack_name}")
+            api_servers[server_region] = CfnStack(name=api_stack_name, region=server_region, template=None)
         else:
-            logging.info(f"Found cached API Server stack: {api_stack_name} in {server_region}")
+            api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
+
+            params = [
+                {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
+                {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
+            ]
+            if api_definition_s3_uri:
+                params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
+            if policies_uri:
+                params.append({"ParameterKey": "PoliciesTemplateUri", "ParameterValue": policies_uri})
+            if resource_bucket:
+                params.append({"ParameterKey": "CustomBucket", "ParameterValue": resource_bucket})
+
+            template = (
+                api_infrastructure_s3_uri
+                or f"https://{resource_bucket}.s3.{server_region}.amazonaws.com"
+                f"{'.cn' if server_region.startswith('cn') else ''}"
+                f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
+            )
+            if server_region not in api_servers:
+                logging.info(f"Creating API Server stack: {api_stack_name} in {server_region} with template {template}")
+                stack = CfnStack(
+                    name=api_stack_name,
+                    region=server_region,
+                    parameters=params,
+                    capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+                    template=template,
+                )
+                cfn_stacks_factory.create_stack(stack)
+                api_servers[server_region] = stack
+            else:
+                logging.info(f"Found cached API Server stack: {api_stack_name} in {server_region}")
 
         return api_servers[server_region]
 
