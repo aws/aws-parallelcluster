@@ -123,7 +123,9 @@ def _test_jobs_get_recorded(scheduler_commands):
     job_id = scheduler_commands.assert_job_submitted(job_submission_output)
     logging.info(" Submitted Job ID: %s", job_id)
     scheduler_commands.wait_job_completed(job_id)
-    _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands)
+    retry(stop_max_attempt_number=5, wait_fixed=seconds(5))(_assert_job_completion_recorded_in_accounting)(
+        job_id, scheduler_commands
+    )
 
 
 def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
