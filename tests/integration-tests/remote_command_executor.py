@@ -29,14 +29,22 @@ class RemoteCommandExecutor:
     """Execute remote commands on the cluster head node."""
 
     def __init__(
-        self, cluster, compute_node_ip=None, username=None, bastion=None, alternate_ssh_key=None, use_login_node=False
+        self,
+        cluster,
+        compute_node_ip=None,
+        login_node_ip=None,
+        username=None,
+        bastion=None,
+        alternate_ssh_key=None,
+        use_login_node=False,
     ):
         """
         Initiate SSH connection
 
         By default, commands are executed on head node.
         If `compute_node_ip` is specified, execute commands on compute.
-        If `use_login_node` is set to True, execute commands on login node.
+        If `login_node_ip` is specified, execute commands on a specific login node.
+        If `use_login_node` is set to True, execute commands on the first healthy login node.
         """
         if not username:
             username = get_username_for_os(cluster.os)
@@ -45,14 +53,19 @@ class RemoteCommandExecutor:
             self.target = "ComputeNode"
             node_ip = compute_node_ip
             bastion = f"{username}@{cluster.head_node_ip}"
-        elif use_login_node:
+        elif use_login_node or login_node_ip:
             self.target = "LoginNode"
-            if bastion:
-                node_ip = cluster.get_login_node_private_ip()
+            if login_node_ip:
+                node_ip = login_node_ip
             else:
-                node_ip = cluster.get_login_node_public_ip()
-            if node_ip is None:
-                raise RemoteCommandExecutionError("Unable to retrieve a valid LoginNode IP Address.")
+                # If a login node IP is not supplied, get the public or private IP address of the
+                # first healthy login node if it exists.
+                if bastion:
+                    node_ip = cluster.get_login_node_private_ip()
+                else:
+                    node_ip = cluster.get_login_node_public_ip()
+                if node_ip is None:
+                    raise RemoteCommandExecutionError("Unable to retrieve a valid LoginNode IP Address.")
         else:
             self.target = "HeadNode"
             node_ip = cluster.head_node_ip

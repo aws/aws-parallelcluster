@@ -14,6 +14,9 @@ LoginNodes:
           - subnet-12345678
       Ssh:
         KeyName: ec2-key-name
+      Dcv:
+        Enabled: true
+        Port: 8444
 HeadNode:
   InstanceType: t2.micro
   Networking:

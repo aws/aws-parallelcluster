@@ -32,6 +32,8 @@
     "fsx_volume_junction_paths": "",
     "head_node_private_ip": "{\"Ref\": \"referencetoclusternameHeadNodeENI6497A502PrimaryPrivateIpAddress\"}",
     "hosted_zone": "{\"Ref\": \"referencetoclusternameRoute53HostedZone2388733DRef\"}",
+    "dcv_enabled": "false",
+    "dcv_port": 8443,
     "log_group_name": "/aws/parallelcluster/clustername-202401151530",
     "log_rotation_enabled": "true",
     "pool_name": "login",

@@ -10,7 +10,9 @@ LoginNodes:
         SubnetIds:
           - subnet-12345678
       Ssh:
-        KeyName: ec2-key-name
+        KeyName: ec2-key-name\
+      Dcv:
+        Enabled: false
 HeadNode:
   InstanceType: t2.micro
   Networking:

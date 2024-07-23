@@ -1434,6 +1434,7 @@ class LoginNodesPoolSchema(BaseSchema):
         ),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
+    dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     ssh = fields.Nested(LoginNodesSshSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
     custom_actions = fields.Nested(LoginNodesCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     iam = fields.Nested(LoginNodesIamSchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})

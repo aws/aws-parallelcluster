@@ -256,6 +256,8 @@ class Pool(Construct):
                     "head_node_private_ip": self._head_eni.attr_primary_private_ip_address,
                     "dns_domain": (str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else ""),
                     "hosted_zone": (str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""),
+                    "dcv_enabled": "login_node" if self._pool.has_dcv_enabled else "false",
+                    "dcv_port": self._pool.dcv.port if self._pool.dcv else "NONE",
                     "log_group_name": self._log_group.log_group_name,
                     "log_rotation_enabled": "true" if self._config.is_log_rotation_enabled else "false",
                     "pool_name": self._pool.name,
