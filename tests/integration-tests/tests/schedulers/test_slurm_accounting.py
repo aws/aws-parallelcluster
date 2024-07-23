@@ -268,7 +268,7 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
     _test_successful_startup_in_log(slurmdbd_node_remote_command_executor)
 
     # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
-    _require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
+    _test_require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
     retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
         headnode_remote_command_executor,
     )
