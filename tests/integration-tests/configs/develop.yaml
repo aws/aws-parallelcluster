@@ -388,7 +388,7 @@ test-suites:
           schedulers: ["slurm"]
     test_security_groups.py::test_overwrite_sg:
       dimensions:
-        - regions: ["eu-north-1"]
+        - regions: ["ap-southeast-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rocky9"]
           schedulers: ["slurm"]
@@ -401,7 +401,7 @@ test-suites:
   scaling:
     test_scaling.py::test_job_level_scaling:
       dimensions:
-        - regions: ["us-west-2"]
+        - regions: ["ap-southeast-3"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
@@ -446,7 +446,7 @@ test-suites:
           schedulers: [ "slurm" ]
     test_slurm.py::test_error_handling:
       dimensions:
-        - regions: ["ca-central-1"]
+        - regions: ["ap-southeast-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rocky9"]
           schedulers: ["slurm"]
@@ -512,7 +512,7 @@ test-suites:
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_custom_config_parameters:
       dimensions:
-        - regions: ["ap-northeast-2"]
+        - regions: ["ap-southeast-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
