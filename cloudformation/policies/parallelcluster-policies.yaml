@@ -133,6 +133,8 @@ Resources:
             Sid: IamRole
           - Action:
               - iam:CreateRole
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
@@ -142,19 +144,7 @@ Resources:
                   iam:PermissionsBoundary:
                     - !Ref PermissionsBoundaryPolicy
               - !Ref AWS::NoValue
-            Sid: IamCreateRole
-          - Action:
-              - iam:PutRolePolicy
-              - iam:DeleteRolePolicy
-            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-            Effect: Allow
-            Sid: IamInlinePolicy
-            Condition: !If
-              - EnablePermissionsBoundary
-              - StringEquals:
-                  iam:PermissionsBoundary:
-                    - !Ref PermissionsBoundaryPolicy
-              - !Ref AWS::NoValue
+            Sid: IamInlinePolicyAndCreateRole
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
@@ -339,16 +329,6 @@ Resources:
         Statement:
           - Action:
               - ec2:Describe*
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: EC2Read
-          - Action:
               - ec2:AllocateAddress
               - ec2:AssociateAddress
               - ec2:AttachNetworkInterface
@@ -387,7 +367,7 @@ Resources:
               - StringEquals:
                   aws:RequestedRegion:
                     - !Ref Region
-            Sid: EC2Write
+            Sid: EC2ReadAndWrite
           - Action:
               - dynamodb:DescribeTable
               - dynamodb:ListTagsOfResource
@@ -415,15 +395,6 @@ Resources:
             Sid: Route53HostedZones
           - Action:
               - cloudformation:CreateStack
-            Resource: !Sub
-              - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
-              - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
-            Effect: Allow
-            Condition:
-              ForAnyValue:StringEquals:
-                aws:TagKeys: ["parallelcluster:cluster-name"]
-            Sid: CloudFormationCreate
-          - Action:
               - cloudformation:UpdateStack
             Resource: !Sub
               - arn:${AWS::Partition}:cloudformation:${RequestedRegion}:${AWS::AccountId}:stack/*
@@ -431,8 +402,8 @@ Resources:
             Effect: Allow
             Condition:
               ForAnyValue:StringEquals:
-                aws:TagKeys: [ "parallelcluster:cluster-name" ]
-            Sid: CloudFormationUpdate
+                aws:TagKeys: ["parallelcluster:cluster-name"]
+            Sid: CloudFormationCreateAndUpdate
           - Action:
               - cloudformation:DeleteStack
               - cloudformation:DescribeStacks
@@ -600,7 +571,8 @@ Resources:
           - Action:
               - autoscaling:DeleteAutoScalingGroup
               - autoscaling:DeleteLifecycleHook
-              - autoscaling:Describe*
+              - autoscaling:DescribeAutoScalingGroups
+              - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
               - elasticloadbalancing:CreateListener
@@ -608,7 +580,9 @@ Resources:
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
-              - elasticloadbalancing:Describe*
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeTargetGroups
               - elasticloadbalancing:ModifyLoadBalancerAttributes
             Resource: '*'
             Condition:
@@ -637,12 +611,14 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: EC2BuildImage
+          - Sid: EC2BuildAndDeleteImage
             Effect: Allow
             Action:
               - ec2:DescribeImages
               - ec2:DescribeInstanceTypeOfferings
               - ec2:DescribeInstanceTypes
+              - ec2:DeregisterImage
+              - ec2:DeleteSnapshot
             Resource: '*'
           - Sid: IAMBuildImage
             Effect: Allow
@@ -677,16 +653,19 @@ Resources:
               - logs:UntagResource
             Resource:
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
-          - Sid: CloudFormationBuildImage
+          - Sid: CloudFormationBuildAndDeleteImage
             Effect: Allow
             Action:
               - cloudformation:DescribeStacks
               - cloudformation:CreateStack
+              - cloudformation:DeleteStack
             Resource:
               - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
-          - Sid: LambdaBuildImage
+          - Sid: LambdaBuildAndDeleteImage
             Effect: Allow
             Action:
+              - lambda:RemovePermission
+              - lambda:DeleteFunction
               - lambda:CreateFunction
               - lambda:TagResource
               - lambda:GetFunction
@@ -698,7 +677,7 @@ Resources:
             Action:
               - imagebuilder:Get*
             Resource: '*'
-          - Sid: ImageBuilderBuildImage
+          - Sid: ImageBuilderBuildAndDeleteImage
             Effect: Allow
             Action:
               - imagebuilder:CreateImage
@@ -707,63 +686,6 @@ Resources:
               - imagebuilder:CreateComponent
               - imagebuilder:CreateDistributionConfiguration
               - imagebuilder:CreateInfrastructureConfiguration
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
-          - Sid: S3BucketBuildImage
-            Effect: Allow
-            Action:
-              - s3:CreateBucket
-              - s3:ListBucket
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*'
-          - Sid: SNSBuildImage
-            Effect: Allow
-            Action:
-              - sns:GetTopicAttributes
-              - sns:TagResource
-              - sns:CreateTopic
-              - sns:Subscribe
-              - sns:Publish
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
-          - Sid: S3ObjectsBuildImage
-            Effect: Allow
-            Action:
-              - s3:PutObject
-              - s3:GetObject
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
-          - Sid: IAMSLRBuildImage
-            Action:
-              - iam:CreateServiceLinkedRole
-            Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/imagebuilder.amazonaws.com/AWSServiceRoleForImageBuilder
-            Effect: Allow
-            Condition:
-              StringLike:
-                iam:AWSServiceName:
-                  - imagebuilder.amazonaws.com
-          - Sid: EC2DeleteImage
-            Effect: Allow
-            Action:
-              - ec2:DeregisterImage
-              - ec2:DescribeImages
-              - ec2:DeleteSnapshot
-            Resource: '*'
-          - Sid: IAMDeleteImage
-            Effect: Allow
-            Action:
-              - iam:RemoveRoleFromInstanceProfile
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
-              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
-          - Sid: ImageBuilderDeleteImage
-            Effect: Allow
-            Action:
               - imagebuilder:DeleteImage
               - imagebuilder:GetImage
               - imagebuilder:CancelImageCreation
@@ -777,37 +699,36 @@ Resources:
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
               - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
-          - Sid: CloudFormationDeleteImage
+          - Sid: SNSBuildAndDeleteImage
             Effect: Allow
             Action:
-              - cloudformation:DescribeStacks
-              - cloudformation:DeleteStack
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
-          - Sid: LambdaDeleteImage
-            Effect: Allow
-            Action:
-              - lambda:RemovePermission
-              - lambda:DeleteFunction
-              - lambda:AddPermission
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
-          - Sid: SNSDeleteImage
-            Effect: Allow
-            Action:
+              - sns:GetTopicAttributes
+              - sns:TagResource
+              - sns:CreateTopic
+              - sns:Subscribe
+              - sns:Publish
               - SNS:DeleteTopic
               - SNS:Unsubscribe
-              - SNS:GetTopicAttributes
             Resource:
               - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
-          - Sid: S3BucketDeleteImage
+          - Sid: IAMSLRBuildImage
+            Action:
+              - iam:CreateServiceLinkedRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/imagebuilder.amazonaws.com/AWSServiceRoleForImageBuilder
+            Effect: Allow
+            Condition:
+              StringLike:
+                iam:AWSServiceName:
+                  - imagebuilder.amazonaws.com
+          - Sid: IAMDeleteImage
             Effect: Allow
             Action:
-              - s3:ListBucket
-              - s3:ListBucketVersions
+              - iam:RemoveRoleFromInstanceProfile
             Resource:
-              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*'
-          - Sid: S3ObjectsDeleteImage
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+          - Sid: S3BucketBuildAndDeleteImage
             Effect: Allow
             Action:
               - s3:PutObject
@@ -815,6 +736,9 @@ Resources:
               - s3:GetObjectVersion
               - s3:DeleteObject
               - s3:DeleteObjectVersion
+              - s3:CreateBucket
+              - s3:ListBucket
+              - s3:ListBucketVersions
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
           - Sid: CloudWatchDeleteImage
@@ -824,11 +748,6 @@ Resources:
             Resource:
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/imagebuilder/ParallelClusterImage-*'
               - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
-          - Sid: EC2ListImages
-            Effect: Allow
-            Action:
-              - ec2:DescribeImages
-            Resource: '*'
           - Sid: CloudFormationListImages
             Effect: Allow
             Action:

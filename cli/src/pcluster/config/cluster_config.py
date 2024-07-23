@@ -1346,6 +1346,7 @@ class LoginNodesPool(Resource):
         networking: LoginNodesNetworking = None,
         count: int = None,
         ssh: LoginNodesSsh = None,
+        dcv: Dcv = None,
         custom_actions: CustomActions = None,
         iam: LoginNodesIam = None,
         gracetime_period: int = None,
@@ -1358,9 +1359,11 @@ class LoginNodesPool(Resource):
         self.networking = networking
         self.count = Resource.init_param(count, default=1)
         self.ssh = ssh
+        self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or LoginNodesIam(implied=True)
         self.gracetime_period = Resource.init_param(gracetime_period, default=10)
+        self.__instance_type_info = None
 
     @property
     def instance_profile(self):
@@ -1371,6 +1374,23 @@ class LoginNodesPool(Resource):
     def instance_role(self):
         """Return the IAM role for login nodes, if set."""
         return self.iam.instance_role if self.iam else None
+
+    @property
+    def architecture(self):
+        """Return login node pool architecture based on instance type."""
+        return self.instance_type_info.supported_architecture()[0]
+
+    @property
+    def instance_type_info(self) -> InstanceTypeInfo:
+        """Return login node pool instance type information as returned from aws ec2 describe-instance-types."""
+        if not self.__instance_type_info:
+            self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return self.__instance_type_info
+
+    @property
+    def has_dcv_enabled(self):
+        """Return True if DCV is enabled."""
+        return self.dcv and self.dcv.enabled
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
@@ -1387,6 +1407,14 @@ class LoginNodes(Resource):
     ):
         super().__init__(**kwargs)
         self.pools = pools
+
+    @property
+    def has_dcv_enabled(self):
+        """Returns True if there is a pool in the cluster with DCV enabled."""
+        for pool in self.pools:
+            if pool.has_dcv_enabled:
+                return True
+        return False
 
 
 class HeadNode(Resource):
@@ -2938,6 +2966,46 @@ class SlurmClusterConfig(BaseClusterConfig):
                 subnet_ids_set.add(subnet_id)
         return list(subnet_ids_set)
 
+    def _register_login_node_validators(self):
+        """Register all login node validators to ensure that the resource parameters are valid."""
+        has_dcv_configured = False
+        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
+        self._register_validator(
+            SubnetsValidator,
+            subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id],
+        )
+        self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
+
+        for pool in self.login_nodes.pools:
+            # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
+            if pool.image and pool.image.custom_ami:
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=pool.image.custom_ami)
+                self._register_validator(
+                    InstanceTypeBaseAMICompatibleValidator,
+                    instance_type=pool.instance_type,
+                    image=self.login_nodes_ami[pool.name],
+                )
+                self._register_validator(
+                    InstanceTypeOSCompatibleValidator,
+                    instance_type=pool.instance_type,
+                    os=self.image.os,
+                )
+            # Check pool instance compatability with NICE DCV.
+            if pool.dcv:
+                self._register_validator(
+                    DcvValidator,
+                    instance_type=pool.instance_type,
+                    dcv_enabled=pool.dcv.enabled,
+                    allowed_ips=pool.dcv.allowed_ips,
+                    port=pool.dcv.port,
+                    os=self.image.os,
+                    architecture=pool.architecture,
+                )
+                has_dcv_configured = True
+
+        if has_dcv_configured:
+            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
+
     def _register_validators(self, context: ValidatorContext = None):  # noqa: C901
         super()._register_validators(context)
         self._register_validator(
@@ -2946,33 +3014,8 @@ class SlurmClusterConfig(BaseClusterConfig):
             queues=self.scheduling.queues,
         )
 
-        # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
         if self.login_nodes:
-            self._register_validator(
-                SubnetsValidator,
-                subnet_ids=self.login_nodes_subnet_ids
-                + self.compute_subnet_ids
-                + [self.head_node.networking.subnet_id],
-            )
-
-        if self.login_nodes:
-            self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
-
-        # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
-        if self.login_nodes:
-            for pool in self.login_nodes.pools:
-                if pool.image and pool.image.custom_ami:
-                    self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=pool.image.custom_ami)
-                    self._register_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=pool.instance_type,
-                        image=self.login_nodes_ami[pool.name],
-                    )
-                    self._register_validator(
-                        InstanceTypeOSCompatibleValidator,
-                        instance_type=pool.instance_type,
-                        os=self.image.os,
-                    )
+            self._register_login_node_validators()
 
         if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
             self._register_validator(

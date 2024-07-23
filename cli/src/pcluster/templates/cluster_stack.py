@@ -780,6 +780,7 @@ class ClusterCdkStack:
             group_description=f"Allow access to {storage_type} file system {storage_cfn_id}",
             vpc_id=self.config.vpc_id,
         )
+        rules = []
         storage_deletion_policy = convert_deletion_policy(storage.deletion_policy)
         storage_security_group.cfn_options.deletion_policy = (
             storage_security_group.cfn_options.update_replace_policy
@@ -812,12 +813,14 @@ class ClusterCdkStack:
                     ip_protocol=ingress_protocol,
                     port=ingress_port,
                 )
+                rules.append(ingress_rule)
 
                 egress_rule = self._allow_all_egress(
                     description=f"{storage_cfn_id}SecurityGroup{sg_type}Egress{sg_ref_id}",
                     destination_security_group_id=sg_ref,
                     group_id=storage_security_group.ref,
                 )
+                rules.append(egress_rule)
 
                 if sg_type == "Storage":
                     ingress_rule.cfn_options.deletion_policy = ingress_rule.cfn_options.update_replace_policy = (
@@ -827,7 +830,7 @@ class ClusterCdkStack:
                         storage_deletion_policy
                     )
 
-        return storage_security_group
+        return storage_security_group, rules
 
     def _add_compute_security_group(self):
         compute_security_group = ec2.CfnSecurityGroup(
@@ -884,11 +887,23 @@ class ClusterCdkStack:
             return ec2.CfnSecurityGroup.IngressProperty(ip_protocol="tcp", from_port=22, to_port=22, cidr_ip=setting)
 
     def _add_login_nodes_security_group(self):
+        # TODO review this once we allow more pools to be defined in the LoginNodes section
         login_nodes_security_group_ingress = [
             # SSH access
-            # TODO review this once we allow more pools to be defined in the LoginNodes section
             self._get_source_ingress_rule(self.config.login_nodes.pools[0].ssh.allowed_ips)
         ]
+
+        if self.config.login_nodes.has_dcv_enabled:
+            login_nodes_security_group_ingress.append(
+                # DCV access
+                ec2.CfnSecurityGroup.IngressProperty(
+                    ip_protocol="tcp",
+                    from_port=self.config.login_nodes.pools[0].dcv.port,
+                    to_port=self.config.login_nodes.pools[0].dcv.port,
+                    cidr_ip=self.config.login_nodes.pools[0].dcv.allowed_ips,
+                )
+            )
+
         return ec2.CfnSecurityGroup(
             self.stack,
             "LoginNodesSecurityGroup",
@@ -957,51 +972,7 @@ class ClusterCdkStack:
             if isinstance(shared_fsx, ExistingFileCache):
                 mount_name = shared_fsx.file_cache_mount_name
         else:
-            # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
-            drive_cache_type = None
-            if shared_fsx.fsx_storage_type == "HDD":
-                if shared_fsx.drive_cache_type:
-                    drive_cache_type = shared_fsx.drive_cache_type
-                else:
-                    drive_cache_type = "NONE"
-            file_system_security_groups = [self._add_storage_security_group(id, shared_fsx)]
-            fsx_resource = fsx.CfnFileSystem(
-                self.stack,
-                id,
-                storage_capacity=shared_fsx.storage_capacity,
-                lustre_configuration=fsx.CfnFileSystem.LustreConfigurationProperty(
-                    deployment_type=shared_fsx.deployment_type,
-                    data_compression_type=shared_fsx.data_compression_type,
-                    imported_file_chunk_size=shared_fsx.imported_file_chunk_size,
-                    export_path=shared_fsx.export_path,
-                    import_path=shared_fsx.import_path,
-                    weekly_maintenance_start_time=shared_fsx.weekly_maintenance_start_time,
-                    automatic_backup_retention_days=shared_fsx.automatic_backup_retention_days,
-                    copy_tags_to_backups=shared_fsx.copy_tags_to_backups,
-                    daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time,
-                    per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput,
-                    auto_import_policy=shared_fsx.auto_import_policy,
-                    drive_cache_type=drive_cache_type,
-                ),
-                backup_id=shared_fsx.backup_id,
-                kms_key_id=shared_fsx.kms_key_id,
-                file_system_type=LUSTRE,
-                storage_type=shared_fsx.fsx_storage_type,
-                subnet_ids=self.config.compute_subnet_ids[0:1],
-                security_group_ids=[sg.ref for sg in file_system_security_groups],
-                file_system_type_version=shared_fsx.file_system_type_version,
-                tags=[CfnTag(key="Name", value=shared_fsx.name)],
-            )
-            fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
-                convert_deletion_policy(shared_fsx.deletion_policy)
-            )
-
-            fsx_id = fsx_resource.ref
-
-            self._add_dra(fsx_id, shared_fsx)
-
-            # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
-            mount_name = fsx_resource.attr_lustre_mount_name
+            fsx_id, mount_name = self._add_managed_fsx(fsx_id, id, mount_name, shared_fsx)
 
         self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSNames"].append(dns_name)
         self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountNames"].append(mount_name)
@@ -1013,6 +984,53 @@ class ClusterCdkStack:
         )
 
         return fsx_id
+
+    def _add_managed_fsx(self, fsx_id, id, mount_name, shared_fsx):
+        # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
+        drive_cache_type = None
+        if shared_fsx.fsx_storage_type == "HDD":
+            if shared_fsx.drive_cache_type:
+                drive_cache_type = shared_fsx.drive_cache_type
+            else:
+                drive_cache_type = "NONE"
+        file_system_security_group, security_group_rules = self._add_storage_security_group(id, shared_fsx)
+        fsx_resource = fsx.CfnFileSystem(
+            self.stack,
+            id,
+            storage_capacity=shared_fsx.storage_capacity,
+            lustre_configuration=fsx.CfnFileSystem.LustreConfigurationProperty(
+                deployment_type=shared_fsx.deployment_type,
+                data_compression_type=shared_fsx.data_compression_type,
+                imported_file_chunk_size=shared_fsx.imported_file_chunk_size,
+                export_path=shared_fsx.export_path,
+                import_path=shared_fsx.import_path,
+                weekly_maintenance_start_time=shared_fsx.weekly_maintenance_start_time,
+                automatic_backup_retention_days=shared_fsx.automatic_backup_retention_days,
+                copy_tags_to_backups=shared_fsx.copy_tags_to_backups,
+                daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time,
+                per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput,
+                auto_import_policy=shared_fsx.auto_import_policy,
+                drive_cache_type=drive_cache_type,
+            ),
+            backup_id=shared_fsx.backup_id,
+            kms_key_id=shared_fsx.kms_key_id,
+            file_system_type=LUSTRE,
+            storage_type=shared_fsx.fsx_storage_type,
+            subnet_ids=self.config.compute_subnet_ids[0:1],
+            security_group_ids=[file_system_security_group.ref],
+            file_system_type_version=shared_fsx.file_system_type_version,
+            tags=[CfnTag(key="Name", value=shared_fsx.name)],
+        )
+        for rule in security_group_rules:
+            fsx_resource.add_depends_on(rule)
+        fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
+            convert_deletion_policy(shared_fsx.deletion_policy)
+        )
+        fsx_id = fsx_resource.ref
+        self._add_dra(fsx_id, shared_fsx)
+        # Get MountName for new filesystem. DNSName cannot be retrieved from CFN and will be generated in cookbook
+        mount_name = fsx_resource.attr_lustre_mount_name
+        return fsx_id, mount_name
 
     def _add_dra(self, fsx_id: str, shared_fsx: BaseSharedFsx):
         """Add Cfn Data Repository Association Resources."""
@@ -1077,13 +1095,13 @@ class ClusterCdkStack:
 
             # Mount Targets for Compute Fleet
             compute_subnet_ids = self.config.compute_subnet_ids
-            file_system_security_groups = [self._add_storage_security_group(id, shared_efs)]
+            file_system_security_group, _ = self._add_storage_security_group(id, shared_efs)
 
             for subnet_id in compute_subnet_ids:
                 self._add_efs_mount_target(
                     id,
                     efs_id,
-                    file_system_security_groups,
+                    [file_system_security_group],
                     subnet_id,
                     checked_availability_zones,
                     deletion_policy,
@@ -1093,7 +1111,7 @@ class ClusterCdkStack:
             self._add_efs_mount_target(
                 id,
                 efs_id,
-                file_system_security_groups,
+                [file_system_security_group],
                 self.config.head_node.networking.subnet_id,
                 checked_availability_zones,
                 deletion_policy,

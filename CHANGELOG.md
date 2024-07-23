@@ -7,11 +7,13 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add support for custom actions on login nodes.
+- Allow DCV connection on login nodes.
 
 **BUG FIXES**
 
 - Fix cluster deletion failure when placement group is enabled.
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.
+- Fix sporadic cluster creation failures with managed FSx for Lustre.
 
 3.10.1
 ------

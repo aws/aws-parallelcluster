@@ -132,6 +132,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_create.py::test_create_disable_sudo_access_for_default_user:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   monitoring:
     test_monitoring.py::test_monitoring:
       dimensions:
@@ -169,6 +175,13 @@ test-suites:
 #          instances: [ "p4d.24xlarge" ]
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
+  health_checks:
+    test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   iam:
     test_iam.py::test_iam_policies:
       dimensions:
@@ -357,6 +370,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_slurm_accounting.py::test_slurm_accounting_external_dbd:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_slurm.py::test_slurm_custom_config_parameters:
       dimensions:
         - regions: {{ REGIONS }}
@@ -451,6 +470,12 @@ test-suites:
           instances: ["m5d.xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_internal_efs.py::test_internal_efs:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_shared_home.py::test_shared_home:
       dimensions:
         - regions: {{ REGIONS }}
@@ -541,8 +566,15 @@ test-suites:
 #        - regions: {{ REGIONS }}
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
-  health_checks:
-    test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
+  users:
+    test_default_user_home.py::test_default_user_local_home:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  proxy:
+    test_proxy.py::test_proxy:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}

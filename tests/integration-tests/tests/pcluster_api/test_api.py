@@ -21,6 +21,7 @@ import pytest
 from assertpy import assert_that
 from benchmarks.common.util import get_instance_vcpus
 from botocore.config import Config
+from cfn_stacks_factory import CfnStack
 from clusters_factory import Cluster, ClustersFactory
 from pcluster_client import ApiException
 from pcluster_client.api import (
@@ -519,11 +520,56 @@ def test_official_images(region, api_client):
     assert_that(response.images).is_not_empty()
 
 
-@pytest.mark.usefixtures("instance")
-def test_custom_image(region, api_client, build_image, os, request, pcluster_config_reader):
-    base_ami = retrieve_latest_ami(region, os)
+@pytest.fixture(scope="class")
+def build_image_roles_stack(region, request, cfn_stacks_factory):
+    """Set up and tear down a CloudFormation stack to deploy IAM resources used by build-image."""
+    stack_template_path = "../iam_policies/image-roles.cfn.yaml"
+    with open(stack_template_path) as stack_template:
+        if request.config.getoption("build_image_roles_stack"):
+            logging.info(
+                "Using an existing build-image roles stack {0} in region {1}".format(
+                    request.config.getoption("build_image_roles_stack"), region
+                )
+            )
+            stack = CfnStack(
+                name=request.config.getoption("build_image_roles_stack"),
+                region=region,
+                template=stack_template.read(),
+            )
+        else:
+            stack_name = generate_stack_name(
+                "integ-tests-build-image-roles", request.config.getoption("stackname_suffix")
+            )
+            stack_parameters = []
+            capabilities = ["CAPABILITY_IAM"]
+            tags = [{"Key": "parallelcluster:integ-tests-stack", "Value": "build-image"}]
+            stack = CfnStack(
+                name=stack_name,
+                region=region,
+                template=stack_template.read(),
+                parameters=stack_parameters,
+                capabilities=capabilities,
+                tags=tags,
+            )
 
-    config_file = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami)
+            cfn_stacks_factory.create_stack(stack)
+
+        yield stack
+
+        if not request.config.getoption("no_delete") and not request.config.getoption("build_image_roles_stack"):
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.mark.usefixtures("instance")
+def test_custom_image(region, api_client, build_image, os, request, pcluster_config_reader, build_image_roles_stack):
+    base_ami = retrieve_latest_ami(region, os)
+    cleanup_lambda_role = build_image_roles_stack.cfn_outputs["BuildImageLambdaCleanupRole"]
+
+    config_file = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        cleanup_lambda_role=cleanup_lambda_role,
+    )
     with open(config_file, encoding="utf-8") as config_file:
         config = config_file.read()
 

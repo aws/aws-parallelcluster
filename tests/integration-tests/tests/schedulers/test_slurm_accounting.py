@@ -123,7 +123,9 @@ def _test_jobs_get_recorded(scheduler_commands):
     job_id = scheduler_commands.assert_job_submitted(job_submission_output)
     logging.info(" Submitted Job ID: %s", job_id)
     scheduler_commands.wait_job_completed(job_id)
-    _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands)
+    retry(stop_max_attempt_number=5, wait_fixed=seconds(5))(_assert_job_completion_recorded_in_accounting)(
+        job_id, scheduler_commands
+    )
 
 
 def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
@@ -268,7 +270,7 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
     _test_successful_startup_in_log(slurmdbd_node_remote_command_executor)
 
     # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
-    _require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
+    _test_require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
     retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
         headnode_remote_command_executor,
     )

@@ -796,6 +796,23 @@ class IamPolicyAssertion:
                             },
                             "Sid": "DynamoDBTable",
                         },
+                        {
+                            "Action": "s3:GetObject",
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":s3:::dcv-license.",
+                                        {"Ref": "AWS::Region"},
+                                        "/*",
+                                    ],
+                                ]
+                            },
+                            "Sid": "DcvLicense",
+                        },
                     ]
                 ),
             ],

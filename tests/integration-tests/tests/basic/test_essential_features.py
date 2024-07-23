@@ -320,7 +320,7 @@ def _test_custom_bootstrap_scripts_args_quotes(cluster):
 
     The cluster should be created and running.
     """
-    # Check head node and compute node status
+    # Check head, compute, and login node status
     check_status(
         cluster,
         "CREATE_COMPLETE",

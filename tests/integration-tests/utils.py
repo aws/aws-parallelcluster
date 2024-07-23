@@ -36,6 +36,14 @@ PARTITION_MAP = {
     "us-iso-": "aws-iso",
     "us-isob": "aws-iso-b",
 }
+DEFAULT_REPORTING_REGION = "us-east-1"
+# This map is based on where jenkins is deployed
+REPORTING_REGION_MAP = {
+    "aws-cn": "cn-north-1",
+    "aws-us-gov": "us-gov-west-1",
+    "aws-iso": "us-iso-east-1",
+    "aws-iso-b": "us-isob-east-1",
+}
 
 
 def _format_stack_error(message, stack_events=None, cluster_details=None) -> str:
@@ -553,9 +561,10 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     return instance_architectures[0]
 
 
-def check_head_node_security_group(region, cluster, port, expected_cidr):
-    """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
-    security_group_id = cluster.cfn_resources.get("HeadNodeSecurityGroup")
+def check_node_security_group(region, cluster, port, expected_cidr, node_type):
+    """Check CIDR restriction for a port is in the security group of the head or a login node of the cluster"""
+    sg_name = "HeadNodeSecurityGroup" if node_type == "HeadNode" else "LoginNodesSecurityGroup"
+    security_group_id = cluster.cfn_resources.get(sg_name)
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
 
     ips = response["SecurityGroups"][0]["IpPermissions"]
