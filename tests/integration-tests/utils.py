@@ -561,9 +561,10 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     return instance_architectures[0]
 
 
-def check_head_node_security_group(region, cluster, port, expected_cidr):
-    """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
-    security_group_id = cluster.cfn_resources.get("HeadNodeSecurityGroup")
+def check_node_security_group(region, cluster, port, expected_cidr, node_type):
+    """Check CIDR restriction for a port is in the security group of the head or a login node of the cluster"""
+    sg_name = "HeadNodeSecurityGroup" if node_type == "HeadNode" else "LoginNodesSecurityGroup"
+    security_group_id = cluster.cfn_resources.get(sg_name)
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
 
     ips = response["SecurityGroups"][0]["IpPermissions"]

@@ -18,7 +18,7 @@ from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Template
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress
-from utils import check_head_node_security_group, create_hash_suffix, generate_stack_name, get_username_for_os
+from utils import check_node_security_group, create_hash_suffix, generate_stack_name, get_username_for_os
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -58,7 +58,7 @@ def test_additional_sg_and_ssh_from(
                 )
             ).is_true()
         logging.info("Asserting the security group of pcluster on the head node is aligned with ssh_from")
-        check_head_node_security_group(region, cluster, 22, ssh_from)
+        check_node_security_group(region, cluster, 22, ssh_from, node_type="HeadNode")
 
     head_node_instance_id = cluster.head_node_instance_id
     logging.info(f"HeadNode of the {cluster} is {head_node_instance_id}")

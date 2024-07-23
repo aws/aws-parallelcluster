@@ -7,6 +7,7 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add support for custom actions on login nodes.
+- Allow DCV connection on login nodes.
 
 **BUG FIXES**
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.

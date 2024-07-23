@@ -713,6 +713,15 @@ class Cluster:
         else:
             raise ClusterActionError("Unable to retrieve head node information.")
 
+    @property
+    def login_node_instances(self) -> List[ClusterInstance]:
+        """Get login node instances."""
+        instances, _ = self.describe_instances(node_type=NodeType.LOGIN_NODE)
+        if instances:
+            return instances
+        else:
+            raise ClusterActionError("Unable to retrieve login node information.")
+
     def _get_instance_filters(self, node_type: NodeType, queue_name: str = None):
         filters = [
             {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": [self.stack_name]},
