@@ -101,6 +101,8 @@ def _delete_s3_artifacts(event):
 
 def _terminate_cluster_nodes(event):
     try:
+        start_time = time.time()
+        max_time = 14 * 60 # Maximum allowed time for Lambda function execution (14 minutes) to avoid timeout
         logger.info("Compute fleet clean-up: STARTED")
         stack_name = event["ResourceProperties"]["StackName"]
         ec2 = boto3.client("ec2", config=boto3_config)
@@ -121,6 +123,12 @@ def _terminate_cluster_nodes(event):
             time.sleep(10)
 
         while _has_shuttingdown_instances(stack_name):
+            # This logic prevents Lambda function from timing out if instance termination exceeds 15 minutes
+            # TODO: This approach may cause potential cluster deletion failure when PlacementGroups are enabled
+            # TODO: and instance termination time exceeds 15 minutes simultaneously.
+            # TODO: Resolve the above potential failure.
+            if time.time() - start_time > max_time:
+                return
             logger.info("Waiting for all nodes to shut-down...")
             time.sleep(10)
 
