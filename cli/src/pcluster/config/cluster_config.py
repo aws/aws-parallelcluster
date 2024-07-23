@@ -1410,6 +1410,7 @@ class LoginNodes(Resource):
 
     @property
     def has_dcv_enabled(self):
+        """Returns True if there is a pool in the cluster with DCV enabled."""
         for pool in self.pools:
             if pool.has_dcv_enabled:
                 return True

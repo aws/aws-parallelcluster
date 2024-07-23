@@ -2,7 +2,7 @@ usage: pcluster dcv-connect [-h] [--debug] [-r REGION] -n CLUSTER_NAME
                             [--key-path KEY_PATH] [--show-url]
                             [--login-node-ip LOGIN_NODE_IP]
 
-Permits connection to the head and login nodes through an interactive session
+Permits connection to the head or login nodes through an interactive session
 by using NICE DCV.
 
 options:

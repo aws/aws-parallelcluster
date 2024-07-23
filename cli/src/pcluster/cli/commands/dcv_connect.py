@@ -45,7 +45,6 @@ def _check_command_output(cmd):
 
 def _validate_login_node_ip_arg(ip, login_nodes):
     """Check if ip is a valid IPv4 address and belongs to a login node."""
-
     if not re.match(IPV4_REGEX, ip):
         error(f"{ip} is not a valid IPv4 address.")
 
@@ -64,7 +63,6 @@ def _dcv_connect(args):
 
     :param args: pcluster cli arguments.
     """
-
     try:
         cluster = Cluster(args.cluster_name)
 
@@ -182,7 +180,7 @@ class DcvConnectCommand(CliCommand):
 
     # CLI
     name = "dcv-connect"
-    help = "Permits connection to the head and login nodes through an interactive session by using NICE DCV."
+    help = "Permits connection to the head or login nodes through an interactive session by using NICE DCV."
     description = help
 
     def __init__(self, subparsers):
