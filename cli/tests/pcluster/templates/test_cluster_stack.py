@@ -1226,10 +1226,8 @@ def test_security_group_with_restricted_ssh_access(
     """
     Validates that both HeadNode and LoginNoes SecurityGroups have restricted SSH access.
 
-    If AllowedIPs setting is defined in the HeadNode SSH section both HeadNode and LoginNoes SecurityGroups
+    If AllowedIPs setting is defined in the HeadNode SSH section, both HeadNode and LoginNodes SecurityGroups
     should have restricted SSH access.
-    LoginNodes do not expose this parameter in the config, so they rely on what is specified on the HeadNode.
-    This may change once we remove access for regular users to the HeadNode.
     """
     mock_aws_api(mocker)
     mock_bucket_object_utils(mocker)
