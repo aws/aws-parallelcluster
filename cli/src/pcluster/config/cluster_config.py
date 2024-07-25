@@ -833,13 +833,11 @@ class HeadNodeSsh(_BaseSsh):
 class LoginNodesSsh(_BaseSsh):
     """Represent the SSH configuration for LoginNodes."""
 
-    def __init__(self, allowed_ips=CIDR_ALL_IPS, **kwargs):
+    def __init__(self, allowed_ips: str = None, **kwargs):
         super().__init__(**kwargs)
-        # This is an internal parameter not yet exposed in the configuration
-        # By default is initalized to allow SSH from everywhere.
-        # Will be aligned to the setting defined in the HeadNode to allow restricting SSH access
-        # from a specific CIDR or prefix-list.
-        self.allowed_ips = allowed_ips
+        # If allowed IPs is not specified, will be aligned to the setting defined in the HeadNode
+        # to restrict SSH access from a specific CIDR or prefix-list.
+        self.allowed_ips = Resource.init_param(allowed_ips)
 
 
 class Dcv(Resource):
@@ -2903,12 +2901,10 @@ class SlurmClusterConfig(BaseClusterConfig):
                     pool.ssh.key_name = self.head_node.ssh.key_name
                 elif not pool.ssh:
                     pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name)
-                # Forces the source allowed IP for the SSH connection to the one defined in the HeadNode
-                # This parameter is not yet exposed to customers through the config.
-                # We may want to change this once we block access to the HeadNode to regular users.
-                # This will only be set at creation time, if the cluster is updated and the HeadNode configuration
-                # changes, the cange will not be reflected into the LoginNode SecurityGroup
-                pool.ssh.allowed_ips = self.head_node.ssh.allowed_ips
+                # If the login node pool allowed IPs is not specified, forces the source allowed IP for the
+                # SSH connection to the one defined in the HeadNode
+                if not pool.ssh.allowed_ips:
+                    pool.ssh.allowed_ips = self.head_node.ssh.allowed_ips
 
         self.__image_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
