@@ -13,7 +13,6 @@ Metadata:
           - Vpc
           - SubnetOne
           - SubnetTwo
-          - SubnetThree
       - Label:
           default: EBS
         Parameters:
@@ -71,10 +70,6 @@ Parameters:
     Default: ''
   SubnetTwo:
     Description: ID of the Subnet (second Availability Zone) where the storage will be deployed.
-    Type: AWS::EC2::Subnet::Id
-    Default: ''
-  SubnetThree:
-    Description: ID of the Subnet (third Availability Zone) where the storage will be deployed.
     Type: AWS::EC2::Subnet::Id
     Default: ''
   EbsVolumeAz:
@@ -159,14 +154,6 @@ Resources:
       SecurityGroups:
         - !Ref EfsSecurityGroup
       SubnetId: !Ref SubnetTwo
-  MountTargetResourceEfs0SubnetThree:
-    Type: 'AWS::EFS::MountTarget'
-    Condition: CreateEfs
-    Properties:
-      FileSystemId: !Ref EfsFileSystem
-      SecurityGroups:
-        - !Ref EfsSecurityGroup
-      SubnetId: !Ref SubnetThree
   EfsSecurityGroup:
     Condition: CreateEfs
     Properties:
