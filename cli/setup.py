@@ -46,7 +46,7 @@ REQUIRES = [
     "aws-cdk.aws-ssm~=" + CDK_VERSION,
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
     "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
-    "werkzeug~=2.0",
+    "werkzeug==3.0.3",
     "connexion~=2.13.0",
     "flask>=2.2.5,<2.3",
     "jmespath~=0.10",

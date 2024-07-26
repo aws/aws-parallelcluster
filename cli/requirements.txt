@@ -24,4 +24,4 @@ jsii==1.85.0
 marshmallow~=3.10
 PyYAML>=5.3.1,!=5.4
 tabulate>=0.8.8,<=0.8.10
-werkzeug~=2.0
+werkzeug==3.0.3

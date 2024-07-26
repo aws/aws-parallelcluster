@@ -20,7 +20,7 @@ import sys
 
 from werkzeug.datastructures import Headers, MultiDict, iter_multi_items
 from werkzeug.http import HTTP_STATUS_CODES
-from werkzeug.urls import url_encode, url_unquote, url_unquote_plus
+from urllib.parse import urlencode, unquote, unquote_plus
 from werkzeug.wrappers import Response
 
 # List of MIME types that should not be base64 encoded. MIME types within `text/*`
@@ -95,8 +95,8 @@ def encode_query_string(event):
     if not params:
         params = ""
     if is_alb_event(event):
-        params = MultiDict((url_unquote_plus(k), url_unquote_plus(v)) for k, v in iter_multi_items(params))
-    return url_encode(params)
+        params = MultiDict((unquote_plus(k), unquote_plus(v)) for k, v in iter_multi_items(params))
+    return urlencode(params)
 
 
 def get_script_name(headers, request_context):
@@ -203,7 +203,7 @@ def handle_payload_v1(app, event, context):
     environ = {
         "CONTENT_LENGTH": str(len(body)),
         "CONTENT_TYPE": headers.get("Content-Type", ""),
-        "PATH_INFO": url_unquote(path_info),
+        "PATH_INFO": unquote(path_info),
         "QUERY_STRING": encode_query_string(event),
         "REMOTE_ADDR": event.get("requestContext", {}).get("identity", {}).get("sourceIp", ""),
         "REMOTE_USER": event.get("requestContext", {}).get("authorizer", {}).get("principalId", ""),
@@ -247,7 +247,7 @@ def handle_payload_v2(app, event, context):
     environ = {
         "CONTENT_LENGTH": str(len(body)),
         "CONTENT_TYPE": headers.get("Content-Type", ""),
-        "PATH_INFO": url_unquote(path_info),
+        "PATH_INFO": unquote(path_info),
         "QUERY_STRING": event.get("rawQueryString", ""),
         "REMOTE_ADDR": event.get("requestContext", {}).get("http", {}).get("sourceIp", ""),
         "REMOTE_USER": event.get("requestContext", {}).get("authorizer", {}).get("principalId", ""),
@@ -295,8 +295,8 @@ def handle_lambda_integration(app, event, context):
     environ = {
         "CONTENT_LENGTH": str(len(body)),
         "CONTENT_TYPE": headers.get("Content-Type", ""),
-        "PATH_INFO": url_unquote(path_info),
-        "QUERY_STRING": url_encode(event.get("query", {})),
+        "PATH_INFO": unquote(path_info),
+        "QUERY_STRING": urlencode(event.get("query", {})),
         "REMOTE_ADDR": event.get("identity", {}).get("sourceIp", ""),
         "REMOTE_USER": event.get("principalId", ""),
         "REQUEST_METHOD": event.get("method", ""),
