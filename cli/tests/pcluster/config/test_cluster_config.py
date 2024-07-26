@@ -800,22 +800,22 @@ class TestBaseClusterConfig:
             (
                 HeadNodeSsh(key_name="head-node-key", allowed_ips="1.2.3.4/24"),
                 LoginNodesSsh(key_name="login-node-key", allowed_ips="6.5.4.3/24"),
-                {"key_name": "login-node-key", "allowed_ips": "6.5.4.3/24"}
+                {"key_name": "login-node-key", "allowed_ips": "6.5.4.3/24"},
             ),
             (
                 HeadNodeSsh(key_name="head-node-key", allowed_ips="1.2.3.4/24"),
                 LoginNodesSsh(key_name=None),
-                {"key_name": "head-node-key", "allowed_ips": "1.2.3.4/24"}
+                {"key_name": "head-node-key", "allowed_ips": "1.2.3.4/24"},
             ),
             (
                 HeadNodeSsh(key_name="head-node-key", allowed_ips="1.2.3.4/24"),
                 None,
-                {"key_name": "head-node-key", "allowed_ips": "1.2.3.4/24"}
-             ),
+                {"key_name": "head-node-key", "allowed_ips": "1.2.3.4/24"},
+            ),
             (
                 None,
                 LoginNodesSsh(key_name="login-node-key"),
-                {"key_name": "login-node-key", "allowed_ips": "0.0.0.0/0"}
+                {"key_name": "login-node-key", "allowed_ips": "0.0.0.0/0"},
             ),
         ],
     )

@@ -26,6 +26,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
+    get_load_balancer_security_groups_full,
     get_login_nodes_security_groups_full,
     get_shared_storage_ids_by_type,
     get_user_data_content,
@@ -411,6 +412,8 @@ class Pool(Construct):
         self,
         target_group,
     ):
+        load_balancer_security_groups = get_load_balancer_security_groups_full(self._pool)
+
         login_nodes_load_balancer = elbv2.NetworkLoadBalancer(
             self,
             f"{self._pool.name}LoadBalancer",
@@ -423,7 +426,13 @@ class Pool(Construct):
                 ]
             ),
         )
-
+        # This is a workaround to add security groups to the NLB.
+        # Currently used version of aws-elasticloadbalancingv2 (1.204) doesn't support
+        # creating NLB with security groups directly.
+        if load_balancer_security_groups:
+            login_nodes_load_balancer.node.default_child.add_property_override(
+                "SecurityGroups", load_balancer_security_groups
+            )
         listener = login_nodes_load_balancer.add_listener(f"LoginNodesListener{self._pool.name}", port=22)
         listener.add_target_groups(f"LoginNodesListenerTargets{self._pool.name}", target_group)
         return login_nodes_load_balancer

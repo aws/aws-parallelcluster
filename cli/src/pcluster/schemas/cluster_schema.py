@@ -1409,6 +1409,14 @@ class LoginNodesNetworkingSchema(BaseNetworkingSchema):
         fields.Str(validate=get_field_validator("security_group_id")),
         metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP},
     )
+    load_balancer_additional_security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    load_balancer_security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
 
     proxy = fields.Nested(LoginNodeProxySchema, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
 
