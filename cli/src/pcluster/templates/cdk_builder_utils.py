@@ -290,6 +290,22 @@ def get_login_nodes_security_groups_full(
     return login_nodes_security_groups
 
 
+def get_load_balancer_security_groups_full(
+    pool: LoginNodesPool,
+):
+    """
+    Return all of the user-defined security groups to be used for the login node pool Network Load Balancer.
+    """
+    load_balancer_security_groups = []
+
+    if pool.networking.load_balancer_security_groups:
+        load_balancer_security_groups.extend(pool.networking.load_balancer_security_groups)
+    if pool.networking.load_balancer_additional_security_groups:
+        load_balancer_security_groups.extend(pool.networking.load_balancer_additional_security_groups)
+
+    return load_balancer_security_groups
+
+
 def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str):
     """Return a path and Name prefix from the Resource prefix config option."""
     full_resource_path = None

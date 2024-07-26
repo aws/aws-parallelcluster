@@ -1322,15 +1322,30 @@ class LoginNodesImage(Resource):
 class LoginNodesNetworking(_BaseNetworking, SubnetsMixin):
     """Represent the networking configuration for LoginNodes."""
 
-    def __init__(self, subnet_ids: List[str], proxy: Proxy = None, **kwargs):
+    def __init__(
+        self,
+        subnet_ids: List[str],
+        proxy: Proxy = None,
+        load_balancer_security_groups: List[str] = None,
+        load_balancer_additional_security_groups: List[str] = None,
+        **kwargs,
+    ):
         _BaseNetworking.__init__(self, **kwargs)
         SubnetsMixin.__init__(self, subnet_ids, **kwargs)
+        self.load_balancer_security_groups = Resource.init_param(load_balancer_security_groups)
+        self.load_balancer_additional_security_groups = Resource.init_param(load_balancer_additional_security_groups)
         self.proxy = proxy
 
     @property
     def is_subnet_public(self):
         """Get if the subnet is public or private."""
         return AWSApi.instance().ec2.is_subnet_public(self.subnet_ids[0])
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(SecurityGroupsValidator, security_group_ids=self.load_balancer_security_groups)
+        self._register_validator(
+            SecurityGroupsValidator, security_group_ids=self.load_balancer_additional_security_groups
+        )
 
 
 class LoginNodesPool(Resource):
