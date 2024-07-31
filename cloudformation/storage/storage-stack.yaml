@@ -13,6 +13,7 @@ Metadata:
           - Vpc
           - SubnetOne
           - SubnetTwo
+          - SubnetThree
       - Label:
           default: EBS
         Parameters:
@@ -72,6 +73,10 @@ Parameters:
     Description: ID of the Subnet (second Availability Zone) where the storage will be deployed.
     Type: AWS::EC2::Subnet::Id
     Default: ''
+  SubnetThree:
+    Description: ID of the Subnet (third Availability Zone) where the storage will be deployed.
+    Type: AWS::EC2::Subnet::Id
+    Default: ''
   EbsVolumeAz:
     Description: AZ where the EBS Volume will be deployed. It must be the same AZ used by the cluster head node.
     Type: AWS::EC2::AvailabilityZone::Name
@@ -113,6 +118,9 @@ Conditions:
   CreateFsxOntap: !Equals [!Ref CreateFsxOntap, 'true']
   CreateFsxOpenZfs: !Equals [!Ref CreateFsxOpenZfs, 'true']
   CreateFileCache: !Equals [!Ref CreateFileCache, 'true']
+  CreateEfsInSubnetThree: !And
+    - !Not [!Equals [!Ref SubnetThree, '']]
+    - !Equals [!Ref CreateEfs, 'true']
   NoStorage: !And
     - !Not [!Equals [!Ref CreateEbs, 'true']]
     - !Not [!Equals [!Ref CreateEfs, 'true']]
@@ -154,6 +162,14 @@ Resources:
       SecurityGroups:
         - !Ref EfsSecurityGroup
       SubnetId: !Ref SubnetTwo
+  MountTargetResourceEfs0SubnetThree:
+    Type: 'AWS::EFS::MountTarget'
+    Condition: CreateEfsInSubnetThree
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+      SubnetId: !Ref SubnetThree
   EfsSecurityGroup:
     Condition: CreateEfs
     Properties:
