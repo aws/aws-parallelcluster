@@ -1060,6 +1060,8 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
                 {"ParameterKey": "FileCachePath", "ParameterValue": file_cache_path},
                 {"ParameterKey": "FileCacheS3BucketName", "ParameterValue": bucket_name},
             ]
+            if len(azs) >= 3:
+                params.append({"ParameterKey": "SubnetThree", "ParameterValue": one_subnet_per_az[2]})
             with open(template_path, encoding="utf-8") as template_file:
                 template = template_file.read()
             stack = CfnStack(
