@@ -100,8 +100,17 @@ def _delete_s3_artifacts(event):
 
 
 def _terminate_cluster_nodes(event):
+    """
+    Terminate all EC2 instances associated with the given cluster.
+
+    This function iterates over all EC2 instances associated with the specified cluster and attempts to terminate them.
+    It handles retries for instances that fail to terminate initially and ensures that the function does not exceed
+    the Lambda execution timeout.
+    """
     try:
-        logger.info("Compute fleet clean-up: STARTED")
+        start_time = time.time()
+        max_exeution_time = 14 * 60  # Maximum allowed time for Lambda function execution (14 minutes) to avoid timeout
+        logger.info("Compute fleet nodes terminate: STARTED")
         stack_name = event["ResourceProperties"]["StackName"]
         ec2 = boto3.client("ec2", config=boto3_config)
 
@@ -121,13 +130,24 @@ def _terminate_cluster_nodes(event):
             time.sleep(10)
 
         while _has_shuttingdown_instances(stack_name):
-            logger.info("Waiting for all nodes to shut-down...")
+            # This logic prevents Lambda function from timing out if instance termination exceeds 15 minutes
+            # TODO: This approach may cause potential cluster deletion failure when PlacementGroups are enabled
+            # and instance termination time exceeds 15 minutes simultaneously. Resolve the above potential failure.
+            if time.time() - start_time > max_exeution_time:
+                logger.warning(
+                    "Lambda execution time has exceeded 14 minutes, approaching timeout. "
+                    "Returning from Lambda after a 30-second delay; instances may still be in a shutting-down state. "
+                    "Note: Instances in shutting-down state are not recoverable and are not billed during this period."
+                )
+                time.sleep(30)
+                return
+            logger.info("Waiting for all nodes terminated...")
             time.sleep(10)
 
         # Sleep for 30 more seconds to give PlacementGroups the time to update
         time.sleep(30)
 
-        logger.info("Compute fleet clean-up: COMPLETED")
+        logger.info("Compute fleet nodes terminate: COMPLETED")
     except Exception as e:
         logger.error("Failed when terminating instances with error %s", e)
         raise
