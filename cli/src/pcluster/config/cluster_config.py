@@ -835,8 +835,8 @@ class LoginNodesSsh(_BaseSsh):
 
     def __init__(self, allowed_ips: str = None, **kwargs):
         super().__init__(**kwargs)
-        # If allowed IPs is not specified, will be aligned to the setting defined in the HeadNode
-        # to restrict SSH access from a specific CIDR or prefix-list.
+        # If allowed IPs is not specified for the login node pool, will be aligned with the setting defined
+        # in the HeadNode to restrict SSH access from a specific CIDR or prefix-list.
         self.allowed_ips = Resource.init_param(allowed_ips)
 
 
@@ -1322,30 +1322,15 @@ class LoginNodesImage(Resource):
 class LoginNodesNetworking(_BaseNetworking, SubnetsMixin):
     """Represent the networking configuration for LoginNodes."""
 
-    def __init__(
-        self,
-        subnet_ids: List[str],
-        proxy: Proxy = None,
-        load_balancer_security_groups: List[str] = None,
-        load_balancer_additional_security_groups: List[str] = None,
-        **kwargs,
-    ):
+    def __init__(self, subnet_ids: List[str], proxy: Proxy = None, **kwargs):
         _BaseNetworking.__init__(self, **kwargs)
         SubnetsMixin.__init__(self, subnet_ids, **kwargs)
-        self.load_balancer_security_groups = Resource.init_param(load_balancer_security_groups)
-        self.load_balancer_additional_security_groups = Resource.init_param(load_balancer_additional_security_groups)
         self.proxy = proxy
 
     @property
     def is_subnet_public(self):
         """Get if the subnet is public or private."""
         return AWSApi.instance().ec2.is_subnet_public(self.subnet_ids[0])
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(SecurityGroupsValidator, security_group_ids=self.load_balancer_security_groups)
-        self._register_validator(
-            SecurityGroupsValidator, security_group_ids=self.load_balancer_additional_security_groups
-        )
 
 
 class LoginNodesPool(Resource):
@@ -1420,14 +1405,6 @@ class LoginNodes(Resource):
     ):
         super().__init__(**kwargs)
         self.pools = pools
-
-    @property
-    def has_dcv_enabled(self):
-        """Returns True if there is a pool in the cluster with DCV enabled."""
-        for pool in self.pools:
-            if pool.has_dcv_enabled:
-                return True
-        return False
 
 
 class HeadNode(Resource):

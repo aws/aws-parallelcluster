@@ -26,9 +26,9 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_load_balancer_security_groups_full,
     get_login_nodes_security_groups_full,
     get_shared_storage_ids_by_type,
+    get_source_ingress_rule,
     get_user_data_content,
     to_comma_separated_string,
 )
@@ -81,6 +81,7 @@ class Pool(Construct):
             availability_zones=self._pool.networking.az_list,
         )
         self._login_nodes_pool_target_group = self._add_login_nodes_pool_target_group()
+        self._load_balancer_security_groups = self._add_load_balancer_security_groups()
         self._login_nodes_pool_load_balancer = self._add_login_nodes_pool_load_balancer(
             self._login_nodes_pool_target_group
         )
@@ -412,8 +413,6 @@ class Pool(Construct):
         self,
         target_group,
     ):
-        load_balancer_security_groups = get_load_balancer_security_groups_full(self._pool)
-
         login_nodes_load_balancer = elbv2.NetworkLoadBalancer(
             self,
             f"{self._pool.name}LoadBalancer",
@@ -426,17 +425,53 @@ class Pool(Construct):
                 ]
             ),
         )
-        # This is a workaround to add security groups to the NLB.
-        # Currently used version of aws-elasticloadbalancingv2 (1.204) doesn't support
-        # creating NLB with security groups directly.
-        if load_balancer_security_groups:
-            login_nodes_load_balancer.node.default_child.add_property_override(
-                "SecurityGroups", load_balancer_security_groups
-            )
+        # This is a workaround to add security groups to the NLB
+        # The currently used version of aws-elasticloadbalancingv2 (v1.204) doesn't support
+        # creating NLB with security groups directly
+        login_nodes_load_balancer.node.default_child.add_property_override(
+            "SecurityGroups", self._load_balancer_security_groups
+        )
         listener = login_nodes_load_balancer.add_listener(f"LoginNodesListener{self._pool.name}", port=22)
         listener.add_target_groups(f"LoginNodesListenerTargets{self._pool.name}", target_group)
         return login_nodes_load_balancer
 
+    def _add_managed_load_balancer_security_group(self):
+        # The load balancer shares the same SSH restrictions as the login nodes
+        load_balancer_security_group_ingress = [
+            get_source_ingress_rule(self._pool.ssh.allowed_ips)
+        ]
+
+        load_balancer_managed_security_group = ec2.CfnSecurityGroup(
+            Stack.of(self),
+            f"{self._pool.name}LoadBalancerSecurityGroup",
+            group_description=f"Enable access to the load balancer",
+            vpc_id=self._config.vpc_id,
+            security_group_ingress=load_balancer_security_group_ingress
+        )
+
+        # Allow traffic from managed load balancer security group to managed login node security group
+        ec2.CfnSecurityGroupIngress(
+            Stack.of(self),
+            "LoginSecurityGroupLoadBalancerIngress",
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            source_security_group_id=load_balancer_managed_security_group,
+            group_id=self._login_security_group.ref,
+        )
+
+        return load_balancer_managed_security_group
+
+    def _add_load_balancer_security_groups(self):
+        """
+        Return all of the security groups to be used on the Network Load Balancer.
+        The load balancer uses the same security groups and additional security groups defined on the login nodes.
+        """
+        managed_load_balancer_security_group = None
+        if not self._pool.networking.security_groups:
+            managed_load_balancer_security_group = self._add_managed_load_balancer_security_group()
+        load_balancer_security_groups = get_login_nodes_security_groups_full(managed_load_balancer_security_group)
+        return load_balancer_security_groups
 
 class LoginNodesStack(NestedStack):
     """Stack encapsulating a set of LoginNodes and the associated resources."""
@@ -485,7 +520,7 @@ class LoginNodesStack(NestedStack):
                 self._shared_storage_infos,
                 self._shared_storage_mount_dirs,
                 self._shared_storage_attributes,
-                self._login_security_group,
+                self._login_security_group.get(pool.name),
                 self.stack_name,
                 self.stack_id,
                 self._head_eni,
