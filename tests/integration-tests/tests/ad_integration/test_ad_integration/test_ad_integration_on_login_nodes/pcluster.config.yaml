@@ -48,6 +48,8 @@ SharedStorage:
     Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
       StorageCapacity: 2400
   {% endif %}
   {% if fsx_openzfs_supported %}

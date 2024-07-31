@@ -37,7 +37,8 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200
-      DeploymentType: SCRATCH_2
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
     {% endif %}
 DeploymentSettings:
   LambdaFunctionsVpcConfig:

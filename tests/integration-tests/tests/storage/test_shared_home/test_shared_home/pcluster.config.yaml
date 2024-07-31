@@ -46,6 +46,8 @@ SharedStorage:
     {% if storage_type == "FsxLustre" %}
     FsxLustreSettings:
       StorageCapacity: 1200
+      DeploymentType: PERSISTENT_1
+      PerUnitStorageThroughput: 200
     {% elif storage_type == "FsxOpenZfs" %}
     FsxOpenZfsSettings:
       VolumeId: {{ volume_id }}
