@@ -274,7 +274,8 @@ def get_login_nodes_security_groups_full(
     managed_login_security_group: ec2.CfnSecurityGroup,
     pool: LoginNodesPool,
 ):
-    """Return full security groups to be used for the login node, default plus additional ones."""
+    """Return full security groups to be used for the login nodes and network load balancer,
+    default plus additional ones."""
     login_nodes_security_groups = []
 
     # Default security groups, created by us or provided by the user
@@ -289,21 +290,14 @@ def get_login_nodes_security_groups_full(
 
     return login_nodes_security_groups
 
-
-def get_load_balancer_security_groups_full(
-    pool: LoginNodesPool,
-):
-    """
-    Return all of the user-defined security groups to be used for the login node pool Network Load Balancer.
-    """
-    load_balancer_security_groups = []
-
-    if pool.networking.load_balancer_security_groups:
-        load_balancer_security_groups.extend(pool.networking.load_balancer_security_groups)
-    if pool.networking.load_balancer_additional_security_groups:
-        load_balancer_security_groups.extend(pool.networking.load_balancer_additional_security_groups)
-
-    return load_balancer_security_groups
+def get_source_ingress_rule(setting):
+    """Returns security group ingress property depending on whether the input setting is a prefix list or CIDR ip"""
+    if setting.startswith("pl"):
+        return ec2.CfnSecurityGroup.IngressProperty(
+            ip_protocol="tcp", from_port=22, to_port=22, source_prefix_list_id=setting
+        )
+    else:
+        return ec2.CfnSecurityGroup.IngressProperty(ip_protocol="tcp", from_port=22, to_port=22, cidr_ip=setting)
 
 
 def add_cluster_iam_resource_prefix(stack_name, config, name: str, iam_type: str):
