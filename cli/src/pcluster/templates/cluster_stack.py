@@ -194,7 +194,7 @@ class ClusterCdkStack:
             if isinstance(self.config, SlurmClusterConfig) and self.config.login_nodes
             else []
         )
-        # Add the managed login security groups, if there are any
+        # Add the managed login node security groups
         if self._login_security_group:
             for _, managed_security_group in self._login_security_group.items():
                 login_security_groups.append(managed_security_group.ref)
@@ -876,7 +876,7 @@ class ClusterCdkStack:
         return compute_security_group
 
     def _add_login_nodes_security_group(self):
-        """Returns a dictionary mapping each login node pool name to its respective managed security group"""
+        """Return a dictionary mapping each login node pool name to its respective managed security group."""
         pool_to_managed_security_group_dict = dict()
 
         for pool in self.config.login_nodes.pools:

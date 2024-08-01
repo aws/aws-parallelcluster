@@ -442,7 +442,7 @@ class Pool(Construct):
         load_balancer_managed_security_group = ec2.CfnSecurityGroup(
             Stack.of(self),
             f"{self._pool.name}LoadBalancerSecurityGroup",
-            group_description=f"Enable access to the load balancer",
+            group_description="Enable access to the load balancer",
             vpc_id=self._config.vpc_id,
             security_group_ingress=load_balancer_security_group_ingress,
         )

@@ -274,8 +274,7 @@ def get_login_nodes_security_groups_full(
     managed_login_security_group: ec2.CfnSecurityGroup,
     pool: LoginNodesPool,
 ):
-    """Return full security groups to be used for the login nodes and network load balancer,
-    default plus additional ones."""
+    """Return security groups to be used for the login nodes and network load balancer, default plus additional ones."""
     login_nodes_security_groups = []
 
     # Default security groups, created by us or provided by the user
@@ -292,7 +291,7 @@ def get_login_nodes_security_groups_full(
 
 
 def get_source_ingress_rule(setting):
-    """Returns security group ingress property depending on whether the input setting is a prefix list or CIDR ip"""
+    """Return security group ingress property depending on whether the input setting is a prefix list or CIDR ip."""
     if setting.startswith("pl"):
         return ec2.CfnSecurityGroup.IngressProperty(
             ip_protocol="tcp", from_port=22, to_port=22, source_prefix_list_id=setting

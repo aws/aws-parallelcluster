@@ -835,7 +835,7 @@ class LoginNodesSsh(_BaseSsh):
 
     def __init__(self, allowed_ips: str = None, **kwargs):
         super().__init__(**kwargs)
-        # If allowed IPs is not specified for the login node pool, will be aligned with the setting defined
+        # If AllowedIPs is not specified for the login node pool, then allowed_ips will default to the same settings
         # in the HeadNode to restrict SSH access from a specific CIDR or prefix-list.
         self.allowed_ips = Resource.init_param(allowed_ips)
 

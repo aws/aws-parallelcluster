@@ -411,6 +411,21 @@ def describe_cluster_instances(
     return instances
 
 
+def describe_cluster_security_groups(cluster_name, region):
+    """Return result of EC2 DescribeSecurityGroups, filtered by the cluster name."""
+    security_groups = list()
+    filters = [
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [cluster_name]},
+    ]
+    try:
+        ec2_client = boto3.client("ec2", region_name=region)
+        for page in paginate_boto3(ec2_client.describe_security_groups, Filters=filters):
+            security_groups.append(page)
+    except Exception as e:
+        print(f"Failed to retrieve security groups: {e}")
+    return security_groups
+
+
 def get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname, region=None):
     """Return instanceIDs to hostnames dict if id_to_hostname=True, else return hostname to instanceID dict."""
     try:
@@ -561,9 +576,9 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     return instance_architectures[0]
 
 
-def check_node_security_group(region, cluster, port, expected_cidr, node_type):
-    """Check CIDR restriction for a port is in the security group of the head or a login node of the cluster"""
-    sg_name = "HeadNodeSecurityGroup" if node_type == "HeadNode" else "LoginNodesSecurityGroup"
+def check_node_security_group(region, cluster, port, expected_cidr, login_pool_name=None):
+    """Check CIDR restriction for port is in the security group of the head node or a login node pool of the cluster."""
+    sg_name = f"{login_pool_name}LoginNodesSecurityGroup" if login_pool_name else "HeadNodeSecurityGroup"
     security_group_id = cluster.cfn_resources.get(sg_name)
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
 
