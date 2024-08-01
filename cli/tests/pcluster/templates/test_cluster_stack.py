@@ -1190,7 +1190,7 @@ def test_head_node_security_group(mocker, test_datadir, config_file_name):
     login_nodes_sg_name = (
         login_nodes_networking.security_groups[0]
         if login_nodes_networking.security_groups
-        else "LoginNodesSecurityGroup"
+        else f"{cluster_config.login_nodes.pools[0].name}LoginNodesSecurityGroup"
     )
     for sg in ["ComputeSecurityGroup", login_nodes_sg_name]:
         ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
@@ -1226,8 +1226,8 @@ def test_security_group_with_restricted_ssh_access(
     """
     Validates that both HeadNode and LoginNoes SecurityGroups have restricted SSH access.
 
-    If AllowedIPs setting is defined in the HeadNode SSH section, both HeadNode and LoginNodes SecurityGroups
-    should have restricted SSH access.
+    If AllowedIPs setting is defined in the HeadNode SSH section but not in the LoginNodes Pools section, then both
+    HeadNode and LoginNodes SecurityGroups should have same restricted SSH access.
     """
     mock_aws_api(mocker)
     mock_bucket_object_utils(mocker)
@@ -1251,7 +1251,9 @@ def test_security_group_with_restricted_ssh_access(
             if rule["FromPort"] == 22:  # SSH
                 assert rule[expected_field] == expected_value
 
-        login_node_sg = generated_template["Resources"]["LoginNodesSecurityGroup"]
+        login_node_sg = generated_template["Resources"][
+            f"{cluster_config.login_nodes.pools[0].name}LoginNodesSecurityGroup"
+        ]
         ln_ingress_rules = login_node_sg["Properties"]["SecurityGroupIngress"]
         for rule in ln_ingress_rules:
             if rule["FromPort"] == 22:  # SSH

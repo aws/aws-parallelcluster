@@ -195,9 +195,9 @@ class ClusterCdkStack:
             else []
         )
         # Add the managed login security groups, if there are any
-        if self._login_security_groups:
-            for _pool_name, managed_security_group in self._login_security_groups.items():
-                login_security_groups.append(self._login_security_groups.ref)
+        if self._login_security_group:
+            for _, managed_security_group in self._login_security_group.items():
+                login_security_groups.append(managed_security_group.ref)
 
         return login_security_groups
 
@@ -257,7 +257,7 @@ class ClusterCdkStack:
         (
             self._head_security_group,
             self._compute_security_group,
-            self._login_security_groups,
+            self._login_security_group,
         ) = self._add_security_groups()
         # Head Node ENI
         self._head_eni = self._add_head_eni()
@@ -469,7 +469,7 @@ class ClusterCdkStack:
                 shared_storage_infos=self.shared_storage_infos,
                 shared_storage_mount_dirs=self.shared_storage_mount_dirs,
                 shared_storage_attributes=self.shared_storage_attributes,
-                login_security_groups=self._login_security_groups,
+                login_security_groups=self._login_security_group,
                 head_eni=self._head_eni,
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 cluster_bucket=self.bucket,
@@ -576,11 +576,8 @@ class ClusterCdkStack:
 
     def _add_security_groups(self):
         head_node_security_groups, managed_head_security_group = self._head_security_groups()
-        (
-            login_security_groups,
-            managed_login_security_groups,
-            custom_login_security_groups,
-        ) = self._login_security_groups()
+        login_security_groups, managed_login_security_groups = self._login_security_groups()
+
         (
             compute_security_groups,
             managed_compute_security_group,
@@ -592,10 +589,9 @@ class ClusterCdkStack:
             custom_compute_security_groups,
             head_node_security_groups,
             login_security_groups,
-            custom_login_security_groups,
             managed_compute_security_group,
             managed_head_security_group,
-            managed_login_security_group,
+            managed_login_security_groups,
         )
 
         return managed_head_security_group, managed_compute_security_group, managed_login_security_groups
@@ -611,15 +607,7 @@ class ClusterCdkStack:
         return head_node_security_groups, managed_head_security_group
 
     def _login_security_groups(self):
-        """
-        Return the security groups of the login nodes.
-
-        :return:
-        login_security_groups - a list containing all security groups for all pools, managed and custom
-        managed_login_security_groups - a dictionary mapping each pool name to its respective managed security group
-        custom_login_security_groups - a list containing all custom security groups for all pools
-        """
-        managed_login_security_groups = None
+        managed_login_security_groups = dict()
         custom_login_security_groups = set()
         managed_login_security_group_required = False
         if self._condition_is_slurm() and self.config.login_nodes:
@@ -636,7 +624,7 @@ class ClusterCdkStack:
             login_security_groups.extend(
                 [security_group.ref for security_group in managed_login_security_groups.values()]
             )
-        return login_security_groups, managed_login_security_groups, custom_login_security_groups
+        return login_security_groups, managed_login_security_groups
 
     def _compute_security_groups(self):
         managed_compute_security_group = None
@@ -661,7 +649,6 @@ class ClusterCdkStack:
         custom_compute_security_groups,
         head_node_security_groups,
         login_security_groups,
-        custom_login_security_groups,
         managed_compute_security_group,
         managed_head_security_group,
         managed_login_security_groups,
@@ -673,7 +660,6 @@ class ClusterCdkStack:
         self._add_inbounds_to_managed_login_security_groups(
             head_node_security_groups,
             compute_security_groups,
-            custom_login_security_groups,
             managed_login_security_groups,
         )
 
@@ -714,28 +700,21 @@ class ClusterCdkStack:
         self,
         head_node_security_groups,
         compute_security_groups,
-        custom_login_security_groups,
         managed_login_security_groups,
     ):
         if managed_login_security_groups:
             for pool_name, managed_security_group in managed_login_security_groups.items():
-                # Access to login nodes from head node and compute nodes to each managed security group
+                # Access to login nodes from head node
                 for index, security_group in enumerate(head_node_security_groups):
                     self._allow_all_ingress(
                         f"{pool_name}LoginSecurityGroupHeadNodeIngress{index}",
                         security_group,
-                        managed_security_group.ref
+                        managed_security_group.ref,
                     )
+                # Access to login nodes from compute nodes
                 for index, security_group in enumerate(compute_security_groups):
                     self._allow_all_ingress(
                         f"{pool_name}LoginSecurityGroupComputeIngress{index}",
-                        security_group,
-                        managed_security_group.ref
-                    )
-                # Access to login nodes from custom login node security groups
-                for index, security_group in enumerate(custom_login_security_groups):
-                    self._allow_all_ingress(
-                        f"{pool_name}LoginSecurityGroupCustomLoginSecurityGroupIngress{index}",
                         security_group,
                         managed_security_group.ref,
                     )
@@ -903,7 +882,7 @@ class ClusterCdkStack:
         for pool in self.config.login_nodes.pools:
             # Check if the pool has user-defined security groups
             if not pool.networking.security_groups:
-                security_group_ingress_rule = [
+                security_group_ingress_rules = [
                     # Add rule for SSH access
                     get_source_ingress_rule(pool.ssh.allowed_ips)
                 ]
