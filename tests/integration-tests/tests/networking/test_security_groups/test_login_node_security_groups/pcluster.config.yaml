@@ -1,0 +1,40 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_ids[0] }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+LoginNodes:
+  Pools:
+    - Name: pool
+      InstanceType: {{ instance }}
+      Count: 1
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+        { % if assign_additional_security_groups == False % }
+        SecurityGroups:
+          - { { default_security_group_id } }
+        { % else % }
+        AdditionalSecurityGroups:
+          - { { default_security_group_id } }
+        { % endif % }
+      Ssh:
+        AllowedIps: { { ssh_from } }
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+  - Name: queue-0
+  ComputeResources:
+    - Name: compute-resource-0
+      Instances:
+        - InstanceType: {{ instance }}
+      MinCount: 1
+      MaxCount: 1
+  Networking:
+    SubnetIds:
+      - {{ private_subnet_ids[1] }}

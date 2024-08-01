@@ -54,8 +54,10 @@ def _test_dcv_configuration(
     login_node_remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
 
     # check configuration parameters of the head and login nodes
-    check_node_security_group(region, cluster, dcv_port, expected_cidr=access_from, node_type="HeadNode")
-    check_node_security_group(region, cluster, dcv_port, expected_cidr=access_from, node_type="LoginNode")
+    check_node_security_group(region, cluster, dcv_port, expected_cidr=access_from)
+    check_node_security_group(
+        region, cluster, dcv_port, expected_cidr=access_from, login_pool_name=cluster_config.login_nodes.pools[0].name
+    )
 
     shared_dir = f"/home/{get_username_for_os(os)}"
 
