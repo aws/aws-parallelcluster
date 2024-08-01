@@ -290,6 +290,7 @@ def get_login_nodes_security_groups_full(
 
     return login_nodes_security_groups
 
+
 def get_source_ingress_rule(setting):
     """Returns security group ingress property depending on whether the input setting is a prefix list or CIDR ip"""
     if setting.startswith("pl"):
