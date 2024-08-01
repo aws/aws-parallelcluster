@@ -119,15 +119,7 @@
       "Properties": {
         "DestinationCidrBlock": "0.0.0.0/0",
         "GatewayId": {
-          "Fn::If": [
-            "CreateInternetGateway",
-            {
-              "Ref": "InternetGateway"
-            },
-            {
-              "Ref": "InternetGatewayId"
-            }
-          ]
+          "Ref": "InternetGateway"
         },
         "RouteTableId": {
           "Ref": "RouteTablePublic"
@@ -140,15 +132,7 @@
       "Properties": {
         "DestinationCidrBlock": "0.0.0.0/0",
         "GatewayId": {
-          "Fn::If": [
-            "CreateInternetGateway",
-            {
-              "Ref": "InternetGateway"
-            },
-            {
-              "Ref": "InternetGatewayId"
-            }
-          ]
+          "Ref": "InternetGatewayId"
         },
         "RouteTableId": {
           "Ref": "RouteTablePublic"
