@@ -296,7 +296,7 @@ class Pcluster3ConfigConverter(object):
                 ("efs_kms_key_id", "KmsKeyId"),
                 ("provisioned_throughput", "ProvisionedThroughput", "getint"),
                 ("throughput_mode", "ThroughputMode"),
-                ("accesspoint_id", "AccesspointId"),
+                ("access_point_id", "AccessPointId"),
             ]
             efs_section, efs_dict, _section_label = self.convert_storage_base(
                 "efs", efs_label.strip(), additional_items
