@@ -7,6 +7,7 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add support for custom actions on login nodes.
+- Add new configuration `SharedStorage/EfsSettings/AccessPointId` to specify an optional EFS access point for a mount
 
 **BUG FIXES**
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.

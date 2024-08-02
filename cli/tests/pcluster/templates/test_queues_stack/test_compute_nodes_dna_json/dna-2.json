@@ -20,6 +20,7 @@
     "efs_fs_ids": "",
     "efs_iam_authorizations": "",
     "efs_shared_dirs": "",
+    "efs_access_point_ids": "",
     "enable_efa": "NONE",
     "enable_efa_gdr": "NONE",
     "enable_intel_hpc_platform": "false",

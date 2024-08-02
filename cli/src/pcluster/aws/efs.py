@@ -80,3 +80,14 @@ class EfsClient(Boto3Client):
         :return: the mount_target_ids
         """
         return self._client.describe_file_systems(FileSystemId=efs_fs_id)
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def describe_access_point(self, access_point_id):
+        """
+        Describe access point attributes for the given EFS access point id.
+
+        :param efaccess_point_ids_ap_id: EFS access point Id
+        :return: the access_point details
+        """
+        return self._client.describe_access_points(AccessPointId=access_point_id)

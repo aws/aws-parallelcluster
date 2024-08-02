@@ -1109,7 +1109,7 @@ class ClusterCdkStack:
             shared_efs.encryption_in_transit
         )
         self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"].append(shared_efs.iam_authorization)
-        self.shared_storage_attributes[SharedStorageType.EFS]["AccesspointIds"].append(shared_efs.accesspoint_id)
+        self.shared_storage_attributes[SharedStorageType.EFS]["AccessPointIds"].append(shared_efs.access_point_id)
 
         return efs_id
 
@@ -1289,8 +1289,8 @@ class ClusterCdkStack:
                     "efs_iam_authorizations": to_comma_separated_string(
                         self.shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"], use_lower_case=True
                     ),
-                    "efs_accesspoint_ids": to_comma_separated_string(
-                        self.shared_storage_attributes[SharedStorageType.EFS]["AccesspointIds"],
+                    "efs_access_point_ids": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.EFS]["AccessPointIds"],
                         use_lower_case=True,
                     ),
                     "fsx_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.FSX),

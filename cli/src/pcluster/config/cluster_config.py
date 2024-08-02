@@ -371,7 +371,7 @@ class SharedEfs(Resource):
         deletion_policy: str = None,
         encryption_in_transit: bool = None,
         iam_authorization: bool = None,
-        accesspoint_id: str = None,
+        access_point_id: str = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
@@ -388,7 +388,7 @@ class SharedEfs(Resource):
         )
         self.encryption_in_transit = Resource.init_param(encryption_in_transit, default=False)
         self.iam_authorization = Resource.init_param(iam_authorization, default=False)
-        self.accesspoint_id = Resource.init_param(accesspoint_id)
+        self.access_point_id = Resource.init_param(access_point_id)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
@@ -400,7 +400,7 @@ class SharedEfs(Resource):
             EfsMountOptionsValidator,
             encryption_in_transit=self.encryption_in_transit,
             iam_authorization=self.iam_authorization,
-            accesspoint_id=self.accesspoint_id,
+            access_point_id=self.access_point_id,
             name=self.name,
         )
 
