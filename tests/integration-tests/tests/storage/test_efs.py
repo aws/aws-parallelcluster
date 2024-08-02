@@ -200,7 +200,90 @@ def test_multiple_efs(
             encryption_in_transits,
         )
 
+@pytest.mark.usefixtures("instance")
+def test_efs_access_point(
+    os,
+    region,
+    scheduler,
+    efs_stack_factory,
+    efs_mount_target_stack_factory,
+    efs_access_point_stack_factory,
+    pcluster_config_reader,
+    clusters_factory,
+    vpc_stack,
+    request,
+    key_name,
+    cfn_stacks_factory,
+    scheduler_commands_factory,
+):
+    """
+    Test when efs_fs_id is provided in the config file, the existing efs can be correctly mounted.
 
+    To verify the efs is the existing efs, the test expects a file with random ran inside the efs mounted
+    """
+    # Names of files that will be written from separate instance. The test checks the cluster nodes can access them.
+    efs_filenames = []
+    iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3 * [False]
+    encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3 * [False]
+    # create an additional EFS with file system policy to prevent anonymous access
+    efs_filesystem_id = efs_stack_factory()[0]
+    efs_mount_target_stack_factory([efs_filesystem_id])
+    access_point_id = efs_access_point_stack_factory(efs_fs_id=efs_filesystem_id)[0]
+    if scheduler != "awsbatch":
+        account_id = (
+            boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
+            .get_caller_identity()
+            .get("Account")
+        )
+        policy = {
+            "Version": "2012-10-17",
+            "Id": "efs-policy-denying-access-for-direct-efs-access",
+            "Statement": [
+                {
+                    "Sid": "efs-block-not-access-point-in-account",
+                    "Effect": "Deny",
+                    "Principal": {"AWS": "*"},
+                    "Action": [
+                        "elasticfilesystem:ClientMount",
+                        "elasticfilesystem:ClientRootAccess",
+                        "elasticfilesystem:ClientWrite",
+                    ],
+                    "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
+                    f"file-system/{efs_filesystem_id}",
+                    "Condition": {
+                        "StringNotLike": {"elasticfilesystem:AccessPointArn": 
+                            f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:access-point/{access_point_id}"
+                        }
+                    },
+                },
+                {
+                    "Sid": "efs-allow-accesspoint-in-account",
+                    "Effect": "Allow",
+                    "Principal": {"AWS": "*"},
+                    "Action": [
+                        "elasticfilesystem:ClientMount",
+                        "elasticfilesystem:ClientRootAccess",
+                        "elasticfilesystem:ClientWrite",
+                    ],
+                    "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
+                    f"file-system/{efs_filesystem_id}"
+                }
+            ]
+        }
+        boto3.client("efs").put_file_system_policy(FileSystemId=efs_filesystem_id, Policy=json.dumps(policy))
+
+    mount_dir = "efs_mount_dir"
+    cluster_config = pcluster_config_reader(mount_dir=mount_dir, efs_filesystem_id=efs_filesystem_id, access_point_id=access_point_id)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    mount_dir = "/" + mount_dir
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    test_efs_correctly_mounted(remote_command_executor, mount_dir)
+    _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+
+    
 def _check_efs_after_nodes_reboot(
     all_mount_dirs,
     cluster,

@@ -222,7 +222,7 @@ def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 
 
 def write_file_into_efs(
-    region, vpc_stack: CfnVpcStack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory
+    region, vpc_stack: CfnVpcStack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory, access_point_id=None
 ):
     """Write file stack contains an instance to write an empty file with random name into each of the efs in efs_ids."""
     write_file_template = Template()
@@ -236,7 +236,7 @@ def write_file_into_efs(
     write_file_user_data = ""
     for efs_id in efs_ids:
         random_file_name = random_alphanumeric()
-        write_file_user_data += _write_user_data(efs_id, random_file_name)
+        write_file_user_data += _write_user_data(efs_id, random_file_name, access_point_id=access_point_id)
         random_file_names.append(random_file_name)
     user_data = f"""
         #cloud-config
@@ -312,11 +312,12 @@ def write_file_into_efs(
     return random_file_names
 
 
-def _write_user_data(efs_id, random_file_name):
+def _write_user_data(efs_id, random_file_name, access_point_id=None):
     mount_dir = "/mnt/efs/fs"
+    access_point_mount_parameter = f",accesspoint={access_point_id}" if access_point_id is not None else ""
     return f"""
         - mkdir -p {mount_dir}
-        - mount -t efs -o tls,iam {efs_id}:/ {mount_dir}
+        - mount -t efs -o tls,iam{access_point_mount_parameter} {efs_id}:/ {mount_dir} 
         - touch {mount_dir}/{random_file_name}
         - umount {mount_dir}
         """  # noqa: E501

@@ -54,7 +54,7 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
-from troposphere.efs import FileSystem as EFSFileSystem
+from troposphere.efs import FileSystem as EFSFileSystem, AccessPoint as EFSAccessPoint
 from troposphere.efs import MountTarget
 from troposphere.fsx import (
     ClientConfigurations,
@@ -1780,6 +1780,32 @@ def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
         return [stack.cfn_resources[f"{file_system_resource_name}{i}"] for i in range(num)]
 
     yield create_efs
+
+    if not request.config.getoption("no_delete"):
+        for stack in created_stacks:
+            cfn_stacks_factory.delete_stack(stack.name, region)
+
+@pytest.fixture(scope="class")
+def efs_access_point_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
+    """EFS stack contains a single efs and a single access point resource."""
+    created_stacks = []
+
+    def create_access_points(efs_fs_id, num=1):
+        ap_template = Template()
+        ap_template.set_version("2010-09-09")
+        ap_template.set_description("Access Point stack created for testing existing EFS wtith Access points")
+        access_point_resource_name = "AccessPointResourceResource"
+        for i in range(num):
+            access_point = EFSAccessPoint(f"{access_point_resource_name}{i}")
+            access_point.FileSystemId = efs_fs_id
+            ap_template.add_resource(access_point)
+        stack_name = generate_stack_name("integ-tests-efs-ap", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(name=stack_name, region=region, template=ap_template.to_json())
+        cfn_stacks_factory.create_stack(stack)
+        created_stacks.append(stack)
+        return [stack.cfn_resources[f"{access_point_resource_name}{i}"] for i in range(num)]
+
+    yield create_access_points
 
     if not request.config.getoption("no_delete"):
         for stack in created_stacks:

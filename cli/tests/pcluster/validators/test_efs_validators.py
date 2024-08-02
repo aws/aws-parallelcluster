@@ -27,8 +27,8 @@ from tests.pcluster.validators.utils import assert_failure_messages
             False,
             True,
             "EFS IAM authorization cannot be enabled when encryption in-transit is disabled. "
-            "Please either disable IAM authorization or enable encryption in-transit for file system "
-            "<name-of-the-file-system>",
+            "Please either disable IAM authorization or enable encryption in-transit "
+            "for file system <name-of-the-file-system>",
         ),
         (
             True,
@@ -42,8 +42,42 @@ from tests.pcluster.validators.utils import assert_failure_messages
         ),
     ],
 )
-def test_efs_mount_options_validator(encryption_in_transit, iam_authorization, expected_message):
+def test_efs_mount_options_validator(
+    encryption_in_transit, iam_authorization, access_point_id, file_system_id, expected_message
+):
     actual_failures = EfsMountOptionsValidator().execute(
-        encryption_in_transit, iam_authorization, "<name-of-the-file-system>"
+        encryption_in_transit, iam_authorization, None, "<name-of-the-file-system>"
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "access_point_id, name_of_the_file_system, expected_message",
+    [
+        (
+            None,
+            None,
+            None,
+        ),
+        (
+            "<access_point_id>",
+            None,
+            "An access point can only be specified when using an existing EFS file system. "
+            "Please either remove the access point id <access_point_id> "
+            "or provide the file system id for the access point",
+        ),
+        (
+            "<access_point_id>",
+            "<name-of-the-file-system>",
+            None,
+        ),
+        (
+            None,
+            "<name-of-the-file-system>",
+            None,
+        ),
+    ],
+)
+def test_efs_access_point_validator(access_point_id, name_of_the_file_system, expected_message):
+    actual_failures = EfsMountOptionsValidator().execute(False, False, access_point_id, name_of_the_file_system)
     assert_failure_messages(actual_failures, expected_message)
