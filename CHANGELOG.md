@@ -13,6 +13,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.
 - Fix sporadic cluster creation failures with managed FSx for Lustre.
+- Fix `retrieve_supported_regions` so that it can get the correct S3 url.
 
 3.10.1
 ------
