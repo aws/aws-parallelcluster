@@ -474,12 +474,6 @@ class ClusterCdkStack:
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 cluster_bucket=self.bucket,
             )
-            Tags.of(self.login_nodes_stack).add(
-                # This approach works since by design we have now only one pool.
-                # We should fix this if we want to add more than a login nodes pool per cluster.
-                "parallelcluster:login-nodes-pool",
-                self.config.login_nodes.pools[0].name,
-            )
             # Add dependency on the Head Node construct
             self.login_nodes_stack.node.add_dependency(self.head_node_instance)
 

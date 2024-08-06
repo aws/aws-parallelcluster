@@ -5,7 +5,7 @@ from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
+from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack, Tags
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
@@ -88,6 +88,9 @@ class Pool(Construct):
 
         self._launch_template = self._add_login_nodes_pool_launch_template()
         self._add_login_nodes_pool_auto_scaling_group()
+
+        # Add a pool name tag to the pool's resources
+        Tags.of(self).add("parallelcluster:login-nodes-pool", self._pool.name)
 
     def _add_login_node_iam_resources(self):
         self._iam_resource = LoginNodesIamResources(
