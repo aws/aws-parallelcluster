@@ -1384,6 +1384,7 @@ class LoginNodesSshSchema(BaseSshSchema):
     """Represent the Ssh schema of LoginNodes."""
 
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
+    allowed_ips = fields.Str(validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):

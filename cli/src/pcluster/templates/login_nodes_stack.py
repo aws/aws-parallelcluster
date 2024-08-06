@@ -28,6 +28,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_default_volume_tags,
     get_login_nodes_security_groups_full,
     get_shared_storage_ids_by_type,
+    get_source_ingress_rule,
     get_user_data_content,
     to_comma_separated_string,
 )
@@ -80,6 +81,7 @@ class Pool(Construct):
             availability_zones=self._pool.networking.az_list,
         )
         self._login_nodes_pool_target_group = self._add_login_nodes_pool_target_group()
+        self._load_balancer_security_groups = self._add_load_balancer_security_groups()
         self._login_nodes_pool_load_balancer = self._add_login_nodes_pool_load_balancer(
             self._login_nodes_pool_target_group
         )
@@ -423,10 +425,52 @@ class Pool(Construct):
                 ]
             ),
         )
-
+        # This is a workaround to add security groups to the NLB
+        # The currently used version of aws-elasticloadbalancingv2 (v1.204) doesn't support
+        # creating NLB with security groups directly
+        login_nodes_load_balancer.node.default_child.add_property_override(
+            "SecurityGroups", self._load_balancer_security_groups
+        )
         listener = login_nodes_load_balancer.add_listener(f"LoginNodesListener{self._pool.name}", port=22)
         listener.add_target_groups(f"LoginNodesListenerTargets{self._pool.name}", target_group)
         return login_nodes_load_balancer
+
+    def _add_managed_load_balancer_security_group(self):
+        # The load balancer shares the same SSH restrictions as the login nodes
+        load_balancer_security_group_ingress = [get_source_ingress_rule(self._pool.ssh.allowed_ips)]
+
+        load_balancer_managed_security_group = ec2.CfnSecurityGroup(
+            Stack.of(self),
+            f"{self._pool.name}LoadBalancerSecurityGroup",
+            group_description="Enable access to the load balancer",
+            vpc_id=self._config.vpc_id,
+            security_group_ingress=load_balancer_security_group_ingress,
+        )
+
+        # Add a rule to the managed login node security group which grants access from the managed NLB security group
+        ec2.CfnSecurityGroupIngress(
+            Stack.of(self),
+            "LoginSecurityGroupLoadBalancerIngress",
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            source_security_group_id=load_balancer_managed_security_group.ref,
+            description="Allow traffic from the Network Load Balancer",
+            group_id=self._login_security_group.ref,
+        )
+
+        return load_balancer_managed_security_group
+
+    def _add_load_balancer_security_groups(self):
+        """Return all of the security groups to be used on the Network Load Balancer."""
+        managed_load_balancer_security_group = None
+        if not self._pool.networking.security_groups:
+            managed_load_balancer_security_group = self._add_managed_load_balancer_security_group()
+            # Get the same security groups used on the login node pool
+        load_balancer_security_groups = get_login_nodes_security_groups_full(
+            managed_load_balancer_security_group, self._pool
+        )
+        return load_balancer_security_groups
 
 
 class LoginNodesStack(NestedStack):
@@ -441,7 +485,7 @@ class LoginNodesStack(NestedStack):
         shared_storage_infos: Dict,
         shared_storage_mount_dirs: Dict,
         shared_storage_attributes: Dict,
-        login_security_group,
+        login_security_groups,
         head_eni,
         cluster_hosted_zone,
         cluster_bucket,
@@ -450,7 +494,7 @@ class LoginNodesStack(NestedStack):
         self._login_nodes = cluster_config.login_nodes
         self._config = cluster_config
         self._log_group = log_group
-        self._login_security_group = login_security_group
+        self._login_security_groups = login_security_groups
         self._shared_storage_infos = shared_storage_infos
         self._shared_storage_mount_dirs = shared_storage_mount_dirs
         self._shared_storage_attributes = shared_storage_attributes
@@ -476,7 +520,7 @@ class LoginNodesStack(NestedStack):
                 self._shared_storage_infos,
                 self._shared_storage_mount_dirs,
                 self._shared_storage_attributes,
-                self._login_security_group,
+                self._login_security_groups.get(pool.name),
                 self.stack_name,
                 self.stack_id,
                 self._head_eni,

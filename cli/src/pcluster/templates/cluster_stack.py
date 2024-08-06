@@ -98,6 +98,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_log_group_deletion_policy,
     get_shared_storage_ids_by_type,
     get_slurm_specific_dna_json_for_head_node,
+    get_source_ingress_rule,
     get_user_data_content,
     to_comma_separated_string,
 )
@@ -193,9 +194,10 @@ class ClusterCdkStack:
             if isinstance(self.config, SlurmClusterConfig) and self.config.login_nodes
             else []
         )
-
+        # Add the managed login node security groups
         if self._login_security_group:
-            login_security_groups.append(self._login_security_group.ref)
+            for _, managed_security_group in self._login_security_group.items():
+                login_security_groups.append(managed_security_group.ref)
 
         return login_security_groups
 
@@ -467,7 +469,7 @@ class ClusterCdkStack:
                 shared_storage_infos=self.shared_storage_infos,
                 shared_storage_mount_dirs=self.shared_storage_mount_dirs,
                 shared_storage_attributes=self.shared_storage_attributes,
-                login_security_group=self._login_security_group,
+                login_security_groups=self._login_security_group,
                 head_eni=self._head_eni,
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 cluster_bucket=self.bucket,
@@ -574,11 +576,8 @@ class ClusterCdkStack:
 
     def _add_security_groups(self):
         head_node_security_groups, managed_head_security_group = self._head_security_groups()
-        (
-            login_security_groups,
-            managed_login_security_group,
-            custom_login_security_groups,
-        ) = self._login_security_groups()
+        login_security_groups, managed_login_security_groups = self._login_security_groups()
+
         (
             compute_security_groups,
             managed_compute_security_group,
@@ -590,13 +589,12 @@ class ClusterCdkStack:
             custom_compute_security_groups,
             head_node_security_groups,
             login_security_groups,
-            custom_login_security_groups,
             managed_compute_security_group,
             managed_head_security_group,
-            managed_login_security_group,
+            managed_login_security_groups,
         )
 
-        return managed_head_security_group, managed_compute_security_group, managed_login_security_group
+        return managed_head_security_group, managed_compute_security_group, managed_login_security_groups
 
     def _head_security_groups(self):
         managed_head_security_group = None
@@ -609,7 +607,7 @@ class ClusterCdkStack:
         return head_node_security_groups, managed_head_security_group
 
     def _login_security_groups(self):
-        managed_login_security_group = None
+        managed_login_security_groups = dict()
         custom_login_security_groups = set()
         managed_login_security_group_required = False
         if self._condition_is_slurm() and self.config.login_nodes:
@@ -622,9 +620,11 @@ class ClusterCdkStack:
                     managed_login_security_group_required = True
         login_security_groups = list(custom_login_security_groups)
         if managed_login_security_group_required:
-            managed_login_security_group = self._add_login_nodes_security_group()
-            login_security_groups.append(managed_login_security_group.ref)
-        return login_security_groups, managed_login_security_group, custom_login_security_groups
+            managed_login_security_groups = self._add_login_nodes_security_group()
+            login_security_groups.extend(
+                [security_group.ref for security_group in managed_login_security_groups.values()]
+            )
+        return login_security_groups, managed_login_security_groups
 
     def _compute_security_groups(self):
         managed_compute_security_group = None
@@ -649,20 +649,18 @@ class ClusterCdkStack:
         custom_compute_security_groups,
         head_node_security_groups,
         login_security_groups,
-        custom_login_security_groups,
         managed_compute_security_group,
         managed_head_security_group,
-        managed_login_security_group,
+        managed_login_security_groups,
     ):
         self._add_inbounds_to_managed_head_security_group(
             compute_security_groups, login_security_groups, managed_head_security_group
         )
 
-        self._add_inbounds_to_managed_login_security_group(
+        self._add_inbounds_to_managed_login_security_groups(
             head_node_security_groups,
             compute_security_groups,
-            custom_login_security_groups,
-            managed_login_security_group,
+            managed_login_security_groups,
         )
 
         self._add_inbounds_to_managed_compute_security_group(
@@ -698,29 +696,28 @@ class ClusterCdkStack:
                     port=NFS_PORT,
                 )
 
-    def _add_inbounds_to_managed_login_security_group(
+    def _add_inbounds_to_managed_login_security_groups(
         self,
         head_node_security_groups,
         compute_security_groups,
-        custom_login_security_groups,
-        managed_login_security_group,
+        managed_login_security_groups,
     ):
-        if managed_login_security_group:
-            # Access to login nodes from head node and compute nodes
-            for index, security_group in enumerate(head_node_security_groups):
-                self._allow_all_ingress(
-                    f"LoginSecurityGroupHeadNodeIngress{index}", security_group, managed_login_security_group.ref
-                )
-            for index, security_group in enumerate(compute_security_groups):
-                self._allow_all_ingress(
-                    f"LoginSecurityGroupComputeIngress{index}", security_group, managed_login_security_group.ref
-                )
-            for index, security_group in enumerate(custom_login_security_groups):
-                self._allow_all_ingress(
-                    f"LoginSecurityGroupCustomLoginSecurityGroupIngress{index}",
-                    security_group,
-                    managed_login_security_group.ref,
-                )
+        if managed_login_security_groups:
+            for pool_name, managed_security_group in managed_login_security_groups.items():
+                # Access to login nodes from head node
+                for index, security_group in enumerate(head_node_security_groups):
+                    self._allow_all_ingress(
+                        f"{pool_name}LoginSecurityGroupHeadNodeIngress{index}",
+                        security_group,
+                        managed_security_group.ref,
+                    )
+                # Access to login nodes from compute nodes
+                for index, security_group in enumerate(compute_security_groups):
+                    self._allow_all_ingress(
+                        f"{pool_name}LoginSecurityGroupComputeIngress{index}",
+                        security_group,
+                        managed_security_group.ref,
+                    )
 
     def _add_inbounds_to_managed_compute_security_group(
         self,
@@ -878,44 +875,41 @@ class ClusterCdkStack:
 
         return compute_security_group
 
-    def _get_source_ingress_rule(self, setting):
-        if setting.startswith("pl"):
-            return ec2.CfnSecurityGroup.IngressProperty(
-                ip_protocol="tcp", from_port=22, to_port=22, source_prefix_list_id=setting
-            )
-        else:
-            return ec2.CfnSecurityGroup.IngressProperty(ip_protocol="tcp", from_port=22, to_port=22, cidr_ip=setting)
-
     def _add_login_nodes_security_group(self):
-        # TODO review this once we allow more pools to be defined in the LoginNodes section
-        login_nodes_security_group_ingress = [
-            # SSH access
-            self._get_source_ingress_rule(self.config.login_nodes.pools[0].ssh.allowed_ips)
-        ]
+        """Return a dictionary mapping each login node pool name to its respective managed security group."""
+        pool_to_managed_security_group_dict = dict()
 
-        if self.config.login_nodes.has_dcv_enabled:
-            login_nodes_security_group_ingress.append(
-                # DCV access
-                ec2.CfnSecurityGroup.IngressProperty(
-                    ip_protocol="tcp",
-                    from_port=self.config.login_nodes.pools[0].dcv.port,
-                    to_port=self.config.login_nodes.pools[0].dcv.port,
-                    cidr_ip=self.config.login_nodes.pools[0].dcv.allowed_ips,
+        for pool in self.config.login_nodes.pools:
+            # Check if the pool has user-defined security groups
+            if not pool.networking.security_groups:
+                security_group_ingress_rules = [
+                    # Add rule for SSH access
+                    get_source_ingress_rule(pool.ssh.allowed_ips)
+                ]
+                # Add rule for DCV access if enabled
+                if pool.has_dcv_enabled:
+                    security_group_ingress_rules.append(
+                        ec2.CfnSecurityGroup.IngressProperty(
+                            ip_protocol="tcp",
+                            from_port=pool.dcv.port,
+                            to_port=pool.dcv.port,
+                            cidr_ip=pool.dcv.allowed_ips,
+                        )
+                    )
+                pool_to_managed_security_group_dict[pool.name] = ec2.CfnSecurityGroup(
+                    self.stack,
+                    f"{pool.name}LoginNodesSecurityGroup",
+                    group_description="Enable access to the login nodes",
+                    vpc_id=self.config.vpc_id,
+                    security_group_ingress=security_group_ingress_rules,
                 )
-            )
 
-        return ec2.CfnSecurityGroup(
-            self.stack,
-            "LoginNodesSecurityGroup",
-            group_description="Enable access to the login nodes",
-            vpc_id=self.config.vpc_id,
-            security_group_ingress=login_nodes_security_group_ingress,
-        )
+        return pool_to_managed_security_group_dict
 
     def _add_head_security_group(self):
         head_security_group_ingress = [
             # SSH access
-            self._get_source_ingress_rule(self.config.head_node.ssh.allowed_ips)
+            get_source_ingress_rule(self.config.head_node.ssh.allowed_ips)
         ]
 
         if self.config.is_dcv_enabled:
