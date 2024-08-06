@@ -1406,6 +1406,10 @@ class LoginNodes(Resource):
         super().__init__(**kwargs)
         self.pools = pools
 
+    def _register_validators(self, context: ValidatorContext = None):
+        self._register_validator(
+            DuplicateNameValidator, name_list=[pool.name for pool in self.pools], resource_name="Pool"
+        )
 
 class HeadNode(Resource):
     """Represent the Head Node resource."""

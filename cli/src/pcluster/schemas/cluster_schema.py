@@ -1459,7 +1459,6 @@ class LoginNodesSchema(BaseSchema):
         LoginNodesPoolSchema,
         many=True,
         required=True,
-        validate=validate.Length(equal=1, error="Only one pool can be specified when using login nodes."),
         metadata={"update_policy": UpdatePolicy(UpdatePolicy.LOGIN_NODES_POOLS), "update_key": "Name"},
     )
 

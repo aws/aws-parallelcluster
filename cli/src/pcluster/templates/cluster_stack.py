@@ -899,7 +899,7 @@ class ClusterCdkStack:
                 pool_to_managed_security_group_dict[pool.name] = ec2.CfnSecurityGroup(
                     self.stack,
                     f"{pool.name}LoginNodesSecurityGroup",
-                    group_description="Enable access to the login nodes",
+                    group_description=f"Enable access to {pool.name} login nodes",
                     vpc_id=self.config.vpc_id,
                     security_group_ingress=security_group_ingress_rules,
                 )
