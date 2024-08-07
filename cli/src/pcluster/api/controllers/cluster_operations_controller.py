@@ -266,6 +266,7 @@ def describe_cluster(cluster_name, region=None):
 def _get_login_nodes(cluster):
     login_nodes_status = cluster.login_nodes_status
     if login_nodes_status.get_login_nodes_pool_available():
+        # TODO Change when describe-cluster API is updated to support multiple pools
         status = LoginNodesState.FAILED
         if login_nodes_status.get_status() == LoginNodesPoolState.ACTIVE:
             status = LoginNodesState.ACTIVE
@@ -274,8 +275,8 @@ def _get_login_nodes(cluster):
         login_nodes = LoginNodesPool(status=status)
         login_nodes.address = login_nodes_status.get_address()
         login_nodes.scheme = login_nodes_status.get_scheme()
-        login_nodes.healthy_nodes = login_nodes_status.get_healthy_nodes()
-        login_nodes.unhealthy_nodes = login_nodes_status.get_unhealthy_nodes()
+        login_nodes.healthy_nodes = login_nodes_status.get_total_healthy_nodes()
+        login_nodes.unhealthy_nodes = login_nodes_status.get_total_unhealthy_nodes()
         return login_nodes
     return None
 
