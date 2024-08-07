@@ -192,6 +192,9 @@ jobs:
         run: |
           git diff --exit-code --quiet -- api/client/src/ ':!api/client/src/.openapi-generator/FILES'
   validate-external-slurmdbd-template:
+    permissions:
+      contents: write
+      pull-requests: write
     name: External SlurmDBD Template Validation
     runs-on: ubuntu-latest
     steps:
@@ -205,10 +208,13 @@ jobs:
           npm install -g aws-cdk
           pip install -r cloudformation/external-slurmdbd/requirements.txt
       - working-directory: cloudformation/external-slurmdbd
-        run: cdk synth --no-version-reporting
-      - name: Verify External SlurmDBD Template
-        run:
-          git diff --exit-code --quiet cloudformation/external-slurmdbd/external-slurmdbd.json cloudformation/external-slurmdbd/cdk.out/ExternalSlurmdbdStack.template.json
+        run: | 
+          cdk synth --no-version-reporting
+          cp cdk.out/ExternalSlurmdbdStack.template.json external-slurmdbd.json
+      - name: Create a Pull Request
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'update slurmdbd'
   shellcheck:
     name: Shellcheck
     runs-on: ubuntu-latest

@@ -29,7 +29,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
 - Allow build-image to be run in an isolated network.
-- Add support for Amazon Linux 2023.
+- Add support xfor Amazon Linux 2023.
 - Add support for `price-capacity-optimized` as an `AllocationStrategy`.
 - Add validator to prevent the use of Placement Groups with Capacity Blocks.
 
