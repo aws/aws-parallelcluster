@@ -41,7 +41,7 @@ class TestMetadata:
     cli_commit: str = ""
     cookbook_commit: str = ""
     node_commit: str = ""
-    cfn_stack_name: str = ""
+    cluster_stack_name: str = ""
     cw_log_group_name: str = ""
     global_build_number: int = 0
 
@@ -118,7 +118,7 @@ class MetadataTableManager:
                         "cli_commit": {"S": datum.cli_commit if datum.cli_commit else "None"},
                         "cookbook_commit": {"S": datum.cookbook_commit if datum.cookbook_commit else "None"},
                         "node_commit": {"S": datum.node_commit if datum.node_commit else "None"},
-                        "cfn_stack_name": {"S": datum.cfn_stack_name if datum.cfn_stack_name else "None"},
+                        "cluster_stack_name": {"S": datum.cluster_stack_name if datum.cluster_stack_name else "None"},
                         "cw_log_group_name": {"S": datum.cw_log_group_name if datum.cw_log_group_name else "None"},
                         "global_build_number": {
                             "N": str(datum.global_build_number) if datum.global_build_number else "0"
@@ -166,7 +166,7 @@ class MetadataTableManager:
                         cli_commit=response["Item"]["cli_commit"]["S"],
                         cookbook_commit=response["Item"]["cookbook_commit"]["S"],
                         node_commit=response["Item"]["node_commit"]["S"],
-                        cfn_stack_name=response["Item"]["cfn_stack_name"]["S"],
+                        cluster_stack_name=response["Item"]["cluster_stack_name"]["S"],
                         cw_log_group_name=response["Item"]["cw_log_group_name"]["S"],
                         global_build_number=int(response["Item"]["global_build_number"]["N"]),
                     )
