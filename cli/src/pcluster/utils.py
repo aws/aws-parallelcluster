@@ -570,7 +570,7 @@ def retrieve_supported_regions():
         try:
             url = "https://{region}-aws-parallelcluster.s3.{region}.{aws_domain}/supported-regions".format(
                 region=region,
-                aws_domain=get_partition(region),
+                aws_domain=get_url_domain_suffix(region),
             )
             with urllib.request.urlopen(url) as f:  # nosec B310 nosemgrep
                 retrieve_supported_regions.cache = f.read().decode("utf-8").split("\n")

@@ -20,6 +20,7 @@ LoginNodes:
         HttpProxyAddress: https://proxy-address:port
     Ssh:
       KeyName: validate_key_name
+      AllowedIps: 1.2.3.4/32
     Dcv:
       Enabled: true
       Port: 8443

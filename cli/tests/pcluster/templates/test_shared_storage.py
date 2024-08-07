@@ -104,7 +104,7 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
     login_nodes_sg_name = (
         login_nodes_networking.security_groups[0]
         if login_nodes_networking.security_groups
-        else "LoginNodesSecurityGroup"
+        else f"{cluster_config.login_nodes.pools[0].name}LoginNodesSecurityGroup"
     )
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", login_nodes_sg_name, mount_target_sg_name]:
         ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
@@ -170,7 +170,7 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
     login_nodes_sg_name = (
         login_nodes_networking.security_groups[0]
         if login_nodes_networking.security_groups
-        else "LoginNodesSecurityGroup"
+        else f"{cluster_config.login_nodes.pools[0].name}LoginNodesSecurityGroup"
     )
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", login_nodes_sg_name, file_system_sg_name]:
         ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"

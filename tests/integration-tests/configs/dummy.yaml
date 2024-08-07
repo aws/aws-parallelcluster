@@ -1,0 +1,10 @@
+{%- import 'common.jinja2' as common with context -%}
+---
+test-suites:
+  dummy:
+    test_dummy.py::test_dummy:
+      dimensions:
+        - regions: [ "us-west-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "ubuntu2004" ]
+          schedulers: [ "slurm" ]

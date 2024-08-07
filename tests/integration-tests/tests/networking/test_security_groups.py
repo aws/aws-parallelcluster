@@ -18,7 +18,13 @@ from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Template
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress
-from utils import check_node_security_group, create_hash_suffix, generate_stack_name, get_username_for_os
+from utils import (
+    check_node_security_group,
+    create_hash_suffix,
+    describe_cluster_security_groups,
+    generate_stack_name,
+    get_username_for_os,
+)
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -58,7 +64,7 @@ def test_additional_sg_and_ssh_from(
                 )
             ).is_true()
         logging.info("Asserting the security group of pcluster on the head node is aligned with ssh_from")
-        check_node_security_group(region, cluster, 22, ssh_from, node_type="HeadNode")
+        check_node_security_group(region, cluster, 22, ssh_from)
 
     head_node_instance_id = cluster.head_node_instance_id
     logging.info(f"HeadNode of the {cluster} is {head_node_instance_id}")
@@ -156,6 +162,89 @@ def test_overwrite_sg(region, scheduler, custom_security_groups, pcluster_config
         cluster.update(str(updated_config_file), force_update="true")
         logging.info("Checking SSH connection between cluster nodes after cluster update")
         _check_connections_between_head_node_and_compute_nodes(cluster)
+
+
+@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.parametrize("assign_additional_security_groups", [True, False])
+def test_login_node_security_groups(
+    region, custom_security_groups, pcluster_config_reader, clusters_factory, assign_additional_security_groups
+):
+    """
+    Test login node and network load balancer share the same SecurityGroups, AdditionalSecurityGroups, and SSH
+    restrictions when defined in the config.
+
+    Test that the network load balancer managed security group is referenced in an inbound rule of the
+    login node managed security group.
+    """
+    default_security_group_id = custom_security_groups(number_of_sgs=1)[0]
+
+    ssh_from = "10.11.12.0/32"
+    cluster_config = pcluster_config_reader(
+        default_security_group_id=default_security_group_id,
+        ssh_from=ssh_from,
+        assign_additional_security_groups=assign_additional_security_groups,
+    )
+    cluster = clusters_factory(cluster_config)
+    ec2_client = boto3.client("ec2", region_name=region)
+    elb_client = boto3.client("elbv2", region_name=region)
+
+    instances = _get_instances_by_security_group(ec2_client, default_security_group_id)
+    load_balancers = _get_load_balancer_by_security_group(elb_client, default_security_group_id)
+
+    logging.info("Asserting that login node and load balancer have same AdditionalSecurityGroups or SecurityGroups")
+    assert_that(len(instances) == 1).is_true()
+    assert_that(len(load_balancers) == 1).is_true()
+
+    if assign_additional_security_groups:
+        security_groups = describe_cluster_security_groups(cluster.name, region)
+        load_balancer_managed_security_group = None
+        login_node_managed_security_group = None
+        for security_group in security_groups:
+            if "pool1LoadBalancerSecurityGroup" in security_group.get("GroupName"):
+                load_balancer_managed_security_group = security_group
+            if "pool1LoginNodesSecurityGroup" in security_group.get("GroupName"):
+                login_node_managed_security_group = security_group
+
+        logging.info("Asserting both the login node and load balancer have managed security group")
+
+        assert_that(
+            load_balancer_managed_security_group is not None and login_node_managed_security_group is not None
+        ).is_true()
+
+        assert_that(
+            any(
+                login_node_managed_security_group.get("GroupId") == security_group["GroupId"]
+                for security_group in instances[0].get("SecurityGroups")
+            )
+        ).is_true()
+
+        assert_that(
+            load_balancer_managed_security_group.get("GroupId") in load_balancers[0].get("SecurityGroups")
+        ).is_true()
+
+        logging.info("Asserting the managed security groups of the load balancer and login node share SSH restriction")
+        load_balancer_managed_rules = ec2_client.describe_security_group_rules(
+            Filters=[{"Name": "group-id", "Values": [load_balancer_managed_security_group.get("GroupId")]}]
+        )["SecurityGroupRules"]
+        # Check login node SG
+        check_node_security_group(region, cluster, 22, ssh_from, login_pool_name="pool1")
+        # Check load balancer SG
+        assert_that(
+            any(ssh_from == rule.get("CidrIpv4") and rule.get("FromPort") == 22 for rule in load_balancer_managed_rules)
+        ).is_true()
+
+        logging.info(
+            "Asserting that load balancer managed security group is referenced in an inbound rule "
+            "of the login node managed security group"
+        )
+        for ip_permissions in login_node_managed_security_group.get("IpPermissions"):
+            if ip_permissions.get("UserIdGroupPairs"):
+                assert_that(
+                    any(
+                        load_balancer_managed_security_group.get("GroupId") == id_group_pairs.get("GroupId")
+                        for id_group_pairs in ip_permissions.get("UserIdGroupPairs")
+                    )
+                ).is_true()
 
 
 def _check_connections_between_head_node_and_compute_nodes(cluster):
@@ -265,6 +354,18 @@ def _get_instances_by_security_group(ec2_client, security_group_id):
         for reservation in page["Reservations"]:
             instances.extend(reservation["Instances"])
     return instances
+
+
+def _get_load_balancer_by_security_group(elb_client, security_group_id):
+    logging.info("Collecting network load balancer")
+    paginator = elb_client.get_paginator("describe_load_balancers")
+    page_iterator = paginator.paginate()
+    load_balancers = []
+    for page in page_iterator:
+        for load_balancer in page["LoadBalancers"]:
+            if security_group_id in load_balancer["SecurityGroups"]:
+                load_balancers.append(load_balancer)
+    return load_balancers
 
 
 def _assert_security_group_rules(ec2_client, security_group_id: str, referenced_security_group_ids: list):
