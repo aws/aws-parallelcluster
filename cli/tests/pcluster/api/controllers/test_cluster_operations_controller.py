@@ -1494,12 +1494,12 @@ class TestDescribeCluster:
             mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_address", return_value=address)
         if healthy_nodes:
             mocker.patch(
-                "pcluster.models.login_nodes_status.LoginNodesStatus.get_healthy_nodes",
+                "pcluster.models.login_nodes_status.LoginNodesStatus.get_total_healthy_nodes",
                 return_value=healthy_nodes,
             )
         if unhealthy_nodes:
             mocker.patch(
-                "pcluster.models.login_nodes_status.LoginNodesStatus.get_unhealthy_nodes",
+                "pcluster.models.login_nodes_status.LoginNodesStatus.get_total_unhealthy_nodes",
                 return_value=unhealthy_nodes,
             )
 

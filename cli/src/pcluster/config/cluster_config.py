@@ -1411,6 +1411,7 @@ class LoginNodes(Resource):
             DuplicateNameValidator, name_list=[pool.name for pool in self.pools], resource_name="Pool"
         )
 
+
 class HeadNode(Resource):
     """Represent the Head Node resource."""
 

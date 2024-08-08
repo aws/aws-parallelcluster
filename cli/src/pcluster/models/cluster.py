@@ -754,13 +754,20 @@ class Cluster:
                 )
         return self.__has_running_capacity
 
-    def has_running_login_nodes(self, updated_value: bool = False) -> bool:
-        """Return True if the cluster has running login nodes. Note: the value will be cached."""
+    def has_running_login_nodes(self, updated_value: bool = False, pool_name: str = None) -> bool:
+        """
+        Return True if the cluster has running login nodes, or a specific pool if a pool name is provided.
+        Note: the value will be cached.
+        """
+        if pool_name:
+            healthy_nodes = self.login_nodes_status.get_healthy_nodes(pool_name=pool_name)
+            unhealthy_nodes = self.login_nodes_status.get_unhealthy_nodes(pool_name=pool_name)
+        else:
+            healthy_nodes = self.login_nodes_status.get_healthy_nodes()
+            unhealthy_nodes = self.login_nodes_status.get_unhealthy_nodes()
         if self.__has_running_login_nodes is None or updated_value:
             self.__has_running_login_nodes = (
-                self.login_nodes_status.get_total_healthy_nodes() is not None
-                and self.login_nodes_status.get_total_unhealthy_nodes() is not None
-                and self.login_nodes_status.get_total_healthy_nodes() + self.login_nodes_status.get_total_unhealthy_nodes() != 0
+                healthy_nodes is not None and unhealthy_nodes is not None and healthy_nodes + unhealthy_nodes != 0
             )
         return self.__has_running_login_nodes
 
