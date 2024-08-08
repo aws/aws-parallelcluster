@@ -26,3 +26,19 @@ def test_dummy(
 ):
     """Do nothing"""
     logging.info("Do nothing but test hooks")
+
+
+@pytest.mark.usefixtures("os", "scheduler", "instance")
+def test_dummy_cluster(
+    region,
+    scheduler,
+    pcluster_config_reader,
+    vpc_stack,
+    s3_bucket_factory,
+    test_datadir,
+    clusters_factory,
+):
+    """Do nothing"""
+    logging.info("Do nothing but launch a cluster")
+    cluster_config = pcluster_config_reader()
+    clusters_factory(cluster_config)
