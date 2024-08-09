@@ -192,6 +192,8 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
             cli_commit=item.config.getoption("--pcluster-git-ref"),
             cookbook_commit=item.config.getoption("--cookbook-git-ref"),
             node_commit=item.config.getoption("--node-git-ref"),
+            cluster_stack_name="none",
+            cw_log_group_name="none",
             setup_metadata=PhaseMetadata(
                 rep.when,
                 status=rep.outcome,
@@ -199,8 +201,6 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
                 end_time=get_user_prop(item, f"end_time_{rep.when}"),
             ),
         )
-        # Create the metadata table on the fly if it doesn't exist
-        metadata_table_mgr.create_metadata_table()
     if rep.when == "call":
         # Update the call test data
         test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
@@ -210,6 +210,8 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
             start_time=get_user_prop(item, f"start_time_{rep.when}"),
             end_time=get_user_prop(item, f"end_time_{rep.when}"),
         )
+        test_metadata.cluster_stack_name = get_user_prop(item, "cluster_stack_name")
+        test_metadata.cw_log_group_name = get_user_prop(item, "cw_log_group_name")
     if rep.when == "teardown":
         # Update the teardown test data
         test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
