@@ -801,6 +801,7 @@ Resources:
         Version: '2012-10-17'
         Statement:
           - Action:
+              - iam:CreateServiceLinkedRole
               - autoscaling:CreateAutoScalingGroup
               - autoscaling:DeleteAutoScalingGroup
               - autoscaling:DeleteLifecycleHook
