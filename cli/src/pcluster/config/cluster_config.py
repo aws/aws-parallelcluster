@@ -149,7 +149,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
 )
-from pcluster.validators.efs_validators import EfsMountOptionsValidator
+from pcluster.validators.efs_validators import EfsMountOptionsValidator, EfsAccessPointOptionsValidator
 from pcluster.validators.feature_validators import FeatureRegionValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
@@ -400,10 +400,13 @@ class SharedEfs(Resource):
             EfsMountOptionsValidator,
             encryption_in_transit=self.encryption_in_transit,
             iam_authorization=self.iam_authorization,
-            access_point_id=self.access_point_id,
             name=self.name,
         )
-
+        self._register_validator(
+            EfsAccessPointOptionsValidator,
+            access_point_id=self.access_point_id,
+            file_system_id=self.file_system_id,
+        )
 
 class BaseSharedFsx(Resource):
     """Represent the shared FSX resource."""

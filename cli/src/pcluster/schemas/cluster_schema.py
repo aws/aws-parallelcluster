@@ -322,7 +322,7 @@ class EfsSettingsSchema(BaseSchema):
         validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
     access_point_id = fields.Str(
-        validate=validate.Regexp(r"^fsap-[0-9a-z]{17}$"), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+        validate=validate.Regexp(r"^fsap-[0-9a-z]{17}$"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     encryption_in_transit = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     iam_authorization = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})

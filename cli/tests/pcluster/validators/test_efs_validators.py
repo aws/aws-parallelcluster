@@ -11,7 +11,7 @@
 
 import pytest
 
-from pcluster.validators.efs_validators import EfsMountOptionsValidator
+from pcluster.validators.efs_validators import EfsMountOptionsValidator, EfsAccessPointOptionsValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -43,16 +43,16 @@ from tests.pcluster.validators.utils import assert_failure_messages
     ],
 )
 def test_efs_mount_options_validator(
-    encryption_in_transit, iam_authorization, access_point_id, file_system_id, expected_message
+    encryption_in_transit, iam_authorization, expected_message
 ):
     actual_failures = EfsMountOptionsValidator().execute(
-        encryption_in_transit, iam_authorization, None, "<name-of-the-file-system>"
+        encryption_in_transit, iam_authorization, "<name-of-the-file-system>"
     )
     assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(
-    "access_point_id, name_of_the_file_system, expected_message",
+    "access_point_id, file_system_id, expected_message",
     [
         (
             None,
@@ -68,16 +68,18 @@ def test_efs_mount_options_validator(
         ),
         (
             "<access_point_id>",
-            "<name-of-the-file-system>",
+            "<file-systemd-id>",
             None,
         ),
         (
             None,
-            "<name-of-the-file-system>",
+            "<file-systemd-id>",
             None,
         ),
     ],
 )
-def test_efs_access_point_validator(access_point_id, name_of_the_file_system, expected_message):
-    actual_failures = EfsMountOptionsValidator().execute(False, False, access_point_id, name_of_the_file_system)
+def test_efs_access_point_with_filesystem_validator(access_point_id, file_system_id, expected_message):
+    actual_failures = EfsAccessPointOptionsValidator().execute(access_point_id, file_system_id)
     assert_failure_messages(actual_failures, expected_message)
+
+
