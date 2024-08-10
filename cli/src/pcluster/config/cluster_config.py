@@ -406,6 +406,7 @@ class SharedEfs(Resource):
             EfsAccessPointOptionsValidator,
             access_point_id=self.access_point_id,
             file_system_id=self.file_system_id,
+            encryption_in_transit=self.encryption_in_transit
         )
 
 class BaseSharedFsx(Resource):

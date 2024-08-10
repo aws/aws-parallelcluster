@@ -79,7 +79,35 @@ def test_efs_mount_options_validator(
     ],
 )
 def test_efs_access_point_with_filesystem_validator(access_point_id, file_system_id, expected_message):
-    actual_failures = EfsAccessPointOptionsValidator().execute(access_point_id, file_system_id)
+    actual_failures = EfsAccessPointOptionsValidator().execute(access_point_id, file_system_id, True)
     assert_failure_messages(actual_failures, expected_message)
 
-
+@pytest.mark.parametrize(
+    "access_point_id, encryption_in_transit, expected_message",
+    [
+        (
+            None,
+            False,
+            None,
+        ),
+        (
+            "<access_point_id>",
+            False,
+            "An access point can only be specified when encryption in transit is enabled. "
+            "Please either remove the access point id <access_point_id> or enable encryption in transit.",
+        ),
+        (
+            "<access_point_id>",
+            True,
+            None,
+        ),
+        (
+            None,
+            True,
+            None,
+        ),
+    ],
+)
+def test_efs_access_point_with_filesystem_validator(access_point_id, encryption_in_transit, expected_message):
+    actual_failures = EfsAccessPointOptionsValidator().execute(access_point_id, "<file-system-id>", encryption_in_transit)
+    assert_failure_messages(actual_failures, expected_message)

@@ -33,11 +33,18 @@ class EfsAccessPointOptionsValidator(Validator):
     IAM Authorization requires Encryption in Transit.
     """
 
-    def _validate(self,  access_point_id: str, file_system_id: str):
+    def _validate(self,  access_point_id: str, file_system_id: str, encryption_in_transit: bool):
 
         if access_point_id and not file_system_id:
             self._add_failure(
                 "An access point can only be specified when using an existing EFS file system. "
                 f"Please either remove the access point id {access_point_id} or provide the file system id for the access point",
+                FailureLevel.ERROR,
+            )
+
+        if access_point_id and not encryption_in_transit:
+            self._add_failure(
+                "An access point can only be specified when encryption in transit is enabled. "
+                f"Please either remove the access point id {access_point_id} or enable encryption in transit.",
                 FailureLevel.ERROR,
             )
