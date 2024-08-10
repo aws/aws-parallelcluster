@@ -49,6 +49,7 @@ LoginNodes:
         - subnet-12345678
     Ssh:
       KeyName: ec2-key-name
+      AllowedIps: 1.2.3.4/32
     Iam:
       InstanceRole: arn:aws:iam::aws:role/LoginNodeRole
 HeadNode:

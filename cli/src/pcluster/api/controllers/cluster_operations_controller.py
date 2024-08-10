@@ -283,9 +283,9 @@ def _get_login_nodes(cluster):
             pool.healthy_nodes = pool_status.get_healthy_nodes()
             pool.unhealthy_nodes = pool_status.get_unhealthy_nodes()
             login_nodes.append(pool)
-            break # remove
+            break
 
-        return login_nodes[0] # remove index
+        return login_nodes[0]
     return None
 
 
