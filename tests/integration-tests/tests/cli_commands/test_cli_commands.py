@@ -194,6 +194,7 @@ def _check_response(actual_response, expected_response, validation_key):
 
 
 def _test_describe_cluster(cluster):
+    # TODO Add section for login nodes
     cluster_info = cluster.describe_cluster()
     assert_that(cluster_info).is_not_none()
     assert_that(cluster_info).contains("clusterName")
