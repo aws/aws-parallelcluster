@@ -498,7 +498,11 @@ def condition_checker_login_nodes_pool_stop_policy(change, patch):
 
 
 def get_pool_name_from_change_paths(change):
-    """Return the name of the pool in which update was requested."""
+    """
+    Return the name of the pool in which update was requested.
+
+    Example path=['LoginNodes', 'Pools[pool2]', 'Ssh'].
+    """
     for path in change.path:
         if re.search("Pools\\[", path):
             _, pool_name = extract_type_and_name_from_path(path)

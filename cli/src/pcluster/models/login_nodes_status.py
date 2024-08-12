@@ -180,20 +180,14 @@ class LoginNodesStatus:
         return self._pool_status_dict
 
     def get_healthy_nodes(self, pool_name=None):
-        """
-        Return the total number of healthy login nodes in the cluster,
-        or the number of healthy nodes in a pool if a pool name is provided.
-        """
+        """Return the total number of healthy login nodes in the cluster or a specific pool."""
         healthy_nodes = (
             self._pool_status_dict.get(pool_name).get_healthy_nodes() if pool_name else self._total_healthy_nodes
         )
         return healthy_nodes
 
     def get_unhealthy_nodes(self, pool_name=None):
-        """
-        Return the total number of unhealthy login nodes in the cluster,
-        or the number of healthy nodes in a pool if a pool name is provided.
-        """
+        """Return the total number of unhealthy login nodes in the cluster or a specific pool."""
         unhealthy_nodes = (
             self._pool_status_dict.get(pool_name).get_unhealthy_nodes() if pool_name else self._total_unhealthy_nodes
         )
@@ -204,19 +198,19 @@ class LoginNodesStatus:
         for pool_name in login_node_pool_names:
             self._pool_status_dict[pool_name] = PoolStatus(self._stack_name, pool_name)
         self._total_healthy_nodes = sum(
-            [
+            (
                 pool_status.get_healthy_nodes()
                 for pool_status in self._pool_status_dict.values()
                 if pool_status.get_healthy_nodes()
-            ]
+            )
         )
         self._total_unhealthy_nodes = sum(
-            [
+            (
                 pool_status.get_unhealthy_nodes()
                 for pool_status in self._pool_status_dict.values()
                 if pool_status.get_unhealthy_nodes()
-            ]
+            )
         )
         self._login_nodes_pool_available = any(
-            [pool_status.get_pool_available() for pool_status in self._pool_status_dict.values()]
+            (pool_status.get_pool_available() for pool_status in self._pool_status_dict.values())
         )

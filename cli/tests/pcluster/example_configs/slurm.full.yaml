@@ -7,7 +7,7 @@ Image:
 LoginNodes:
   Pools:
   - Name: pool1
-    InstanceType: c5.large
+    InstanceType: t2.micro
     Count: 1
     GracetimePeriod: 10
     Image:
@@ -39,7 +39,7 @@ LoginNodes:
           - arg1
           - arg2
   - Name: pool2
-    InstanceType: c5.xlarge
+    InstanceType: t2.small
     Count: 1
     GracetimePeriod: 10
     Image:

@@ -268,9 +268,9 @@ def _get_login_nodes(cluster):
 
     # TODO Fix once the API models are updated to support multiple pools in describe-cluster response
     if login_nodes_status.get_login_nodes_pool_available():
-        login_nodes = list()
+        login_nodes = []
 
-        for pool_name, pool_status in login_nodes_status.get_pool_status_dict().items():
+        for _pool_name, pool_status in login_nodes_status.get_pool_status_dict().items():
             status = LoginNodesState.FAILED
             if pool_status.get_status() == LoginNodesPoolState.ACTIVE:
                 status = LoginNodesState.ACTIVE

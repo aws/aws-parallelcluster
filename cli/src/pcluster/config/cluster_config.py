@@ -1406,7 +1406,7 @@ class LoginNodes(Resource):
         super().__init__(**kwargs)
         self.pools = pools
 
-    def _register_validators(self, context: ValidatorContext = None):
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             DuplicateNameValidator, name_list=[pool.name for pool in self.pools], resource_name="Pool"
         )

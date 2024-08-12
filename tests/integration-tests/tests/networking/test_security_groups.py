@@ -170,66 +170,50 @@ def test_login_node_security_groups(
     region, custom_security_groups, pcluster_config_reader, clusters_factory, assign_additional_security_groups
 ):
     """
-    Test login node and network load balancer of share the same SecurityGroups, AdditionalSecurityGroups, and SSH
+    Test login node and network load balancer share the same SecurityGroups, AdditionalSecurityGroups, and SSH
     restrictions when defined in the config.
 
     Test that the network load balancer managed security group is referenced in an inbound rule of the
     login node managed security group.
     """
     default_security_group_ids = custom_security_groups(number_of_sgs=2)
-
+    pool_names = ["pool1", "pool2"]
     ssh_from = ["10.11.12.0/32", "20.21.22.0/32"]
+
     cluster_config = pcluster_config_reader(
         default_security_group_ids=default_security_group_ids,
         ssh_from=ssh_from,
         assign_additional_security_groups=assign_additional_security_groups,
     )
     cluster = clusters_factory(cluster_config)
+
     ec2_client = boto3.client("ec2", region_name=region)
     elb_client = boto3.client("elbv2", region_name=region)
+    security_groups = describe_cluster_security_groups(cluster.name, region)
 
-    pool_1_instances = _get_instances_by_security_group(ec2_client, default_security_group_ids[0])
-    pool_1_load_balancers = _get_load_balancer_by_security_group(elb_client, default_security_group_ids[0])
+    for pool_name, security_id, ssh_restriction in zip(pool_names, default_security_group_ids, ssh_from):
+        instances = _get_instances_by_security_group(ec2_client, security_id)
+        load_balancers = _get_load_balancer_by_security_group(elb_client, security_id)
+        number_of_nodes = 1 if pool_name == "pool1" else 2
 
-    pool_2_instances = _get_instances_by_security_group(ec2_client, default_security_group_ids[1])
-    pool_2_load_balancers = _get_load_balancer_by_security_group(elb_client, default_security_group_ids[1])
-
-    _assert_login_node_pool_security_groups(
-        "pool1", pool_1_instances, pool_1_load_balancers, expected_number_of_nodes=1
-    )
-
-    _assert_login_node_pool_security_groups(
-        "pool2", pool_2_instances, pool_2_load_balancers, expected_number_of_nodes=2
-    )
-
-    if assign_additional_security_groups:
-        security_groups = describe_cluster_security_groups(cluster.name, region)
-        logging.info(f"Security groups: {security_groups}")
-
-        # get the managed security groups of the pool's load balancer and nodes
-        pool_1_load_balancer_managed_sg, pool_1_node_managed_sg = _get_pool_managed_security_groups(
-            "pool1", security_groups
-        )
-        pool_2_load_balancer_managed_sg, pool_2_node_managed_sg = _get_pool_managed_security_groups(
-            "pool2", security_groups
+        _assert_login_node_pool_security_groups(
+            pool_name, instances, load_balancers, expected_number_of_nodes=number_of_nodes
         )
 
-        _assert_login_node_pool_managed_security_group(
-            "pool1", pool_1_instances, pool_1_load_balancers, pool_1_node_managed_sg, pool_1_load_balancer_managed_sg
-        )
-        _assert_login_node_pool_managed_security_group(
-            "pool2", pool_2_instances, pool_2_load_balancers, pool_2_node_managed_sg, pool_2_load_balancer_managed_sg
-        )
+        if assign_additional_security_groups:
+            load_balancer_managed_sg, instance_managed_sg = _get_pool_managed_security_groups(
+                pool_name, security_groups
+            )
 
-        _assert_login_node_pool_ssh_restriction(
-            "pool1", ec2_client, region, cluster, ssh_from[0], pool_1_load_balancer_managed_sg
-        )
-        _assert_login_node_pool_ssh_restriction(
-            "pool2", ec2_client, region, cluster, ssh_from[1], pool_2_load_balancer_managed_sg
-        )
+            _assert_login_node_pool_managed_security_group(
+                pool_name, instances, load_balancers, instance_managed_sg, load_balancer_managed_sg
+            )
 
-        _assert_inbound_rule_of_pool_sg("pool1", pool_1_node_managed_sg, pool_1_load_balancer_managed_sg)
-        _assert_inbound_rule_of_pool_sg("pool2", pool_2_node_managed_sg, pool_2_load_balancer_managed_sg)
+            _assert_login_node_pool_ssh_restriction(
+                pool_name, ec2_client, region, cluster, ssh_restriction, load_balancer_managed_sg
+            )
+
+            _assert_inbound_rule_of_pool_sg(pool_name, instance_managed_sg, load_balancer_managed_sg)
 
 
 def _assert_login_node_pool_security_groups(pool_name, instances, load_balancers, expected_number_of_nodes):

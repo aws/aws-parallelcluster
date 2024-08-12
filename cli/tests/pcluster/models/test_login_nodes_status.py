@@ -138,29 +138,14 @@ class TestLoginNodesStatus:
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_health", return_value=self.dummy_targets_health)
 
-        login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data([self.dummy_pool_name_1, self.dummy_pool_name_2])
+        pool_names = [self.dummy_pool_name_1, self.dummy_pool_name_2]
+        dns_names = [self.dummy_dns_name_1, self.dummy_dns_name_2]
+        schemes = [self.dummy_scheme_1, self.dummy_scheme_2]
 
-        pool_1_status = login_nodes_status.get_pool_status_dict().get(self.dummy_pool_name_1)
-        pool_2_status = login_nodes_status.get_pool_status_dict().get(self.dummy_pool_name_2)
+        login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
+        login_nodes_status.retrieve_data(pool_names)
 
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_true()
-
-        assert_that(pool_1_status.get_status()).is_equal_to(LoginNodesPoolState.ACTIVE)
-        assert_that(pool_2_status.get_status()).is_equal_to(LoginNodesPoolState.ACTIVE)
-
-        assert_that(pool_1_status.get_address()).is_equal_to(self.dummy_dns_name_1)
-        assert_that(pool_2_status.get_address()).is_equal_to(self.dummy_dns_name_2)
-
-        assert_that(pool_1_status.get_scheme()).is_equal_to(self.dummy_scheme_1)
-        assert_that(pool_2_status.get_scheme()).is_equal_to(self.dummy_scheme_2)
-
-        assert_that(pool_1_status.get_healthy_nodes()).is_equal_to(2)
-        assert_that(pool_2_status.get_healthy_nodes()).is_equal_to(2)
-
-        assert_that(pool_1_status.get_unhealthy_nodes()).is_equal_to(1)
-        assert_that(pool_2_status.get_unhealthy_nodes()).is_equal_to(1)
-
         assert_that(login_nodes_status.get_healthy_nodes()).is_equal_to(4)
         assert_that(login_nodes_status.get_unhealthy_nodes()).is_equal_to(2)
 
@@ -171,6 +156,17 @@ class TestLoginNodesStatus:
             f'("status": "{LoginNodesPoolState.ACTIVE}", "address": "{self.dummy_dns_name_2}", '
             f'"scheme": "{self.dummy_scheme_2}", "healthy_nodes": "2", "unhealthy_nodes": "1"),'
         )
+
+        for pool_name, dns_name, scheme in zip(pool_names, dns_names, schemes):
+            pool_status = login_nodes_status.get_pool_status_dict().get(pool_name)
+
+            assert_that(pool_status.get_status()).is_equal_to(LoginNodesPoolState.ACTIVE)
+            assert_that(pool_status.get_address()).is_equal_to(dns_name)
+            assert_that(pool_status.get_scheme()).is_equal_to(scheme)
+            assert_that(pool_status.get_healthy_nodes()).is_equal_to(2)
+            assert_that(pool_status.get_unhealthy_nodes()).is_equal_to(1)
+            assert_that(login_nodes_status.get_healthy_nodes(pool_name)).is_equal_to(2)
+            assert_that(login_nodes_status.get_unhealthy_nodes(pool_name)).is_equal_to(1)
 
     def test_retrieve_data_no_called(self):
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)

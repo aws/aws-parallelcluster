@@ -34,7 +34,6 @@ from pcluster.schemas.cluster_schema import (
     LoginNodesIamSchema,
     LoginNodesImageSchema,
     LoginNodesPoolSchema,
-    LoginNodesSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,

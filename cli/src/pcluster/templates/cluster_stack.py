@@ -40,7 +40,6 @@ from aws_cdk.core import (
     Duration,
     Fn,
     Stack,
-    Tags,
 )
 
 from pcluster.aws.aws_api import AWSApi
