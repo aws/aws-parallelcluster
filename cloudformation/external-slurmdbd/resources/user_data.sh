@@ -53,7 +53,7 @@ DEVICE_NAME=$(ls /sys/class/net | grep e)
 # Configure AWS CLI using the expected overrides, if any.
 [ -f /etc/profile.d/aws-cli-default-config.sh ] && . /etc/profile.d/aws-cli-default-config.sh
 
-aws ec2 assign-private-ip-addressess --region "${AWS::Region}" --network-interface-id "${!ENI_ID}" --private-ip-addresses ${PrivateIp} --allow-reassignment
+aws ec2 assign-private-ip-addresses --region "${AWS::Region}" --network-interface-id "${!ENI_ID}" --private-ip-addresses ${PrivateIp} --allow-reassignment
 
 wait_for_private_ip_assignment || echo "Assignment of private IP ${PrivateIp} was not successful."
 

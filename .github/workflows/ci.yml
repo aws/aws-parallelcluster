@@ -191,11 +191,37 @@ jobs:
       - name: Verify Generation of API client
         run: |
           git diff --exit-code --quiet -- api/client/src/ ':!api/client/src/.openapi-generator/FILES'
+  generate-api-model:
+    permissions:
+      contents: write
+      pull-requests: write
+    name: API Model Generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - run: |
+          sudo npm install -g redoc-cli
+          sudo snap install yq
+      - working-directory: api
+        run: ./gradlew buildSmithyModel
+      - working-directory: api
+        run: ./gradlew generatePythonClient
+      - working-directory: api
+        run: ./gradlew generatePythonServer
+      - run: cp -Rf api/generated/python-server/pcluster cli/src
+      - name: Commit change
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'update api'
+
   validate-external-slurmdbd-template:
     permissions:
       contents: write
       pull-requests: write
-    name: External SlurmDBD Template Validation
+    name: External SlurmDBD Template Generation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -211,7 +237,7 @@ jobs:
         run: | 
           cdk synth --no-version-reporting
           cp cdk.out/ExternalSlurmdbdStack.template.json external-slurmdbd.json
-      - name: Create a Pull Request
+      - name: Commit change
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'update slurmdbd'
