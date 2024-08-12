@@ -2362,11 +2362,18 @@ components:
           failureReason: failureReason
         creationTime: 2000-01-23T04:56:07.000+00:00
         loginNodes:
-          unhealthyNodes: 6
-          address: address
-          scheme: scheme
-          healthyNodes: 0
-          status: null
+          - unhealthyNodes: 6
+            address: address
+            scheme: scheme
+            healthyNodes: 0
+            status: null
+            poolName: poolName
+          - unhealthyNodes: 6
+            address: address
+            scheme: scheme
+            healthyNodes: 0
+            status: null
+            poolName: poolName
         version: version
         clusterConfiguration:
           url: url
@@ -2442,7 +2449,10 @@ components:
         headNode:
           $ref: '#/components/schemas/EC2Instance'
         loginNodes:
-          $ref: '#/components/schemas/LoginNodesPool'
+          items:
+            $ref: '#/components/schemas/LoginNodesPool'
+          title: loginNodes
+          type: array
         failures:
           description: Failures array containing failures reason and code when the
             stack is in CREATE_FAILED status.
@@ -3187,9 +3197,13 @@ components:
         scheme: scheme
         healthyNodes: 0
         status: null
+        poolName: poolName
       properties:
         status:
           $ref: '#/components/schemas/LoginNodesState'
+        poolName:
+          title: poolName
+          type: string
         address:
           title: address
           type: string

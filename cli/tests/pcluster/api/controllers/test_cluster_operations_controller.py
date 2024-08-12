@@ -1167,15 +1167,15 @@ class TestDescribeCluster:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
-        "login_nodes_pool_available, status, scheme, address, healthy_nodes, unhealthy_nodes, expected_response",
+        "login_nodes_pool_available, statuses, schemes, addresses, healthy_nodes, unhealthy_nodes, expected_response",
         [
             (
                 False,
                 None,
                 None,
                 None,
-                0,
-                0,
+                [0, 0],
+                [0, 0],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1208,11 +1208,11 @@ class TestDescribeCluster:
             ),
             (
                 True,
-                LoginNodesPoolState.PENDING,
+                [LoginNodesPoolState.PENDING, LoginNodesPoolState.PENDING],
                 None,
                 None,
-                0,
-                0,
+                None,
+                None,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1222,7 +1222,10 @@ class TestDescribeCluster:
                     "computeFleetStatus": "RUNNING",
                     "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "loginNodes": {"status": "pending"},
+                    "loginNodes": [
+                        {"poolName": "pool1", "status": "pending"},
+                        {"poolName": "pool2", "status": "pending"},
+                    ],
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": get_installed_version()},
@@ -1246,11 +1249,11 @@ class TestDescribeCluster:
             ),
             (
                 True,
-                LoginNodesPoolState.ACTIVE,
-                "external",
-                "load.balancer.com",
-                5,
-                2,
+                [LoginNodesPoolState.ACTIVE, LoginNodesPoolState.ACTIVE],
+                ["external", "internet-facing"],
+                ["pool1.load.balancer.com", "pool2.load.balancer.com"],
+                [5, 0],
+                [2, 0],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1260,13 +1263,24 @@ class TestDescribeCluster:
                     "computeFleetStatus": "RUNNING",
                     "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "loginNodes": {
-                        "address": "load.balancer.com",
-                        "healthyNodes": 5,
-                        "scheme": "external",
-                        "status": "active",
-                        "unhealthyNodes": 2,
-                    },
+                    "loginNodes": [
+                        {
+                            "address": "pool1.load.balancer.com",
+                            "poolName": "pool1",
+                            "healthyNodes": 5,
+                            "scheme": "external",
+                            "status": "active",
+                            "unhealthyNodes": 2,
+                        },
+                        {
+                            "address": "pool2.load.balancer.com",
+                            "poolName": "pool2",
+                            "healthyNodes": 0,
+                            "scheme": "internet-facing",
+                            "status": "active",
+                            "unhealthyNodes": 0,
+                        },
+                    ],
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": get_installed_version()},
@@ -1290,11 +1304,11 @@ class TestDescribeCluster:
             ),
             (
                 True,
-                LoginNodesPoolState.ACTIVE,
-                "external",
-                "load.balancer.com",
-                0,
-                2,
+                [LoginNodesPoolState.ACTIVE, LoginNodesPoolState.ACTIVE],
+                ["external", "external"],
+                ["pool1.load.balancer.com", "pool2.load.balancer.com"],
+                [0, 2],
+                [2, 0],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1304,12 +1318,24 @@ class TestDescribeCluster:
                     "computeFleetStatus": "RUNNING",
                     "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "loginNodes": {
-                        "address": "load.balancer.com",
-                        "scheme": "external",
-                        "status": "active",
-                        "unhealthyNodes": 2,
-                    },
+                    "loginNodes": [
+                        {
+                            "address": "pool1.load.balancer.com",
+                            "poolName": "pool1",
+                            "scheme": "external",
+                            "status": "active",
+                            "unhealthyNodes": 2,
+                            "healthyNodes": 0,
+                        },
+                        {
+                            "address": "pool2.load.balancer.com",
+                            "poolName": "pool2",
+                            "scheme": "external",
+                            "status": "active",
+                            "healthyNodes": 2,
+                            "unhealthyNodes": 0,
+                        },
+                    ],
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": get_installed_version()},
@@ -1333,11 +1359,11 @@ class TestDescribeCluster:
             ),
             (
                 True,
-                LoginNodesPoolState.ACTIVE,
-                "external",
-                "load.balancer.com",
-                5,
-                0,
+                [LoginNodesPoolState.ACTIVE, LoginNodesPoolState.ACTIVE],
+                ["external", "private"],
+                ["pool1.load.balancer.com", "pool2.load.balancer.com"],
+                [5, 2],
+                [2, 5],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1347,12 +1373,24 @@ class TestDescribeCluster:
                     "computeFleetStatus": "RUNNING",
                     "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "loginNodes": {
-                        "address": "load.balancer.com",
-                        "healthyNodes": 5,
-                        "scheme": "external",
-                        "status": "active",
-                    },
+                    "loginNodes": [
+                        {
+                            "address": "pool1.load.balancer.com",
+                            "poolName": "pool1",
+                            "healthyNodes": 5,
+                            "unhealthyNodes": 2,
+                            "scheme": "external",
+                            "status": "active",
+                        },
+                        {
+                            "address": "pool2.load.balancer.com",
+                            "poolName": "pool2",
+                            "healthyNodes": 2,
+                            "unhealthyNodes": 5,
+                            "scheme": "private",
+                            "status": "active",
+                        },
+                    ],
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": get_installed_version()},
@@ -1376,11 +1414,11 @@ class TestDescribeCluster:
             ),
             (
                 True,
-                LoginNodesPoolState.FAILED,
-                "internal",
-                "load.balancer.com",
-                0,
-                0,
+                [LoginNodesPoolState.FAILED, LoginNodesPoolState.FAILED],
+                ["internal", "internal"],
+                ["pool1.load.balancer.com", "pool2.load.balancer.com"],
+                None,
+                None,
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1390,11 +1428,20 @@ class TestDescribeCluster:
                     "computeFleetStatus": "RUNNING",
                     "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "loginNodes": {
-                        "address": "load.balancer.com",
-                        "scheme": "internal",
-                        "status": "failed",
-                    },
+                    "loginNodes": [
+                        {
+                            "address": "pool1.load.balancer.com",
+                            "poolName": "pool1",
+                            "scheme": "internal",
+                            "status": "failed",
+                        },
+                        {
+                            "address": "pool2.load.balancer.com",
+                            "poolName": "pool2",
+                            "scheme": "internal",
+                            "status": "failed",
+                        },
+                    ],
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": get_installed_version()},
@@ -1424,9 +1471,9 @@ class TestDescribeCluster:
         mocker,
         client,
         login_nodes_pool_available,
-        status,
-        scheme,
-        address,
+        statuses,
+        schemes,
+        addresses,
         healthy_nodes,
         unhealthy_nodes,
         expected_response,
@@ -1482,34 +1529,41 @@ class TestDescribeCluster:
         config_mock.return_value.scheduling.settings.scheduler_definition.metadata = ""
         config_mock.return_value.scheduling.scheduler = "slurm"
 
-        # TODO Update once multiple pools supported in describe-cluster API response
-        mocker.patch.object(PoolStatus, "_retrieve_data")
-        pool_status_1 = PoolStatus("clustername", "pool1")
-        pool_status_dict = {"pool1": pool_status_1}
-
+        # Mock LoginNodesStatus method's return values
         mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
-        mocker.patch(
-            "pcluster.models.login_nodes_status.LoginNodesStatus.get_pool_status_dict", return_value=pool_status_dict
-        )
+        mocker.patch("pcluster.models.login_nodes_status.PoolStatus._retrieve_data")
         mocker.patch(
             "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
             return_value=login_nodes_pool_available,
         )
-        mocker.patch("pcluster.models.login_nodes_status.PoolStatus.get_status", return_value=status)
-        if scheme:
-            mocker.patch("pcluster.models.login_nodes_status.PoolStatus.get_scheme", return_value=scheme)
-        if address:
-            mocker.patch("pcluster.models.login_nodes_status.PoolStatus.get_address", return_value=address)
+
+        pool_status_1 = PoolStatus("clustername", "pool1")
+        pool_status_2 = PoolStatus("clustername", "pool2")
+
+        if statuses:
+            mocker.patch.object(pool_status_1, "get_status", return_value=statuses[0])
+            mocker.patch.object(pool_status_2, "get_status", return_value=statuses[1])
+
+        if schemes:
+            mocker.patch.object(pool_status_1, "get_scheme", return_value=schemes[0])
+            mocker.patch.object(pool_status_2, "get_scheme", return_value=schemes[1])
+
+        if addresses:
+            mocker.patch.object(pool_status_1, "get_address", return_value=addresses[0])
+            mocker.patch.object(pool_status_2, "get_address", return_value=addresses[1])
+
         if healthy_nodes:
-            mocker.patch(
-                "pcluster.models.login_nodes_status.PoolStatus.get_healthy_nodes",
-                return_value=healthy_nodes,
-            )
+            mocker.patch.object(pool_status_1, "get_healthy_nodes", return_value=healthy_nodes[0])
+            mocker.patch.object(pool_status_2, "get_healthy_nodes", return_value=healthy_nodes[1])
+
         if unhealthy_nodes:
-            mocker.patch(
-                "pcluster.models.login_nodes_status.PoolStatus.get_unhealthy_nodes",
-                return_value=unhealthy_nodes,
-            )
+            mocker.patch.object(pool_status_1, "get_unhealthy_nodes", return_value=unhealthy_nodes[0])
+            mocker.patch.object(pool_status_2, "get_unhealthy_nodes", return_value=unhealthy_nodes[1])
+
+        pool_status_dict = {"pool1": pool_status_1, "pool2": pool_status_2}
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_pool_status_dict", return_value=pool_status_dict
+        )
 
         response = self._send_test_request(client)
 

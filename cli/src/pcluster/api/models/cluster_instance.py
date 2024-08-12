@@ -28,6 +28,7 @@ class ClusterInstance(Model):
         launch_time=None,
         instance_id=None,
         queue_name=None,
+        pool_name=None,
         public_ip_address=None,
         instance_type=None,
         state=None,
@@ -42,6 +43,8 @@ class ClusterInstance(Model):
         :type instance_id: str
         :param queue_name: The queue_name of this ClusterInstance.  # noqa: E501
         :type queue_name: str
+        :param pool_name: The pool_name of this ClusterInstance.  # noqa: E501
+        :type pool_name: str
         :param public_ip_address: The public_ip_address of this ClusterInstance.  # noqa: E501
         :type public_ip_address: str
         :param instance_type: The instance_type of this ClusterInstance.  # noqa: E501
@@ -57,6 +60,7 @@ class ClusterInstance(Model):
             "launch_time": datetime,
             "instance_id": str,
             "queue_name": str,
+            "pool_name": str,
             "public_ip_address": str,
             "instance_type": str,
             "state": InstanceState,
@@ -68,6 +72,7 @@ class ClusterInstance(Model):
             "launch_time": "launchTime",
             "instance_id": "instanceId",
             "queue_name": "queueName",
+            "pool_name": "poolName",
             "public_ip_address": "publicIpAddress",
             "instance_type": "instanceType",
             "state": "state",
@@ -78,6 +83,7 @@ class ClusterInstance(Model):
         self._launch_time = launch_time
         self._instance_id = instance_id
         self._queue_name = queue_name
+        self._pool_name = pool_name
         self._public_ip_address = public_ip_address
         self._instance_type = instance_type
         self._state = state
@@ -274,3 +280,24 @@ class ClusterInstance(Model):
             raise ValueError("Invalid value for `private_ip_address`, must not be `None`")  # noqa: E501
 
         self._private_ip_address = private_ip_address
+
+    @property
+    def pool_name(self):
+        """Gets the pool_name of this ClusterInstance.
+
+
+        :return: The pool_name of this ClusterInstance.
+        :rtype: str
+        """
+        return self._pool_name
+
+    @pool_name.setter
+    def pool_name(self, pool_name):
+        """Sets the pool_name of this ClusterInstance.
+
+
+        :param pool_name: The pool_name of this ClusterInstance.
+        :type pool_name: str
+        """
+
+        self._pool_name = pool_name

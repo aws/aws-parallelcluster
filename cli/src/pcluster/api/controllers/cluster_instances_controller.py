@@ -97,6 +97,7 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
                 private_ip_address=instance.private_ip,
                 node_type=node_type,
                 queue_name=instance.queue_name,
+                pool_name=instance.pool_name,
             )
         )
     return DescribeClusterInstancesResponseContent(instances=ec2_instances, next_token=next_token)

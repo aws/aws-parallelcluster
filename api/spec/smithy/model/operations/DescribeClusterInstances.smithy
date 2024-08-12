@@ -53,7 +53,8 @@ structure ClusterInstance {
     state: InstanceState,
     @required
     nodeType: NodeType,
-    queueName: String
+    queueName: String,
+    poolName: String
 }
 
 list InstanceSummaries {
