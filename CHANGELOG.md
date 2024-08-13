@@ -10,6 +10,7 @@ CHANGELOG
 - Add support for ap-southeast-3 region.
 - Add security groups to login node network load balancer.
 - Add `AllowedIps` configuration for login nodes.
+- Allow multiple login node pools.
 
 **BUG FIXES**
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.

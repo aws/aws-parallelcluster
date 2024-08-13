@@ -28,7 +28,7 @@ from pcluster.models.cluster import (
     LimitExceededClusterActionError,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.models.login_nodes_status import LoginNodesPoolState
+from pcluster.models.login_nodes_status import LoginNodesPoolState, PoolStatus
 from pcluster.utils import get_installed_version, to_iso_timestr
 from pcluster.validators.common import FailureLevel, ValidationResult
 
@@ -1482,24 +1482,32 @@ class TestDescribeCluster:
         config_mock.return_value.scheduling.settings.scheduler_definition.metadata = ""
         config_mock.return_value.scheduling.scheduler = "slurm"
 
+        # TODO Update once multiple pools supported in describe-cluster API response
+        mocker.patch.object(PoolStatus, "_retrieve_data")
+        pool_status_1 = PoolStatus("clustername", "pool1")
+        pool_status_dict = {"pool1": pool_status_1}
+
         mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
+        mocker.patch(
+            "pcluster.models.login_nodes_status.LoginNodesStatus.get_pool_status_dict", return_value=pool_status_dict
+        )
         mocker.patch(
             "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
             return_value=login_nodes_pool_available,
         )
-        mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_status", return_value=status)
+        mocker.patch("pcluster.models.login_nodes_status.PoolStatus.get_status", return_value=status)
         if scheme:
-            mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_scheme", return_value=scheme)
+            mocker.patch("pcluster.models.login_nodes_status.PoolStatus.get_scheme", return_value=scheme)
         if address:
-            mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_address", return_value=address)
+            mocker.patch("pcluster.models.login_nodes_status.PoolStatus.get_address", return_value=address)
         if healthy_nodes:
             mocker.patch(
-                "pcluster.models.login_nodes_status.LoginNodesStatus.get_healthy_nodes",
+                "pcluster.models.login_nodes_status.PoolStatus.get_healthy_nodes",
                 return_value=healthy_nodes,
             )
         if unhealthy_nodes:
             mocker.patch(
-                "pcluster.models.login_nodes_status.LoginNodesStatus.get_unhealthy_nodes",
+                "pcluster.models.login_nodes_status.PoolStatus.get_unhealthy_nodes",
                 return_value=unhealthy_nodes,
             )
 

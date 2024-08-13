@@ -18,13 +18,28 @@ LoginNodes:
           - {{ public_subnet_ids[0] }}
         {% if assign_additional_security_groups == False %}
         SecurityGroups:
-          - {{ default_security_group_id }}
+          - {{ default_security_group_ids[0] }}
         {% else %}
         AdditionalSecurityGroups:
-          - {{ default_security_group_id }}
+          - {{ default_security_group_ids[0] }}
         {% endif %}
       Ssh:
-        AllowedIps: {{ ssh_from }}
+        AllowedIps: {{ ssh_from[0] }}
+    - Name: pool2
+      InstanceType: {{ instance }}
+      Count: 2
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
+        {% if assign_additional_security_groups == False %}
+        SecurityGroups:
+          - {{ default_security_group_ids[1]}}
+        {% else %}
+        AdditionalSecurityGroups:
+          - {{ default_security_group_ids[1] }}
+        {% endif %}
+      Ssh:
+        AllowedIps: {{ ssh_from[1] }}
 Scheduling:
   Scheduler: slurm
   SlurmQueues:

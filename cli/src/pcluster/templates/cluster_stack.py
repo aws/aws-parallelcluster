@@ -40,7 +40,6 @@ from aws_cdk.core import (
     Duration,
     Fn,
     Stack,
-    Tags,
 )
 
 from pcluster.aws.aws_api import AWSApi
@@ -474,12 +473,6 @@ class ClusterCdkStack:
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 cluster_bucket=self.bucket,
             )
-            Tags.of(self.login_nodes_stack).add(
-                # This approach works since by design we have now only one pool.
-                # We should fix this if we want to add more than a login nodes pool per cluster.
-                "parallelcluster:login-nodes-pool",
-                self.config.login_nodes.pools[0].name,
-            )
             # Add dependency on the Head Node construct
             self.login_nodes_stack.node.add_dependency(self.head_node_instance)
 
@@ -899,7 +892,7 @@ class ClusterCdkStack:
                 pool_to_managed_security_group_dict[pool.name] = ec2.CfnSecurityGroup(
                     self.stack,
                     f"{pool.name}LoginNodesSecurityGroup",
-                    group_description="Enable access to the login nodes",
+                    group_description=f"Enable access to {pool.name} login nodes",
                     vpc_id=self.config.vpc_id,
                     security_group_ingress=security_group_ingress_rules,
                 )

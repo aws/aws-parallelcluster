@@ -28,57 +28,57 @@ class LoginNodesPoolState(Enum):
         return str(self.value)
 
 
-class LoginNodesStatus:
-    """Represents the status of the cluster login nodes pools."""
+class PoolStatus:
+    """Represents the status of a pool of login nodes."""
 
-    def __init__(self, stack_name):
-        self._stack_name = stack_name
-        self._login_nodes_pool_name = None
-        self._login_nodes_pool_available = False
-        self._load_balancer_arn = None
-        self._target_group_arn = None
-        self._status = None
+    def __init__(self, stack_name, pool_name):
         self._dns_name = None
+        self._status = None
         self._scheme = None
+        self._pool_name = pool_name
+        self._pool_available = False
+        self._stack_name = stack_name
         self._healthy_nodes = None
         self._unhealthy_nodes = None
+        self._load_balancer_arn = None
+        self._target_group_arn = None
+        self._retrieve_data()
 
     def __str__(self):
         return (
             f'("status": "{self._status}", "address": "{self._dns_name}", "scheme": "{self._scheme}", '
-            f'"healthyNodes": "{self._healthy_nodes}", "unhealthy_nodes": "{self._unhealthy_nodes}")'
+            f'"healthy_nodes": "{self._healthy_nodes}", "unhealthy_nodes": "{self._unhealthy_nodes}"),'
         )
 
-    def get_login_nodes_pool_available(self):
-        """Return the status of a login nodes fleet."""
-        return self._login_nodes_pool_available
-
-    def get_status(self):
-        """Return the status of a login nodes fleet."""
-        return self._status
-
-    def get_address(self):
-        """Return the single connection address of a login nodes fleet."""
-        return self._dns_name
-
-    def get_scheme(self):
-        """Return the schema of a login nodes fleet."""
-        return self._scheme
-
     def get_healthy_nodes(self):
-        """Return the number of healthy nodes of a login nodes fleet."""
+        """Return the number of healthy nodes of the login node pool."""
         return self._healthy_nodes
 
     def get_unhealthy_nodes(self):
-        """Return the number of unhealthy nodes of a login nodes fleet."""
+        """Return the number of unhealthy nodes of the login node pool."""
         return self._unhealthy_nodes
 
-    def retrieve_data(self, login_nodes_pool_name):
+    def get_pool_available(self):
+        """Return true if the pool is available."""
+        return self._pool_available
+
+    def get_status(self):
+        """Return the status of the login node pool."""
+        return self._status
+
+    def get_address(self):
+        """Return the connection addresses of the login node pool."""
+        return self._dns_name
+
+    def get_scheme(self):
+        """Return the schema of the login node pool."""
+        return self._scheme
+
+    def _retrieve_data(self):
         """Initialize the class with the information related to the login nodes pool."""
-        self._login_nodes_pool_name = login_nodes_pool_name
         self._retrieve_assigned_load_balancer()
         if self._load_balancer_arn:
-            self._login_nodes_pool_available = True
+            self._pool_available = True
             self._populate_target_groups()
             self._populate_target_group_health()
 
@@ -98,7 +98,7 @@ class LoginNodesStatus:
         for tags in tags_list:
             if self._key_value_tag_found(
                 tags, "parallelcluster:cluster-name", self._stack_name
-            ) and self._key_value_tag_found(tags, "parallelcluster:login-nodes-pool", self._login_nodes_pool_name):
+            ) and self._key_value_tag_found(tags, "parallelcluster:login-nodes-pool", self._pool_name):
                 self._load_balancer_arn = tags.get("ResourceArn")
                 break
 
@@ -153,3 +153,64 @@ class LoginNodesStatus:
                     "This is expected if login nodes pool creation/deletion is in progress",
                     e,
                 )
+
+
+class LoginNodesStatus:
+    """Represents the status of the cluster login nodes pools."""
+
+    def __init__(self, stack_name):
+        self._stack_name = stack_name
+        self._pool_status_dict = dict()
+        self._login_nodes_pool_available = False
+        self._total_healthy_nodes = None
+        self._total_unhealthy_nodes = None
+
+    def __str__(self):
+        out = ""
+        for pool_status in self._pool_status_dict.values():
+            out += str(pool_status)
+        return out
+
+    def get_login_nodes_pool_available(self):
+        """Return true if a pool is available in the login nodes fleet."""
+        return self._login_nodes_pool_available
+
+    def get_pool_status_dict(self):
+        """Return a dictionary mapping each login node pool name to respective pool status."""
+        return self._pool_status_dict
+
+    def get_healthy_nodes(self, pool_name=None):
+        """Return the total number of healthy login nodes in the cluster or a specific pool."""
+        healthy_nodes = (
+            self._pool_status_dict.get(pool_name).get_healthy_nodes() if pool_name else self._total_healthy_nodes
+        )
+        return healthy_nodes
+
+    def get_unhealthy_nodes(self, pool_name=None):
+        """Return the total number of unhealthy login nodes in the cluster or a specific pool."""
+        unhealthy_nodes = (
+            self._pool_status_dict.get(pool_name).get_unhealthy_nodes() if pool_name else self._total_unhealthy_nodes
+        )
+        return unhealthy_nodes
+
+    def retrieve_data(self, login_node_pool_names):
+        """Initialize the class with the information related to the login node fleet."""
+        for pool_name in login_node_pool_names:
+            self._pool_status_dict[pool_name] = PoolStatus(self._stack_name, pool_name)
+        self._total_healthy_nodes = sum(
+            (
+                pool_status.get_healthy_nodes()
+                for pool_status in self._pool_status_dict.values()
+                if pool_status.get_healthy_nodes()
+            )
+        )
+        self._total_unhealthy_nodes = sum(
+            (
+                pool_status.get_unhealthy_nodes()
+                for pool_status in self._pool_status_dict.values()
+                if pool_status.get_unhealthy_nodes()
+            )
+        )
+        self._login_nodes_pool_available = any(
+            (pool_status.get_pool_available() for pool_status in self._pool_status_dict.values())
+        )

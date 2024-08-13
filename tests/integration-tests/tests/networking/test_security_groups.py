@@ -176,75 +176,106 @@ def test_login_node_security_groups(
     Test that the network load balancer managed security group is referenced in an inbound rule of the
     login node managed security group.
     """
-    default_security_group_id = custom_security_groups(number_of_sgs=1)[0]
+    default_security_group_ids = custom_security_groups(number_of_sgs=2)
+    pool_names = ["pool1", "pool2"]
+    ssh_from = ["10.11.12.0/32", "20.21.22.0/32"]
 
-    ssh_from = "10.11.12.0/32"
     cluster_config = pcluster_config_reader(
-        default_security_group_id=default_security_group_id,
+        default_security_group_ids=default_security_group_ids,
         ssh_from=ssh_from,
         assign_additional_security_groups=assign_additional_security_groups,
     )
     cluster = clusters_factory(cluster_config)
+
     ec2_client = boto3.client("ec2", region_name=region)
     elb_client = boto3.client("elbv2", region_name=region)
+    security_groups = describe_cluster_security_groups(cluster.name, region)
 
-    instances = _get_instances_by_security_group(ec2_client, default_security_group_id)
-    load_balancers = _get_load_balancer_by_security_group(elb_client, default_security_group_id)
+    for pool_name, security_id, ssh_restriction in zip(pool_names, default_security_group_ids, ssh_from):
+        instances = _get_instances_by_security_group(ec2_client, security_id)
+        load_balancers = _get_load_balancer_by_security_group(elb_client, security_id)
+        number_of_nodes = 1 if pool_name == "pool1" else 2
 
-    logging.info("Asserting that login node and load balancer have same AdditionalSecurityGroups or SecurityGroups")
-    assert_that(len(instances) == 1).is_true()
+        _assert_login_node_pool_security_groups(
+            pool_name, instances, load_balancers, expected_number_of_nodes=number_of_nodes
+        )
+
+        if assign_additional_security_groups:
+            load_balancer_managed_sg, instance_managed_sg = _get_pool_managed_security_groups(
+                pool_name, security_groups
+            )
+
+            _assert_login_node_pool_managed_security_group(
+                pool_name, instances, load_balancers, instance_managed_sg, load_balancer_managed_sg
+            )
+
+            _assert_login_node_pool_ssh_restriction(
+                pool_name, ec2_client, region, cluster, ssh_restriction, load_balancer_managed_sg
+            )
+
+            _assert_inbound_rule_of_pool_sg(pool_name, instance_managed_sg, load_balancer_managed_sg)
+
+
+def _assert_login_node_pool_security_groups(pool_name, instances, load_balancers, expected_number_of_nodes):
+    logging.info(
+        f"Asserting that {pool_name} login nodes and load balancer have same AdditionalSecurityGroups or SecurityGroups"
+    )
+    assert_that(len(instances) == expected_number_of_nodes).is_true()
     assert_that(len(load_balancers) == 1).is_true()
 
-    if assign_additional_security_groups:
-        security_groups = describe_cluster_security_groups(cluster.name, region)
-        load_balancer_managed_security_group = None
-        login_node_managed_security_group = None
-        for security_group in security_groups:
-            if "pool1LoadBalancerSecurityGroup" in security_group.get("GroupName"):
-                load_balancer_managed_security_group = security_group
-            if "pool1LoginNodesSecurityGroup" in security_group.get("GroupName"):
-                login_node_managed_security_group = security_group
 
-        logging.info("Asserting both the login node and load balancer have managed security group")
-
-        assert_that(
-            load_balancer_managed_security_group is not None and login_node_managed_security_group is not None
-        ).is_true()
-
-        assert_that(
-            any(
-                login_node_managed_security_group.get("GroupId") == security_group["GroupId"]
-                for security_group in instances[0].get("SecurityGroups")
-            )
-        ).is_true()
-
-        assert_that(
-            load_balancer_managed_security_group.get("GroupId") in load_balancers[0].get("SecurityGroups")
-        ).is_true()
-
-        logging.info("Asserting the managed security groups of the load balancer and login node share SSH restriction")
-        load_balancer_managed_rules = ec2_client.describe_security_group_rules(
-            Filters=[{"Name": "group-id", "Values": [load_balancer_managed_security_group.get("GroupId")]}]
-        )["SecurityGroupRules"]
-        # Check login node SG
-        check_node_security_group(region, cluster, 22, ssh_from, login_pool_name="pool1")
-        # Check load balancer SG
-        assert_that(
-            any(ssh_from == rule.get("CidrIpv4") and rule.get("FromPort") == 22 for rule in load_balancer_managed_rules)
-        ).is_true()
-
-        logging.info(
-            "Asserting that load balancer managed security group is referenced in an inbound rule "
-            "of the login node managed security group"
+def _assert_login_node_pool_managed_security_group(
+    pool_name, instances, load_balancers, login_node_managed_sg, load_balancer_managed_sg
+):
+    logging.info(f"Asserting {pool_name} login nodes and load balancer have managed security group")
+    assert_that(load_balancer_managed_sg is not None and login_node_managed_sg is not None).is_true()
+    assert_that(
+        any(
+            login_node_managed_sg.get("GroupId") == security_group["GroupId"]
+            for security_group in instances[0].get("SecurityGroups")
         )
-        for ip_permissions in login_node_managed_security_group.get("IpPermissions"):
-            if ip_permissions.get("UserIdGroupPairs"):
-                assert_that(
-                    any(
-                        load_balancer_managed_security_group.get("GroupId") == id_group_pairs.get("GroupId")
-                        for id_group_pairs in ip_permissions.get("UserIdGroupPairs")
-                    )
-                ).is_true()
+    ).is_true()
+    assert_that(load_balancer_managed_sg.get("GroupId") in load_balancers[0].get("SecurityGroups")).is_true()
+
+
+def _assert_login_node_pool_ssh_restriction(pool_name, ec2_client, region, cluster, ssh_from, load_balancer_managed_sg):
+    logging.info(f"Asserting {pool_name} load balancer and login nodes share ssh restriction")
+    load_balancer_managed_rules = ec2_client.describe_security_group_rules(
+        Filters=[{"Name": "group-id", "Values": [load_balancer_managed_sg.get("GroupId")]}]
+    )["SecurityGroupRules"]
+    # Check login node ssh restriction
+    check_node_security_group(region, cluster, 22, ssh_from, login_pool_name=pool_name)
+    # Check load balancer ssh restriction
+    assert_that(
+        any(ssh_from == rule.get("CidrIpv4") and rule.get("FromPort") == 22 for rule in load_balancer_managed_rules)
+    ).is_true()
+
+
+def _assert_inbound_rule_of_pool_sg(pool_name, login_node_manged_sg, load_balancer_managed_sg):
+    logging.info(
+        f"Asserting that {pool_name} load balancer managed security group is referenced in an inbound rule "
+        f"of the login node managed security group"
+    )
+    for ip_permissions in login_node_manged_sg.get("IpPermissions"):
+        if ip_permissions.get("UserIdGroupPairs"):
+            assert_that(
+                any(
+                    load_balancer_managed_sg.get("GroupId") == id_group_pairs.get("GroupId")
+                    for id_group_pairs in ip_permissions.get("UserIdGroupPairs")
+                )
+            ).is_true()
+
+
+def _get_pool_managed_security_groups(pool_name, security_groups):
+    """Get the managed security group of the login node pool's nodes and load balancer."""
+    load_balancer_managed_security_group = None
+    login_node_managed_security_group = None
+    for security_group in security_groups:
+        if f"{pool_name}LoadBalancerSecurityGroup" in security_group.get("GroupName"):
+            load_balancer_managed_security_group = security_group
+        if f"{pool_name}LoginNodesSecurityGroup" in security_group.get("GroupName"):
+            login_node_managed_security_group = security_group
+    return load_balancer_managed_security_group, login_node_managed_security_group
 
 
 def _check_connections_between_head_node_and_compute_nodes(cluster):

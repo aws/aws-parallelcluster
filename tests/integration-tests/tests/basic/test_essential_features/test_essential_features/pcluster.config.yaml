@@ -28,6 +28,7 @@ HeadNode:
   Dcv:
     Enabled: True
   {% endif %}
+{% if scheduler != "awsbatch" %}
 LoginNodes:
   Pools:
     - Name: pool
@@ -52,6 +53,7 @@ LoginNodes:
       Iam:
         AdditionalIamPolicies:
           - Policy: "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+{% endif %}
 Scheduling:
   Scheduler: {{ scheduler }}
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}

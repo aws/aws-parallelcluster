@@ -1950,6 +1950,7 @@ def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, 
     update_config_1 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_3.config.yaml")
     cluster.update(str(update_config_1))
 
+    # TODO Update once describe-cluster API response supports multiple pools
     # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy nodes is 3
     cluster_info = cluster.describe_cluster()
     assert_that(cluster_info).is_not_none()
