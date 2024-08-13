@@ -11,6 +11,7 @@ CHANGELOG
 - Add security groups to login node network load balancer.
 - Add `AllowedIps` configuration for login nodes.
 - Add new configuration `SharedStorage/EfsSettings/AccessPointId` to specify an optional EFS access point for a mount
+- Allow multiple login node pools.
 
 **BUG FIXES**
 - Fix validator `EfaPlacementGroupValidator` so that it does not suggest to configure a Placement Group when Capacity Blocks are used.

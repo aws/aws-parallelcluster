@@ -5,7 +5,7 @@ from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack
+from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack, Tags
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
@@ -88,6 +88,9 @@ class Pool(Construct):
 
         self._launch_template = self._add_login_nodes_pool_launch_template()
         self._add_login_nodes_pool_auto_scaling_group()
+
+        # Add a pool name tag to the pool's resources
+        Tags.of(self).add("parallelcluster:login-nodes-pool", self._pool.name)
 
     def _add_login_node_iam_resources(self):
         self._iam_resource = LoginNodesIamResources(
@@ -446,7 +449,7 @@ class Pool(Construct):
         load_balancer_managed_security_group = ec2.CfnSecurityGroup(
             Stack.of(self),
             f"{self._pool.name}LoadBalancerSecurityGroup",
-            group_description="Enable access to the load balancer",
+            group_description=f"Enable access to {self._pool.name} network load balancer",
             vpc_id=self._config.vpc_id,
             security_group_ingress=load_balancer_security_group_ingress,
         )
@@ -454,12 +457,12 @@ class Pool(Construct):
         # Add a rule to the managed login node security group which grants access from the managed NLB security group
         ec2.CfnSecurityGroupIngress(
             Stack.of(self),
-            "LoginSecurityGroupLoadBalancerIngress",
+            f"{self._pool.name}LoginSecurityGroupLoadBalancerIngress",
             ip_protocol="-1",
             from_port=0,
             to_port=65535,
             source_security_group_id=load_balancer_managed_security_group.ref,
-            description="Allow traffic from the Network Load Balancer",
+            description=f"Allow traffic from {self._pool.name} network load balancer",
             group_id=self._login_security_group.ref,
         )
 

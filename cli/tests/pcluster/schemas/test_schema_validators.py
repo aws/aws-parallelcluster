@@ -34,7 +34,6 @@ from pcluster.schemas.cluster_schema import (
     LoginNodesIamSchema,
     LoginNodesImageSchema,
     LoginNodesPoolSchema,
-    LoginNodesSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
@@ -724,53 +723,6 @@ def test_login_node_pool_count_validator(count, expected_message):
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": count,
             "Ssh": {"KeyName": "valid_key_name"},
-        },
-        expected_message,
-    )
-
-
-@pytest.mark.parametrize(
-    "pools, expected_message",
-    [
-        ([], "Only one pool can be specified when using login nodes."),
-        (
-            [
-                {
-                    "Name": "validname1",
-                    "InstanceType": "t2.micro",
-                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
-                    "Count": 1,
-                    "Ssh": {"KeyName": "valid_key_name1"},
-                },
-                {
-                    "Name": "validname2",
-                    "InstanceType": "t2.micro",
-                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
-                    "Count": 1,
-                    "Ssh": {"KeyName": "valid_key_name2"},
-                },
-            ],
-            "Only one pool can be specified when using login nodes.",
-        ),
-        (
-            [
-                {
-                    "Name": "validname",
-                    "InstanceType": "t2.micro",
-                    "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
-                    "Count": 1,
-                    "Ssh": {"KeyName": "valid_key_name"},
-                }
-            ],
-            None,
-        ),
-    ],
-)
-def test_pools_validator(pools, expected_message):
-    _validate_and_assert_error(
-        LoginNodesSchema(),
-        {
-            "Pools": pools,
         },
         expected_message,
     )
