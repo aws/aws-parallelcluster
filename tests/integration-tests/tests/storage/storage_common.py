@@ -324,7 +324,7 @@ def _write_user_data(efs_id, random_file_name, access_point_id=None):
     access_point_mount_parameter = f",accesspoint={access_point_id}" if access_point_id is not None else ""
     return f"""
         - mkdir -p {mount_dir}
-        - mount -t efs -o tls,iam{access_point_mount_parameter} {efs_id}:/ {mount_dir} 
+        - mount -t efs -o tls,iam{access_point_mount_parameter} {efs_id}:/ {mount_dir}
         - touch {mount_dir}/{random_file_name}
         - umount {mount_dir}
         """  # noqa: E501

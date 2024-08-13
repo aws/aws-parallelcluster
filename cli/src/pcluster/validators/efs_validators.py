@@ -39,7 +39,8 @@ class EfsAccessPointOptionsValidator(Validator):
         if access_point_id and not file_system_id:
             self._add_failure(
                 "An access point can only be specified when using an existing EFS file system. "
-                f"Please either remove the access point id {access_point_id} or provide the file system id for the access point",
+                f"Please either remove the access point id {access_point_id} "
+                "or provide the file system id for the access point",
                 FailureLevel.ERROR,
             )
 

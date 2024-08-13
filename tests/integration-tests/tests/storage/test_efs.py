@@ -223,9 +223,6 @@ def test_efs_access_point(
     To verify the efs is the existing efs, the test expects a file with random ran inside the efs mounted
     """
     # Names of files that will be written from separate instance. The test checks the cluster nodes can access them.
-    efs_filenames = []
-    iam_authorizations = [False, False, True] if scheduler != "awsbatch" else 3 * [False]
-    encryption_in_transits = [False, True, True] if scheduler != "awsbatch" else 3 * [False]
     # create an additional EFS with file system policy to prevent anonymous access
     efs_filesystem_id = efs_stack_factory()[0]
     efs_mount_target_stack_factory([efs_filesystem_id])
@@ -253,7 +250,8 @@ def test_efs_access_point(
                     f"file-system/{efs_filesystem_id}",
                     "Condition": {
                         "StringNotLike": {
-                            "elasticfilesystem:AccessPointArn": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:access-point/{access_point_id}"
+                            "elasticfilesystem:AccessPointArn": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
+                            f"access-point/{access_point_id}"
                         }
                     },
                 },

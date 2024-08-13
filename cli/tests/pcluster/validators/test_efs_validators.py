@@ -107,7 +107,9 @@ def test_efs_access_point_with_filesystem_validator(access_point_id, file_system
         ),
     ],
 )
-def test_efs_access_point_with_filesystem_validator(access_point_id, encryption_in_transit, expected_message):
+def test_efs_access_point_with_filesystem_encryption_validator(
+    access_point_id, encryption_in_transit, expected_message
+):
     actual_failures = EfsAccessPointOptionsValidator().execute(
         access_point_id, "<file-system-id>", encryption_in_transit
     )
