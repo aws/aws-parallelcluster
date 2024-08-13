@@ -133,7 +133,7 @@ COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.11.0",
     "cookbook": "aws-parallelcluster-cookbook-3.11.0",
     "chef": "18.4.12",
-    "berkshelf": "8.0.7",
+    "berkshelf": "8.0.9",
     "ami": "dev",
 }
 
