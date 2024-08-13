@@ -3888,6 +3888,7 @@ SharedStorage:
   Name: nameebs4
   StorageType: Ebs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: Delete
     Encrypted: false
     EncryptionInTransit: false
@@ -3901,6 +3902,7 @@ SharedStorage:
   Name: efs0
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3914,6 +3916,7 @@ SharedStorage:
   Name: existing-efs10
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3927,6 +3930,7 @@ SharedStorage:
   Name: existing-efs11
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3940,6 +3944,7 @@ SharedStorage:
   Name: existing-efs12
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3953,6 +3958,7 @@ SharedStorage:
   Name: existing-efs13
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3966,6 +3972,7 @@ SharedStorage:
   Name: existing-efs14
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3979,6 +3986,7 @@ SharedStorage:
   Name: existing-efs15
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -3992,6 +4000,7 @@ SharedStorage:
   Name: existing-efs16
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4005,6 +4014,7 @@ SharedStorage:
   Name: existing-efs17
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4018,6 +4028,7 @@ SharedStorage:
   Name: existing-efs18
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4031,6 +4042,7 @@ SharedStorage:
   Name: existing-efs19
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4044,6 +4056,7 @@ SharedStorage:
   Name: existing-efs20
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4057,6 +4070,7 @@ SharedStorage:
   Name: existing-efs21
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4070,6 +4084,7 @@ SharedStorage:
   Name: existing-efs22
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4083,6 +4098,7 @@ SharedStorage:
   Name: existing-efs23
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4096,6 +4112,7 @@ SharedStorage:
   Name: existing-efs24
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4109,6 +4126,7 @@ SharedStorage:
   Name: existing-efs25
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4122,6 +4140,7 @@ SharedStorage:
   Name: existing-efs26
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4135,6 +4154,7 @@ SharedStorage:
   Name: existing-efs27
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
@@ -4148,6 +4168,7 @@ SharedStorage:
   Name: existing-efs28
   StorageType: Efs
 - EfsSettings:
+    AccessPointId: null
     DeletionPolicy: null
     Encrypted: false
     EncryptionInTransit: false
