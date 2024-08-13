@@ -1785,6 +1785,7 @@ def efs_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
         for stack in created_stacks:
             cfn_stacks_factory.delete_stack(stack.name, region)
 
+
 @pytest.fixture(scope="class")
 def efs_access_point_stack_factory(cfn_stacks_factory, request, region, vpc_stack):
     """EFS stack contains a single efs and a single access point resource."""

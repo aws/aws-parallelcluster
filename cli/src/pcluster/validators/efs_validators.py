@@ -26,6 +26,7 @@ class EfsMountOptionsValidator(Validator):
                 FailureLevel.ERROR,
             )
 
+
 class EfsAccessPointOptionsValidator(Validator):
     """
     EFS Mount Options validator.
@@ -33,7 +34,7 @@ class EfsAccessPointOptionsValidator(Validator):
     IAM Authorization requires Encryption in Transit.
     """
 
-    def _validate(self,  access_point_id: str, file_system_id: str, encryption_in_transit: bool):
+    def _validate(self, access_point_id: str, file_system_id: str, encryption_in_transit: bool):
 
         if access_point_id and not file_system_id:
             self._add_failure(

@@ -42,9 +42,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
         ),
     ],
 )
-def test_efs_mount_options_validator(
-    encryption_in_transit, iam_authorization, expected_message
-):
+def test_efs_mount_options_validator(encryption_in_transit, iam_authorization, expected_message):
     actual_failures = EfsMountOptionsValidator().execute(
         encryption_in_transit, iam_authorization, "<name-of-the-file-system>"
     )
@@ -82,6 +80,7 @@ def test_efs_access_point_with_filesystem_validator(access_point_id, file_system
     actual_failures = EfsAccessPointOptionsValidator().execute(access_point_id, file_system_id, True)
     assert_failure_messages(actual_failures, expected_message)
 
+
 @pytest.mark.parametrize(
     "access_point_id, encryption_in_transit, expected_message",
     [
@@ -109,5 +108,7 @@ def test_efs_access_point_with_filesystem_validator(access_point_id, file_system
     ],
 )
 def test_efs_access_point_with_filesystem_validator(access_point_id, encryption_in_transit, expected_message):
-    actual_failures = EfsAccessPointOptionsValidator().execute(access_point_id, "<file-system-id>", encryption_in_transit)
+    actual_failures = EfsAccessPointOptionsValidator().execute(
+        access_point_id, "<file-system-id>", encryption_in_transit
+    )
     assert_failure_messages(actual_failures, expected_message)

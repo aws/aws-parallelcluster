@@ -222,7 +222,14 @@ def test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 
 
 def write_file_into_efs(
-    region, vpc_stack: CfnVpcStack, efs_ids, request, key_name, cfn_stacks_factory, efs_mount_target_stack_factory, access_point_id=None
+    region,
+    vpc_stack: CfnVpcStack,
+    efs_ids,
+    request,
+    key_name,
+    cfn_stacks_factory,
+    efs_mount_target_stack_factory,
+    access_point_id=None,
 ):
     """Write file stack contains an instance to write an empty file with random name into each of the efs in efs_ids."""
     write_file_template = Template()

@@ -200,6 +200,7 @@ def test_multiple_efs(
             encryption_in_transits,
         )
 
+
 @pytest.mark.usefixtures("instance")
 def test_efs_access_point(
     os,
@@ -251,8 +252,8 @@ def test_efs_access_point(
                     "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
                     f"file-system/{efs_filesystem_id}",
                     "Condition": {
-                        "StringNotLike": {"elasticfilesystem:AccessPointArn": 
-                            f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:access-point/{access_point_id}"
+                        "StringNotLike": {
+                            "elasticfilesystem:AccessPointArn": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:access-point/{access_point_id}"
                         }
                     },
                 },
@@ -266,14 +267,16 @@ def test_efs_access_point(
                         "elasticfilesystem:ClientWrite",
                     ],
                     "Resource": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
-                    f"file-system/{efs_filesystem_id}"
-                }
-            ]
+                    f"file-system/{efs_filesystem_id}",
+                },
+            ],
         }
         boto3.client("efs").put_file_system_policy(FileSystemId=efs_filesystem_id, Policy=json.dumps(policy))
 
     mount_dir = "efs_mount_dir"
-    cluster_config = pcluster_config_reader(mount_dir=mount_dir, efs_filesystem_id=efs_filesystem_id, access_point_id=access_point_id)
+    cluster_config = pcluster_config_reader(
+        mount_dir=mount_dir, efs_filesystem_id=efs_filesystem_id, access_point_id=access_point_id
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
@@ -283,7 +286,6 @@ def test_efs_access_point(
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-    
 def _check_efs_after_nodes_reboot(
     all_mount_dirs,
     cluster,

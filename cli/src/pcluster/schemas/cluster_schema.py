@@ -338,7 +338,7 @@ class EfsSettingsSchema(BaseSchema):
                     "encryption_in_transit",
                     "iam_authorization",
                     "file_system_id",
-                    "access_point_id"
+                    "access_point_id",
                 ]:
                     messages.append(EFS_MESSAGES["errors"]["ignored_param_with_efs_fs_id"].format(efs_param=key))
             if messages:
