@@ -250,8 +250,7 @@ def test_efs_access_point(
                     f"file-system/{efs_filesystem_id}",
                     "Condition": {
                         "StringNotLike": {
-                            "elasticfilesystem:AccessPointArn": 
-                            f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"
+                            "elasticfilesystem:AccessPointArn": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"  # noqa: E501
                             f"access-point/{access_point_id}"
                         }
                     },
