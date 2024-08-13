@@ -31,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
 
-RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
+RHEL_OWNERS = ["309956199498", "841258680906", "219670896067", "255153437490", "279693163583"]
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
