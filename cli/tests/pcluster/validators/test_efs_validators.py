@@ -11,7 +11,7 @@
 
 import pytest
 
-from pcluster.validators.efs_validators import EfsMountOptionsValidator, EfsAccessPointOptionsValidator
+from pcluster.validators.efs_validators import EfsAccessPointOptionsValidator, EfsMountOptionsValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 

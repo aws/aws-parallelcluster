@@ -54,7 +54,8 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
-from troposphere.efs import FileSystem as EFSFileSystem, AccessPoint as EFSAccessPoint
+from troposphere.efs import AccessPoint as EFSAccessPoint
+from troposphere.efs import FileSystem as EFSFileSystem
 from troposphere.efs import MountTarget
 from troposphere.fsx import (
     ClientConfigurations,

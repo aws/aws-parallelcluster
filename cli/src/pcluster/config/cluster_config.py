@@ -149,7 +149,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
 )
-from pcluster.validators.efs_validators import EfsMountOptionsValidator, EfsAccessPointOptionsValidator
+from pcluster.validators.efs_validators import EfsAccessPointOptionsValidator, EfsMountOptionsValidator
 from pcluster.validators.feature_validators import FeatureRegionValidator
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
