@@ -57,6 +57,25 @@ def cfn_describe_stack_mock_response(edits=None):
     return stack_data
 
 
+def get_mock_pool_status(mocker, pool_name, status, scheme, address, healthy_nodes, unhealthy_nodes):
+    """Return a mocked pool status for describe-cluster command."""
+    pool_status = PoolStatus("clustername", pool_name)
+
+    if status:
+        mocker.patch.object(pool_status, "get_status", return_value=status)
+    if scheme:
+        mocker.patch.object(pool_status, "get_scheme", return_value=scheme)
+    if address:
+        mocker.patch.object(pool_status, "get_address", return_value=address)
+    if healthy_nodes is not None:
+        mocker.patch.object(pool_status, "get_healthy_nodes", return_value=healthy_nodes)
+    if unhealthy_nodes is not None:
+        mocker.patch.object(pool_status, "get_unhealthy_nodes", return_value=unhealthy_nodes)
+        mocker.patch.object(pool_status, "get_unhealthy_nodes", return_value=unhealthy_nodes)
+
+    return pool_status
+
+
 class TestCreateCluster:
     url = "/v3/clusters"
     method = "POST"
@@ -1171,9 +1190,9 @@ class TestDescribeCluster:
         [
             (
                 False,
-                None,
-                None,
-                None,
+                [None, None],
+                [None, None],
+                [None, None],
                 [0, 0],
                 [0, 0],
                 {
@@ -1209,10 +1228,10 @@ class TestDescribeCluster:
             (
                 True,
                 [LoginNodesPoolState.PENDING, LoginNodesPoolState.PENDING],
-                None,
-                None,
-                None,
-                None,
+                [None, None],
+                [None, None],
+                [None, None],
+                [None, None],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1417,8 +1436,8 @@ class TestDescribeCluster:
                 [LoginNodesPoolState.FAILED, LoginNodesPoolState.FAILED],
                 ["internal", "internal"],
                 ["pool1.load.balancer.com", "pool2.load.balancer.com"],
-                None,
-                None,
+                [None, None],
+                [None, None],
                 {
                     "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
@@ -1529,37 +1548,19 @@ class TestDescribeCluster:
         config_mock.return_value.scheduling.settings.scheduler_definition.metadata = ""
         config_mock.return_value.scheduling.scheduler = "slurm"
 
-        # Mock LoginNodesStatus method's return values
+        # Mock the LoginNodesStatus
         mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.retrieve_data")
         mocker.patch("pcluster.models.login_nodes_status.PoolStatus._retrieve_data")
         mocker.patch(
             "pcluster.models.login_nodes_status.LoginNodesStatus.get_login_nodes_pool_available",
             return_value=login_nodes_pool_available,
         )
-
-        pool_status_1 = PoolStatus("clustername", "pool1")
-        pool_status_2 = PoolStatus("clustername", "pool2")
-
-        if statuses:
-            mocker.patch.object(pool_status_1, "get_status", return_value=statuses[0])
-            mocker.patch.object(pool_status_2, "get_status", return_value=statuses[1])
-
-        if schemes:
-            mocker.patch.object(pool_status_1, "get_scheme", return_value=schemes[0])
-            mocker.patch.object(pool_status_2, "get_scheme", return_value=schemes[1])
-
-        if addresses:
-            mocker.patch.object(pool_status_1, "get_address", return_value=addresses[0])
-            mocker.patch.object(pool_status_2, "get_address", return_value=addresses[1])
-
-        if healthy_nodes:
-            mocker.patch.object(pool_status_1, "get_healthy_nodes", return_value=healthy_nodes[0])
-            mocker.patch.object(pool_status_2, "get_healthy_nodes", return_value=healthy_nodes[1])
-
-        if unhealthy_nodes:
-            mocker.patch.object(pool_status_1, "get_unhealthy_nodes", return_value=unhealthy_nodes[0])
-            mocker.patch.object(pool_status_2, "get_unhealthy_nodes", return_value=unhealthy_nodes[1])
-
+        pool_status_1 = get_mock_pool_status(
+            mocker, "pool1", statuses[0], schemes[0], addresses[0], healthy_nodes[0], unhealthy_nodes[0]
+        )
+        pool_status_2 = get_mock_pool_status(
+            mocker, "pool2", statuses[1], schemes[1], addresses[1], healthy_nodes[1], unhealthy_nodes[1]
+        )
         pool_status_dict = {"pool1": pool_status_1, "pool2": pool_status_2}
         mocker.patch(
             "pcluster.models.login_nodes_status.LoginNodesStatus.get_pool_status_dict", return_value=pool_status_dict
