@@ -635,6 +635,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
+    test_efs.py::test_efs_access_point:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
     test_raid.py::test_raid_fault_tolerance_mode:
       dimensions:
         - regions: ["cn-northwest-1"]

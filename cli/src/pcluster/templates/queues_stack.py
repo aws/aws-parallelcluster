@@ -335,6 +335,10 @@ class QueuesStack(NestedStack):
                         self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
                         use_lower_case=True,
                     ),
+                    "efs_access_point_ids": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["AccessPointIds"],
+                        use_lower_case=True,
+                    ),
                     "fsx_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.FSX),
                     "fsx_mount_names": to_comma_separated_string(
                         self._shared_storage_attributes[SharedStorageType.FSX]["MountNames"]

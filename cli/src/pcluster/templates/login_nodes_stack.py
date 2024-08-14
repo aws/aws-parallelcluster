@@ -240,6 +240,10 @@ class Pool(Construct):
                         self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
                         use_lower_case=True,
                     ),
+                    "efs_access_point_ids": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["AccessPointIds"],
+                        use_lower_case=True,
+                    ),
                     "enable_intel_hpc_platform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                     "ephemeral_dir": DEFAULT_EPHEMERAL_DIR,
                     "fsx_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.FSX),

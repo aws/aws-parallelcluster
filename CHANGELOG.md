@@ -10,6 +10,7 @@ CHANGELOG
 - Add support for ap-southeast-3 region.
 - Add security groups to login node network load balancer.
 - Add `AllowedIps` configuration for login nodes.
+- Add new configuration `SharedStorage/EfsSettings/AccessPointId` to specify an optional EFS access point for a mount
 - Allow multiple login node pools.
 
 **BUG FIXES**
