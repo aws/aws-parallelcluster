@@ -1,20 +1,14 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.config_validation_message import ConfigValidationMessage
-from pcluster.api.models.image_info_summary import ImageInfoSummary
+from pcluster.api.models.config_validation_message import ConfigValidationMessage  # noqa: E501
+from pcluster.api.models.image_info_summary import ImageInfoSummary  # noqa: E501
 
 
 class BuildImageResponseContent(Model):
@@ -23,12 +17,12 @@ class BuildImageResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, image=None, validation_messages=None):
+    def __init__(self, image=None, validation_messages=None):  # noqa: E501
         """BuildImageResponseContent - a model defined in OpenAPI
 
-        :param image: The image of this BuildImageResponseContent.
+        :param image: The image of this BuildImageResponseContent.  # noqa: E501
         :type image: ImageInfoSummary
-        :param validation_messages: The validation_messages of this BuildImageResponseContent.
+        :param validation_messages: The validation_messages of this BuildImageResponseContent.  # noqa: E501
         :type validation_messages: List[ConfigValidationMessage]
         """
         self.openapi_types = {"image": ImageInfoSummary, "validation_messages": List[ConfigValidationMessage]}
@@ -44,7 +38,7 @@ class BuildImageResponseContent(Model):
 
         :param dikt: A dict.
         :type: dict
-        :return: The BuildImageResponseContent of this BuildImageResponseContent.
+        :return: The BuildImageResponseContent of this BuildImageResponseContent.  # noqa: E501
         :rtype: BuildImageResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -68,7 +62,7 @@ class BuildImageResponseContent(Model):
         :type image: ImageInfoSummary
         """
         if image is None:
-            raise ValueError("Invalid value for `image`, must not be `None`")
+            raise ValueError("Invalid value for `image`, must not be `None`")  # noqa: E501
 
         self._image = image
 
@@ -76,8 +70,7 @@ class BuildImageResponseContent(Model):
     def validation_messages(self):
         """Gets the validation_messages of this BuildImageResponseContent.
 
-        List of messages collected during image config validation whose level is lower than the validationFailureLevel
-        set by the user
+        List of messages collected during image config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :return: The validation_messages of this BuildImageResponseContent.
         :rtype: List[ConfigValidationMessage]
@@ -88,10 +81,10 @@ class BuildImageResponseContent(Model):
     def validation_messages(self, validation_messages):
         """Sets the validation_messages of this BuildImageResponseContent.
 
-        List of messages collected during image config validation whose level is lower than the validationFailureLevel
-        set by the user
+        List of messages collected during image config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :param validation_messages: The validation_messages of this BuildImageResponseContent.
         :type validation_messages: List[ConfigValidationMessage]
         """
+
         self._validation_messages = validation_messages

@@ -15,23 +15,29 @@ class LogEvent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, timestamp=None):  # noqa: E501
+    def __init__(self, timestamp=None, message=None):  # noqa: E501
         """LogEvent - a model defined in OpenAPI
 
-        :param message: The message of this LogEvent.  # noqa: E501
-        :type message: str
         :param timestamp: The timestamp of this LogEvent.  # noqa: E501
         :type timestamp: datetime
+        :param message: The message of this LogEvent.  # noqa: E501
+        :type message: str
         """
-        self.openapi_types = {"message": str, "timestamp": datetime}
+        self.openapi_types = {
+            'timestamp': datetime,
+            'message': str
+        }
 
-        self.attribute_map = {"message": "message", "timestamp": "timestamp"}
+        self.attribute_map = {
+            'timestamp': 'timestamp',
+            'message': 'message'
+        }
 
-        self._message = message
         self._timestamp = timestamp
+        self._message = message
 
     @classmethod
-    def from_dict(cls, dikt) -> "LogEvent":
+    def from_dict(cls, dikt) -> 'LogEvent':
         """Returns the dict as a model
 
         :param dikt: A dict.
@@ -40,29 +46,6 @@ class LogEvent(Model):
         :rtype: LogEvent
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def message(self):
-        """Gets the message of this LogEvent.
-
-
-        :return: The message of this LogEvent.
-        :rtype: str
-        """
-        return self._message
-
-    @message.setter
-    def message(self, message):
-        """Sets the message of this LogEvent.
-
-
-        :param message: The message of this LogEvent.
-        :type message: str
-        """
-        if message is None:
-            raise ValueError("Invalid value for `message`, must not be `None`")  # noqa: E501
-
-        self._message = message
 
     @property
     def timestamp(self):
@@ -86,3 +69,26 @@ class LogEvent(Model):
             raise ValueError("Invalid value for `timestamp`, must not be `None`")  # noqa: E501
 
         self._timestamp = timestamp
+
+    @property
+    def message(self):
+        """Gets the message of this LogEvent.
+
+
+        :return: The message of this LogEvent.
+        :rtype: str
+        """
+        return self._message
+
+    @message.setter
+    def message(self, message):
+        """Sets the message of this LogEvent.
+
+
+        :param message: The message of this LogEvent.
+        :type message: str
+        """
+        if message is None:
+            raise ValueError("Invalid value for `message`, must not be `None`")  # noqa: E501
+
+        self._message = message

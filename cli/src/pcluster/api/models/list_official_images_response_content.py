@@ -1,18 +1,12 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
-from pcluster.api.models.ami_info import AmiInfo
+from pcluster.api.models.ami_info import AmiInfo  # noqa: E501
 from pcluster.api.models.base_model_ import Model
 
 
@@ -22,25 +16,29 @@ class ListOfficialImagesResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, images=None):
+    def __init__(self, images=None):  # noqa: E501
         """ListOfficialImagesResponseContent - a model defined in OpenAPI
 
-        :param images: The images of this ListOfficialImagesResponseContent.
+        :param images: The images of this ListOfficialImagesResponseContent.  # noqa: E501
         :type images: List[AmiInfo]
         """
-        self.openapi_types = {"images": List[AmiInfo]}
+        self.openapi_types = {
+            'images': List[AmiInfo]
+        }
 
-        self.attribute_map = {"images": "images"}
+        self.attribute_map = {
+            'images': 'images'
+        }
 
         self._images = images
 
     @classmethod
-    def from_dict(cls, dikt) -> "ListOfficialImagesResponseContent":
+    def from_dict(cls, dikt) -> 'ListOfficialImagesResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The ListOfficialImagesResponseContent of this ListOfficialImagesResponseContent.
+        :return: The ListOfficialImagesResponseContent of this ListOfficialImagesResponseContent.  # noqa: E501
         :rtype: ListOfficialImagesResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -64,6 +62,6 @@ class ListOfficialImagesResponseContent(Model):
         :type images: List[AmiInfo]
         """
         if images is None:
-            raise ValueError("Invalid value for `images`, must not be `None`")
+            raise ValueError("Invalid value for `images`, must not be `None`")  # noqa: E501
 
         self._images = images

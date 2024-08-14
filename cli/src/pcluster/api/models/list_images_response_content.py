@@ -1,19 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.image_info_summary import ImageInfoSummary
+from pcluster.api.models.image_info_summary import ImageInfoSummary  # noqa: E501
 
 
 class ListImagesResponseContent(Model):
@@ -22,31 +16,60 @@ class ListImagesResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, images=None, next_token=None):
+    def __init__(self, next_token=None, images=None):  # noqa: E501
         """ListImagesResponseContent - a model defined in OpenAPI
 
-        :param images: The images of this ListImagesResponseContent.
-        :type images: List[ImageInfoSummary]
-        :param next_token: The next_token of this ListImagesResponseContent.
+        :param next_token: The next_token of this ListImagesResponseContent.  # noqa: E501
         :type next_token: str
+        :param images: The images of this ListImagesResponseContent.  # noqa: E501
+        :type images: List[ImageInfoSummary]
         """
-        self.openapi_types = {"images": List[ImageInfoSummary], "next_token": str}
+        self.openapi_types = {
+            'next_token': str,
+            'images': List[ImageInfoSummary]
+        }
 
-        self.attribute_map = {"images": "images", "next_token": "nextToken"}
+        self.attribute_map = {
+            'next_token': 'nextToken',
+            'images': 'images'
+        }
 
-        self._images = images
         self._next_token = next_token
+        self._images = images
 
     @classmethod
-    def from_dict(cls, dikt) -> "ListImagesResponseContent":
+    def from_dict(cls, dikt) -> 'ListImagesResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The ListImagesResponseContent of this ListImagesResponseContent.
+        :return: The ListImagesResponseContent of this ListImagesResponseContent.  # noqa: E501
         :rtype: ListImagesResponseContent
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def next_token(self):
+        """Gets the next_token of this ListImagesResponseContent.
+
+        Token to use for paginated requests.  # noqa: E501
+
+        :return: The next_token of this ListImagesResponseContent.
+        :rtype: str
+        """
+        return self._next_token
+
+    @next_token.setter
+    def next_token(self, next_token):
+        """Sets the next_token of this ListImagesResponseContent.
+
+        Token to use for paginated requests.  # noqa: E501
+
+        :param next_token: The next_token of this ListImagesResponseContent.
+        :type next_token: str
+        """
+
+        self._next_token = next_token
 
     @property
     def images(self):
@@ -67,29 +90,6 @@ class ListImagesResponseContent(Model):
         :type images: List[ImageInfoSummary]
         """
         if images is None:
-            raise ValueError("Invalid value for `images`, must not be `None`")
+            raise ValueError("Invalid value for `images`, must not be `None`")  # noqa: E501
 
         self._images = images
-
-    @property
-    def next_token(self):
-        """Gets the next_token of this ListImagesResponseContent.
-
-        Token to use for paginated requests.
-
-        :return: The next_token of this ListImagesResponseContent.
-        :rtype: str
-        """
-        return self._next_token
-
-    @next_token.setter
-    def next_token(self, next_token):
-        """Sets the next_token of this ListImagesResponseContent.
-
-        Token to use for paginated requests.
-
-        :param next_token: The next_token of this ListImagesResponseContent.
-        :type next_token: str
-        """
-
-        self._next_token = next_token

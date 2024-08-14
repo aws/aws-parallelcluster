@@ -34,15 +34,18 @@ class CloudFormationResourceStatus(Model):
     IMPORT_ROLLBACK_IN_PROGRESS = "IMPORT_ROLLBACK_IN_PROGRESS"
     IMPORT_ROLLBACK_FAILED = "IMPORT_ROLLBACK_FAILED"
     IMPORT_ROLLBACK_COMPLETE = "IMPORT_ROLLBACK_COMPLETE"
-
     def __init__(self):  # noqa: E501
-        """CloudFormationResourceStatus - a model defined in OpenAPI"""
-        self.openapi_types = {}
+        """CloudFormationResourceStatus - a model defined in OpenAPI
 
-        self.attribute_map = {}
+        """
+        self.openapi_types = {
+        }
+
+        self.attribute_map = {
+        }
 
     @classmethod
-    def from_dict(cls, dikt) -> "CloudFormationResourceStatus":
+    def from_dict(cls, dikt) -> 'CloudFormationResourceStatus':
         """Returns the dict as a model
 
         :param dikt: A dict.

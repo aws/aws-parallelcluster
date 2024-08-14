@@ -26,16 +26,24 @@ class GetClusterLogEventsResponseContent(Model):
         :param events: The events of this GetClusterLogEventsResponseContent.  # noqa: E501
         :type events: List[LogEvent]
         """
-        self.openapi_types = {"next_token": str, "prev_token": str, "events": List[LogEvent]}
+        self.openapi_types = {
+            'next_token': str,
+            'prev_token': str,
+            'events': List[LogEvent]
+        }
 
-        self.attribute_map = {"next_token": "nextToken", "prev_token": "prevToken", "events": "events"}
+        self.attribute_map = {
+            'next_token': 'nextToken',
+            'prev_token': 'prevToken',
+            'events': 'events'
+        }
 
         self._next_token = next_token
         self._prev_token = prev_token
         self._events = events
 
     @classmethod
-    def from_dict(cls, dikt) -> "GetClusterLogEventsResponseContent":
+    def from_dict(cls, dikt) -> 'GetClusterLogEventsResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.

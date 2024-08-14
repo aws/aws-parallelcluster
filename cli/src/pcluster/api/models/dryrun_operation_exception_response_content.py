@@ -1,21 +1,14 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
-
-# pylint: disable=R0801
+# coding: utf-8
 
 from __future__ import absolute_import
 
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.change import Change
-from pcluster.api.models.config_validation_message import ConfigValidationMessage
+from pcluster.api.models.change import Change  # noqa: E501
+from pcluster.api.models.config_validation_message import ConfigValidationMessage  # noqa: E501
 
 
 class DryrunOperationExceptionResponseContent(Model):
@@ -24,65 +17,42 @@ class DryrunOperationExceptionResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, validation_messages=None, message=None, change_set=None):
+    def __init__(self, message=None, change_set=None, validation_messages=None):  # noqa: E501
         """DryrunOperationExceptionResponseContent - a model defined in OpenAPI
 
-        :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.
-        :type validation_messages: List[ConfigValidationMessage]
-        :param message: The message of this DryrunOperationExceptionResponseContent.
+        :param message: The message of this DryrunOperationExceptionResponseContent.  # noqa: E501
         :type message: str
-        :param change_set: The change_set of this DryrunOperationExceptionResponseContent.
+        :param change_set: The change_set of this DryrunOperationExceptionResponseContent.  # noqa: E501
         :type change_set: List[Change]
+        :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.  # noqa: E501
+        :type validation_messages: List[ConfigValidationMessage]
         """
         self.openapi_types = {
-            "validation_messages": List[ConfigValidationMessage],
-            "message": str,
-            "change_set": List[Change],
+            'message': str,
+            'change_set': List[Change],
+            'validation_messages': List[ConfigValidationMessage]
         }
 
         self.attribute_map = {
-            "validation_messages": "validationMessages",
-            "message": "message",
-            "change_set": "changeSet",
+            'message': 'message',
+            'change_set': 'changeSet',
+            'validation_messages': 'validationMessages'
         }
 
-        self._validation_messages = validation_messages
         self._message = message
         self._change_set = change_set
+        self._validation_messages = validation_messages
 
     @classmethod
-    def from_dict(cls, dikt) -> "DryrunOperationExceptionResponseContent":
+    def from_dict(cls, dikt) -> 'DryrunOperationExceptionResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The DryrunOperationExceptionResponseContent of this DryrunOperationExceptionResponseContent.
+        :return: The DryrunOperationExceptionResponseContent of this DryrunOperationExceptionResponseContent.  # noqa: E501
         :rtype: DryrunOperationExceptionResponseContent
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def validation_messages(self):
-        """Gets the validation_messages of this DryrunOperationExceptionResponseContent.
-
-        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
-
-        :return: The validation_messages of this DryrunOperationExceptionResponseContent.
-        :rtype: List[ConfigValidationMessage]
-        """
-        return self._validation_messages
-
-    @validation_messages.setter
-    def validation_messages(self, validation_messages):
-        """Sets the validation_messages of this DryrunOperationExceptionResponseContent.
-
-        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
-
-        :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.
-        :type validation_messages: List[ConfigValidationMessage]
-        """
-
-        self._validation_messages = validation_messages
 
     @property
     def message(self):
@@ -109,7 +79,7 @@ class DryrunOperationExceptionResponseContent(Model):
     def change_set(self):
         """Gets the change_set of this DryrunOperationExceptionResponseContent.
 
-        List of configuration changes requested by the operation.
+        List of configuration changes requested by the operation.  # noqa: E501
 
         :return: The change_set of this DryrunOperationExceptionResponseContent.
         :rtype: List[Change]
@@ -120,10 +90,33 @@ class DryrunOperationExceptionResponseContent(Model):
     def change_set(self, change_set):
         """Sets the change_set of this DryrunOperationExceptionResponseContent.
 
-        List of configuration changes requested by the operation.
+        List of configuration changes requested by the operation.  # noqa: E501
 
         :param change_set: The change_set of this DryrunOperationExceptionResponseContent.
         :type change_set: List[Change]
         """
 
         self._change_set = change_set
+
+    @property
+    def validation_messages(self):
+        """Gets the validation_messages of this DryrunOperationExceptionResponseContent.
+
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
+
+        :return: The validation_messages of this DryrunOperationExceptionResponseContent.
+        :rtype: List[ConfigValidationMessage]
+        """
+        return self._validation_messages
+
+    @validation_messages.setter
+    def validation_messages(self, validation_messages):
+        """Sets the validation_messages of this DryrunOperationExceptionResponseContent.
+
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
+
+        :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.
+        :type validation_messages: List[ConfigValidationMessage]
+        """
+
+        self._validation_messages = validation_messages

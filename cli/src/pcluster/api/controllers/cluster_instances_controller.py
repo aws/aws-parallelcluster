@@ -1,66 +1,49 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+from typing import Dict, Tuple, Union
 
-from pcluster.api.controllers.common import (
-    check_cluster_version,
-    configure_aws_region,
-    convert_errors,
-    http_success_status_code,
+import connexion
+import six
+
+from pcluster.api import util
+from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
+from pcluster.api.models.describe_cluster_instances_response_content import (  # noqa: E501
+    DescribeClusterInstancesResponseContent,
 )
-from pcluster.api.converters import api_node_type_to_cluster_node_type
-from pcluster.api.errors import BadRequestException, NotFoundException
-from pcluster.api.models import ClusterInstance, DescribeClusterInstancesResponseContent
-from pcluster.api.models import NodeType as ApiNodeType
-from pcluster.aws.common import StackNotFoundError
-from pcluster.models.cluster import Cluster, NodeType
-from pcluster.utils import to_utc_datetime
+from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
+    InternalServiceExceptionResponseContent,
+)
+from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
+    LimitExceededExceptionResponseContent,
+)
+from pcluster.api.models.node_type import NodeType  # noqa: E501
+from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
+from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
+    UnauthorizedClientErrorResponseContent,
+)
 
-# pylint: disable=W0613
 
+def delete_cluster_instances(cluster_name, region=None, force=None):  # noqa: E501
+    """delete_cluster_instances
 
-@configure_aws_region()
-@convert_errors()
-@http_success_status_code(202)
-def delete_cluster_instances(cluster_name, region=None, force=None):
-    """
-    Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters.
+    Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters. # noqa: E501
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
     :param region: AWS Region that the operation corresponds to.
     :type region: str
-    :param force: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
+    :param force: Force the deletion also when the cluster with the given name is not found. (Defaults to &#39;false&#39;.)
     :type force: bool
 
-    :rtype: None
+    :rtype: Union[None, Tuple[None, int], Tuple[None, int, Dict[str, str]]
     """
-    cluster = Cluster(cluster_name)
-    try:
-        if not check_cluster_version(cluster):
-            raise BadRequestException(
-                f"Cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
-            )
-        if cluster.stack.scheduler == "awsbatch":
-            raise BadRequestException("the delete cluster instances operation does not support AWS Batch clusters.")
-    except StackNotFoundError:
-        if not force:
-            raise NotFoundException(
-                f"Cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
-                "To force the deletion of all compute nodes, please use the `force` param."
-            )
-    cluster.terminate_nodes()
+    return "do some magic!"
 
 
-@configure_aws_region()
-@convert_errors()
-def describe_cluster_instances(cluster_name, region=None, next_token=None, node_type=None, queue_name=None):
-    """
-    Describe the instances belonging to a given cluster.
+def describe_cluster_instances(
+    cluster_name, region=None, next_token=None, node_type=None, queue_name=None
+):  # noqa: E501
+    """describe_cluster_instances
+
+    Describe the instances belonging to a given cluster. # noqa: E501
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
@@ -73,30 +56,8 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
     :param queue_name: Filter the instances by queue name.
     :type queue_name: str
 
-    :rtype: DescribeClusterInstancesResponseContent
+    :rtype: Union[DescribeClusterInstancesResponseContent, Tuple[DescribeClusterInstancesResponseContent, int], Tuple[DescribeClusterInstancesResponseContent, int, Dict[str, str]]
     """
-    cluster = Cluster(cluster_name)
-    node_type = api_node_type_to_cluster_node_type(node_type)
-    instances, next_token = cluster.describe_instances(
-        next_token=next_token, node_type=node_type, queue_name=queue_name
-    )
-    ec2_instances = []
-    for instance in instances:
-        node_type = ApiNodeType.COMPUTENODE
-        if instance.node_type == NodeType.HEAD_NODE.value:
-            node_type = ApiNodeType.HEADNODE
-        elif instance.node_type == NodeType.LOGIN_NODE.value:
-            node_type = ApiNodeType.LOGINNODE
-        ec2_instances.append(
-            ClusterInstance(
-                instance_id=instance.id,
-                launch_time=to_utc_datetime(instance.launch_time),
-                public_ip_address=instance.public_ip,
-                instance_type=instance.instance_type,
-                state=instance.state,
-                private_ip_address=instance.private_ip,
-                node_type=node_type,
-                queue_name=instance.queue_name,
-            )
-        )
-    return DescribeClusterInstancesResponseContent(instances=ec2_instances, next_token=next_token)
+    if connexion.request.is_json:
+        node_type = NodeType.from_dict(connexion.request.get_json())  # noqa: E501
+    return "do some magic!"

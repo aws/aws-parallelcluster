@@ -1,13 +1,9 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -19,25 +15,29 @@ class ClusterConfigurationStructure(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, url=None):
+    def __init__(self, url=None):  # noqa: E501
         """ClusterConfigurationStructure - a model defined in OpenAPI
 
-        :param url: The url of this ClusterConfigurationStructure.
+        :param url: The url of this ClusterConfigurationStructure.  # noqa: E501
         :type url: str
         """
-        self.openapi_types = {"url": str}
+        self.openapi_types = {
+            'url': str
+        }
 
-        self.attribute_map = {"url": "url"}
+        self.attribute_map = {
+            'url': 'url'
+        }
 
         self._url = url
 
     @classmethod
-    def from_dict(cls, dikt) -> "ClusterConfigurationStructure":
+    def from_dict(cls, dikt) -> 'ClusterConfigurationStructure':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The ClusterConfigurationStructure of this ClusterConfigurationStructure.
+        :return: The ClusterConfigurationStructure of this ClusterConfigurationStructure.  # noqa: E501
         :rtype: ClusterConfigurationStructure
         """
         return util.deserialize_model(dikt, cls)
@@ -46,7 +46,7 @@ class ClusterConfigurationStructure(Model):
     def url(self):
         """Gets the url of this ClusterConfigurationStructure.
 
-        S3 Url pointing to the cluster configuration file.
+        URL of the cluster configuration file.  # noqa: E501
 
         :return: The url of this ClusterConfigurationStructure.
         :rtype: str
@@ -57,7 +57,7 @@ class ClusterConfigurationStructure(Model):
     def url(self, url):
         """Sets the url of this ClusterConfigurationStructure.
 
-        S3 Url pointing to the cluster configuration file.
+        URL of the cluster configuration file.  # noqa: E501
 
         :param url: The url of this ClusterConfigurationStructure.
         :type url: str

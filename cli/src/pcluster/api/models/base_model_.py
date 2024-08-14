@@ -1,13 +1,3 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
-
-# pylint: disable=R0801
-
 import pprint
 import typing
 
@@ -15,17 +5,17 @@ import six
 
 from pcluster.api import util
 
-T = typing.TypeVar("T")  # pylint: disable=C0103
+T = typing.TypeVar("T")
 
 
 class Model:
     # openapiTypes: The key is attribute name and the
     # value is attribute type.
-    openapi_types = {}
+    openapi_types: typing.Dict[str, type] = {}
 
     # attributeMap: The key is attribute name and the
     # value is json key in definition.
-    attribute_map = {}
+    attribute_map: typing.Dict[str, str] = {}
 
     @classmethod
     def from_dict(cls: typing.Type[T], dikt) -> T:

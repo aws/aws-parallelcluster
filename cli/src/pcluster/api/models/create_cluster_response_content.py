@@ -1,20 +1,14 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
-from pcluster.api.models.config_validation_message import ConfigValidationMessage
+from pcluster.api.models.cluster_info_summary import ClusterInfoSummary  # noqa: E501
+from pcluster.api.models.config_validation_message import ConfigValidationMessage  # noqa: E501
 
 
 class CreateClusterResponseContent(Model):
@@ -23,28 +17,34 @@ class CreateClusterResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, cluster=None, validation_messages=None):
+    def __init__(self, cluster=None, validation_messages=None):  # noqa: E501
         """CreateClusterResponseContent - a model defined in OpenAPI
 
-        :param cluster: The cluster of this CreateClusterResponseContent.
+        :param cluster: The cluster of this CreateClusterResponseContent.  # noqa: E501
         :type cluster: ClusterInfoSummary
-        :param validation_messages: The validation_messages of this CreateClusterResponseContent.
+        :param validation_messages: The validation_messages of this CreateClusterResponseContent.  # noqa: E501
         :type validation_messages: List[ConfigValidationMessage]
         """
-        self.openapi_types = {"cluster": ClusterInfoSummary, "validation_messages": List[ConfigValidationMessage]}
+        self.openapi_types = {
+            'cluster': ClusterInfoSummary,
+            'validation_messages': List[ConfigValidationMessage]
+        }
 
-        self.attribute_map = {"cluster": "cluster", "validation_messages": "validationMessages"}
+        self.attribute_map = {
+            'cluster': 'cluster',
+            'validation_messages': 'validationMessages'
+        }
 
         self._cluster = cluster
         self._validation_messages = validation_messages
 
     @classmethod
-    def from_dict(cls, dikt) -> "CreateClusterResponseContent":
+    def from_dict(cls, dikt) -> 'CreateClusterResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The CreateClusterResponseContent of this CreateClusterResponseContent.
+        :return: The CreateClusterResponseContent of this CreateClusterResponseContent.  # noqa: E501
         :rtype: CreateClusterResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -68,7 +68,7 @@ class CreateClusterResponseContent(Model):
         :type cluster: ClusterInfoSummary
         """
         if cluster is None:
-            raise ValueError("Invalid value for `cluster`, must not be `None`")
+            raise ValueError("Invalid value for `cluster`, must not be `None`")  # noqa: E501
 
         self._cluster = cluster
 
@@ -76,8 +76,7 @@ class CreateClusterResponseContent(Model):
     def validation_messages(self):
         """Gets the validation_messages of this CreateClusterResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the validationFailureLevel
-        set by the user
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :return: The validation_messages of this CreateClusterResponseContent.
         :rtype: List[ConfigValidationMessage]
@@ -88,10 +87,10 @@ class CreateClusterResponseContent(Model):
     def validation_messages(self, validation_messages):
         """Sets the validation_messages of this CreateClusterResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the validationFailureLevel
-        set by the user
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :param validation_messages: The validation_messages of this CreateClusterResponseContent.
         :type validation_messages: List[ConfigValidationMessage]
         """
+
         self._validation_messages = validation_messages

@@ -1,13 +1,9 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -19,39 +15,44 @@ class UpdateError(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, parameter=None, requested_value=None, message=None, current_value=None):
+    def __init__(self, parameter=None, current_value=None, requested_value=None, message=None):  # noqa: E501
         """UpdateError - a model defined in OpenAPI
 
-        :param parameter: The parameter of this UpdateError.
+        :param parameter: The parameter of this UpdateError.  # noqa: E501
         :type parameter: str
-        :param requested_value: The requested_value of this UpdateError.
-        :type requested_value: str
-        :param message: The message of this UpdateError.
-        :type message: str
-        :param current_value: The current_value of this UpdateError.
+        :param current_value: The current_value of this UpdateError.  # noqa: E501
         :type current_value: str
+        :param requested_value: The requested_value of this UpdateError.  # noqa: E501
+        :type requested_value: str
+        :param message: The message of this UpdateError.  # noqa: E501
+        :type message: str
         """
-        self.openapi_types = {"parameter": str, "requested_value": str, "message": str, "current_value": str}
+        self.openapi_types = {
+            'parameter': str,
+            'current_value': str,
+            'requested_value': str,
+            'message': str
+        }
 
         self.attribute_map = {
-            "parameter": "parameter",
-            "requested_value": "requestedValue",
-            "message": "message",
-            "current_value": "currentValue",
+            'parameter': 'parameter',
+            'current_value': 'currentValue',
+            'requested_value': 'requestedValue',
+            'message': 'message'
         }
 
         self._parameter = parameter
+        self._current_value = current_value
         self._requested_value = requested_value
         self._message = message
-        self._current_value = current_value
 
     @classmethod
-    def from_dict(cls, dikt) -> "UpdateError":
+    def from_dict(cls, dikt) -> 'UpdateError':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The UpdateError of this UpdateError.
+        :return: The UpdateError of this UpdateError.  # noqa: E501
         :rtype: UpdateError
         """
         return util.deserialize_model(dikt, cls)
@@ -76,6 +77,27 @@ class UpdateError(Model):
         """
 
         self._parameter = parameter
+
+    @property
+    def current_value(self):
+        """Gets the current_value of this UpdateError.
+
+
+        :return: The current_value of this UpdateError.
+        :rtype: str
+        """
+        return self._current_value
+
+    @current_value.setter
+    def current_value(self, current_value):
+        """Sets the current_value of this UpdateError.
+
+
+        :param current_value: The current_value of this UpdateError.
+        :type current_value: str
+        """
+
+        self._current_value = current_value
 
     @property
     def requested_value(self):
@@ -118,24 +140,3 @@ class UpdateError(Model):
         """
 
         self._message = message
-
-    @property
-    def current_value(self):
-        """Gets the current_value of this UpdateError.
-
-
-        :return: The current_value of this UpdateError.
-        :rtype: str
-        """
-        return self._current_value
-
-    @current_value.setter
-    def current_value(self, current_value):
-        """Sets the current_value of this UpdateError.
-
-
-        :param current_value: The current_value of this UpdateError.
-        :type current_value: str
-        """
-
-        self._current_value = current_value

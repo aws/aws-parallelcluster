@@ -1,10 +1,4 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
 from __future__ import absolute_import
 
@@ -37,19 +31,19 @@ class LoginNodesPool(Model):
         :type unhealthy_nodes: int
         """
         self.openapi_types = {
-            "status": LoginNodesState,
-            "address": str,
-            "scheme": str,
-            "healthy_nodes": int,
-            "unhealthy_nodes": int,
+            'status': LoginNodesState,
+            'address': str,
+            'scheme': str,
+            'healthy_nodes': int,
+            'unhealthy_nodes': int
         }
 
         self.attribute_map = {
-            "status": "status",
-            "address": "address",
-            "scheme": "scheme",
-            "healthy_nodes": "healthyNodes",
-            "unhealthy_nodes": "unhealthyNodes",
+            'status': 'status',
+            'address': 'address',
+            'scheme': 'scheme',
+            'healthy_nodes': 'healthyNodes',
+            'unhealthy_nodes': 'unhealthyNodes'
         }
 
         self._status = status
@@ -59,7 +53,7 @@ class LoginNodesPool(Model):
         self._unhealthy_nodes = unhealthy_nodes
 
     @classmethod
-    def from_dict(cls, dikt) -> "LoginNodesPool":
+    def from_dict(cls, dikt) -> 'LoginNodesPool':
         """Returns the dict as a model
 
         :param dikt: A dict.

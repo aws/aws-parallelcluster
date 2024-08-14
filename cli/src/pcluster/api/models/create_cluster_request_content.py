@@ -1,15 +1,10 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-import re
+import re  # noqa: E501
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -21,7 +16,7 @@ class CreateClusterRequestContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, cluster_name=None, cluster_configuration=None):
+    def __init__(self, cluster_name=None, cluster_configuration=None):  # noqa: E501
         """CreateClusterRequestContent - a model defined in OpenAPI
 
         :param cluster_name: The cluster_name of this CreateClusterRequestContent.  # noqa: E501
@@ -29,20 +24,26 @@ class CreateClusterRequestContent(Model):
         :param cluster_configuration: The cluster_configuration of this CreateClusterRequestContent.  # noqa: E501
         :type cluster_configuration: str
         """
-        self.openapi_types = {"cluster_name": str, "cluster_configuration": str}
+        self.openapi_types = {
+            'cluster_name': str,
+            'cluster_configuration': str
+        }
 
-        self.attribute_map = {"cluster_name": "clusterName", "cluster_configuration": "clusterConfiguration"}
+        self.attribute_map = {
+            'cluster_name': 'clusterName',
+            'cluster_configuration': 'clusterConfiguration'
+        }
 
         self._cluster_name = cluster_name
         self._cluster_configuration = cluster_configuration
 
     @classmethod
-    def from_dict(cls, dikt) -> "CreateClusterRequestContent":
+    def from_dict(cls, dikt) -> 'CreateClusterRequestContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The CreateClusterRequestContent of this CreateClusterRequestContent.
+        :return: The CreateClusterRequestContent of this CreateClusterRequestContent.  # noqa: E501
         :rtype: CreateClusterRequestContent
         """
         return util.deserialize_model(dikt, cls)
@@ -53,7 +54,7 @@ class CreateClusterRequestContent(Model):
 
         Name of the cluster that will be created.  # noqa: E501
 
-        :return: The name of this CreateClusterRequestContent.
+        :return: The cluster_name of this CreateClusterRequestContent.
         :rtype: str
         """
         return self._cluster_name
@@ -62,17 +63,15 @@ class CreateClusterRequestContent(Model):
     def cluster_name(self, cluster_name):
         """Sets the cluster_name of this CreateClusterRequestContent.
 
-        Name of the cluster
+        Name of the cluster that will be created.  # noqa: E501
 
-        :param cluster_name: The name of this CreateClusterRequestContent.
+        :param cluster_name: The cluster_name of this CreateClusterRequestContent.
         :type cluster_name: str
         """
         if cluster_name is None:
-            raise ValueError("Invalid value for `cluster_name`, must not be `None`")
-        if cluster_name is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", cluster_name):
-            raise ValueError(
-                "Invalid value for `cluster_name`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
-            )
+            raise ValueError("Invalid value for `cluster_name`, must not be `None`")  # noqa: E501
+        if cluster_name is not None and not re.search(r'^[a-zA-Z][a-zA-Z0-9-]+$', cluster_name):  # noqa: E501
+            raise ValueError("Invalid value for `cluster_name`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`")  # noqa: E501
 
         self._cluster_name = cluster_name
 
@@ -80,7 +79,7 @@ class CreateClusterRequestContent(Model):
     def cluster_configuration(self):
         """Gets the cluster_configuration of this CreateClusterRequestContent.
 
-        Cluster configuration as a YAML document.
+        Cluster configuration as a YAML document.  # noqa: E501
 
         :return: The cluster_configuration of this CreateClusterRequestContent.
         :rtype: str
@@ -91,12 +90,12 @@ class CreateClusterRequestContent(Model):
     def cluster_configuration(self, cluster_configuration):
         """Sets the cluster_configuration of this CreateClusterRequestContent.
 
-        Cluster configuration as a YAML document.
+        Cluster configuration as a YAML document.  # noqa: E501
 
         :param cluster_configuration: The cluster_configuration of this CreateClusterRequestContent.
         :type cluster_configuration: str
         """
         if cluster_configuration is None:
-            raise ValueError("Invalid value for `cluster_configuration`, must not be `None`")
+            raise ValueError("Invalid value for `cluster_configuration`, must not be `None`")  # noqa: E501
 
         self._cluster_configuration = cluster_configuration

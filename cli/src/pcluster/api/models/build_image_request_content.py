@@ -1,15 +1,10 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-import re
+import re  # noqa: E501
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -21,12 +16,12 @@ class BuildImageRequestContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, image_configuration=None, image_id=None):
+    def __init__(self, image_configuration=None, image_id=None):  # noqa: E501
         """BuildImageRequestContent - a model defined in OpenAPI
 
-        :param image_configuration: The image_configuration of this BuildImageRequestContent.
+        :param image_configuration: The image_configuration of this BuildImageRequestContent.  # noqa: E501
         :type image_configuration: str
-        :param image_id: The image_id of this BuildImageRequestContent.
+        :param image_id: The image_id of this BuildImageRequestContent.  # noqa: E501
         :type image_id: str
         """
         self.openapi_types = {"image_configuration": str, "image_id": str}
@@ -42,7 +37,7 @@ class BuildImageRequestContent(Model):
 
         :param dikt: A dict.
         :type: dict
-        :return: The BuildImageRequestContent of this BuildImageRequestContent.
+        :return: The BuildImageRequestContent of this BuildImageRequestContent.  # noqa: E501
         :rtype: BuildImageRequestContent
         """
         return util.deserialize_model(dikt, cls)
@@ -51,7 +46,7 @@ class BuildImageRequestContent(Model):
     def image_configuration(self):
         """Gets the image_configuration of this BuildImageRequestContent.
 
-        Image configuration as a YAML document.
+        Image configuration as a YAML document.  # noqa: E501
 
         :return: The image_configuration of this BuildImageRequestContent.
         :rtype: str
@@ -62,13 +57,13 @@ class BuildImageRequestContent(Model):
     def image_configuration(self, image_configuration):
         """Sets the image_configuration of this BuildImageRequestContent.
 
-        Image configuration as a YAML document.
+        Image configuration as a YAML document.  # noqa: E501
 
         :param image_configuration: The image_configuration of this BuildImageRequestContent.
         :type image_configuration: str
         """
         if image_configuration is None:
-            raise ValueError("Invalid value for `image_configuration`, must not be `None`")
+            raise ValueError("Invalid value for `image_configuration`, must not be `None`")  # noqa: E501
 
         self._image_configuration = image_configuration
 
@@ -76,8 +71,7 @@ class BuildImageRequestContent(Model):
     def image_id(self):
         """Gets the image_id of this BuildImageRequestContent.
 
-        Id of the image that will be built.
-
+        Id of the Image that will be built.  # noqa: E501
 
         :return: The image_id of this BuildImageRequestContent.
         :rtype: str
@@ -88,16 +82,16 @@ class BuildImageRequestContent(Model):
     def image_id(self, image_id):
         """Sets the image_id of this BuildImageRequestContent.
 
-        Id of the image that will be built.
+        Id of the Image that will be built.  # noqa: E501
 
         :param image_id: The image_id of this BuildImageRequestContent.
         :type image_id: str
         """
         if image_id is None:
-            raise ValueError("Invalid value for `image_id`, must not be `None`")
-        if image_id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_id):
+            raise ValueError("Invalid value for `image_id`, must not be `None`")  # noqa: E501
+        if image_id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_id):  # noqa: E501
             raise ValueError(
                 "Invalid value for `image_id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
-            )
+            )  # noqa: E501
 
         self._image_id = image_id

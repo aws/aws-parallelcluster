@@ -1,21 +1,16 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-import re
+import re  # noqa: E501
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
-from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary
-from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus  # noqa: E501
+from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary  # noqa: E501
+from pcluster.api.models.image_build_status import ImageBuildStatus  # noqa: E501
 
 
 class ImageInfoSummary(Model):
@@ -24,68 +19,59 @@ class ImageInfoSummary(Model):
     Do not edit the class manually.
     """
 
-    def __init__(
-        self,
-        image_id=None,
-        image_build_status=None,
-        ec2_ami_info=None,
-        cloudformation_stack_status=None,
-        cloudformation_stack_arn=None,
-        region=None,
-        version=None,
-    ):
+    def __init__(self, image_id=None, ec2_ami_info=None, region=None, version=None, cloudformation_stack_arn=None, image_build_status=None, cloudformation_stack_status=None):  # noqa: E501
         """ImageInfoSummary - a model defined in OpenAPI
 
-        :param image_id: The image_id of this ImageInfoSummary.
+        :param image_id: The image_id of this ImageInfoSummary.  # noqa: E501
         :type image_id: str
-        :param image_build_status: The image_build_status of this ImageInfoSummary.
-        :type image_build_status: ImageBuildStatus
-        :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
-        :type cloudformation_stack_status: CloudFormationStackStatus
-        :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
-        :type cloudformation_stack_arn: str
         :param ec2_ami_info: The ec2_ami_info of this ImageInfoSummary.  # noqa: E501
         :type ec2_ami_info: Ec2AmiInfoSummary
         :param region: The region of this ImageInfoSummary.  # noqa: E501
         :type region: str
-        :param version: The version of this ImageInfoSummary.
+        :param version: The version of this ImageInfoSummary.  # noqa: E501
         :type version: str
+        :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.  # noqa: E501
+        :type cloudformation_stack_arn: str
+        :param image_build_status: The image_build_status of this ImageInfoSummary.  # noqa: E501
+        :type image_build_status: ImageBuildStatus
+        :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.  # noqa: E501
+        :type cloudformation_stack_status: CloudFormationStackStatus
         """
         self.openapi_types = {
-            "image_id": str,
-            "image_build_status": ImageBuildStatus,
-            "cloudformation_stack_status": CloudFormationStackStatus,
-            "cloudformation_stack_arn": str,
-            "ec2_ami_info": Ec2AmiInfoSummary,
-            "region": str,
-            "version": str,
+            'image_id': str,
+            'ec2_ami_info': Ec2AmiInfoSummary,
+            'region': str,
+            'version': str,
+            'cloudformation_stack_arn': str,
+            'image_build_status': ImageBuildStatus,
+            'cloudformation_stack_status': CloudFormationStackStatus
         }
 
         self.attribute_map = {
-            "image_id": "imageId",
-            "image_build_status": "imageBuildStatus",
-            "cloudformation_stack_status": "cloudformationStackStatus",
-            "cloudformation_stack_arn": "cloudformationStackArn",
-            "ec2_ami_info": "ec2AmiInfo",
-            "region": "region",
-            "version": "version",
+            'image_id': 'imageId',
+            'ec2_ami_info': 'ec2AmiInfo',
+            'region': 'region',
+            'version': 'version',
+            'cloudformation_stack_arn': 'cloudformationStackArn',
+            'image_build_status': 'imageBuildStatus',
+            'cloudformation_stack_status': 'cloudformationStackStatus'
         }
 
         self._image_id = image_id
-        self._image_build_status = image_build_status
-        self._cloudformation_stack_status = cloudformation_stack_status
-        self._cloudformation_stack_arn = cloudformation_stack_arn
         self._ec2_ami_info = ec2_ami_info
         self._region = region
         self._version = version
+        self._cloudformation_stack_arn = cloudformation_stack_arn
+        self._image_build_status = image_build_status
+        self._cloudformation_stack_status = cloudformation_stack_status
 
     @classmethod
-    def from_dict(cls, dikt) -> "ImageInfoSummary":
+    def from_dict(cls, dikt) -> 'ImageInfoSummary':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The ImageInfoSummary of this ImageInfoSummary.
+        :return: The ImageInfoSummary of this ImageInfoSummary.  # noqa: E501
         :rtype: ImageInfoSummary
         """
         return util.deserialize_model(dikt, cls)
@@ -94,7 +80,7 @@ class ImageInfoSummary(Model):
     def image_id(self):
         """Gets the image_id of this ImageInfoSummary.
 
-        Id of the image.
+        Id of the image.  # noqa: E501
 
         :return: The image_id of this ImageInfoSummary.
         :rtype: str
@@ -105,84 +91,17 @@ class ImageInfoSummary(Model):
     def image_id(self, image_id):
         """Sets the image_id of this ImageInfoSummary.
 
-        Id of the image.
+        Id of the image.  # noqa: E501
 
         :param image_id: The image_id of this ImageInfoSummary.
         :type image_id: str
         """
         if image_id is None:
-            raise ValueError("Invalid value for `image_id`, must not be `None`")
-        if image_id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_id):
-            raise ValueError(
-                "Invalid value for `image_id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
-            )
+            raise ValueError("Invalid value for `image_id`, must not be `None`")  # noqa: E501
+        if image_id is not None and not re.search(r'^[a-zA-Z][a-zA-Z0-9-]+$', image_id):  # noqa: E501
+            raise ValueError("Invalid value for `image_id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`")  # noqa: E501
 
         self._image_id = image_id
-
-    @property
-    def image_build_status(self):
-        """Gets the image_build_status of this ImageInfoSummary.
-
-
-        :return: The image_build_status of this ImageInfoSummary.
-        :rtype: ImageBuildStatus
-        """
-        return self._image_build_status
-
-    @image_build_status.setter
-    def image_build_status(self, image_build_status):
-        """Sets the image_build_status of this ImageInfoSummary.
-
-
-        :param image_build_status: The image_build_status of this ImageInfoSummary.
-        :type image_build_status: ImageBuildStatus
-        """
-        if image_build_status is None:
-            raise ValueError("Invalid value for `image_build_status`, must not be `None`")
-
-        self._image_build_status = image_build_status
-
-    @property
-    def cloudformation_stack_status(self):
-        """Gets the cloudformation_stack_status of this ImageInfoSummary.
-
-
-        :return: The cloudformation_stack_status of this ImageInfoSummary.
-        :rtype: CloudFormationStackStatus
-        """
-        return self._cloudformation_stack_status
-
-    @cloudformation_stack_status.setter
-    def cloudformation_stack_status(self, cloudformation_stack_status):
-        """Sets the cloudformation_stack_status of this ImageInfoSummary.
-
-
-        :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
-        :type cloudformation_stack_status: CloudFormationStackStatus
-        """
-        self._cloudformation_stack_status = cloudformation_stack_status
-
-    @property
-    def cloudformation_stack_arn(self):
-        """Gets the cloudformation_stack_arn of this ImageInfoSummary.
-
-        ARN of the main CloudFormation stack.
-
-        :return: The cloudformation_stack_arn of this ImageInfoSummary.
-        :rtype: str
-        """
-        return self._cloudformation_stack_arn
-
-    @cloudformation_stack_arn.setter
-    def cloudformation_stack_arn(self, cloudformation_stack_arn):
-        """Sets the cloudformation_stack_arn of this ImageInfoSummary.
-
-        ARN of the main CloudFormation stack.
-
-        :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
-        :type cloudformation_stack_arn: str
-        """
-        self._cloudformation_stack_arn = cloudformation_stack_arn
 
     @property
     def ec2_ami_info(self):
@@ -209,7 +128,7 @@ class ImageInfoSummary(Model):
     def region(self):
         """Gets the region of this ImageInfoSummary.
 
-        AWS region where the image is built.
+        AWS region where the image is built.  # noqa: E501
 
         :return: The region of this ImageInfoSummary.
         :rtype: str
@@ -220,13 +139,13 @@ class ImageInfoSummary(Model):
     def region(self, region):
         """Sets the region of this ImageInfoSummary.
 
-        AWS region where the image is built.
+        AWS region where the image is built.  # noqa: E501
 
         :param region: The region of this ImageInfoSummary.
         :type region: str
         """
         if region is None:
-            raise ValueError("Invalid value for `region`, must not be `None`")
+            raise ValueError("Invalid value for `region`, must not be `None`")  # noqa: E501
 
         self._region = region
 
@@ -234,7 +153,7 @@ class ImageInfoSummary(Model):
     def version(self):
         """Gets the version of this ImageInfoSummary.
 
-        ParallelCluster version used to build the image.
+        ParallelCluster version used to build the image.  # noqa: E501
 
         :return: The version of this ImageInfoSummary.
         :rtype: str
@@ -245,12 +164,79 @@ class ImageInfoSummary(Model):
     def version(self, version):
         """Sets the version of this ImageInfoSummary.
 
-        ParallelCluster version used to build the image.
+        ParallelCluster version used to build the image.  # noqa: E501
 
         :param version: The version of this ImageInfoSummary.
         :type version: str
         """
         if version is None:
-            raise ValueError("Invalid value for `version`, must not be `None`")
+            raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
 
         self._version = version
+
+    @property
+    def cloudformation_stack_arn(self):
+        """Gets the cloudformation_stack_arn of this ImageInfoSummary.
+
+        ARN of the main CloudFormation stack.  # noqa: E501
+
+        :return: The cloudformation_stack_arn of this ImageInfoSummary.
+        :rtype: str
+        """
+        return self._cloudformation_stack_arn
+
+    @cloudformation_stack_arn.setter
+    def cloudformation_stack_arn(self, cloudformation_stack_arn):
+        """Sets the cloudformation_stack_arn of this ImageInfoSummary.
+
+        ARN of the main CloudFormation stack.  # noqa: E501
+
+        :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
+        :type cloudformation_stack_arn: str
+        """
+
+        self._cloudformation_stack_arn = cloudformation_stack_arn
+
+    @property
+    def image_build_status(self):
+        """Gets the image_build_status of this ImageInfoSummary.
+
+
+        :return: The image_build_status of this ImageInfoSummary.
+        :rtype: ImageBuildStatus
+        """
+        return self._image_build_status
+
+    @image_build_status.setter
+    def image_build_status(self, image_build_status):
+        """Sets the image_build_status of this ImageInfoSummary.
+
+
+        :param image_build_status: The image_build_status of this ImageInfoSummary.
+        :type image_build_status: ImageBuildStatus
+        """
+        if image_build_status is None:
+            raise ValueError("Invalid value for `image_build_status`, must not be `None`")  # noqa: E501
+
+        self._image_build_status = image_build_status
+
+    @property
+    def cloudformation_stack_status(self):
+        """Gets the cloudformation_stack_status of this ImageInfoSummary.
+
+
+        :return: The cloudformation_stack_status of this ImageInfoSummary.
+        :rtype: CloudFormationStackStatus
+        """
+        return self._cloudformation_stack_status
+
+    @cloudformation_stack_status.setter
+    def cloudformation_stack_status(self, cloudformation_stack_status):
+        """Sets the cloudformation_stack_status of this ImageInfoSummary.
+
+
+        :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
+        :type cloudformation_stack_status: CloudFormationStackStatus
+        """
+
+        self._cloudformation_stack_status = cloudformation_stack_status

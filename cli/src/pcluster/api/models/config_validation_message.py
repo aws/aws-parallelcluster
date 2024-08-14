@@ -1,17 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.validation_level import ValidationLevel
+from pcluster.api.models.validation_level import ValidationLevel  # noqa: E501
 
 
 class ConfigValidationMessage(Model):
@@ -20,37 +16,93 @@ class ConfigValidationMessage(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, level=None, id=None, type=None, message=None):
+    def __init__(self, id=None, type=None, level=None, message=None):  # noqa: E501
         """ConfigValidationMessage - a model defined in OpenAPI
 
-        :param level: The level of this ConfigValidationMessage.
-        :type level: ValidationLevel
-        :param id: The id of this ConfigValidationMessage.
+        :param id: The id of this ConfigValidationMessage.  # noqa: E501
         :type id: str
-        :param type: The type of this ConfigValidationMessage.
+        :param type: The type of this ConfigValidationMessage.  # noqa: E501
         :type type: str
-        :param message: The message of this ConfigValidationMessage.
+        :param level: The level of this ConfigValidationMessage.  # noqa: E501
+        :type level: ValidationLevel
+        :param message: The message of this ConfigValidationMessage.  # noqa: E501
         :type message: str
         """
-        self.openapi_types = {"level": ValidationLevel, "id": str, "type": str, "message": str}
+        self.openapi_types = {
+            'id': str,
+            'type': str,
+            'level': ValidationLevel,
+            'message': str
+        }
 
-        self.attribute_map = {"level": "level", "id": "id", "type": "type", "message": "message"}
+        self.attribute_map = {
+            'id': 'id',
+            'type': 'type',
+            'level': 'level',
+            'message': 'message'
+        }
 
-        self._level = level
         self._id = id
         self._type = type
+        self._level = level
         self._message = message
 
     @classmethod
-    def from_dict(cls, dikt) -> "ConfigValidationMessage":
+    def from_dict(cls, dikt) -> 'ConfigValidationMessage':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The ConfigValidationMessage of this ConfigValidationMessage.
+        :return: The ConfigValidationMessage of this ConfigValidationMessage.  # noqa: E501
         :rtype: ConfigValidationMessage
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def id(self):
+        """Gets the id of this ConfigValidationMessage.
+
+        Id of the validator.  # noqa: E501
+
+        :return: The id of this ConfigValidationMessage.
+        :rtype: str
+        """
+        return self._id
+
+    @id.setter
+    def id(self, id):
+        """Sets the id of this ConfigValidationMessage.
+
+        Id of the validator.  # noqa: E501
+
+        :param id: The id of this ConfigValidationMessage.
+        :type id: str
+        """
+
+        self._id = id
+
+    @property
+    def type(self):
+        """Gets the type of this ConfigValidationMessage.
+
+        Type of the validator.  # noqa: E501
+
+        :return: The type of this ConfigValidationMessage.
+        :rtype: str
+        """
+        return self._type
+
+    @type.setter
+    def type(self, type):
+        """Sets the type of this ConfigValidationMessage.
+
+        Type of the validator.  # noqa: E501
+
+        :param type: The type of this ConfigValidationMessage.
+        :type type: str
+        """
+
+        self._type = type
 
     @property
     def level(self):
@@ -74,56 +126,10 @@ class ConfigValidationMessage(Model):
         self._level = level
 
     @property
-    def id(self):
-        """Gets the id of this ConfigValidationMessage.
-
-        Id of the validator
-
-        :return: The id of this ConfigValidationMessage.
-        :rtype: str
-        """
-        return self._id
-
-    @id.setter
-    def id(self, id):
-        """Sets the id of this ConfigValidationMessage.
-
-        Id of the validator
-
-        :param id: The id of this ConfigValidationMessage.
-        :type id: str
-        """
-
-        self._id = id
-
-    @property
-    def type(self):
-        """Gets the type of this ConfigValidationMessage.
-
-        Type of the validator
-
-        :return: The type of this ConfigValidationMessage.
-        :rtype: str
-        """
-        return self._type
-
-    @type.setter
-    def type(self, type):
-        """Sets the type of this ConfigValidationMessage.
-
-        Type of the validator
-
-        :param type: The type of this ConfigValidationMessage.
-        :type type: str
-        """
-
-        self._type = type
-
-    @property
     def message(self):
         """Gets the message of this ConfigValidationMessage.
 
-        Validation message
+        Validation message  # noqa: E501
 
         :return: The message of this ConfigValidationMessage.
         :rtype: str
@@ -134,7 +140,7 @@ class ConfigValidationMessage(Model):
     def message(self, message):
         """Sets the message of this ConfigValidationMessage.
 
-        Validation message
+        Validation message  # noqa: E501
 
         :param message: The message of this ConfigValidationMessage.
         :type message: str

@@ -16,23 +16,29 @@ class ListImageLogStreamsResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, log_streams=None, next_token=None):  # noqa: E501
+    def __init__(self, next_token=None, log_streams=None):  # noqa: E501
         """ListImageLogStreamsResponseContent - a model defined in OpenAPI
 
-        :param log_streams: The log_streams of this ListImageLogStreamsResponseContent.  # noqa: E501
-        :type log_streams: List[LogStream]
         :param next_token: The next_token of this ListImageLogStreamsResponseContent.  # noqa: E501
         :type next_token: str
+        :param log_streams: The log_streams of this ListImageLogStreamsResponseContent.  # noqa: E501
+        :type log_streams: List[LogStream]
         """
-        self.openapi_types = {"log_streams": List[LogStream], "next_token": str}
+        self.openapi_types = {
+            'next_token': str,
+            'log_streams': List[LogStream]
+        }
 
-        self.attribute_map = {"log_streams": "logStreams", "next_token": "nextToken"}
+        self.attribute_map = {
+            'next_token': 'nextToken',
+            'log_streams': 'logStreams'
+        }
 
-        self._log_streams = log_streams
         self._next_token = next_token
+        self._log_streams = log_streams
 
     @classmethod
-    def from_dict(cls, dikt) -> "ListImageLogStreamsResponseContent":
+    def from_dict(cls, dikt) -> 'ListImageLogStreamsResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
@@ -41,29 +47,6 @@ class ListImageLogStreamsResponseContent(Model):
         :rtype: ListImageLogStreamsResponseContent
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def log_streams(self):
-        """Gets the log_streams of this ListImageLogStreamsResponseContent.
-
-
-        :return: The log_streams of this ListImageLogStreamsResponseContent.
-        :rtype: List[LogStream]
-        """
-        return self._log_streams
-
-    @log_streams.setter
-    def log_streams(self, log_streams):
-        """Sets the log_streams of this ListImageLogStreamsResponseContent.
-
-
-        :param log_streams: The log_streams of this ListImageLogStreamsResponseContent.
-        :type log_streams: List[LogStream]
-        """
-        if log_streams is None:
-            raise ValueError("Invalid value for `log_streams`, must not be `None`")  # noqa: E501
-
-        self._log_streams = log_streams
 
     @property
     def next_token(self):
@@ -87,3 +70,26 @@ class ListImageLogStreamsResponseContent(Model):
         """
 
         self._next_token = next_token
+
+    @property
+    def log_streams(self):
+        """Gets the log_streams of this ListImageLogStreamsResponseContent.
+
+
+        :return: The log_streams of this ListImageLogStreamsResponseContent.
+        :rtype: List[LogStream]
+        """
+        return self._log_streams
+
+    @log_streams.setter
+    def log_streams(self, log_streams):
+        """Sets the log_streams of this ListImageLogStreamsResponseContent.
+
+
+        :param log_streams: The log_streams of this ListImageLogStreamsResponseContent.
+        :type log_streams: List[LogStream]
+        """
+        if log_streams is None:
+            raise ValueError("Invalid value for `log_streams`, must not be `None`")  # noqa: E501
+
+        self._log_streams = log_streams

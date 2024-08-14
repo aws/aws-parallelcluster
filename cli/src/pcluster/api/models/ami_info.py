@@ -1,13 +1,9 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -19,46 +15,75 @@ class AmiInfo(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, ami_id=None, os=None, name=None, version=None, architecture=None):
+    def __init__(self, architecture=None, ami_id=None, name=None, os=None, version=None):  # noqa: E501
         """AmiInfo - a model defined in OpenAPI
 
-        :param ami_id: The ami_id of this AmiInfo.
-        :type ami_id: str
-        :param os: The os of this AmiInfo.
-        :type os: str
-        :param name: The name of this AmiInfo.
-        :type name: str
-        :param version: The version of this AmiInfo.
-        :type version: st
-        :param architecture: The architecture of this AmiInfo.
+        :param architecture: The architecture of this AmiInfo.  # noqa: E501
         :type architecture: str
+        :param ami_id: The ami_id of this AmiInfo.  # noqa: E501
+        :type ami_id: str
+        :param name: The name of this AmiInfo.  # noqa: E501
+        :type name: str
+        :param os: The os of this AmiInfo.  # noqa: E501
+        :type os: str
+        :param version: The version of this AmiInfo.  # noqa: E501
+        :type version: str
         """
-        self.openapi_types = {"ami_id": str, "os": str, "name": str, "version": str, "architecture": str}
-
-        self.attribute_map = {
-            "ami_id": "amiId",
-            "os": "os",
-            "name": "name",
-            "version": "version",
-            "architecture": "architecture",
+        self.openapi_types = {
+            'architecture': str,
+            'ami_id': str,
+            'name': str,
+            'os': str,
+            'version': str
         }
 
-        self._ami_id = ami_id
-        self._os = os
-        self._name = name
-        self._version = version
+        self.attribute_map = {
+            'architecture': 'architecture',
+            'ami_id': 'amiId',
+            'name': 'name',
+            'os': 'os',
+            'version': 'version'
+        }
+
         self._architecture = architecture
+        self._ami_id = ami_id
+        self._name = name
+        self._os = os
+        self._version = version
 
     @classmethod
-    def from_dict(cls, dikt) -> "AmiInfo":
+    def from_dict(cls, dikt) -> 'AmiInfo':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The AmiInfo of this AmiInfo.
+        :return: The AmiInfo of this AmiInfo.  # noqa: E501
         :rtype: AmiInfo
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def architecture(self):
+        """Gets the architecture of this AmiInfo.
+
+
+        :return: The architecture of this AmiInfo.
+        :rtype: str
+        """
+        return self._architecture
+
+    @architecture.setter
+    def architecture(self, architecture):
+        """Sets the architecture of this AmiInfo.
+
+
+        :param architecture: The architecture of this AmiInfo.
+        :type architecture: str
+        """
+        if architecture is None:
+            raise ValueError("Invalid value for `architecture`, must not be `None`")  # noqa: E501
+
+        self._architecture = architecture
 
     @property
     def ami_id(self):
@@ -79,32 +104,9 @@ class AmiInfo(Model):
         :type ami_id: str
         """
         if ami_id is None:
-            raise ValueError("Invalid value for `ami_id`, must not be `None`")
+            raise ValueError("Invalid value for `ami_id`, must not be `None`")  # noqa: E501
 
         self._ami_id = ami_id
-
-    @property
-    def os(self):
-        """Gets the os of this AmiInfo.
-
-
-        :return: The os of this AmiInfo.
-        :rtype: str
-        """
-        return self._os
-
-    @os.setter
-    def os(self, os):
-        """Sets the os of this AmiInfo.
-
-
-        :param os: The os of this AmiInfo.
-        :type os: str
-        """
-        if os is None:
-            raise ValueError("Invalid value for `os`, must not be `None`")
-
-        self._os = os
 
     @property
     def name(self):
@@ -125,9 +127,32 @@ class AmiInfo(Model):
         :type name: str
         """
         if name is None:
-            raise ValueError("Invalid value for `name`, must not be `None`")
+            raise ValueError("Invalid value for `name`, must not be `None`")  # noqa: E501
 
         self._name = name
+
+    @property
+    def os(self):
+        """Gets the os of this AmiInfo.
+
+
+        :return: The os of this AmiInfo.
+        :rtype: str
+        """
+        return self._os
+
+    @os.setter
+    def os(self, os):
+        """Sets the os of this AmiInfo.
+
+
+        :param os: The os of this AmiInfo.
+        :type os: str
+        """
+        if os is None:
+            raise ValueError("Invalid value for `os`, must not be `None`")  # noqa: E501
+
+        self._os = os
 
     @property
     def version(self):
@@ -151,26 +176,3 @@ class AmiInfo(Model):
             raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
 
         self._version = version
-
-    @property
-    def architecture(self):
-        """Gets the architecture of this AmiInfo.
-
-
-        :return: The architecture of this AmiInfo.
-        :rtype: str
-        """
-        return self._architecture
-
-    @architecture.setter
-    def architecture(self, architecture):
-        """Sets the architecture of this AmiInfo.
-
-
-        :param architecture: The architecture of this AmiInfo.
-        :type architecture: str
-        """
-        if architecture is None:
-            raise ValueError("Invalid value for `architecture`, must not be `None`")
-
-        self._architecture = architecture

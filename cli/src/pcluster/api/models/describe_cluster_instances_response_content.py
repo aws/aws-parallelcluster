@@ -1,19 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cluster_instance import ClusterInstance
+from pcluster.api.models.cluster_instance import ClusterInstance  # noqa: E501
 
 
 class DescribeClusterInstancesResponseContent(Model):
@@ -22,31 +16,60 @@ class DescribeClusterInstancesResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, instances=None, next_token=None):
+    def __init__(self, next_token=None, instances=None):  # noqa: E501
         """DescribeClusterInstancesResponseContent - a model defined in OpenAPI
 
-        :param instances: The instances of this DescribeClusterInstancesResponseContent.
-        :type instances: List[ClusterInstance]
-        :param next_token: The next_token of this DescribeClusterInstancesResponseContent.
+        :param next_token: The next_token of this DescribeClusterInstancesResponseContent.  # noqa: E501
         :type next_token: str
+        :param instances: The instances of this DescribeClusterInstancesResponseContent.  # noqa: E501
+        :type instances: List[ClusterInstance]
         """
-        self.openapi_types = {"instances": List[ClusterInstance], "next_token": str}
+        self.openapi_types = {
+            'next_token': str,
+            'instances': List[ClusterInstance]
+        }
 
-        self.attribute_map = {"instances": "instances", "next_token": "nextToken"}
+        self.attribute_map = {
+            'next_token': 'nextToken',
+            'instances': 'instances'
+        }
 
-        self._instances = instances
         self._next_token = next_token
+        self._instances = instances
 
     @classmethod
-    def from_dict(cls, dikt) -> "DescribeClusterInstancesResponseContent":
+    def from_dict(cls, dikt) -> 'DescribeClusterInstancesResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The DescribeClusterInstancesResponseContent of this DescribeClusterInstancesResponseContent.
+        :return: The DescribeClusterInstancesResponseContent of this DescribeClusterInstancesResponseContent.  # noqa: E501
         :rtype: DescribeClusterInstancesResponseContent
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def next_token(self):
+        """Gets the next_token of this DescribeClusterInstancesResponseContent.
+
+        Token to use for paginated requests.  # noqa: E501
+
+        :return: The next_token of this DescribeClusterInstancesResponseContent.
+        :rtype: str
+        """
+        return self._next_token
+
+    @next_token.setter
+    def next_token(self, next_token):
+        """Sets the next_token of this DescribeClusterInstancesResponseContent.
+
+        Token to use for paginated requests.  # noqa: E501
+
+        :param next_token: The next_token of this DescribeClusterInstancesResponseContent.
+        :type next_token: str
+        """
+
+        self._next_token = next_token
 
     @property
     def instances(self):
@@ -67,29 +90,6 @@ class DescribeClusterInstancesResponseContent(Model):
         :type instances: List[ClusterInstance]
         """
         if instances is None:
-            raise ValueError("Invalid value for `instances`, must not be `None`")
+            raise ValueError("Invalid value for `instances`, must not be `None`")  # noqa: E501
 
         self._instances = instances
-
-    @property
-    def next_token(self):
-        """Gets the next_token of this DescribeClusterInstancesResponseContent.
-
-        Token to use for paginated requests.
-
-        :return: The next_token of this DescribeClusterInstancesResponseContent.
-        :rtype: str
-        """
-        return self._next_token
-
-    @next_token.setter
-    def next_token(self, next_token):
-        """Sets the next_token of this DescribeClusterInstancesResponseContent.
-
-        Token to use for paginated requests.
-
-        :param next_token: The next_token of this DescribeClusterInstancesResponseContent.
-        :type next_token: str
-        """
-
-        self._next_token = next_token

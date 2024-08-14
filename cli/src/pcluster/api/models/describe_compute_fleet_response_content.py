@@ -1,19 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from datetime import datetime
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
+from pcluster.api.models.compute_fleet_status import ComputeFleetStatus  # noqa: E501
 
 
 class DescribeComputeFleetResponseContent(Model):
@@ -22,28 +16,34 @@ class DescribeComputeFleetResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, last_status_updated_time=None, status=None):
+    def __init__(self, status=None, last_status_updated_time=None):  # noqa: E501
         """DescribeComputeFleetResponseContent - a model defined in OpenAPI
 
-        :param last_status_updated_time: The last_status_updated_time of this DescribeComputeFleetResponseContent.
-        :type last_status_updated_time: datetime
-        :param status: The status of this DescribeComputeFleetResponseContent.
+        :param status: The status of this DescribeComputeFleetResponseContent.  # noqa: E501
         :type status: ComputeFleetStatus
+        :param last_status_updated_time: The last_status_updated_time of this DescribeComputeFleetResponseContent.  # noqa: E501
+        :type last_status_updated_time: datetime
         """
-        self.openapi_types = {"status": ComputeFleetStatus, "last_status_updated_time": datetime}
+        self.openapi_types = {
+            'status': ComputeFleetStatus,
+            'last_status_updated_time': datetime
+        }
 
-        self.attribute_map = {"status": "status", "last_status_updated_time": "lastStatusUpdatedTime"}
+        self.attribute_map = {
+            'status': 'status',
+            'last_status_updated_time': 'lastStatusUpdatedTime'
+        }
 
-        self._last_status_updated_time = last_status_updated_time
         self._status = status
+        self._last_status_updated_time = last_status_updated_time
 
     @classmethod
-    def from_dict(cls, dikt) -> "DescribeComputeFleetResponseContent":
+    def from_dict(cls, dikt) -> 'DescribeComputeFleetResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The DescribeComputeFleetResponseContent of this DescribeComputeFleetResponseContent.
+        :return: The DescribeComputeFleetResponseContent of this DescribeComputeFleetResponseContent.  # noqa: E501
         :rtype: DescribeComputeFleetResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -67,7 +67,7 @@ class DescribeComputeFleetResponseContent(Model):
         :type status: ComputeFleetStatus
         """
         if status is None:
-            raise ValueError("Invalid value for `status`, must not be `None`")
+            raise ValueError("Invalid value for `status`, must not be `None`")  # noqa: E501
 
         self._status = status
 
@@ -91,7 +91,5 @@ class DescribeComputeFleetResponseContent(Model):
         :param last_status_updated_time: The last_status_updated_time of this DescribeComputeFleetResponseContent.
         :type last_status_updated_time: datetime
         """
-        if last_status_updated_time is None:
-            raise ValueError("Invalid value for `last_status_updated_time`, must not be `None`")  # noqa: E501
 
         self._last_status_updated_time = last_status_updated_time

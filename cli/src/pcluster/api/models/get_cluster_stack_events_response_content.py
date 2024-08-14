@@ -24,15 +24,21 @@ class GetClusterStackEventsResponseContent(Model):
         :param events: The events of this GetClusterStackEventsResponseContent.  # noqa: E501
         :type events: List[StackEvent]
         """
-        self.openapi_types = {"next_token": str, "events": List[StackEvent]}
+        self.openapi_types = {
+            'next_token': str,
+            'events': List[StackEvent]
+        }
 
-        self.attribute_map = {"next_token": "nextToken", "events": "events"}
+        self.attribute_map = {
+            'next_token': 'nextToken',
+            'events': 'events'
+        }
 
         self._next_token = next_token
         self._events = events
 
     @classmethod
-    def from_dict(cls, dikt) -> "GetClusterStackEventsResponseContent":
+    def from_dict(cls, dikt) -> 'GetClusterStackEventsResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.

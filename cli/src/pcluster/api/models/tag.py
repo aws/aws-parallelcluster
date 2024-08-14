@@ -1,13 +1,9 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -19,60 +15,43 @@ class Tag(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, value=None, key=None):
+    def __init__(self, key=None, value=None):  # noqa: E501
         """Tag - a model defined in OpenAPI
 
-        :param value: The value of this Tag.
-        :type value: str
-        :param key: The key of this Tag.
+        :param key: The key of this Tag.  # noqa: E501
         :type key: str
+        :param value: The value of this Tag.  # noqa: E501
+        :type value: str
         """
-        self.openapi_types = {"value": str, "key": str}
+        self.openapi_types = {
+            'key': str,
+            'value': str
+        }
 
-        self.attribute_map = {"value": "value", "key": "key"}
+        self.attribute_map = {
+            'key': 'key',
+            'value': 'value'
+        }
 
-        self._value = value
         self._key = key
+        self._value = value
 
     @classmethod
-    def from_dict(cls, dikt) -> "Tag":
+    def from_dict(cls, dikt) -> 'Tag':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The Tag of this Tag.
+        :return: The Tag of this Tag.  # noqa: E501
         :rtype: Tag
         """
         return util.deserialize_model(dikt, cls)
 
     @property
-    def value(self):
-        """Gets the value of this Tag.
-
-        Tag value
-
-        :return: The value of this Tag.
-        :rtype: str
-        """
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        """Sets the value of this Tag.
-
-        Tag value
-
-        :param value: The value of this Tag.
-        :type value: str
-        """
-
-        self._value = value
-
-    @property
     def key(self):
         """Gets the key of this Tag.
 
-        Tag name
+        Tag name  # noqa: E501
 
         :return: The key of this Tag.
         :rtype: str
@@ -83,10 +62,33 @@ class Tag(Model):
     def key(self, key):
         """Sets the key of this Tag.
 
-        Tag name
+        Tag name  # noqa: E501
 
         :param key: The key of this Tag.
         :type key: str
         """
 
         self._key = key
+
+    @property
+    def value(self):
+        """Gets the value of this Tag.
+
+        Tag value  # noqa: E501
+
+        :return: The value of this Tag.
+        :rtype: str
+        """
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        """Sets the value of this Tag.
+
+        Tag value  # noqa: E501
+
+        :param value: The value of this Tag.
+        :type value: str
+        """
+
+        self._value = value

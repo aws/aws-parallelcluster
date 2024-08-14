@@ -1,19 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from datetime import datetime
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.instance_state import InstanceState
+from pcluster.api.models.instance_state import InstanceState  # noqa: E501
 
 
 class EC2Instance(Model):
@@ -22,88 +16,57 @@ class EC2Instance(Model):
     Do not edit the class manually.
     """
 
-    def __init__(
-        self,
-        launch_time=None,
-        instance_id=None,
-        public_ip_address=None,
-        instance_type=None,
-        state=None,
-        private_ip_address=None,
-    ):
+    def __init__(self, instance_id=None, instance_type=None, launch_time=None, private_ip_address=None, public_ip_address=None, state=None):  # noqa: E501
         """EC2Instance - a model defined in OpenAPI
 
-        :param launch_time: The launch_time of this EC2Instance.
-        :type launch_time: datetime
-        :param instance_id: The instance_id of this EC2Instance.
+        :param instance_id: The instance_id of this EC2Instance.  # noqa: E501
         :type instance_id: str
-        :param public_ip_address: The public_ip_address of this EC2Instance.
-        :type public_ip_address: str
-        :param instance_type: The instance_type of this EC2Instance.
+        :param instance_type: The instance_type of this EC2Instance.  # noqa: E501
         :type instance_type: str
-        :param state: The state of this EC2Instance.
-        :type state: InstanceState
-        :param private_ip_address: The private_ip_address of this EC2Instance.
+        :param launch_time: The launch_time of this EC2Instance.  # noqa: E501
+        :type launch_time: datetime
+        :param private_ip_address: The private_ip_address of this EC2Instance.  # noqa: E501
         :type private_ip_address: str
+        :param public_ip_address: The public_ip_address of this EC2Instance.  # noqa: E501
+        :type public_ip_address: str
+        :param state: The state of this EC2Instance.  # noqa: E501
+        :type state: InstanceState
         """
         self.openapi_types = {
-            "launch_time": datetime,
-            "instance_id": str,
-            "public_ip_address": str,
-            "instance_type": str,
-            "state": InstanceState,
-            "private_ip_address": str,
+            'instance_id': str,
+            'instance_type': str,
+            'launch_time': datetime,
+            'private_ip_address': str,
+            'public_ip_address': str,
+            'state': InstanceState
         }
 
         self.attribute_map = {
-            "launch_time": "launchTime",
-            "instance_id": "instanceId",
-            "public_ip_address": "publicIpAddress",
-            "instance_type": "instanceType",
-            "state": "state",
-            "private_ip_address": "privateIpAddress",
+            'instance_id': 'instanceId',
+            'instance_type': 'instanceType',
+            'launch_time': 'launchTime',
+            'private_ip_address': 'privateIpAddress',
+            'public_ip_address': 'publicIpAddress',
+            'state': 'state'
         }
 
-        self._launch_time = launch_time
         self._instance_id = instance_id
-        self._public_ip_address = public_ip_address
         self._instance_type = instance_type
-        self._state = state
+        self._launch_time = launch_time
         self._private_ip_address = private_ip_address
+        self._public_ip_address = public_ip_address
+        self._state = state
 
     @classmethod
-    def from_dict(cls, dikt) -> "EC2Instance":
+    def from_dict(cls, dikt) -> 'EC2Instance':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The EC2Instance of this EC2Instance.
+        :return: The EC2Instance of this EC2Instance.  # noqa: E501
         :rtype: EC2Instance
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def launch_time(self):
-        """Gets the launch_time of this EC2Instance.
-
-
-        :return: The launch_time of this EC2Instance.
-        :rtype: datetime
-        """
-        return self._launch_time
-
-    @launch_time.setter
-    def launch_time(self, launch_time):
-        """Sets the launch_time of this EC2Instance.
-
-
-        :param launch_time: The launch_time of this EC2Instance.
-        :type launch_time: datetime
-        """
-        if launch_time is None:
-            raise ValueError("Invalid value for `launch_time`, must not be `None`")
-
-        self._launch_time = launch_time
 
     @property
     def instance_id(self):
@@ -124,9 +87,78 @@ class EC2Instance(Model):
         :type instance_id: str
         """
         if instance_id is None:
-            raise ValueError("Invalid value for `instance_id`, must not be `None`")
+            raise ValueError("Invalid value for `instance_id`, must not be `None`")  # noqa: E501
 
         self._instance_id = instance_id
+
+    @property
+    def instance_type(self):
+        """Gets the instance_type of this EC2Instance.
+
+
+        :return: The instance_type of this EC2Instance.
+        :rtype: str
+        """
+        return self._instance_type
+
+    @instance_type.setter
+    def instance_type(self, instance_type):
+        """Sets the instance_type of this EC2Instance.
+
+
+        :param instance_type: The instance_type of this EC2Instance.
+        :type instance_type: str
+        """
+        if instance_type is None:
+            raise ValueError("Invalid value for `instance_type`, must not be `None`")  # noqa: E501
+
+        self._instance_type = instance_type
+
+    @property
+    def launch_time(self):
+        """Gets the launch_time of this EC2Instance.
+
+
+        :return: The launch_time of this EC2Instance.
+        :rtype: datetime
+        """
+        return self._launch_time
+
+    @launch_time.setter
+    def launch_time(self, launch_time):
+        """Sets the launch_time of this EC2Instance.
+
+
+        :param launch_time: The launch_time of this EC2Instance.
+        :type launch_time: datetime
+        """
+        if launch_time is None:
+            raise ValueError("Invalid value for `launch_time`, must not be `None`")  # noqa: E501
+
+        self._launch_time = launch_time
+
+    @property
+    def private_ip_address(self):
+        """Gets the private_ip_address of this EC2Instance.
+
+
+        :return: The private_ip_address of this EC2Instance.
+        :rtype: str
+        """
+        return self._private_ip_address
+
+    @private_ip_address.setter
+    def private_ip_address(self, private_ip_address):
+        """Sets the private_ip_address of this EC2Instance.
+
+
+        :param private_ip_address: The private_ip_address of this EC2Instance.
+        :type private_ip_address: str
+        """
+        if private_ip_address is None:
+            raise ValueError("Invalid value for `private_ip_address`, must not be `None`")  # noqa: E501
+
+        self._private_ip_address = private_ip_address
 
     @property
     def public_ip_address(self):
@@ -150,29 +182,6 @@ class EC2Instance(Model):
         self._public_ip_address = public_ip_address
 
     @property
-    def instance_type(self):
-        """Gets the instance_type of this EC2Instance.
-
-
-        :return: The instance_type of this EC2Instance.
-        :rtype: str
-        """
-        return self._instance_type
-
-    @instance_type.setter
-    def instance_type(self, instance_type):
-        """Sets the instance_type of this EC2Instance.
-
-
-        :param instance_type: The instance_type of this EC2Instance.
-        :type instance_type: str
-        """
-        if instance_type is None:
-            raise ValueError("Invalid value for `instance_type`, must not be `None`")
-
-        self._instance_type = instance_type
-
-    @property
     def state(self):
         """Gets the state of this EC2Instance.
 
@@ -191,29 +200,6 @@ class EC2Instance(Model):
         :type state: InstanceState
         """
         if state is None:
-            raise ValueError("Invalid value for `state`, must not be `None`")
+            raise ValueError("Invalid value for `state`, must not be `None`")  # noqa: E501
 
         self._state = state
-
-    @property
-    def private_ip_address(self):
-        """Gets the private_ip_address of this EC2Instance.
-
-
-        :return: The private_ip_address of this EC2Instance.
-        :rtype: str
-        """
-        return self._private_ip_address
-
-    @private_ip_address.setter
-    def private_ip_address(self, private_ip_address):
-        """Sets the private_ip_address of this EC2Instance.
-
-
-        :param private_ip_address: The private_ip_address of this EC2Instance.
-        :type private_ip_address: str
-        """
-        if private_ip_address is None:
-            raise ValueError("Invalid value for `private_ip_address`, must not be `None`")
-
-        self._private_ip_address = private_ip_address

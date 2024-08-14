@@ -7,7 +7,7 @@ from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
+from pcluster.api.models.compute_fleet_status import ComputeFleetStatus  # noqa: E501
 
 
 class UpdateComputeFleetResponseContent(Model):
@@ -16,28 +16,34 @@ class UpdateComputeFleetResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, status=None, last_status_updated_time=None):
+    def __init__(self, status=None, last_status_updated_time=None):  # noqa: E501
         """UpdateComputeFleetResponseContent - a model defined in OpenAPI
 
-        :param status: The status of this UpdateComputeFleetResponseContent.
+        :param status: The status of this UpdateComputeFleetResponseContent.  # noqa: E501
         :type status: ComputeFleetStatus
-        :param last_status_updated_time: The last_status_updated_time of this UpdateComputeFleetResponseContent.
+        :param last_status_updated_time: The last_status_updated_time of this UpdateComputeFleetResponseContent.  # noqa: E501
         :type last_status_updated_time: datetime
         """
-        self.openapi_types = {"status": ComputeFleetStatus, "last_status_updated_time": datetime}
+        self.openapi_types = {
+            'status': ComputeFleetStatus,
+            'last_status_updated_time': datetime
+        }
 
-        self.attribute_map = {"status": "status", "last_status_updated_time": "lastStatusUpdatedTime"}
+        self.attribute_map = {
+            'status': 'status',
+            'last_status_updated_time': 'lastStatusUpdatedTime'
+        }
 
         self._status = status
         self._last_status_updated_time = last_status_updated_time
 
     @classmethod
-    def from_dict(cls, dikt) -> "UpdateComputeFleetResponseContent":
+    def from_dict(cls, dikt) -> 'UpdateComputeFleetResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The UpdateComputeFleetResponseContent of this UpdateComputeFleetResponseContent.
+        :return: The UpdateComputeFleetResponseContent of this UpdateComputeFleetResponseContent.  # noqa: E501
         :rtype: UpdateComputeFleetResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -61,7 +67,7 @@ class UpdateComputeFleetResponseContent(Model):
         :type status: ComputeFleetStatus
         """
         if status is None:
-            raise ValueError("Invalid value for `status`, must not be `None`")
+            raise ValueError("Invalid value for `status`, must not be `None`")  # noqa: E501
 
         self._status = status
 
@@ -69,7 +75,7 @@ class UpdateComputeFleetResponseContent(Model):
     def last_status_updated_time(self):
         """Gets the last_status_updated_time of this UpdateComputeFleetResponseContent.
 
-        Timestamp representing the last status update time.
+        Timestamp representing the last status update time.  # noqa: E501
 
         :return: The last_status_updated_time of this UpdateComputeFleetResponseContent.
         :rtype: datetime
@@ -80,12 +86,10 @@ class UpdateComputeFleetResponseContent(Model):
     def last_status_updated_time(self, last_status_updated_time):
         """Sets the last_status_updated_time of this UpdateComputeFleetResponseContent.
 
-        Timestamp representing the last status update time.
+        Timestamp representing the last status update time.  # noqa: E501
 
         :param last_status_updated_time: The last_status_updated_time of this UpdateComputeFleetResponseContent.
         :type last_status_updated_time: datetime
         """
-        if last_status_updated_time is None:
-            raise ValueError("Invalid value for `last_status_updated_time`, must not be `None`")
 
         self._last_status_updated_time = last_status_updated_time

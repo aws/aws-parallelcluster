@@ -1,17 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.requested_compute_fleet_status import RequestedComputeFleetStatus
+from pcluster.api.models.requested_compute_fleet_status import RequestedComputeFleetStatus  # noqa: E501
 
 
 class UpdateComputeFleetRequestContent(Model):
@@ -20,25 +16,29 @@ class UpdateComputeFleetRequestContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, status=None):
+    def __init__(self, status=None):  # noqa: E501
         """UpdateComputeFleetRequestContent - a model defined in OpenAPI
 
-        :param status: The status of this UpdateComputeFleetRequestContent.
+        :param status: The status of this UpdateComputeFleetRequestContent.  # noqa: E501
         :type status: RequestedComputeFleetStatus
         """
-        self.openapi_types = {"status": RequestedComputeFleetStatus}
+        self.openapi_types = {
+            'status': RequestedComputeFleetStatus
+        }
 
-        self.attribute_map = {"status": "status"}
+        self.attribute_map = {
+            'status': 'status'
+        }
 
         self._status = status
 
     @classmethod
-    def from_dict(cls, dikt) -> "UpdateComputeFleetRequestContent":
+    def from_dict(cls, dikt) -> 'UpdateComputeFleetRequestContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The UpdateComputeFleetRequestContent of this UpdateComputeFleetRequestContent.
+        :return: The UpdateComputeFleetRequestContent of this UpdateComputeFleetRequestContent.  # noqa: E501
         :rtype: UpdateComputeFleetRequestContent
         """
         return util.deserialize_model(dikt, cls)
@@ -62,6 +62,6 @@ class UpdateComputeFleetRequestContent(Model):
         :type status: RequestedComputeFleetStatus
         """
         if status is None:
-            raise ValueError("Invalid value for `status`, must not be `None`")
+            raise ValueError("Invalid value for `status`, must not be `None`")  # noqa: E501
 
         self._status = status

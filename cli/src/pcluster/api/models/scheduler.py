@@ -1,13 +1,9 @@
-# Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -28,15 +24,21 @@ class Scheduler(Model):
         :param metadata: The metadata of this Scheduler.  # noqa: E501
         :type metadata: Metadata
         """
-        self.openapi_types = {"type": str, "metadata": Metadata}
+        self.openapi_types = {
+            'type': str,
+            'metadata': Metadata
+        }
 
-        self.attribute_map = {"type": "type", "metadata": "metadata"}
+        self.attribute_map = {
+            'type': 'type',
+            'metadata': 'metadata'
+        }
 
         self._type = type
         self._metadata = metadata
 
     @classmethod
-    def from_dict(cls, dikt) -> "Scheduler":
+    def from_dict(cls, dikt) -> 'Scheduler':
         """Returns the dict as a model
 
         :param dikt: A dict.

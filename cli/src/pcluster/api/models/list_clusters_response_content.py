@@ -1,19 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
+from pcluster.api.models.cluster_info_summary import ClusterInfoSummary  # noqa: E501
 
 
 class ListClustersResponseContent(Model):
@@ -22,28 +16,34 @@ class ListClustersResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, next_token=None, clusters=None):
+    def __init__(self, next_token=None, clusters=None):  # noqa: E501
         """ListClustersResponseContent - a model defined in OpenAPI
 
-        :param next_token: The next_token of this ListClustersResponseContent.
+        :param next_token: The next_token of this ListClustersResponseContent.  # noqa: E501
         :type next_token: str
-        :param clusters: The clusters of this ListClustersResponseContent.
+        :param clusters: The clusters of this ListClustersResponseContent.  # noqa: E501
         :type clusters: List[ClusterInfoSummary]
         """
-        self.openapi_types = {"next_token": str, "clusters": List[ClusterInfoSummary]}
+        self.openapi_types = {
+            'next_token': str,
+            'clusters': List[ClusterInfoSummary]
+        }
 
-        self.attribute_map = {"next_token": "nextToken", "clusters": "clusters"}
+        self.attribute_map = {
+            'next_token': 'nextToken',
+            'clusters': 'clusters'
+        }
 
         self._next_token = next_token
         self._clusters = clusters
 
     @classmethod
-    def from_dict(cls, dikt) -> "ListClustersResponseContent":
+    def from_dict(cls, dikt) -> 'ListClustersResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The ListClustersResponseContent of this ListClustersResponseContent.
+        :return: The ListClustersResponseContent of this ListClustersResponseContent.  # noqa: E501
         :rtype: ListClustersResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -52,7 +52,7 @@ class ListClustersResponseContent(Model):
     def next_token(self):
         """Gets the next_token of this ListClustersResponseContent.
 
-        Token to use for paginated requests.
+        Token to use for paginated requests.  # noqa: E501
 
         :return: The next_token of this ListClustersResponseContent.
         :rtype: str
@@ -63,7 +63,7 @@ class ListClustersResponseContent(Model):
     def next_token(self, next_token):
         """Sets the next_token of this ListClustersResponseContent.
 
-        Token to use for paginated requests.
+        Token to use for paginated requests.  # noqa: E501
 
         :param next_token: The next_token of this ListClustersResponseContent.
         :type next_token: str
@@ -90,6 +90,6 @@ class ListClustersResponseContent(Model):
         :type clusters: List[ClusterInfoSummary]
         """
         if clusters is None:
-            raise ValueError("Invalid value for `clusters`, must not be `None`")
+            raise ValueError("Invalid value for `clusters`, must not be `None`")  # noqa: E501
 
         self._clusters = clusters

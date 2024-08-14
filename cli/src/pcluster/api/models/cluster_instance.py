@@ -1,10 +1,4 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
 from __future__ import absolute_import
 
@@ -23,69 +17,59 @@ class ClusterInstance(Model):
     Do not edit the class manually.
     """
 
-    def __init__(
-        self,
-        launch_time=None,
-        instance_id=None,
-        queue_name=None,
-        public_ip_address=None,
-        instance_type=None,
-        state=None,
-        node_type=None,
-        private_ip_address=None,
-    ):  # noqa: E501
+    def __init__(self, instance_id=None, instance_type=None, launch_time=None, private_ip_address=None, public_ip_address=None, state=None, node_type=None, queue_name=None):  # noqa: E501
         """ClusterInstance - a model defined in OpenAPI
 
-        :param launch_time: The launch_time of this ClusterInstance.  # noqa: E501
-        :type launch_time: datetime
         :param instance_id: The instance_id of this ClusterInstance.  # noqa: E501
         :type instance_id: str
-        :param queue_name: The queue_name of this ClusterInstance.  # noqa: E501
-        :type queue_name: str
-        :param public_ip_address: The public_ip_address of this ClusterInstance.  # noqa: E501
-        :type public_ip_address: str
         :param instance_type: The instance_type of this ClusterInstance.  # noqa: E501
         :type instance_type: str
+        :param launch_time: The launch_time of this ClusterInstance.  # noqa: E501
+        :type launch_time: datetime
+        :param private_ip_address: The private_ip_address of this ClusterInstance.  # noqa: E501
+        :type private_ip_address: str
+        :param public_ip_address: The public_ip_address of this ClusterInstance.  # noqa: E501
+        :type public_ip_address: str
         :param state: The state of this ClusterInstance.  # noqa: E501
         :type state: InstanceState
         :param node_type: The node_type of this ClusterInstance.  # noqa: E501
         :type node_type: NodeType
-        :param private_ip_address: The private_ip_address of this ClusterInstance.  # noqa: E501
-        :type private_ip_address: str
+        :param queue_name: The queue_name of this ClusterInstance.  # noqa: E501
+        :type queue_name: str
         """
         self.openapi_types = {
-            "launch_time": datetime,
-            "instance_id": str,
-            "queue_name": str,
-            "public_ip_address": str,
-            "instance_type": str,
-            "state": InstanceState,
-            "node_type": NodeType,
-            "private_ip_address": str,
+            'instance_id': str,
+            'instance_type': str,
+            'launch_time': datetime,
+            'private_ip_address': str,
+            'public_ip_address': str,
+            'state': InstanceState,
+            'node_type': NodeType,
+            'queue_name': str
         }
 
         self.attribute_map = {
-            "launch_time": "launchTime",
-            "instance_id": "instanceId",
-            "queue_name": "queueName",
-            "public_ip_address": "publicIpAddress",
-            "instance_type": "instanceType",
-            "state": "state",
-            "node_type": "nodeType",
-            "private_ip_address": "privateIpAddress",
+            'instance_id': 'instanceId',
+            'instance_type': 'instanceType',
+            'launch_time': 'launchTime',
+            'private_ip_address': 'privateIpAddress',
+            'public_ip_address': 'publicIpAddress',
+            'state': 'state',
+            'node_type': 'nodeType',
+            'queue_name': 'queueName'
         }
 
-        self._launch_time = launch_time
         self._instance_id = instance_id
-        self._queue_name = queue_name
-        self._public_ip_address = public_ip_address
         self._instance_type = instance_type
+        self._launch_time = launch_time
+        self._private_ip_address = private_ip_address
+        self._public_ip_address = public_ip_address
         self._state = state
         self._node_type = node_type
-        self._private_ip_address = private_ip_address
+        self._queue_name = queue_name
 
     @classmethod
-    def from_dict(cls, dikt) -> "ClusterInstance":
+    def from_dict(cls, dikt) -> 'ClusterInstance':
         """Returns the dict as a model
 
         :param dikt: A dict.
@@ -94,29 +78,6 @@ class ClusterInstance(Model):
         :rtype: ClusterInstance
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def launch_time(self):
-        """Gets the launch_time of this ClusterInstance.
-
-
-        :return: The launch_time of this ClusterInstance.
-        :rtype: datetime
-        """
-        return self._launch_time
-
-    @launch_time.setter
-    def launch_time(self, launch_time):
-        """Sets the launch_time of this ClusterInstance.
-
-
-        :param launch_time: The launch_time of this ClusterInstance.
-        :type launch_time: datetime
-        """
-        if launch_time is None:
-            raise ValueError("Invalid value for `launch_time`, must not be `None`")  # noqa: E501
-
-        self._launch_time = launch_time
 
     @property
     def instance_id(self):
@@ -142,48 +103,6 @@ class ClusterInstance(Model):
         self._instance_id = instance_id
 
     @property
-    def queue_name(self):
-        """Gets the queue_name of this ClusterInstance.
-
-
-        :return: The queue_name of this ClusterInstance.
-        :rtype: str
-        """
-        return self._queue_name
-
-    @queue_name.setter
-    def queue_name(self, queue_name):
-        """Sets the queue_name of this ClusterInstance.
-
-
-        :param queue_name: The queue_name of this ClusterInstance.
-        :type queue_name: str
-        """
-
-        self._queue_name = queue_name
-
-    @property
-    def public_ip_address(self):
-        """Gets the public_ip_address of this ClusterInstance.
-
-
-        :return: The public_ip_address of this ClusterInstance.
-        :rtype: str
-        """
-        return self._public_ip_address
-
-    @public_ip_address.setter
-    def public_ip_address(self, public_ip_address):
-        """Sets the public_ip_address of this ClusterInstance.
-
-
-        :param public_ip_address: The public_ip_address of this ClusterInstance.
-        :type public_ip_address: str
-        """
-
-        self._public_ip_address = public_ip_address
-
-    @property
     def instance_type(self):
         """Gets the instance_type of this ClusterInstance.
 
@@ -205,6 +124,73 @@ class ClusterInstance(Model):
             raise ValueError("Invalid value for `instance_type`, must not be `None`")  # noqa: E501
 
         self._instance_type = instance_type
+
+    @property
+    def launch_time(self):
+        """Gets the launch_time of this ClusterInstance.
+
+
+        :return: The launch_time of this ClusterInstance.
+        :rtype: datetime
+        """
+        return self._launch_time
+
+    @launch_time.setter
+    def launch_time(self, launch_time):
+        """Sets the launch_time of this ClusterInstance.
+
+
+        :param launch_time: The launch_time of this ClusterInstance.
+        :type launch_time: datetime
+        """
+        if launch_time is None:
+            raise ValueError("Invalid value for `launch_time`, must not be `None`")  # noqa: E501
+
+        self._launch_time = launch_time
+
+    @property
+    def private_ip_address(self):
+        """Gets the private_ip_address of this ClusterInstance.
+
+
+        :return: The private_ip_address of this ClusterInstance.
+        :rtype: str
+        """
+        return self._private_ip_address
+
+    @private_ip_address.setter
+    def private_ip_address(self, private_ip_address):
+        """Sets the private_ip_address of this ClusterInstance.
+
+
+        :param private_ip_address: The private_ip_address of this ClusterInstance.
+        :type private_ip_address: str
+        """
+        if private_ip_address is None:
+            raise ValueError("Invalid value for `private_ip_address`, must not be `None`")  # noqa: E501
+
+        self._private_ip_address = private_ip_address
+
+    @property
+    def public_ip_address(self):
+        """Gets the public_ip_address of this ClusterInstance.
+
+
+        :return: The public_ip_address of this ClusterInstance.
+        :rtype: str
+        """
+        return self._public_ip_address
+
+    @public_ip_address.setter
+    def public_ip_address(self, public_ip_address):
+        """Sets the public_ip_address of this ClusterInstance.
+
+
+        :param public_ip_address: The public_ip_address of this ClusterInstance.
+        :type public_ip_address: str
+        """
+
+        self._public_ip_address = public_ip_address
 
     @property
     def state(self):
@@ -253,24 +239,22 @@ class ClusterInstance(Model):
         self._node_type = node_type
 
     @property
-    def private_ip_address(self):
-        """Gets the private_ip_address of this ClusterInstance.
+    def queue_name(self):
+        """Gets the queue_name of this ClusterInstance.
 
 
-        :return: The private_ip_address of this ClusterInstance.
+        :return: The queue_name of this ClusterInstance.
         :rtype: str
         """
-        return self._private_ip_address
+        return self._queue_name
 
-    @private_ip_address.setter
-    def private_ip_address(self, private_ip_address):
-        """Sets the private_ip_address of this ClusterInstance.
+    @queue_name.setter
+    def queue_name(self, queue_name):
+        """Sets the queue_name of this ClusterInstance.
 
 
-        :param private_ip_address: The private_ip_address of this ClusterInstance.
-        :type private_ip_address: str
+        :param queue_name: The queue_name of this ClusterInstance.
+        :type queue_name: str
         """
-        if private_ip_address is None:
-            raise ValueError("Invalid value for `private_ip_address`, must not be `None`")  # noqa: E501
 
-        self._private_ip_address = private_ip_address
+        self._queue_name = queue_name

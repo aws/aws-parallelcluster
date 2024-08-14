@@ -1,17 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
+from pcluster.api.models.cluster_info_summary import ClusterInfoSummary  # noqa: E501
 
 
 class DeleteClusterResponseContent(Model):
@@ -20,25 +16,29 @@ class DeleteClusterResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, cluster=None):
+    def __init__(self, cluster=None):  # noqa: E501
         """DeleteClusterResponseContent - a model defined in OpenAPI
 
-        :param cluster: The cluster of this DeleteClusterResponseContent.
+        :param cluster: The cluster of this DeleteClusterResponseContent.  # noqa: E501
         :type cluster: ClusterInfoSummary
         """
-        self.openapi_types = {"cluster": ClusterInfoSummary}
+        self.openapi_types = {
+            'cluster': ClusterInfoSummary
+        }
 
-        self.attribute_map = {"cluster": "cluster"}
+        self.attribute_map = {
+            'cluster': 'cluster'
+        }
 
         self._cluster = cluster
 
     @classmethod
-    def from_dict(cls, dikt) -> "DeleteClusterResponseContent":
+    def from_dict(cls, dikt) -> 'DeleteClusterResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The DeleteClusterResponseContent of this DeleteClusterResponseContent.
+        :return: The DeleteClusterResponseContent of this DeleteClusterResponseContent.  # noqa: E501
         :rtype: DeleteClusterResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -62,6 +62,6 @@ class DeleteClusterResponseContent(Model):
         :type cluster: ClusterInfoSummary
         """
         if cluster is None:
-            raise ValueError("Invalid value for `cluster`, must not be `None`")
+            raise ValueError("Invalid value for `cluster`, must not be `None`")  # noqa: E501
 
         self._cluster = cluster

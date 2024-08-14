@@ -1,21 +1,15 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.change import Change
-from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
-from pcluster.api.models.config_validation_message import ConfigValidationMessage
+from pcluster.api.models.change import Change  # noqa: E501
+from pcluster.api.models.cluster_info_summary import ClusterInfoSummary  # noqa: E501
+from pcluster.api.models.config_validation_message import ConfigValidationMessage  # noqa: E501
 
 
 class UpdateClusterResponseContent(Model):
@@ -24,26 +18,26 @@ class UpdateClusterResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, cluster=None, validation_messages=None, change_set=None):
+    def __init__(self, cluster=None, validation_messages=None, change_set=None):  # noqa: E501
         """UpdateClusterResponseContent - a model defined in OpenAPI
 
-        :param cluster: The cluster of this UpdateClusterResponseContent.
+        :param cluster: The cluster of this UpdateClusterResponseContent.  # noqa: E501
         :type cluster: ClusterInfoSummary
-        :param validation_messages: The validation_messages of this UpdateClusterResponseContent.
+        :param validation_messages: The validation_messages of this UpdateClusterResponseContent.  # noqa: E501
         :type validation_messages: List[ConfigValidationMessage]
-        :param change_set: The change_set of this UpdateClusterResponseContent.
+        :param change_set: The change_set of this UpdateClusterResponseContent.  # noqa: E501
         :type change_set: List[Change]
         """
         self.openapi_types = {
-            "cluster": ClusterInfoSummary,
-            "validation_messages": List[ConfigValidationMessage],
-            "change_set": List[Change],
+            'cluster': ClusterInfoSummary,
+            'validation_messages': List[ConfigValidationMessage],
+            'change_set': List[Change]
         }
 
         self.attribute_map = {
-            "cluster": "cluster",
-            "validation_messages": "validationMessages",
-            "change_set": "changeSet",
+            'cluster': 'cluster',
+            'validation_messages': 'validationMessages',
+            'change_set': 'changeSet'
         }
 
         self._cluster = cluster
@@ -51,12 +45,12 @@ class UpdateClusterResponseContent(Model):
         self._change_set = change_set
 
     @classmethod
-    def from_dict(cls, dikt) -> "UpdateClusterResponseContent":
+    def from_dict(cls, dikt) -> 'UpdateClusterResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The UpdateClusterResponseContent of this UpdateClusterResponseContent.
+        :return: The UpdateClusterResponseContent of this UpdateClusterResponseContent.  # noqa: E501
         :rtype: UpdateClusterResponseContent
         """
         return util.deserialize_model(dikt, cls)
@@ -80,7 +74,7 @@ class UpdateClusterResponseContent(Model):
         :type cluster: ClusterInfoSummary
         """
         if cluster is None:
-            raise ValueError("Invalid value for `cluster`, must not be `None`")
+            raise ValueError("Invalid value for `cluster`, must not be `None`")  # noqa: E501
 
         self._cluster = cluster
 
@@ -88,8 +82,7 @@ class UpdateClusterResponseContent(Model):
     def validation_messages(self):
         """Gets the validation_messages of this UpdateClusterResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the
-        'validationFailureLevel' set by the user.
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :return: The validation_messages of this UpdateClusterResponseContent.
         :rtype: List[ConfigValidationMessage]
@@ -100,19 +93,19 @@ class UpdateClusterResponseContent(Model):
     def validation_messages(self, validation_messages):
         """Sets the validation_messages of this UpdateClusterResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the
-        'validationFailureLevel' set by the user.
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :param validation_messages: The validation_messages of this UpdateClusterResponseContent.
         :type validation_messages: List[ConfigValidationMessage]
         """
+
         self._validation_messages = validation_messages
 
     @property
     def change_set(self):
         """Gets the change_set of this UpdateClusterResponseContent.
 
-        List of configuration changes requested by the update operation.
+        List of configuration changes requested by the update operation.  # noqa: E501
 
         :return: The change_set of this UpdateClusterResponseContent.
         :rtype: List[Change]
@@ -123,12 +116,12 @@ class UpdateClusterResponseContent(Model):
     def change_set(self, change_set):
         """Sets the change_set of this UpdateClusterResponseContent.
 
-        List of configuration changes requested by the update operation.
+        List of configuration changes requested by the update operation.  # noqa: E501
 
         :param change_set: The change_set of this UpdateClusterResponseContent.
         :type change_set: List[Change]
         """
         if change_set is None:
-            raise ValueError("Invalid value for `change_set`, must not be `None`")
+            raise ValueError("Invalid value for `change_set`, must not be `None`")  # noqa: E501
 
         self._change_set = change_set

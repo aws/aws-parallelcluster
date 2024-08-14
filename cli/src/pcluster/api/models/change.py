@@ -1,13 +1,9 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -19,35 +15,39 @@ class Change(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, parameter=None, requested_value=None, current_value=None):
+    def __init__(self, parameter=None, current_value=None, requested_value=None):  # noqa: E501
         """Change - a model defined in OpenAPI
 
-        :param parameter: The parameter of this Change.
+        :param parameter: The parameter of this Change.  # noqa: E501
         :type parameter: str
-        :param requested_value: The requested_value of this Change.
-        :type requested_value: str
-        :param current_value: The current_value of this Change.
+        :param current_value: The current_value of this Change.  # noqa: E501
         :type current_value: str
+        :param requested_value: The requested_value of this Change.  # noqa: E501
+        :type requested_value: str
         """
-        self.openapi_types = {"parameter": str, "requested_value": str, "current_value": str}
+        self.openapi_types = {
+            'parameter': str,
+            'current_value': str,
+            'requested_value': str
+        }
 
         self.attribute_map = {
-            "parameter": "parameter",
-            "requested_value": "requestedValue",
-            "current_value": "currentValue",
+            'parameter': 'parameter',
+            'current_value': 'currentValue',
+            'requested_value': 'requestedValue'
         }
 
         self._parameter = parameter
-        self._requested_value = requested_value
         self._current_value = current_value
+        self._requested_value = requested_value
 
     @classmethod
-    def from_dict(cls, dikt) -> "Change":
+    def from_dict(cls, dikt) -> 'Change':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The Change of this Change.
+        :return: The Change of this Change.  # noqa: E501
         :rtype: Change
         """
         return util.deserialize_model(dikt, cls)
@@ -74,27 +74,6 @@ class Change(Model):
         self._parameter = parameter
 
     @property
-    def requested_value(self):
-        """Gets the requested_value of this Change.
-
-
-        :return: The requested_value of this Change.
-        :rtype: str
-        """
-        return self._requested_value
-
-    @requested_value.setter
-    def requested_value(self, requested_value):
-        """Sets the requested_value of this Change.
-
-
-        :param requested_value: The requested_value of this Change.
-        :type requested_value: str
-        """
-
-        self._requested_value = requested_value
-
-    @property
     def current_value(self):
         """Gets the current_value of this Change.
 
@@ -114,3 +93,24 @@ class Change(Model):
         """
 
         self._current_value = current_value
+
+    @property
+    def requested_value(self):
+        """Gets the requested_value of this Change.
+
+
+        :return: The requested_value of this Change.
+        :rtype: str
+        """
+        return self._requested_value
+
+    @requested_value.setter
+    def requested_value(self, requested_value):
+        """Sets the requested_value of this Change.
+
+
+        :param requested_value: The requested_value of this Change.
+        :type requested_value: str
+        """
+
+        self._requested_value = requested_value

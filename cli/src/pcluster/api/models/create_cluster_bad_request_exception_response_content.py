@@ -1,19 +1,13 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
-# with the License. A copy of the License is located at http://aws.amazon.com/apache2.0/
-# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
-# limitations under the License.
+# coding: utf-8
 
-# pylint: disable=R0801
+from __future__ import absolute_import
 
-
-from typing import List
+from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.config_validation_message import ConfigValidationMessage
+from pcluster.api.models.config_validation_message import ConfigValidationMessage  # noqa: E501
 
 
 class CreateClusterBadRequestExceptionResponseContent(Model):
@@ -22,55 +16,37 @@ class CreateClusterBadRequestExceptionResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, configuration_validation_errors=None, message=None):
+    def __init__(self, message=None, configuration_validation_errors=None):  # noqa: E501
         """CreateClusterBadRequestExceptionResponseContent - a model defined in OpenAPI
 
-        :param configuration_validation_errors: The configuration_validation_errors of this
-        CreateClusterBadRequestExceptionResponseContent.
-        :type configuration_validation_errors: List[ConfigValidationMessage]
-        :param message: The message of this CreateClusterBadRequestExceptionResponseContent.
+        :param message: The message of this CreateClusterBadRequestExceptionResponseContent.  # noqa: E501
         :type message: str
+        :param configuration_validation_errors: The configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.  # noqa: E501
+        :type configuration_validation_errors: List[ConfigValidationMessage]
         """
-        self.openapi_types = {"configuration_validation_errors": List[ConfigValidationMessage], "message": str}
+        self.openapi_types = {
+            'message': str,
+            'configuration_validation_errors': List[ConfigValidationMessage]
+        }
 
-        self.attribute_map = {"configuration_validation_errors": "configurationValidationErrors", "message": "message"}
+        self.attribute_map = {
+            'message': 'message',
+            'configuration_validation_errors': 'configurationValidationErrors'
+        }
 
-        self._configuration_validation_errors = configuration_validation_errors
         self._message = message
+        self._configuration_validation_errors = configuration_validation_errors
 
     @classmethod
-    def from_dict(cls, dikt) -> "CreateClusterBadRequestExceptionResponseContent":
+    def from_dict(cls, dikt) -> 'CreateClusterBadRequestExceptionResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.
         :type: dict
-        :return: The CreateClusterBadRequestExceptionResponseContent of this
-        CreateClusterBadRequestExceptionResponseContent.
+        :return: The CreateClusterBadRequestExceptionResponseContent of this CreateClusterBadRequestExceptionResponseContent.  # noqa: E501
         :rtype: CreateClusterBadRequestExceptionResponseContent
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def configuration_validation_errors(self):
-        """Gets the configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
-
-
-        :return: The configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
-        :rtype: List[ConfigValidationMessage]
-        """
-        return self._configuration_validation_errors
-
-    @configuration_validation_errors.setter
-    def configuration_validation_errors(self, configuration_validation_errors):
-        """Sets the configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
-
-
-        :param configuration_validation_errors: The configuration_validation_errors of this
-        CreateClusterBadRequestExceptionResponseContent.
-        :type configuration_validation_errors: List[ConfigValidationMessage]
-        """
-
-        self._configuration_validation_errors = configuration_validation_errors
 
     @property
     def message(self):
@@ -92,3 +68,24 @@ class CreateClusterBadRequestExceptionResponseContent(Model):
         """
 
         self._message = message
+
+    @property
+    def configuration_validation_errors(self):
+        """Gets the configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
+
+
+        :return: The configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
+        :rtype: List[ConfigValidationMessage]
+        """
+        return self._configuration_validation_errors
+
+    @configuration_validation_errors.setter
+    def configuration_validation_errors(self, configuration_validation_errors):
+        """Sets the configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
+
+
+        :param configuration_validation_errors: The configuration_validation_errors of this CreateClusterBadRequestExceptionResponseContent.
+        :type configuration_validation_errors: List[ConfigValidationMessage]
+        """
+
+        self._configuration_validation_errors = configuration_validation_errors

@@ -5,9 +5,8 @@ info:
   version: 3.11.0
 servers:
 - url: /
-# override: auth is defined the the API GW level
-# security:
-# - aws.auth.sigv4: []
+security:
+- aws.auth.sigv4: []
 paths:
   /v3/clusters:
     get:
@@ -149,7 +148,6 @@ paths:
         content:
           application/json:
             schema:
-              x-body-name: create_cluster_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/CreateClusterRequestContent'
         required: true
       responses:
@@ -424,7 +422,6 @@ paths:
         content:
           application/json:
             schema:
-              x-body-name: update_cluster_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/UpdateClusterRequestContent'
         required: true
       responses:
@@ -586,7 +583,6 @@ paths:
         content:
           application/json:
             schema:
-              x-body-name: update_compute_fleet_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/UpdateComputeFleetRequestContent'
         required: true
       responses:
@@ -975,8 +971,7 @@ paths:
           description: "The maximum number of log events returned. If you don't specify\
             \ a value, the maximum is as many log events as can fit in a response\
             \ size of 1 MB, up to 10,000 log events."
-          format: int32  # override: connexion does not handle number correctly
-          nullable: true
+          format: int32
           type: integer
         style: form
       - description: "The start of the time range, expressed in ISO 8601 format (e.g.\
@@ -1272,7 +1267,6 @@ paths:
         content:
           application/json:
             schema:
-              x-body-name: build_image_request_content  # override: name of the param in the controller signature
               $ref: '#/components/schemas/BuildImageRequestContent'
         required: true
       responses:
@@ -1630,8 +1624,7 @@ paths:
           description: "The maximum number of log events returned. If you don't specify\
             \ a value, the maximum is as many log events as can fit in a response\
             \ size of 1 MB, up to 10,000 log events."
-          format: int32  # override: connexion does not handle number correctly
-          nullable: true
+          format: int32
           type: integer
         style: form
       - description: "The start of the time range, expressed in ISO 8601 format (e.g.\
@@ -2383,7 +2376,6 @@ components:
         cloudFormationStackStatus: null
         clusterName: clusterName
         computeFleetStatus: null
-        failureReason: failureReason
         cloudformationStackArn: cloudformationStackArn
         lastUpdatedTime: 2000-01-23T04:56:07.000+00:00
         region: region
