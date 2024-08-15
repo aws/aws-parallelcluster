@@ -100,6 +100,7 @@ def test_build_image(
     os,
     pcluster_config_reader,
     architecture,
+    vpc_stack_with_endpoints,
     s3_bucket_factory,
     build_image_custom_resource,
     images_factory,
@@ -130,7 +131,7 @@ def test_build_image(
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml", parent_image=base_ami, instance_role=instance_role, bucket_name=bucket_name
+        config_file="image.config.yaml", parent_image=base_ami, instance_role=instance_role, bucket_name=bucket_name, subnet_id=vpc_stack_with_endpoints.cfn_outputs["PrivateNoInternetSubnetId"], security_group=vpc_stack_with_endpoints.cfn_outputs["DefaultVpcSecurityGroupId"]
     )
 
     image = images_factory(image_id, image_config, region)

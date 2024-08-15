@@ -11,6 +11,9 @@ Build:
         InstanceRole: {{ instance_role }}
     InstanceType: {{ instance }}
     ParentImage: {{ parent_image }}
+    SubnetId: {{ subnet_id }}
+    SecurityGroupIds:
+        - {{ security_group }}
     Tags:
         - Key: dummyBuildTag
           Value: dummyBuildTag
