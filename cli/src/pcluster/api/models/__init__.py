@@ -2,13 +2,10 @@
 
 # flake8: noqa
 from __future__ import absolute_import
-
 # import models into model package
 from pcluster.api.models.ami_info import AmiInfo
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.models.build_image_bad_request_exception_response_content import (
-    BuildImageBadRequestExceptionResponseContent,
-)
+from pcluster.api.models.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent
 from pcluster.api.models.build_image_request_content import BuildImageRequestContent
 from pcluster.api.models.build_image_response_content import BuildImageResponseContent
 from pcluster.api.models.change import Change
@@ -22,9 +19,7 @@ from pcluster.api.models.cluster_status_filtering_option import ClusterStatusFil
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
 from pcluster.api.models.config_validation_message import ConfigValidationMessage
 from pcluster.api.models.conflict_exception_response_content import ConflictExceptionResponseContent
-from pcluster.api.models.create_cluster_bad_request_exception_response_content import (
-    CreateClusterBadRequestExceptionResponseContent,
-)
+from pcluster.api.models.create_cluster_bad_request_exception_response_content import CreateClusterBadRequestExceptionResponseContent
 from pcluster.api.models.create_cluster_request_content import CreateClusterRequestContent
 from pcluster.api.models.create_cluster_response_content import CreateClusterResponseContent
 from pcluster.api.models.delete_cluster_response_content import DeleteClusterResponseContent
@@ -34,10 +29,10 @@ from pcluster.api.models.describe_cluster_response_content import DescribeCluste
 from pcluster.api.models.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pcluster.api.models.describe_image_response_content import DescribeImageResponseContent
 from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
+from pcluster.api.models.ec2_instance import EC2Instance
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary
 from pcluster.api.models.ec2_ami_state import Ec2AmiState
-from pcluster.api.models.ec2_instance import EC2Instance
 from pcluster.api.models.failure import Failure
 from pcluster.api.models.get_cluster_log_events_response_content import GetClusterLogEventsResponseContent
 from pcluster.api.models.get_cluster_stack_events_response_content import GetClusterStackEventsResponseContent
@@ -68,9 +63,7 @@ from pcluster.api.models.scheduler import Scheduler
 from pcluster.api.models.stack_event import StackEvent
 from pcluster.api.models.tag import Tag
 from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
-from pcluster.api.models.update_cluster_bad_request_exception_response_content import (
-    UpdateClusterBadRequestExceptionResponseContent,
-)
+from pcluster.api.models.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent
 from pcluster.api.models.update_cluster_request_content import UpdateClusterRequestContent
 from pcluster.api.models.update_cluster_response_content import UpdateClusterResponseContent
 from pcluster.api.models.update_compute_fleet_request_content import UpdateComputeFleetRequestContent

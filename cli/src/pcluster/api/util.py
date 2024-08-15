@@ -1,8 +1,7 @@
 import datetime
-import typing
 
 import six
-
+import typing
 from pcluster.api import typing_utils
 
 

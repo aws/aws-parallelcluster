@@ -1,26 +1,17 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-
 import unittest
 
 from flask import json
 from six import BytesIO
 
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
-from pcluster.api.models.describe_compute_fleet_response_content import (  # noqa: E501
-    DescribeComputeFleetResponseContent,
-)
-from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
-    InternalServiceExceptionResponseContent,
-)
-from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
-    LimitExceededExceptionResponseContent,
-)
+from pcluster.api.models.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent  # noqa: E501
+from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent  # noqa: E501
+from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent  # noqa: E501
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
-from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
-    UnauthorizedClientErrorResponseContent,
-)
+from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent  # noqa: E501
 from pcluster.api.models.update_compute_fleet_request_content import UpdateComputeFleetRequestContent  # noqa: E501
 from pcluster.api.models.update_compute_fleet_response_content import UpdateComputeFleetResponseContent  # noqa: E501
 from pcluster.api.test import BaseTestCase

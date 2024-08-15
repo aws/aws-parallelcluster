@@ -1,24 +1,17 @@
-from typing import Dict, Tuple, Union
-
 import connexion
 import six
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
-from pcluster.api import util
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
-from pcluster.api.models.describe_cluster_instances_response_content import (  # noqa: E501
-    DescribeClusterInstancesResponseContent,
-)
-from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
-    InternalServiceExceptionResponseContent,
-)
-from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
-    LimitExceededExceptionResponseContent,
-)
+from pcluster.api.models.describe_cluster_instances_response_content import DescribeClusterInstancesResponseContent  # noqa: E501
+from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent  # noqa: E501
+from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent  # noqa: E501
 from pcluster.api.models.node_type import NodeType  # noqa: E501
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
-from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
-    UnauthorizedClientErrorResponseContent,
-)
+from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent  # noqa: E501
+from pcluster.api import util
 
 
 def delete_cluster_instances(cluster_name, region=None, force=None):  # noqa: E501
@@ -35,12 +28,10 @@ def delete_cluster_instances(cluster_name, region=None, force=None):  # noqa: E5
 
     :rtype: Union[None, Tuple[None, int], Tuple[None, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'
 
 
-def describe_cluster_instances(
-    cluster_name, region=None, next_token=None, node_type=None, queue_name=None
-):  # noqa: E501
+def describe_cluster_instances(cluster_name, region=None, next_token=None, node_type=None, queue_name=None):  # noqa: E501
     """describe_cluster_instances
 
     Describe the instances belonging to a given cluster. # noqa: E501
@@ -59,5 +50,5 @@ def describe_cluster_instances(
     :rtype: Union[DescribeClusterInstancesResponseContent, Tuple[DescribeClusterInstancesResponseContent, int], Tuple[DescribeClusterInstancesResponseContent, int, Dict[str, str]]
     """
     if connexion.request.is_json:
-        node_type = NodeType.from_dict(connexion.request.get_json())  # noqa: E501
-    return "do some magic!"
+        node_type =  NodeType.from_dict(connexion.request.get_json())  # noqa: E501
+    return 'do some magic!'

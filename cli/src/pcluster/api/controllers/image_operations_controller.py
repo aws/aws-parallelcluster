@@ -1,50 +1,34 @@
-from typing import Dict, Tuple, Union
-
 import connexion
 import six
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
-from pcluster.api import util
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
-from pcluster.api.models.build_image_bad_request_exception_response_content import (  # noqa: E501
-    BuildImageBadRequestExceptionResponseContent,
-)
+from pcluster.api.models.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent  # noqa: E501
 from pcluster.api.models.build_image_request_content import BuildImageRequestContent  # noqa: E501
 from pcluster.api.models.build_image_response_content import BuildImageResponseContent  # noqa: E501
 from pcluster.api.models.conflict_exception_response_content import ConflictExceptionResponseContent  # noqa: E501
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent  # noqa: E501
 from pcluster.api.models.describe_image_response_content import DescribeImageResponseContent  # noqa: E501
-from pcluster.api.models.dryrun_operation_exception_response_content import (  # noqa: E501
-    DryrunOperationExceptionResponseContent,
-)
+from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent  # noqa: E501
 from pcluster.api.models.image_status_filtering_option import ImageStatusFilteringOption  # noqa: E501
-from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
-    InternalServiceExceptionResponseContent,
-)
-from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
-    LimitExceededExceptionResponseContent,
-)
+from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent  # noqa: E501
+from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent  # noqa: E501
 from pcluster.api.models.list_images_response_content import ListImagesResponseContent  # noqa: E501
 from pcluster.api.models.list_official_images_response_content import ListOfficialImagesResponseContent  # noqa: E501
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
-from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
-    UnauthorizedClientErrorResponseContent,
-)
+from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent  # noqa: E501
 from pcluster.api.models.validation_level import ValidationLevel  # noqa: E501
+from pcluster.api import util
 
 
-def build_image(
-    build_image_request_content,
-    suppress_validators=None,
-    validation_failure_level=None,
-    dryrun=None,
-    rollback_on_failure=None,
-    region=None,
-):  # noqa: E501
+def build_image(build_image_request_content, suppress_validators=None, validation_failure_level=None, dryrun=None, rollback_on_failure=None, region=None):  # noqa: E501
     """build_image
 
     Create a custom ParallelCluster image in a given region. # noqa: E501
 
-    :param build_image_request_content:
+    :param build_image_request_content: 
     :type build_image_request_content: dict | bytes
     :param suppress_validators: Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)
     :type suppress_validators: List[str]
@@ -62,8 +46,8 @@ def build_image(
     if connexion.request.is_json:
         build_image_request_content = BuildImageRequestContent.from_dict(connexion.request.get_json())  # noqa: E501
     if connexion.request.is_json:
-        validation_failure_level = ValidationLevel.from_dict(connexion.request.get_json())  # noqa: E501
-    return "do some magic!"
+        validation_failure_level =  ValidationLevel.from_dict(connexion.request.get_json())  # noqa: E501
+    return 'do some magic!'
 
 
 def delete_image(image_id, region=None, force=None):  # noqa: E501
@@ -80,7 +64,7 @@ def delete_image(image_id, region=None, force=None):  # noqa: E501
 
     :rtype: Union[DeleteImageResponseContent, Tuple[DeleteImageResponseContent, int], Tuple[DeleteImageResponseContent, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'
 
 
 def describe_image(image_id, region=None):  # noqa: E501
@@ -95,7 +79,7 @@ def describe_image(image_id, region=None):  # noqa: E501
 
     :rtype: Union[DescribeImageResponseContent, Tuple[DescribeImageResponseContent, int], Tuple[DescribeImageResponseContent, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'
 
 
 def list_images(image_status, region=None, next_token=None):  # noqa: E501
@@ -113,8 +97,8 @@ def list_images(image_status, region=None, next_token=None):  # noqa: E501
     :rtype: Union[ListImagesResponseContent, Tuple[ListImagesResponseContent, int], Tuple[ListImagesResponseContent, int, Dict[str, str]]
     """
     if connexion.request.is_json:
-        image_status = ImageStatusFilteringOption.from_dict(connexion.request.get_json())  # noqa: E501
-    return "do some magic!"
+        image_status =  ImageStatusFilteringOption.from_dict(connexion.request.get_json())  # noqa: E501
+    return 'do some magic!'
 
 
 def list_official_images(region=None, os=None, architecture=None):  # noqa: E501
@@ -131,4 +115,4 @@ def list_official_images(region=None, os=None, architecture=None):  # noqa: E501
 
     :rtype: Union[ListOfficialImagesResponseContent, Tuple[ListOfficialImagesResponseContent, int], Tuple[ListOfficialImagesResponseContent, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'

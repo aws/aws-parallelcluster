@@ -1,7 +1,6 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-
 import unittest
 
 from flask import json
@@ -10,30 +9,18 @@ from six import BytesIO
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
 from pcluster.api.models.cluster_status_filtering_option import ClusterStatusFilteringOption  # noqa: E501
 from pcluster.api.models.conflict_exception_response_content import ConflictExceptionResponseContent  # noqa: E501
-from pcluster.api.models.create_cluster_bad_request_exception_response_content import (  # noqa: E501
-    CreateClusterBadRequestExceptionResponseContent,
-)
+from pcluster.api.models.create_cluster_bad_request_exception_response_content import CreateClusterBadRequestExceptionResponseContent  # noqa: E501
 from pcluster.api.models.create_cluster_request_content import CreateClusterRequestContent  # noqa: E501
 from pcluster.api.models.create_cluster_response_content import CreateClusterResponseContent  # noqa: E501
 from pcluster.api.models.delete_cluster_response_content import DeleteClusterResponseContent  # noqa: E501
 from pcluster.api.models.describe_cluster_response_content import DescribeClusterResponseContent  # noqa: E501
-from pcluster.api.models.dryrun_operation_exception_response_content import (  # noqa: E501
-    DryrunOperationExceptionResponseContent,
-)
-from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
-    InternalServiceExceptionResponseContent,
-)
-from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
-    LimitExceededExceptionResponseContent,
-)
+from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent  # noqa: E501
+from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent  # noqa: E501
+from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent  # noqa: E501
 from pcluster.api.models.list_clusters_response_content import ListClustersResponseContent  # noqa: E501
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
-from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
-    UnauthorizedClientErrorResponseContent,
-)
-from pcluster.api.models.update_cluster_bad_request_exception_response_content import (  # noqa: E501
-    UpdateClusterBadRequestExceptionResponseContent,
-)
+from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent  # noqa: E501
+from pcluster.api.models.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent  # noqa: E501
 from pcluster.api.models.update_cluster_request_content import UpdateClusterRequestContent  # noqa: E501
 from pcluster.api.models.update_cluster_response_content import UpdateClusterResponseContent  # noqa: E501
 from pcluster.api.models.validation_level import ValidationLevel  # noqa: E501

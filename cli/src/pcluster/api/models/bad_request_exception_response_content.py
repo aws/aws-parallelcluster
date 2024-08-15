@@ -1,12 +1,12 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-
 from datetime import date, datetime  # noqa: F401
-from typing import Dict, List  # noqa: F401
 
-from pcluster.api import util
+from typing import List, Dict  # noqa: F401
+
 from pcluster.api.models.base_model_ import Model
+from pcluster.api import util
 
 
 class BadRequestExceptionResponseContent(Model):
@@ -21,14 +21,18 @@ class BadRequestExceptionResponseContent(Model):
         :param message: The message of this BadRequestExceptionResponseContent.  # noqa: E501
         :type message: str
         """
-        self.openapi_types = {"message": str}
+        self.openapi_types = {
+            'message': str
+        }
 
-        self.attribute_map = {"message": "message"}
+        self.attribute_map = {
+            'message': 'message'
+        }
 
         self._message = message
 
     @classmethod
-    def from_dict(cls, dikt) -> "BadRequestExceptionResponseContent":
+    def from_dict(cls, dikt) -> 'BadRequestExceptionResponseContent':
         """Returns the dict as a model
 
         :param dikt: A dict.

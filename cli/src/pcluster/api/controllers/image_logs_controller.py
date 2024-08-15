@@ -1,35 +1,21 @@
-from typing import Dict, Tuple, Union
-
 import connexion
 import six
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
-from pcluster.api import util
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
 from pcluster.api.models.get_image_log_events_response_content import GetImageLogEventsResponseContent  # noqa: E501
 from pcluster.api.models.get_image_stack_events_response_content import GetImageStackEventsResponseContent  # noqa: E501
-from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
-    InternalServiceExceptionResponseContent,
-)
-from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
-    LimitExceededExceptionResponseContent,
-)
+from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent  # noqa: E501
+from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent  # noqa: E501
 from pcluster.api.models.list_image_log_streams_response_content import ListImageLogStreamsResponseContent  # noqa: E501
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
-from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
-    UnauthorizedClientErrorResponseContent,
-)
+from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent  # noqa: E501
+from pcluster.api import util
 
 
-def get_image_log_events(
-    image_id,
-    log_stream_name,
-    region=None,
-    next_token=None,
-    start_from_head=None,
-    limit=None,
-    start_time=None,
-    end_time=None,
-):  # noqa: E501
+def get_image_log_events(image_id, log_stream_name, region=None, next_token=None, start_from_head=None, limit=None, start_time=None, end_time=None):  # noqa: E501
     """get_image_log_events
 
     Retrieve the events associated with an image build. # noqa: E501
@@ -55,7 +41,7 @@ def get_image_log_events(
     """
     start_time = util.deserialize_datetime(start_time)
     end_time = util.deserialize_datetime(end_time)
-    return "do some magic!"
+    return 'do some magic!'
 
 
 def get_image_stack_events(image_id, region=None, next_token=None):  # noqa: E501
@@ -72,7 +58,7 @@ def get_image_stack_events(image_id, region=None, next_token=None):  # noqa: E50
 
     :rtype: Union[GetImageStackEventsResponseContent, Tuple[GetImageStackEventsResponseContent, int], Tuple[GetImageStackEventsResponseContent, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'
 
 
 def list_image_log_streams(image_id, region=None, next_token=None):  # noqa: E501
@@ -89,4 +75,4 @@ def list_image_log_streams(image_id, region=None, next_token=None):  # noqa: E50
 
     :rtype: Union[ListImageLogStreamsResponseContent, Tuple[ListImageLogStreamsResponseContent, int], Tuple[ListImageLogStreamsResponseContent, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'

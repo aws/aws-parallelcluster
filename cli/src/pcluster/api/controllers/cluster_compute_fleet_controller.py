@@ -1,25 +1,18 @@
-from typing import Dict, Tuple, Union
-
 import connexion
 import six
+from typing import Dict
+from typing import Tuple
+from typing import Union
 
-from pcluster.api import util
 from pcluster.api.models.bad_request_exception_response_content import BadRequestExceptionResponseContent  # noqa: E501
-from pcluster.api.models.describe_compute_fleet_response_content import (  # noqa: E501
-    DescribeComputeFleetResponseContent,
-)
-from pcluster.api.models.internal_service_exception_response_content import (  # noqa: E501
-    InternalServiceExceptionResponseContent,
-)
-from pcluster.api.models.limit_exceeded_exception_response_content import (  # noqa: E501
-    LimitExceededExceptionResponseContent,
-)
+from pcluster.api.models.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent  # noqa: E501
+from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent  # noqa: E501
+from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent  # noqa: E501
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent  # noqa: E501
-from pcluster.api.models.unauthorized_client_error_response_content import (  # noqa: E501
-    UnauthorizedClientErrorResponseContent,
-)
+from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent  # noqa: E501
 from pcluster.api.models.update_compute_fleet_request_content import UpdateComputeFleetRequestContent  # noqa: E501
 from pcluster.api.models.update_compute_fleet_response_content import UpdateComputeFleetResponseContent  # noqa: E501
+from pcluster.api import util
 
 
 def describe_compute_fleet(cluster_name, region=None):  # noqa: E501
@@ -34,7 +27,7 @@ def describe_compute_fleet(cluster_name, region=None):  # noqa: E501
 
     :rtype: Union[DescribeComputeFleetResponseContent, Tuple[DescribeComputeFleetResponseContent, int], Tuple[DescribeComputeFleetResponseContent, int, Dict[str, str]]
     """
-    return "do some magic!"
+    return 'do some magic!'
 
 
 def update_compute_fleet(update_compute_fleet_request_content, cluster_name, region=None):  # noqa: E501
@@ -42,7 +35,7 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
 
     Update the status of the cluster compute fleet. # noqa: E501
 
-    :param update_compute_fleet_request_content:
+    :param update_compute_fleet_request_content: 
     :type update_compute_fleet_request_content: dict | bytes
     :param cluster_name: Name of the cluster
     :type cluster_name: str
@@ -52,7 +45,5 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
     :rtype: Union[UpdateComputeFleetResponseContent, Tuple[UpdateComputeFleetResponseContent, int], Tuple[UpdateComputeFleetResponseContent, int, Dict[str, str]]
     """
     if connexion.request.is_json:
-        update_compute_fleet_request_content = UpdateComputeFleetRequestContent.from_dict(
-            connexion.request.get_json()
-        )  # noqa: E501
-    return "do some magic!"
+        update_compute_fleet_request_content = UpdateComputeFleetRequestContent.from_dict(connexion.request.get_json())  # noqa: E501
+    return 'do some magic!'
