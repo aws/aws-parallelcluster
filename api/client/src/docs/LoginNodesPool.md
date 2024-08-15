@@ -5,6 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **status** | [**LoginNodesState**](LoginNodesState.md) |  | 
+**pool_name** | **str** |  | [optional] 
 **address** | **str** |  | [optional] 
 **scheme** | **str** |  | [optional] 
 **healthy_nodes** | **int** |  | [optional] 

@@ -88,6 +88,7 @@ class LoginNodesPool(ModelNormal):
         lazy_import()
         return {
             'status': (LoginNodesState,),  # noqa: E501
+            'pool_name': (str,),  # noqa: E501
             'address': (str,),  # noqa: E501
             'scheme': (str,),  # noqa: E501
             'healthy_nodes': (int,),  # noqa: E501
@@ -101,6 +102,7 @@ class LoginNodesPool(ModelNormal):
 
     attribute_map = {
         'status': 'status',  # noqa: E501
+        'pool_name': 'poolName',  # noqa: E501
         'address': 'address',  # noqa: E501
         'scheme': 'scheme',  # noqa: E501
         'healthy_nodes': 'healthyNodes',  # noqa: E501
@@ -151,6 +153,7 @@ class LoginNodesPool(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            pool_name (str): [optional]  # noqa: E501
             address (str): [optional]  # noqa: E501
             scheme (str): [optional]  # noqa: E501
             healthy_nodes (int): [optional]  # noqa: E501
@@ -244,6 +247,7 @@ class LoginNodesPool(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            pool_name (str): [optional]  # noqa: E501
             address (str): [optional]  # noqa: E501
             scheme (str): [optional]  # noqa: E501
             healthy_nodes (int): [optional]  # noqa: E501

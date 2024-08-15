@@ -97,6 +97,7 @@ class ClusterInstance(ModelNormal):
             'node_type': (NodeType,),  # noqa: E501
             'public_ip_address': (str,),  # noqa: E501
             'queue_name': (str,),  # noqa: E501
+            'pool_name': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -113,6 +114,7 @@ class ClusterInstance(ModelNormal):
         'node_type': 'nodeType',  # noqa: E501
         'public_ip_address': 'publicIpAddress',  # noqa: E501
         'queue_name': 'queueName',  # noqa: E501
+        'pool_name': 'poolName',  # noqa: E501
     }
 
     read_only_vars = {
@@ -166,6 +168,7 @@ class ClusterInstance(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             public_ip_address (str): [optional]  # noqa: E501
             queue_name (str): [optional]  # noqa: E501
+            pool_name (str): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -267,6 +270,7 @@ class ClusterInstance(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             public_ip_address (str): [optional]  # noqa: E501
             queue_name (str): [optional]  # noqa: E501
+            pool_name (str): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

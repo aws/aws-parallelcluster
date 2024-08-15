@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 **tags** | [**[Tag]**](Tag.md) | Tags associated with the cluster. | 
 **scheduler** | [**Scheduler**](Scheduler.md) |  | [optional] 
 **head_node** | [**EC2Instance**](EC2Instance.md) |  | [optional] 
-**login_nodes** | [**LoginNodesPool**](LoginNodesPool.md) |  | [optional] 
+**login_nodes** | [**[LoginNodesPool]**](LoginNodesPool.md) |  | [optional] 
 **failures** | [**[Failure]**](Failure.md) | Failures array containing failures reason and code when the stack is in CREATE_FAILED status. | [optional] 
 **any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 

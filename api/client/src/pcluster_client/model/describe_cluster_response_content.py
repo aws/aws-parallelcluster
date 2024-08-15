@@ -121,7 +121,7 @@ class DescribeClusterResponseContent(ModelNormal):
             'tags': ([Tag],),  # noqa: E501
             'scheduler': (Scheduler,),  # noqa: E501
             'head_node': (EC2Instance,),  # noqa: E501
-            'login_nodes': (LoginNodesPool,),  # noqa: E501
+            'login_nodes': ([LoginNodesPool],),  # noqa: E501
             'failures': ([Failure],),  # noqa: E501
         }
 
@@ -204,7 +204,7 @@ class DescribeClusterResponseContent(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             scheduler (Scheduler): [optional]  # noqa: E501
             head_node (EC2Instance): [optional]  # noqa: E501
-            login_nodes (LoginNodesPool): [optional]  # noqa: E501
+            login_nodes ([LoginNodesPool]): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
         """
 
@@ -317,7 +317,7 @@ class DescribeClusterResponseContent(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             scheduler (Scheduler): [optional]  # noqa: E501
             head_node (EC2Instance): [optional]  # noqa: E501
-            login_nodes (LoginNodesPool): [optional]  # noqa: E501
+            login_nodes ([LoginNodesPool]): [optional]  # noqa: E501
             failures ([Failure]): Failures array containing failures reason and code when the stack is in CREATE_FAILED status.. [optional]  # noqa: E501
         """
 
