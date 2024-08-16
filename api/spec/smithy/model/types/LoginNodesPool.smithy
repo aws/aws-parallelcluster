@@ -7,9 +7,14 @@ namespace parallelcluster
 ])
 string LoginNodesState
 
+list LoginNodes {
+    member: LoginNodesPool
+}
+
 structure LoginNodesPool {
     @required
     status: LoginNodesState,
+    poolName: String
     address: String,
     scheme: String,
     healthyNodes: Integer,

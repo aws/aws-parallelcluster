@@ -1748,6 +1748,8 @@ components:
           $ref: '#/components/schemas/NodeType'
         queueName:
           type: string
+        poolName:
+          type: string
       required:
         - instanceId
         - instanceType
@@ -1914,7 +1916,9 @@ components:
         headNode:
           $ref: '#/components/schemas/EC2Instance'
         loginNodes:
-          $ref: '#/components/schemas/LoginNodesPool'
+          type: array
+          items:
+            $ref: '#/components/schemas/LoginNodesPool'
         failures:
           type: array
           items:
@@ -2323,6 +2327,8 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/LoginNodesState'
+        poolName:
+          type: string
         address:
           type: string
         scheme:

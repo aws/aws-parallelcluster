@@ -7,6 +7,14 @@ HeadNode:  # Head Node section without a KeyName will generate an warning
     SubnetId: {{ public_subnet_id }}
   Imds:
     Secured: {{ imds_secured }}
+LoginNodes:
+  Pools:
+    - Name: pool
+      InstanceType: {{ instance }}
+      Count: 1
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
 Scheduling:
   Scheduler: {{ scheduler }}
   {{ scheduler_prefix }}Queues:

@@ -79,7 +79,7 @@ class DescribeClusterResponseContent(Model):
         :param scheduler: The scheduler of this DescribeClusterResponseContent.  # noqa: E501
         :type scheduler: Scheduler
         :param login_nodes: The login_nodes of this DescribeClusterResponseContent.  # noqa: E501
-        :type login_nodes: LoginNodesPool
+        :type login_nodes: List[LoginNodesPool]
         :param failures: The failures of this DescribeClusterResponseContent.  # noqa: E501
         :type failures: List[Failure]
         """
@@ -97,7 +97,7 @@ class DescribeClusterResponseContent(Model):
             "region": str,
             "cluster_status": ClusterStatus,
             "scheduler": Scheduler,
-            "login_nodes": LoginNodesPool,
+            "login_nodes": List[LoginNodesPool],
             "failures": List[Failure],
         }
 
@@ -469,7 +469,7 @@ class DescribeClusterResponseContent(Model):
 
 
         :return: The login_nodes of this DescribeClusterResponseContent.
-        :rtype: LoginNodesPool
+        :rtype: List[LoginNodesPool]
         """
         return self._login_nodes
 
@@ -479,7 +479,7 @@ class DescribeClusterResponseContent(Model):
 
 
         :param login_nodes: The login_nodes of this DescribeClusterResponseContent.
-        :type login_nodes: LoginNodesPool
+        :type login_nodes: List[LoginNodesPool]
         """
 
         self._login_nodes = login_nodes

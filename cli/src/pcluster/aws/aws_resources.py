@@ -15,6 +15,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_OS_TAG,
+    PCLUSTER_LOGIN_NODES_POOL_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
@@ -168,6 +169,11 @@ class InstanceInfo:
     def queue_name(self) -> str:
         """Return queue name of the instance."""
         return self._get_tag(PCLUSTER_QUEUE_NAME_TAG)
+
+    @property
+    def pool_name(self) -> str:
+        """Return pool name of the instance."""
+        return self._get_tag(PCLUSTER_LOGIN_NODES_POOL_NAME_TAG)
 
     def _get_tag(self, tag_key):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)

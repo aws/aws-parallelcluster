@@ -61,7 +61,7 @@ structure DescribeClusterResponse {
     @documentation("Tags associated with the cluster.")
     tags: Tags,
     headNode: EC2Instance,
-    loginNodes: LoginNodesPool,
+    loginNodes: LoginNodes,
     @documentation("Failures array containing failures reason and code when the stack is in CREATE_FAILED status.")
     failures: Failures
 }
