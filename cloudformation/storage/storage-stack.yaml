@@ -75,7 +75,8 @@ Parameters:
     Default: ''
   SubnetThree:
     Description: ID of the Subnet (third Availability Zone) where the storage will be deployed.
-    Type: AWS::EC2::Subnet::Id
+    # The type has to be String to allow empty values.
+    Type: String
     Default: ''
   EbsVolumeAz:
     Description: AZ where the EBS Volume will be deployed. It must be the same AZ used by the cluster head node.
