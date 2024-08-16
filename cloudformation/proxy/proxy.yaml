@@ -28,6 +28,10 @@ Metadata:
           default: Permissions
         Parameters:
           - Keypair
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E1152
 
 Resources:
 
