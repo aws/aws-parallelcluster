@@ -226,6 +226,8 @@ def test_efs_access_point(
     # create an additional EFS with file system policy to prevent anonymous access
     efs_filesystem_id = efs_stack_factory()[0]
     efs_mount_target_stack_factory([efs_filesystem_id])
+    tls = True
+    iam = False
     access_point_id = efs_access_point_stack_factory(efs_fs_id=efs_filesystem_id)[0]
     if scheduler != "awsbatch":
         account_id = (
@@ -250,8 +252,8 @@ def test_efs_access_point(
                     f"file-system/{efs_filesystem_id}",
                     "Condition": {
                         "StringNotLike": {
-                            "elasticfilesystem:AccessPointArn": f"arn:{get_arn_partition(region)}:elasticfilesystem:{region}:{account_id}:"  # noqa: E501
-                            f"access-point/{access_point_id}"
+                            "elasticfilesystem:AccessPointArn": f"arn:{get_arn_partition(region)}:"
+                            f"elasticfilesystem:{region}:{account_id}:access-point/{access_point_id}"
                         }
                     },
                 },
@@ -279,9 +281,7 @@ def test_efs_access_point(
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
-    scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    test_efs_correctly_mounted(remote_command_executor, mount_dir)
-    _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+    test_efs_correctly_mounted(remote_command_executor, mount_dir, tls, iam, access_point_id)
 
 
 def _check_efs_after_nodes_reboot(
@@ -313,12 +313,7 @@ def _check_efs_correctly_mounted_and_shared(
     all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
 ):
     for i, mount_dir in enumerate(all_mount_dirs):
-        test_efs_correctly_mounted(
-            remote_command_executor,
-            mount_dir,
-            encryption_in_transits[i],
-            iam_authorizations[i],
-        )
+        test_efs_correctly_mounted(remote_command_executor, mount_dir, encryption_in_transits[i], iam_authorizations[i])
         _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
