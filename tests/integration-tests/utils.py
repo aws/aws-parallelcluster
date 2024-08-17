@@ -599,7 +599,7 @@ def check_status(
     if compute_fleet_status:
         assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
     if login_nodes_status:
-        assert_that(cluster_info["loginNodes"]["status"]).is_equal_to(login_nodes_status)
+        assert_that(cluster_info["loginNodes"][0]["status"]).is_equal_to(login_nodes_status)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -725,13 +725,13 @@ def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=No
     if not expected_log_streams:
         expected_log_streams = {
             "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
-            "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
+            "ComputeNode": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
+            "LoginNode": {"cfn-init", "cloud-init", "chef-client", "supervisord"},
         }
 
     # check there are the logs of all the instances
-    cluster_info = cluster.describe_cluster()
     for instance in cluster.describe_cluster_instances():
-        instance_type = "HeadNode" if instance["instanceId"] == cluster_info["headNode"]["instanceId"] else "Compute"
+        instance_type = instance["nodeType"]
         for stream_name in expected_log_streams[instance_type]:
             assert_that(stream_names).contains(instance_stream_name(instance, stream_name))
 
