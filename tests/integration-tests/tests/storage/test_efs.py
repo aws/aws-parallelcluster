@@ -282,9 +282,10 @@ def test_efs_access_point(
 
     mount_dir = "/" + mount_dir
     test_efs_correctly_mounted(remote_command_executor, mount_dir, tls, iam, access_point_id)
-    
+
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
 
 def _check_efs_after_nodes_reboot(
     all_mount_dirs,
