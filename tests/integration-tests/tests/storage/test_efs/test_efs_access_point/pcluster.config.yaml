@@ -49,3 +49,4 @@ SharedStorage:
     EfsSettings:
       FileSystemId: {{ efs_filesystem_id }}
       AccessPointId: {{ access_point_id }}
+      EncryptionInTransit: true

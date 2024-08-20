@@ -330,7 +330,7 @@ def _write_user_data(efs_id, random_file_name, access_point_id=None):
         """  # noqa: E501
 
 
-def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False):
+def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False, access_point_id=None):
     # The value of the two parameters should be set according to cluster configuration parameters.
     logging.info("Checking efs {0} is correctly mounted".format(mount_dir))
     # Following EFS instruction to check https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html
@@ -347,12 +347,23 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, ia
     # Check fstab content according to https://docs.aws.amazon.com/efs/latest/ug/automount-with-efs-mount-helper.html
     logging.info("Checking efs {0} is correctly configured in fstab".format(mount_dir))
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    if tls and iam:  # Add a another check when tls and iam are enabled together
-        assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls,iam 0 0")
-    elif tls:
-        assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls 0 0")
+    if access_point_id:
+        # tls is always enabled with access points
+        if iam:  # Add a another check when tls and iam are enabled together
+            assert_that(result.stdout).matches(
+                rf".* {mount_dir} efs _netdev,noresvport,tls,iam,accesspoint={access_point_id} 0 0"
+            )
+        else:
+            assert_that(result.stdout).matches(
+                rf".* {mount_dir} efs _netdev,noresvport,tls,accesspoint={access_point_id} 0 0"
+            )
     else:
-        assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
+        if tls and iam:  # Add a another check when tls and iam are enabled together
+            assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls,iam 0 0")
+        elif tls:
+            assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport,tls 0 0")
+        else:
+            assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
 
 
 def check_dra(
