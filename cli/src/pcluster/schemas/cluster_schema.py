@@ -1329,7 +1329,7 @@ class LoginNodesCustomActionsSchema(BaseSchema):
 
     on_node_start = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     on_node_configured = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    on_node_updated = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_updated = OneOrManyCustomActionField(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
