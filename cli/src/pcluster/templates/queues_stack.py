@@ -17,6 +17,7 @@ from pcluster.constants import (
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
 )
+from pcluster.models.s3_bucket import S3FileFormat, S3FileType
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     ComputeNodeIamResources,
@@ -109,6 +110,7 @@ class QueuesStack(NestedStack):
                 queue,
                 self._shared_storage_infos,
                 queue.name,
+                self._cluster_bucket,
             )
         self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
         self.managed_compute_instance_roles = {k: v.instance_role for k, v in iam_resources.items()}
@@ -199,6 +201,32 @@ class QueuesStack(NestedStack):
             instance_role_name = self.managed_compute_instance_roles[queue.name].ref
 
         launch_template_id = f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}"
+        compute_specific_dna_json_dict = {
+            "cluster": {
+                "cluster_name": self.stack_name,
+                "stack_name": self.stack_name,
+                "enable_efa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
+                "ephemeral_dir": (
+                    queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                    if isinstance(queue, SlurmQueue) and queue.compute_settings.local_storage.ephemeral_volume
+                    else DEFAULT_EPHEMERAL_DIR
+                ),
+                "proxy": queue.networking.proxy.http_proxy_address if queue.networking.proxy else "NONE",
+                "node_type": "ComputeFleet",
+                "scheduler_queue_name": queue.name,
+                "scheduler_compute_resource_name": compute_resource.name,
+                "enable_efa_gdr": ("compute" if compute_resource.efa and compute_resource.efa.gdr_support else "NONE"),
+                "launch_template_id": launch_template_id,
+            }
+        }
+        compute_specific_dna_json = json.dumps(compute_specific_dna_json_dict, indent=4)
+
+        self._cluster_bucket.upload_dna_cfn_asset(
+            file_type=S3FileType.COMPUTE_DNA_ASSETS,
+            asset_file_content=compute_specific_dna_json_dict,
+            asset_name=f"compute-dna-{launch_template_id}-{self._config.config_version}.json",
+            format=S3FileFormat.JSON,
+        )
         launch_template = ec2.CfnLaunchTemplate(
             self,
             launch_template_id,
@@ -266,6 +294,9 @@ class QueuesStack(NestedStack):
                                 "LaunchTemplateResourceId": launch_template_id,
                                 "CloudFormationUrl": get_service_endpoint("cloudformation", self._config.region),
                                 "CfnInitRole": instance_role_name,
+                                "ClusterConfigVersion": self._config.config_version,
+                                "S3_BUCKET": self._cluster_bucket.name,
+                                "S3_ARTIFACT_DIR": self._cluster_bucket.artifact_directory,
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
@@ -294,18 +325,10 @@ class QueuesStack(NestedStack):
             ),
         )
 
-        dna_json = json.dumps(
+        common_dna_json = json.dumps(
             {
                 "cluster": {
-                    "cluster_name": self.stack_name,
                     "stack_name": self.stack_name,
-                    "stack_arn": self.stack_id,
-                    "cluster_s3_bucket": self._cluster_bucket.name,
-                    "cluster_config_s3_key": "{0}/configs/{1}".format(
-                        self._cluster_bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
-                    ),
-                    "cluster_config_version": self._config.config_version,
-                    "enable_efa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
                     "raid_shared_dir": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
@@ -314,7 +337,7 @@ class QueuesStack(NestedStack):
                     ),
                     "base_os": self._config.image.os,
                     "region": self._config.region,
-                    "shared_storage_type": self._config.head_node.shared_storage_type.lower(),  # noqa: E501  pylint: disable=line-too-long
+                    "shared_storage_type": self._config.head_node.shared_storage_type.lower(),
                     "default_user_home": (
                         self._config.deployment_settings.default_user_home.lower()
                         if (
@@ -332,8 +355,7 @@ class QueuesStack(NestedStack):
                         use_lower_case=True,
                     ),
                     "efs_iam_authorizations": to_comma_separated_string(
-                        self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"],
-                        use_lower_case=True,
+                        self._shared_storage_attributes[SharedStorageType.EFS]["IamAuthorizations"], use_lower_case=True
                     ),
                     "efs_access_point_ids": to_comma_separated_string(
                         self._shared_storage_attributes[SharedStorageType.EFS]["AccessPointIds"],
@@ -356,50 +378,40 @@ class QueuesStack(NestedStack):
                         self._shared_storage_mount_dirs[SharedStorageType.FSX]
                     ),
                     "scheduler": self._config.scheduling.scheduler,
-                    "ephemeral_dir": (
-                        queue.compute_settings.local_storage.ephemeral_volume.mount_dir
-                        if isinstance(queue, SlurmQueue) and queue.compute_settings.local_storage.ephemeral_volume
-                        else DEFAULT_EPHEMERAL_DIR
-                    ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
                     ),
-                    "proxy": queue.networking.proxy.http_proxy_address if queue.networking.proxy else "NONE",
-                    "slurm_ddb_table": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
+                    "cluster_user": OS_MAPPING[self._config.image.os]["user"],
                     "log_group_name": (
                         self._log_group.log_group_name if self._config.monitoring.logs.cloud_watch.enabled else "NONE"
                     ),
-                    "dns_domain": str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else "",
-                    "hosted_zone": str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else "",
-                    "node_type": "ComputeFleet",
-                    "cluster_user": OS_MAPPING[self._config.image.os]["user"],
-                    "enable_intel_hpc_platform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                     "cw_logging_enabled": "true" if self._config.is_cw_logging_enabled else "false",
                     "log_rotation_enabled": "true" if self._config.is_log_rotation_enabled else "false",
-                    "scheduler_queue_name": queue.name,
-                    "scheduler_compute_resource_name": compute_resource.name,
-                    "enable_efa_gdr": (
-                        "compute" if compute_resource.efa and compute_resource.efa.gdr_support else "NONE"
+                    "cluster_s3_bucket": self._cluster_bucket.name,
+                    "cluster_config_s3_key": "{0}/configs/{1}".format(
+                        self._cluster_bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
                     ),
+                    "cluster_config_version": self._config.config_version,
                     "custom_node_package": self._config.custom_node_package or "",
                     "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
-                    "use_private_hostname": str(
-                        get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
-                    ).lower(),
                     "head_node_private_ip": self._head_eni.attr_primary_private_ip_address,
-                    "directory_service": {"enabled": str(self._config.directory_service is not None).lower()},
                     "disable_sudo_access_for_default_user": (
                         "true"
                         if self._config.deployment_settings
                         and self._config.deployment_settings.disable_sudo_access_default_user
                         else "false"
                     ),
-                    "launch_template_id": launch_template_id,
-                }
+                    "directory_service": {"enabled": str(self._config.directory_service is not None).lower()},
+                    "dns_domain": str(self._cluster_hosted_zone.name) if self._cluster_hosted_zone else "",
+                    "hosted_zone": str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else "",
+                    "slurm_ddb_table": self._dynamodb_table.ref if self._dynamodb_table else "NONE",
+                    "use_private_hostname": str(
+                        get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
+                    ).lower(),
+                },
             },
             indent=4,
         )
-
         cfn_init = {
             "configSets": {
                 "deployFiles": ["deployConfigFiles"],
@@ -410,8 +422,18 @@ class QueuesStack(NestedStack):
                     # A nosec comment is appended to the following line in order to disable the B108 check.
                     # The file is needed by the product
                     # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/dna.json": {  # nosec B108
-                        "content": dna_json,
+                    # This file is never created. Keeping the content as config version to signify an Update for cfn-hup
+                    "/tmp/common-dna.json": {  # nosec B108
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "content": common_dna_json,
+                    },
+                    # A nosec comment is appended to the following line in order to disable the B108 check.
+                    # The file is needed by the product
+                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+                    "/tmp/compute-dna.json": {  # nosec B108
+                        "content": compute_specific_dna_json,
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
@@ -432,8 +454,8 @@ class QueuesStack(NestedStack):
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
-                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
+                            'jq -s ".[0] * .[1] * .[2] * .[3]" /tmp/common-dna.json /tmp/compute-dna.json '
+                            "/tmp/stack-arn.json /tmp/extra.json > /etc/chef/dna.json"
                         )
                     },
                 },

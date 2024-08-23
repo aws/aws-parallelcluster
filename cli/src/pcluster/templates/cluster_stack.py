@@ -76,7 +76,7 @@ from pcluster.constants import (
     PCLUSTER_S3_ARTIFACTS_DICT,
     SLURM_PORTS_RANGE,
 )
-from pcluster.models.s3_bucket import S3Bucket
+from pcluster.models.s3_bucket import S3Bucket, S3FileFormat, S3FileType
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
@@ -1256,12 +1256,10 @@ class ClusterCdkStack:
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
 
-        dna_json = json.dumps(
+        common_dna_json = json.dumps(
             {
                 "cluster": {
                     "stack_name": self._stack_name,
-                    "stack_arn": self.stack.stack_id,
-                    "raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.RAID),
                     "raid_shared_dir": to_comma_separated_string(
                         self.shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
@@ -1306,24 +1304,12 @@ class ClusterCdkStack:
                         self.shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
                     "fsx_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.FSX]),
-                    "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
-                    "ephemeral_dir": (
-                        head_node.local_storage.ephemeral_volume.mount_dir
-                        if head_node.local_storage.ephemeral_volume
-                        else DEFAULT_EPHEMERAL_DIR
-                    ),
                     "ebs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
-                    "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
-                    "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
-                    "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
                     "log_group_name": (
                         self.log_group.log_group_name if self.config.monitoring.logs.cloud_watch.enabled else "NONE"
                     ),
-                    "dcv_enabled": "head_node" if self.config.is_dcv_enabled else "false",
-                    "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
-                    "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
                     "log_rotation_enabled": "true" if self.config.is_log_rotation_enabled else "false",
                     "cluster_s3_bucket": self.bucket.name,
@@ -1331,24 +1317,15 @@ class ClusterCdkStack:
                         self.bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
                     ),
                     "cluster_config_version": self.config.config_version,
-                    "instance_types_data_version": self.config.instance_types_data_version,
-                    "change_set_s3_key": f"{self.bucket.artifact_directory}/configs/"
-                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
-                    "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"
-                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
-                    "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
-                    "compute_node_bootstrap_timeout": get_attr(
-                        self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
-                    ),
+                    "head_node_private_ip": "HEAD_NODE_PRIVATE_IP",
                     "disable_sudo_access_for_default_user": (
                         "true"
                         if self.config.deployment_settings
                         and self.config.deployment_settings.disable_sudo_access_default_user
                         else "false"
                     ),
-                    "launch_template_id": launch_template_id,
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
                         if self._condition_is_slurm()
@@ -1359,7 +1336,44 @@ class ClusterCdkStack:
             },
             indent=4,
         )
-
+        head_node_specific_dna_json = json.dumps(
+            {
+                "cluster": {
+                    "stack_arn": self.stack.stack_id,
+                    "raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.RAID),
+                    "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
+                    "ephemeral_dir": (
+                        head_node.local_storage.ephemeral_volume.mount_dir
+                        if head_node.local_storage.ephemeral_volume
+                        else DEFAULT_EPHEMERAL_DIR
+                    ),
+                    "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
+                    "node_type": "HeadNode",
+                    "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
+                    "dcv_enabled": "head_node" if self.config.is_dcv_enabled else "false",
+                    "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
+                    "common_dna_s3_key": f"{self.bucket.artifact_directory}/assets/"
+                    f"common-dna-{self.config.config_version}.json",
+                    "instance_types_data_version": self.config.instance_types_data_version,
+                    "change_set_s3_key": f"{self.bucket.artifact_directory}/configs/"
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
+                    "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
+                    "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
+                    "compute_node_bootstrap_timeout": get_attr(
+                        self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
+                    ),
+                    "launch_template_id": launch_template_id,
+                },
+            },
+            indent=4,
+        )
+        self.bucket.upload_dna_cfn_asset(
+            file_type=S3FileType.ASSETS,
+            asset_file_content=json.loads(self.config.extra_chef_attributes),
+            asset_name=f"extra-{self.config.config_version}.json",
+            format=S3FileFormat.JSON,
+        )
         cfn_init = {
             "configSets": {
                 "deployFiles": ["deployConfigFiles"],
@@ -1377,8 +1391,15 @@ class ClusterCdkStack:
                     # A nosec comment is appended to the following line in order to disable the B108 check.
                     # The file is needed by the product
                     # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/dna.json": {  # nosec B108
-                        "content": dna_json,
+                    "/tmp/head-node-dna.json": {  # nosec B108
+                        "content": head_node_specific_dna_json,
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "encoding": "plain",
+                    },
+                    "/tmp/common-dna.json": {  # nosec B108
+                        "content": common_dna_json,
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
@@ -1408,8 +1429,9 @@ class ClusterCdkStack:
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
-                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
+                            'jq -s ".[0] * .[1] * .[2]" /tmp/common-dna.json /tmp/head-node-dna.json /tmp/extra.json '
+                            '> /etc/chef/dna.json || ( echo "jq not installed"; cp /tmp/common-dna.json '
+                            "/tmp/head-node-dna.json /etc/chef/dna.json )"
                         )
                     },
                 },
