@@ -42,6 +42,9 @@ class S3FileType(Enum):
     """Define S3 file types."""
 
     ASSETS = "assets"
+    HEAD_NODE_DNA_ASSETS = f"{ASSETS}/HeadNode"
+    COMPUTE_DNA_ASSETS = f"{ASSETS}/ComputeNode"
+    LOGIN_NODE_DNA_ASSETS = f"{ASSETS}/LoginNode"
     CONFIGS = "configs"
     TEMPLATES = "templates"
     CUSTOM_RESOURCES = "custom_resources"
@@ -213,6 +216,10 @@ class S3Bucket:
         return self.upload_file(
             file_type=S3FileType.ASSETS, content=asset_file_content, file_name=asset_name, format=format
         )
+
+    def upload_dna_cfn_asset(self, asset_file_content, asset_name: str, file_type=S3FileType, format=S3FileFormat.YAML):
+        """Upload cloudformation assets to S3 bucket."""
+        return self.upload_file(file_type=file_type, content=asset_file_content, file_name=asset_name, format=format)
 
     def upload_resources(self, resource_dir, custom_artifacts_name):
         """
