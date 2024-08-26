@@ -220,12 +220,12 @@ phases:
                 mkdir -p /opt/cinc/embedded/ssl/certs
                 ln -sf ${!CA_CERTS_FILE} /opt/cinc/embedded/ssl/certs/cacert.pem
               fi
-              
+
               curl --retry 3 -L -o gems.tgz https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/dependencies/ruby/gems.tgz
               tar -xf gems.tgz
-              
-              cd vendor/cache
 
+              cd vendor/cache
+              /opt/cinc/embedded/bin/gem install --no-document minitar:0.9
               /opt/cinc/embedded/bin/gem install --local --no-document berkshelf:{{ BerkshelfVersion }}
 
       # Download and vendor Cookbook
@@ -236,7 +236,7 @@ phases:
             - |
               set -v
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              
+
               curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "{{ build.CookbookUrl.outputs.stdout }}"
 
               mkdir -p /tmp/cookbooks
