@@ -280,11 +280,11 @@ class TestSlurmComputeResource:
         ("instance_type", "capacity_reservation_target", "expected_instance_type"),
         [
             (None, None, None),
-            ("t2.micro", None, "t2.micro"),
+            ("t3.micro", None, "t3.micro"),
             (None, CapacityReservationTarget(capacity_reservation_resource_group_arn="arn"), None),
             (None, CapacityReservationTarget(capacity_reservation_id="cr-123456"), "mocked-instance-type"),
             # instance type param wins
-            ("t2.micro", CapacityReservationTarget(capacity_reservation_id="cr-123456"), "t2.micro"),
+            ("t3.micro", CapacityReservationTarget(capacity_reservation_id="cr-123456"), "t3.micro"),
         ],
     )
     def test_instance_types(self, mocker, instance_type, capacity_reservation_target, expected_instance_type):
@@ -397,7 +397,7 @@ class TestBaseClusterConfig:
             networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
             compute_resources=[
                 SlurmComputeResource(name="compute_resource_1", instance_type="c5n.4xlarge"),
-                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t3.micro"),
                 SlurmFlexibleComputeResource(
                     name="compute_resource_3",
                     instances=[
@@ -415,7 +415,7 @@ class TestBaseClusterConfig:
             ],
         )
 
-        expected_instance_type_list = ["c5n.4xlarge", "t2.micro", "c5n.9xlarge", "c5n.18xlarge"]
+        expected_instance_type_list = ["c5n.4xlarge", "t3.micro", "c5n.9xlarge", "c5n.18xlarge"]
         assert_that(queue.instance_type_list).is_length(len(expected_instance_type_list))
         assert_that(set(queue.instance_type_list) - set(expected_instance_type_list)).is_length(0)
 
@@ -429,7 +429,7 @@ class TestBaseClusterConfig:
                     instance_type="c5n.4xlarge",
                     networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(name="mock-pg")),
                 ),
-                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t3.micro"),
             ],
         )
 
@@ -448,7 +448,7 @@ class TestBaseClusterConfig:
                     instance_type="c5n.4xlarge",
                     networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(id="mock-pg")),
                 ),
-                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t3.micro"),
             ],
         )
 
@@ -465,7 +465,7 @@ class TestBaseClusterConfig:
                     instance_type="c5n.4xlarge",
                     networking=SlurmComputeResourceNetworking(placement_group=PlacementGroup(enabled=True)),
                 ),
-                SlurmComputeResource(name="compute_resource_2", instance_type="t2.micro"),
+                SlurmComputeResource(name="compute_resource_2", instance_type="t3.micro"),
             ],
         )
 

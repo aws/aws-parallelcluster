@@ -64,7 +64,7 @@ def update_lt_instance_overrides(overrides):
     updated_overrides = []
     for ov in overrides:
         if 'InstanceType' in ov:
-            # mutate t2.large into t2-large to force an Error in CreateFleet request
+            # mutate t3.large into t3-large to force an Error in CreateFleet request
             mispelled_instance_type = ov['InstanceType'].replace(".", "-")
             ov['InstanceType'] = mispelled_instance_type
             updated_overrides.append(ov)

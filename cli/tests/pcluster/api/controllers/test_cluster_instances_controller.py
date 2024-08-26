@@ -14,7 +14,7 @@ from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
 def cfn_describe_instances_mock_response(
-    instance_type="t2.micro", queue_name=None, node_type="HeadNode", cluster_name="clustername"
+    instance_type="t3.micro", queue_name=None, node_type="HeadNode", cluster_name="clustername"
 ):
     instance_data = {
         "InstanceId": "i-0a9342a0000000000",
@@ -42,7 +42,7 @@ def describe_cluster_instances_mock_response(instances):
         node_type = instance.get("node_type") or "HeadNode"
         response = {
             "instanceId": "i-0a9342a0000000000",
-            "instanceType": "t2.micro",
+            "instanceType": "t3.micro",
             "launchTime": to_iso_timestr(to_utc_datetime("2021-04-30T00:00:00+00:00")),
             "nodeType": node_type,
             "privateIpAddress": "10.0.0.79",

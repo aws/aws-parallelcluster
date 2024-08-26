@@ -7,7 +7,7 @@ Image:
 LoginNodes:
   Pools:
     - Name: login
-      InstanceType: t2.micro
+      InstanceType: t3.micro
       Count: 1
       Networking:
         SubnetIds:
@@ -18,7 +18,7 @@ LoginNodes:
         Enabled: true
         Port: 8444
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
   Ssh:

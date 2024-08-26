@@ -4,7 +4,7 @@ Image:
 LoginNodes:
   Pools:
   - Name: test
-    InstanceType: t2.micro
+    InstanceType: t3.micro
     Count: 1
     Networking:
       SubnetIds:
@@ -30,7 +30,7 @@ Scheduling:
           - subnet-23456789
       ComputeResources:
         - Name: compute_resource1
-          InstanceType: t2.large
+          InstanceType: t3.large
           Tags:
             - Key: compute_tag1
               Value: String
@@ -52,7 +52,7 @@ Scheduling:
           DisableSimultaneousMultithreading: false
         - Name: compute_resource3
           Instances:
-            - InstanceType: t2.large
+            - InstanceType: t3.large
           DisableSimultaneousMultithreading: true
           CapacityReservationTarget:
             CapacityReservationId: "cr-34567"
@@ -71,11 +71,11 @@ Scheduling:
       ComputeResources:
         - Name: compute_resource1
           Instances:
-            - InstanceType: t2.xlarge
+            - InstanceType: t3.xlarge
           MinCount: 5
           MaxCount: 5
         - Name: compute_resource2
-          InstanceType: t2.xlarge
+          InstanceType: t3.xlarge
           MinCount: 3
           MaxCount: 3
           CapacityReservationTarget:

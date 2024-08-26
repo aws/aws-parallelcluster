@@ -566,7 +566,7 @@ class Pcluster3ConfigConverter(object):
     def convert_instance_type(self, headnode, param_name):
         """Convert HeadNode or SIT compute resource InstanceType."""
         instance_type = self.cluster_config_get(param_name)
-        headnode["InstanceType"] = instance_type if instance_type else "t2.micro"
+        headnode["InstanceType"] = instance_type if instance_type else "t3.micro"
 
     def convert_disable_hyperthreading(self, headnode):
         """Convert Headnode DisableSimultaneousMultithreading."""
@@ -779,7 +779,7 @@ class Pcluster3ConfigConverter(object):
             for instance_type in compute_instance_type.split(","):
                 instance_types.append(instance_type.strip())
         else:
-            instance_types.append("t2.micro")
+            instance_types.append("t3.micro")
         _add_if(compute_resource, "InstanceTypes", instance_types)
         _append_if(compute_resources, compute_resource)
         _add_if(queue, "ComputeResources", compute_resources)

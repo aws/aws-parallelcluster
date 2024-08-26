@@ -1,7 +1,7 @@
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: t2.micro  # t2.micro
+  InstanceType: t3.micro  # t3.micro
   Networking:
     SubnetId: subnet-12345678  # subnet-xxx
   Ssh:
@@ -10,7 +10,7 @@ HeadNode:
 LoginNodes:
   Pools:
   - Name: test
-    InstanceType: t2.micro
+    InstanceType: t3.micro
     Count: 1
     Networking:
       SubnetIds:
@@ -40,7 +40,7 @@ Scheduling:
         - Name: compute_resource1
           InstanceType: c5.xlarge
         - Name: compute_resource2
-          InstanceType: t2.micro
+          InstanceType: t3.micro
           CapacityReservationTarget:
             CapacityReservationId: cr-54321fcdbd5971234
 SharedStorage:

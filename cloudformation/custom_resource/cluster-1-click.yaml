@@ -64,7 +64,7 @@ Resources:
         Image:
           Os: alinux2
         HeadNode:
-          InstanceType: t2.medium
+          InstanceType: t3.medium
           Networking:
             SubnetId: !GetAtt [ PclusterVpc, Outputs.PublicSubnetId ]
           Ssh:
@@ -78,7 +78,7 @@ Resources:
           - Name: queue0
             ComputeResources:
             - Name: queue0-cr0
-              InstanceType: t2.micro
+              InstanceType: t3.micro
             Networking:
               SubnetIds:
               - !GetAtt [ PclusterVpc, Outputs.PrivateSubnetId ]

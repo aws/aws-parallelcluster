@@ -67,8 +67,8 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
 
     def default_threads_per_core(self):
         # There are more instance types, but for the simplicity of the mock,
-        # we consider only t2 as having one thread per core.
-        return 1 if self._instance_type.startswith("t2") else 2
+        # we consider only t3 as having one thread per core.
+        return 1 if self._instance_type.startswith("t3") else 2
 
     def vcpus_count(self):
         return self._vcpus
@@ -129,10 +129,10 @@ class _DummyEc2Client(Ec2Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         self.capacity_reservations_cache = {
-            "cr-54321fcdbd5971234": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
-            "cr-321456cdbd597f551": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
-            "cr-123": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
-            "cr-234": {"InstanceType": "t2.micro", "AvailabilityZone": "string"},
+            "cr-54321fcdbd5971234": {"InstanceType": "t3.micro", "AvailabilityZone": "string"},
+            "cr-321456cdbd597f551": {"InstanceType": "t3.micro", "AvailabilityZone": "string"},
+            "cr-123": {"InstanceType": "t3.micro", "AvailabilityZone": "string"},
+            "cr-234": {"InstanceType": "t3.micro", "AvailabilityZone": "string"},
         }
         self.security_groups_cache = {}
 

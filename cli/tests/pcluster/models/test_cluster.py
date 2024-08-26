@@ -848,7 +848,7 @@ Image:
   Os: alinux2
   CustomAmi: ami-08cf50b131bcd4db2
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-08a5068070f6bc23d
   Ssh:
@@ -858,8 +858,8 @@ Scheduling:
   SlurmQueues:
   - Name: queue2
     ComputeResources:
-    - Name: queue1-t2micro
-      InstanceType: t2.small
+    - Name: queue1-t3small
+      InstanceType: t3.small
       MinCount: 0
       MaxCount: 11
     Networking:

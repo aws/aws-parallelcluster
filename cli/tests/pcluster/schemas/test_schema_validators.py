@@ -127,7 +127,7 @@ def test_compute_type_validator(capacity_type, expected_message):
 )
 def test_slurm_compute_resource_validator(section_dict, expected_message):
     # Add required field
-    section_dict.update({"InstanceType": "t2.micro"})
+    section_dict.update({"InstanceType": "t3.micro"})
     _validate_and_assert_error(SlurmComputeResourceSchema(), section_dict, expected_message)
 
 
@@ -719,7 +719,7 @@ def test_login_node_pool_count_validator(count, expected_message):
         LoginNodesPoolSchema(),
         {
             "Name": "validname",
-            "InstanceType": "t2.micro",
+            "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": count,
             "Ssh": {"KeyName": "valid_key_name"},
@@ -798,7 +798,7 @@ def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_m
         LoginNodesPoolSchema(),
         {
             "Name": "validname",
-            "InstanceType": "t2.micro",
+            "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": 1,
             "Ssh": {"KeyName": "valid_key_name"},
@@ -825,7 +825,7 @@ def test_login_node_pool_subnet_ids_validator(subnet_ids, expected_message):
         LoginNodesPoolSchema(),
         {
             "Name": "validname",
-            "InstanceType": "t2.micro",
+            "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": subnet_ids},
             "Count": 1,
             "Ssh": {"KeyName": "valid_key_name"},

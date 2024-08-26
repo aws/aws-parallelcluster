@@ -3,7 +3,7 @@ Image:
 LoginNodes:
   Pools:
   - Name: pool
-    InstanceType: t2.micro
+    InstanceType: t3.micro
     GracetimePeriod: 3
     Count: 1
     Networking:
@@ -12,7 +12,7 @@ LoginNodes:
     Ssh:
       KeyName: valid-ssh-key
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
 Scheduling:

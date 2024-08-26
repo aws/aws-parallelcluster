@@ -282,7 +282,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                 "queue3-i2": {
                     "instances": [
                         {
-                            "instance_type": "t2.xlarge",
+                            "instance_type": "t3.xlarge",
                         }
                     ],
                     "expected_running_instances": 0,
@@ -316,7 +316,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     _check_volume(cluster, updated_config, region)
 
     # Launch a new instance for queue1 and test updated pre/post install script execution and extra json update
-    # Add a new dynamic node t2.micro to queue1-i3
+    # Add a new dynamic node t3.small to queue1-i3
     new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t3.small")
 
     logging.info(f"New compute node: {new_compute_node}")

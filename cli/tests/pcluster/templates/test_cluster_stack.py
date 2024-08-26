@@ -274,9 +274,9 @@ def _mock_instance_type_info(instance_type):
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ),
-        "t2.micro": InstanceTypeInfo(
+        "t3.micro": InstanceTypeInfo(
             {
-                "InstanceType": "t2.micro",
+                "InstanceType": "t3.micro",
                 "VCpuInfo": {
                     "DefaultVCpus": 4,
                     "DefaultCores": 2,

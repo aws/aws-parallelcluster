@@ -2,7 +2,7 @@ Region: eu-west-1
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: t2.nano
+  InstanceType: t3.nano
   Networking:
     SubnetId: subnet-12345678
   Ssh:

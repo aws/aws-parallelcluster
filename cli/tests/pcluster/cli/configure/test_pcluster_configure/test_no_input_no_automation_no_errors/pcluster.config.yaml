@@ -2,7 +2,7 @@ Region: us-east-1
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
   Ssh:
@@ -14,7 +14,7 @@ Scheduling:
       ComputeResources:
         - Name: t2micro
           Instances:
-            - InstanceType: t2.micro
+            - InstanceType: t3.micro
           MinCount: 0
           MaxCount: 10
       Networking:

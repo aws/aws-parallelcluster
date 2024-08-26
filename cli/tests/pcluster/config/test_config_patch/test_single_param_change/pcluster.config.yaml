@@ -2,7 +2,7 @@ Image:
   Os: alinux2
   CustomAmi: {{custom_ami}}
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: {{head_node_subnet_id}}
     AdditionalSecurityGroups:

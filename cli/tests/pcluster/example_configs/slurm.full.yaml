@@ -7,7 +7,7 @@ Image:
 LoginNodes:
   Pools:
   - Name: pool1
-    InstanceType: t2.micro
+    InstanceType: t3.micro
     Count: 1
     GracetimePeriod: 10
     Image:
@@ -39,7 +39,7 @@ LoginNodes:
           - arg1
           - arg2
   - Name: pool2
-    InstanceType: t2.small
+    InstanceType: t3.small
     Count: 1
     GracetimePeriod: 10
     Image:
@@ -53,7 +53,7 @@ LoginNodes:
     Iam:
       InstanceRole: arn:aws:iam::aws:role/LoginNodeRole
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
     ElasticIp: true  # true|false|EIP-id

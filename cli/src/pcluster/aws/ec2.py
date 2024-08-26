@@ -393,11 +393,11 @@ class Ec2Client(Boto3Client):
 
         Example:
         If instance_types is:
-        ["t2.micro", "t2.large"]
+        ["t3.micro", "t3.large"]
         Result can be:
         {
-            "t2.micro": (us-east-1a, us-east-1b),
-            "t2.large": (us-east-1a, us-east-1b)
+            "t3.micro": (us-east-1a, us-east-1b),
+            "t3.large": (us-east-1a, us-east-1b)
         }
         """
         # first looks for info in cache, then using only one API call for all infos that is not inside the cache

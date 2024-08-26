@@ -856,7 +856,7 @@ def test_scontrol_reboot_ec2_health_checks(
         is introduced.
     2.  the EC2 health checks are seen as failing after the node has come back from reboot, because
         EC2 takes a while before running the health checks and updating the health check status. This
-        is usually the case with t2.medium and Ubuntu 20.04.
+        is usually the case with t3.medium and Ubuntu 20.04.
 
     This test is OS- and instance type dependent. Currently it is possible to reproduce the issue
     only with Ubuntu 20.04.
@@ -1267,7 +1267,7 @@ def _test_cloud_node_health_check(
     time.sleep(15)
     # Assert nodes are put into DOWN for not responding
     # TO-DO: this test only works with num_dynamic = 1 because slurm will record this error in nodelist format
-    # i.e. error: Nodes q2-st-t2large-[1-2] not responding, setting DOWN
+    # i.e. error: Nodes q2-st-t3large-[1-2] not responding, setting DOWN
     # To support multiple nodes, need to convert list of node into nodelist format string
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
         remote_command_executor,

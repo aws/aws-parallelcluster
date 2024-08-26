@@ -33,7 +33,7 @@ def boto3_stubber_path():
 @pytest.mark.parametrize(
     "region, free_tier_instance_type, default_instance_type, stub_boto3",
     [
-        ("us-east-1", "t2.micro", "t2.micro", True),
+        ("us-east-1", "t3.micro", "t3.micro", True),
         ("eu-north-1", "t3.micro", "t3.micro", True),
         ("us-gov-east-1", None, "t3.micro", True),
     ],
@@ -94,7 +94,7 @@ def test_list_instance_types(boto3_stubber, generate_error):
 @pytest.mark.parametrize(
     "instance_type, supported_architectures, error_message",
     [
-        ("t2.micro", ["x86_64", "i386"], None),
+        ("t3.micro", ["x86_64", "i386"], None),
         ("a1.medium", ["arm64"], None),
         ("valid.exotic.arch.instance", ["exoticArch"], None),
     ],
