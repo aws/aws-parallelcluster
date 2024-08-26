@@ -134,10 +134,16 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
     _run_command_on_node(remote_command_executor, "sudo logrotate -f /etc/logrotate.conf", compute_node_ip)
     # check if logs are rotated
     if "ubuntu" in os:
-        result = _run_command_on_node(remote_command_executor, "cat /var/lib/logrotate/status", compute_node_ip)
-    else:
+        log_file = "/var/lib/logrotate/status"
+        log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
         result = _run_command_on_node(
-            remote_command_executor, "sudo cat /var/lib/logrotate/logrotate.status", compute_node_ip
+            remote_command_executor, f"sudo -u {log_file_user} cat {log_file}", compute_node_ip
+        )
+    else:
+        log_file = "/var/lib/logrotate/logrotate.status"
+        log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+        result = _run_command_on_node(
+            remote_command_executor, f"sudo -u {log_file_user} cat /var/lib/logrotate/logrotate.status", compute_node_ip
         )
     for log in logs:
         log_path = log.get("log_path")
