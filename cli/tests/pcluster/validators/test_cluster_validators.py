@@ -697,8 +697,8 @@ def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_ty
         # EFA without EFAGDR
         ("c5n.18xlarge", True, False, True, False, None),
         # Unsupported instance type
-        ("t2.large", True, False, False, False, "does not support EFA"),
-        ("t2.large", False, False, False, False, None),
+        ("t3.large", True, False, False, False, "does not support EFA"),
+        ("t3.large", False, False, False, False, None),
         # EFA not enabled for instance type that supports it
         (
             "c5n.18xlarge",
@@ -1688,7 +1688,7 @@ def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expect
         allowed_ips,
         port,
         os,
-        "x86_64" if instance_type.startswith("t2") else "arm64",
+        "x86_64" if instance_type.startswith("t3") else "arm64",
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -3181,7 +3181,7 @@ class TestDictLaunchTemplateBuilder:
         [
             pytest.param(
                 BaseQueue(name="queue1", capacity_type="spot"),
-                SlurmComputeResource(name="compute1", instance_type="t2.medium", spot_price=10.0),
+                SlurmComputeResource(name="compute1", instance_type="t3.medium", spot_price=10.0),
                 {
                     "MarketType": "spot",
                     "SpotOptions": {
@@ -3194,7 +3194,7 @@ class TestDictLaunchTemplateBuilder:
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="spot"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium"),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium"),
                 {
                     "MarketType": "spot",
                     "SpotOptions": {
@@ -3206,7 +3206,7 @@ class TestDictLaunchTemplateBuilder:
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="ondemand"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium", spot_price=10.0),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium", spot_price=10.0),
                 None,
                 id="test without spot capacity",
             ),
@@ -3231,7 +3231,7 @@ class TestDictLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     ),
@@ -3254,7 +3254,7 @@ class TestDictLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                 ),
                 {
                     "CapacityReservationTarget": {
@@ -3271,7 +3271,7 @@ class TestDictLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                 ),
                 None,
                 id="test with no capacity reservation",

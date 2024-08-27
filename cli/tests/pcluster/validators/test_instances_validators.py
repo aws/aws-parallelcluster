@@ -33,8 +33,8 @@ from tests.pcluster.validators.utils import assert_failure_messages
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
-                    {"InstanceType": "t2.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
+                "t4g.micro": InstanceTypeInfo(
+                    {"InstanceType": "t4g.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
                 ),
                 "t3.micro": InstanceTypeInfo(
                     {"InstanceType": "t3.micro", "VCpuInfo": {"DefaultVCpus": 5, "DefaultCores": 2}}
@@ -42,13 +42,13 @@ from tests.pcluster.validators.utils import assert_failure_messages
             },
             False,
             "Instance types listed under Compute Resource TestComputeResource must have the same number of vCPUs "
-            "({'t2.micro': 4, 't3.micro': 5}).",
+            "({'t4g.micro': 4, 't3.micro': 5}).",
         ),
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
-                    {"InstanceType": "t2.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
+                "t4g.micro": InstanceTypeInfo(
+                    {"InstanceType": "t4g.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
                 ),
                 "t3.micro": InstanceTypeInfo(
                     {"InstanceType": "t3.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
@@ -61,8 +61,8 @@ from tests.pcluster.validators.utils import assert_failure_messages
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
-                    {"InstanceType": "t2.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}
+                "t4g.micro": InstanceTypeInfo(
+                    {"InstanceType": "t4g.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}
                 ),
                 "t3.micro": InstanceTypeInfo(
                     {"InstanceType": "t3.micro", "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}
@@ -70,12 +70,12 @@ from tests.pcluster.validators.utils import assert_failure_messages
             },
             True,
             "Instance types listed under Compute Resource TestComputeResource must have the same number of CPU "
-            "cores when Simultaneous Multithreading is disabled ({'t2.micro': 1, 't3.micro': 2}).",
+            "cores when Simultaneous Multithreading is disabled ({'t4g.micro': 1, 't3.micro': 2}).",
         ),
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}),
+                "t4g.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 1}}),
                 "t3.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
             },
             False,
@@ -337,7 +337,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
                 ),
                 "t3.micro": InstanceTypeInfo(
@@ -349,7 +349,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
             },
             True,
             False,
-            "Instance type(s) (t2.micro,t3.micro) do not support EFA and cannot be launched when EFA is enabled in "
+            "Instance type(s) (t3.micro,t4g.micro) do not support EFA and cannot be launched when EFA is enabled in "
             "Compute Resource: TestComputeResource.",
         ),
         (
@@ -370,7 +370,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
                 ),
                 "t3.micro": InstanceTypeInfo(
@@ -393,7 +393,7 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
         (
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
                 ),
                 "t3.micro": InstanceTypeInfo(
@@ -414,13 +414,13 @@ def test_instances_accelerators_validator(compute_resource_name, instance_types_
                 "t3.micro": InstanceTypeInfo(
                     {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
                 ),
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"NetworkInfo": {"EfaSupported": False, "NetworkCards": [{"NetworkCardIndex": 0}]}}
                 ),
             },
             True,
             False,
-            "Instance type(s) (t2.micro,t3.micro) do not support EFA and cannot be launched when EFA is enabled in "
+            "Instance type(s) (t3.micro,t4g.micro) do not support EFA and cannot be launched when EFA is enabled in "
             "Compute Resource: TestComputeResource.",
         ),
     ],
@@ -446,7 +446,7 @@ def test_instances_efa_validator(
             "TestQueue10",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {
                         "NetworkInfo": {
                             "MaximumNetworkCards": 4,
@@ -479,7 +479,7 @@ def test_instances_efa_validator(
             "TestQueue10",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {
                         "NetworkInfo": {
                             "MaximumNetworkCards": 4,
@@ -515,7 +515,7 @@ def test_instances_efa_validator(
             "TestQueue11",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {
                         "NetworkInfo": {
                             "MaximumNetworkCards": 4,
@@ -551,7 +551,7 @@ def test_instances_efa_validator(
             "TestQueue11",
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {
                         "NetworkInfo": {
                             "MaximumNetworkCards": 4,
@@ -653,7 +653,7 @@ def test_instances_allocation_strategy_validator(capacity_type: Enum, allocation
                 "t1.micro": InstanceTypeInfo(
                     {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 2048}}
                 ),
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 4096}}
                 ),
                 "t3.micro": InstanceTypeInfo(
@@ -672,7 +672,7 @@ def test_instances_allocation_strategy_validator(capacity_type: Enum, allocation
                 "t1.micro": InstanceTypeInfo(
                     {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 20024}}
                 ),
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 22048}}
                 ),
                 "t3.micro": InstanceTypeInfo(
@@ -689,7 +689,7 @@ def test_instances_allocation_strategy_validator(capacity_type: Enum, allocation
                 "t1.micro": InstanceTypeInfo(
                     {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 256}}
                 ),
-                "t2.micro": InstanceTypeInfo(
+                "t4g.micro": InstanceTypeInfo(
                     {"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}, "MemoryInfo": {"SizeInMiB": 1024}}
                 ),
                 "t3.micro": InstanceTypeInfo(
@@ -703,7 +703,7 @@ def test_instances_allocation_strategy_validator(capacity_type: Enum, allocation
         pytest.param(
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t4g.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
             },
             True,
             "",
@@ -712,7 +712,7 @@ def test_instances_allocation_strategy_validator(capacity_type: Enum, allocation
         pytest.param(
             "TestComputeResource",
             {
-                "t2.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
+                "t4g.micro": InstanceTypeInfo({"VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2}}),
             },
             False,
             "",

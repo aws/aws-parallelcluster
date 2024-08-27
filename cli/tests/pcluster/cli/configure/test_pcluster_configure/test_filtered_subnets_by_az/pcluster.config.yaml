@@ -12,7 +12,7 @@ Scheduling:
   SlurmQueues:
     - Name: myqueue
       ComputeResources:
-        - Name: t2micro
+        - Name: t3micro
           Instances:
             - InstanceType: t3.micro
           MinCount: 0
