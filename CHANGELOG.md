@@ -19,7 +19,7 @@ CHANGELOG
 - Fix cluster deletion failure when placement group is enabled.
 - Fix issue with login nodes being marked unhealthy when restricting SSH access.
 - Fix `retrieve_supported_regions` so that it can get the correct S3 url.
-- Fix `describe_images` so that it can get the correct official ParallelCluster AMI.
+- Fix `describe_images` so that it uses pagination.
 
 3.10.1
 ------
