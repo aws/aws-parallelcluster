@@ -494,7 +494,7 @@ class CapacityReservationInfo:
         "OwnerId": "123",
         "CapacityReservationArn": "arn:aws:ec2:eu-west-1:123:capacity-reservation/cr-a123456",
         "AvailabilityZoneId": "euw1-az3",
-        "InstanceType": "t2.large",
+        "InstanceType": "t3.large",
         "InstancePlatform": "Linux/UNIX",
         "AvailabilityZone": "eu-west-1a",
         "Tenancy": "default",

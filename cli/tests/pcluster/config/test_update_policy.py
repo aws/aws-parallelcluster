@@ -2375,7 +2375,7 @@ def test_condition_checker_managed_fsx(
             ["LoginNodes"],
             {
                 "Name": "pool-old",
-                "InstanceType": "t2.micro",
+                "InstanceType": "t3.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
                 "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
@@ -2394,7 +2394,7 @@ def test_condition_checker_managed_fsx(
             ["LoginNodes"],
             {
                 "Name": "pool-old",
-                "InstanceType": "t2.micro",
+                "InstanceType": "t3.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
                 "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
@@ -2413,7 +2413,7 @@ def test_condition_checker_managed_fsx(
             None,
             {
                 "Name": "pool-new",
-                "InstanceType": "t2.micro",
+                "InstanceType": "t3.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
                 "Networking": {"SubnetIds": ["subnet-12345678901234567"]},
@@ -2431,7 +2431,7 @@ def test_condition_checker_managed_fsx(
             None,
             {
                 "Name": "pool-new",
-                "InstanceType": "t2.micro",
+                "InstanceType": "t3.micro",
                 "GracetimePeriod": 3,
                 "Count": 1,
                 "Networking": {"SubnetIds": ["subnet-12345678901234567"]},

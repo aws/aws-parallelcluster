@@ -47,7 +47,7 @@ class TestDescribeClusterCommand:
                 "launchTime": "2021-01-01T00:00:00+00:00",
                 "instanceId": "i-099aaaaa7000ccccc",
                 "publicIpAddress": "18.118.18.18",
-                "instanceType": "t2.micro",
+                "instanceType": "t3.micro",
                 "state": "running",
                 "privateIpAddress": "10.0.0.32",
             },

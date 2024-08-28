@@ -68,7 +68,7 @@ Scheduling:
       ComputeResources:
         - DesiredvCpus: 4
           InstanceTypes:
-            - t2.micro
+            - t3.micro
             - optimal
           MaxvCpus: 20
           MinvCpus: 0

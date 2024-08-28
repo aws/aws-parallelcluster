@@ -22,7 +22,7 @@ cat << EOF | sudo tee -a ${capacity_reservation_override_file}
     "OwnerId": "447714826191",
     "CapacityReservationArn": "arn:aws:ec2:us-east-2:447714826191:capacity-reservation/${capacity_reservation_id}",
     "AvailabilityZoneId": "use2-az1",
-    "InstanceType": "t2.micro",
+    "InstanceType": "t3.micro",
     "InstancePlatform": "Linux/UNIX",
     "AvailabilityZone": "us-east-2a",
     "Tenancy": "default",
@@ -76,7 +76,7 @@ cat << EOF | sudo tee "/etc/parallelcluster/slurm_plugin/fleet-config.json"
             "Api": "run-instances",
             "Instances": [
                 {
-                    "InstanceType": "t2.micro"
+                    "InstanceType": "t3.micro"
                 }
             ]
         }

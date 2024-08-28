@@ -26,7 +26,7 @@ Scheduling:
           MaxCount: 2
         - Name: queue1-i2
           Instances:
-            - InstanceType: t2.medium
+            - InstanceType: t3.medium
             - InstanceType: t3.micro
           MinCount: 1
           MaxCount: 2

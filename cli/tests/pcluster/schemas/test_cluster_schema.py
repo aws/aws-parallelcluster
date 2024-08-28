@@ -561,7 +561,7 @@ def test_slurm_flexible_queue(mocker, config_dict, failure_message):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
-        return_value=[CapacityReservationInfo({"InstanceType": "t2.micro"})],
+        return_value=[CapacityReservationInfo({"InstanceType": "t3.micro"})],
     )
 
     if failure_message:
@@ -1030,7 +1030,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": True,
             },
             None,
@@ -1040,7 +1040,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": False,
             },
             None,
@@ -1050,7 +1050,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": "WRONG",
             },
             "Not a valid boolean",
@@ -1060,7 +1060,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": "",
             },
             "Not a valid boolean",
@@ -1070,7 +1070,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": None,
             },
             "Field may not be null.",
@@ -1080,7 +1080,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": 0,
             },
             None,
@@ -1090,7 +1090,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": 1,
             },
             None,
@@ -1100,7 +1100,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": "true",
             },
             None,
@@ -1110,7 +1110,7 @@ def test_queue_tag_schema(mocker, config_dict, failure_message):
             {
                 "Name": "Queue",
                 "Networking": {"SubnetIds": ["subnet-12345678"]},
-                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t2.micro"}],
+                "ComputeResources": [{"Name": "compute_resource", "InstanceType": "t3.micro"}],
                 "JobExclusiveAllocation": "false",
             },
             None,

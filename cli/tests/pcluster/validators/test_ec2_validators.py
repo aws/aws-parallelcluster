@@ -45,11 +45,11 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
 
 
 @pytest.mark.parametrize(
-    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
+    "instance_type, expected_message", [("t3.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
 )
 def test_instance_type_validator(mocker, instance_type, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "c4.xlarge"])
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t3.micro", "c4.xlarge"])
 
     actual_failures = InstanceTypeValidator().execute(instance_type)
     assert_failure_messages(actual_failures, expected_message)
@@ -59,9 +59,9 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
     "instance_type, instance_type_data, expected_message",
     [
         (
-            "t2.medium",
+            "t3.medium",
             {
-                "InstanceType": "t2.medium",
+                "InstanceType": "t3.medium",
                 "CurrentGeneration": True,
                 "FreeTierEligible": False,
                 "SupportedUsageClasses": ["on-demand", "spot"],
@@ -114,9 +114,9 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
             None,
         ),
         (
-            "t2.medium",
+            "t3.medium",
             {
-                "InstanceType": "t2.medium",
+                "InstanceType": "t3.medium",
                 "CurrentGeneration": True,
                 "FreeTierEligible": False,
                 "SupportedUsageClasses": ["on-demand", "spot"],
@@ -165,12 +165,12 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
                 "AutoRecoverySupported": True,
                 "SupportedBootModes": ["legacy-bios"],
             },
-            "EC2 does not provide memory information for instance type 't2.medium'.",
+            "EC2 does not provide memory information for instance type 't3.medium'.",
         ),
         (
-            "t2.medium",
+            "t3.medium",
             {
-                "InstanceType": "t2.medium",
+                "InstanceType": "t3.medium",
                 "CurrentGeneration": True,
                 "FreeTierEligible": False,
                 "SupportedUsageClasses": ["on-demand", "spot"],
@@ -220,13 +220,13 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
                 "AutoRecoverySupported": True,
                 "SupportedBootModes": ["legacy-bios"],
             },
-            "EC2 does not provide memory information for instance type 't2.medium'.",
+            "EC2 does not provide memory information for instance type 't3.medium'.",
         ),
     ],
 )
 def test_instance_type_memory_info_validator(mocker, instance_type, instance_type_data, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t2.medium"])
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t3.medium"])
 
     actual_failures = InstanceTypeMemoryInfoValidator().execute(instance_type, instance_type_data)
     assert_failure_messages(actual_failures, expected_message)
@@ -432,20 +432,20 @@ def test_instance_type_base_ami_compatible_validator(
             None,
         ),
         (
-            "t2.micro",
+            "t3.micro",
             "rhel9",
-            "It is not recommended to use instance type t2.micro with rhel9. "
+            "It is not recommended to use instance type t3.micro with rhel9. "
             "If you want to use rhel9 it is recommended to use an instance type with at least 1.7 GB of memory.",
         ),
         (
-            "t2.micro",
+            "t3.micro",
             "alinux2",
             None,
         ),
         (
-            "t2.nano",
+            "t3.nano",
             "rocky9",
-            "It is not recommended to use instance type t2.nano with rocky9. "
+            "It is not recommended to use instance type t3.nano with rocky9. "
             "If you want to use rocky9 it is recommended to use an instance type with at least 1.7 GB of memory.",
         ),
     ],
@@ -1498,9 +1498,9 @@ def test_placement_group_capacity_type_validator(
             "make sure to use a custom AMI",
         ),
         (
-            "t2.medium",
+            "t3.medium",
             {
-                "InstanceType": "t2.medium",
+                "InstanceType": "t3.medium",
             },
             None,
             "",

@@ -139,7 +139,7 @@ Scheduling:
           DesiredvCpus: 4
           SpotBidPercentage: 85.0
           InstanceTypes:
-            - t2.micro
+            - t3.micro
             - optimal
 DevSettings:
   Cookbook:

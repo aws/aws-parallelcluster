@@ -1216,7 +1216,7 @@ desired_vcpus = 4
 max_vcpus = 20
 spot_bid_percentage = 85
 cluster_type = ondemand
-compute_instance_type = t2.micro,optimal
+compute_instance_type = t3.micro,optimal
 
 [vpc default]
 vpc_id = vpc-0e0f223cc35256b9a
@@ -1233,7 +1233,7 @@ Scheduling:
       ComputeResources:
         - DesiredvCpus: 4
           InstanceTypes:
-            - t2.micro
+            - t3.micro
             - optimal
           MaxvCpus: 20
           MinvCpus: 0
@@ -1256,7 +1256,7 @@ vpc_settings = default
 key_name = key1
 scheduler = awsbatch
 cluster_type = spot
-compute_instance_type = t2.micro
+compute_instance_type = t3.micro
 
 [vpc default]
 vpc_id = vpc-0e0f223cc35256b9a
@@ -1270,7 +1270,7 @@ Scheduling:
     - CapacityType: SPOT
       ComputeResources:
         - InstanceTypes:
-            - t2.micro
+            - t3.micro
           Name: batch-compute
       Networking:
         SubnetIds:

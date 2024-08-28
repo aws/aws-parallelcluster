@@ -420,8 +420,8 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=5),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=5),
             ],
             None,
             id="Case with default priorities",
@@ -429,8 +429,8 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, dynamic_node_priority=120),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=5, dynamic_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=5, static_node_priority=100),
             ],
             None,
             id="Case with good custom priorities",
@@ -438,8 +438,8 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=0, dynamic_node_priority=100),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=0, static_node_priority=120),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=0, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=0, static_node_priority=120),
             ],
             None,
             id="Case with bad custom priorities, but no static nodes, so no issue",
@@ -447,8 +447,8 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=10, dynamic_node_priority=100),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=10, static_node_priority=120),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=10, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=10, static_node_priority=120),
             ],
             None,
             id="Case with bad custom priorities, but no dynamic nodes, so no issue",
@@ -456,8 +456,8 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, dynamic_node_priority=100),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=120),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=5, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=5, static_node_priority=120),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
@@ -470,8 +470,8 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, dynamic_node_priority=100),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=5, dynamic_node_priority=100),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=5, static_node_priority=100),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
@@ -486,13 +486,13 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
             [
                 SlurmComputeResource(
                     name="cr1",
-                    instance_type="t2.small",
+                    instance_type="t3.small",
                     min_count=5,
                     static_node_priority=10,
                     dynamic_node_priority=100,
                 ),
                 SlurmComputeResource(
-                    name="cr2", instance_type="t2.small", min_count=5, static_node_priority=99, dynamic_node_priority=1
+                    name="cr2", instance_type="t3.small", min_count=5, static_node_priority=99, dynamic_node_priority=1
                 ),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
@@ -506,16 +506,16 @@ def test_external_slurmdbd_traffic_not_encrypted_validator(external_slurmdbd, ex
         pytest.param(
             "queue1",
             [
-                SlurmComputeResource(name="cr0", instance_type="t2.small", min_count=5, static_node_priority=100),
-                SlurmComputeResource(name="cr1", instance_type="t2.small", min_count=5, static_node_priority=120),
-                SlurmComputeResource(name="cr2", instance_type="t2.small", min_count=5, static_node_priority=140),
-                SlurmComputeResource(name="cr3", instance_type="t2.small", min_count=5, static_node_priority=160),
-                SlurmComputeResource(name="cr4", instance_type="t2.small", min_count=5, static_node_priority=180),
-                SlurmComputeResource(name="cr5", instance_type="t2.small", min_count=5, dynamic_node_priority=150),
-                SlurmComputeResource(name="cr6", instance_type="t2.small", min_count=5, dynamic_node_priority=150),
-                SlurmComputeResource(name="cr7", instance_type="t2.small", min_count=5, dynamic_node_priority=170),
-                SlurmComputeResource(name="cr8", instance_type="t2.small", min_count=5, dynamic_node_priority=190),
-                SlurmComputeResource(name="cr9", instance_type="t2.small", min_count=5, dynamic_node_priority=210),
+                SlurmComputeResource(name="cr0", instance_type="t3.small", min_count=5, static_node_priority=100),
+                SlurmComputeResource(name="cr1", instance_type="t3.small", min_count=5, static_node_priority=120),
+                SlurmComputeResource(name="cr2", instance_type="t3.small", min_count=5, static_node_priority=140),
+                SlurmComputeResource(name="cr3", instance_type="t3.small", min_count=5, static_node_priority=160),
+                SlurmComputeResource(name="cr4", instance_type="t3.small", min_count=5, static_node_priority=180),
+                SlurmComputeResource(name="cr5", instance_type="t3.small", min_count=5, dynamic_node_priority=150),
+                SlurmComputeResource(name="cr6", instance_type="t3.small", min_count=5, dynamic_node_priority=150),
+                SlurmComputeResource(name="cr7", instance_type="t3.small", min_count=5, dynamic_node_priority=170),
+                SlurmComputeResource(name="cr8", instance_type="t3.small", min_count=5, dynamic_node_priority=190),
+                SlurmComputeResource(name="cr9", instance_type="t3.small", min_count=5, dynamic_node_priority=210),
             ],
             "Some compute resources in queue queue1 have static nodes with higher or equal priority than "
             "other dynamic nodes in the same queue. "
@@ -697,8 +697,8 @@ def test_schedulable_memory_validator(schedulable_memory, ec2memory, instance_ty
         # EFA without EFAGDR
         ("c5n.18xlarge", True, False, True, False, None),
         # Unsupported instance type
-        ("t2.large", True, False, False, False, "does not support EFA"),
-        ("t2.large", False, False, False, False, None),
+        ("t3.large", True, False, False, False, "does not support EFA"),
+        ("t3.large", False, False, False, False, None),
         # EFA not enabled for instance type that supports it
         (
             "c5n.18xlarge",
@@ -1669,13 +1669,13 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
 @pytest.mark.parametrize(
     "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
     [
-        (True, "rhel8", "t2.medium", None, None, None),
-        (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", "Please double check the os configuration"),
-        (True, "ubuntu2004", "t2.medium", None, None, None),
-        (True, "alinux2", "t2.medium", None, None, None),
-        (True, "alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
-        (True, "alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
-        (False, "alinux2", "t2.micro", None, None, None),  # doesn't fail because DCV is disabled
+        (True, "rhel8", "t3.medium", None, None, None),
+        (True, "ubuntu1804", "t3.medium", None, "1.2.3.4/32", "Please double check the os configuration"),
+        (True, "ubuntu2004", "t3.medium", None, None, None),
+        (True, "alinux2", "t3.medium", None, None, None),
+        (True, "alinux2", "t3.nano", None, None, "is recommended to use an instance type with at least"),
+        (True, "alinux2", "t3.micro", None, None, "is recommended to use an instance type with at least"),
+        (False, "alinux2", "t3.micro", None, None, None),  # doesn't fail because DCV is disabled
         (True, "alinux2", "m6g.xlarge", None, None, None),
         (True, "rhel8", "m6g.xlarge", None, None, None),
         (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),
@@ -1688,7 +1688,7 @@ def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expect
         allowed_ips,
         port,
         os,
-        "x86_64" if instance_type.startswith("t2") else "arm64",
+        "x86_64" if instance_type.startswith("t3") else "arm64",
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -3181,7 +3181,7 @@ class TestDictLaunchTemplateBuilder:
         [
             pytest.param(
                 BaseQueue(name="queue1", capacity_type="spot"),
-                SlurmComputeResource(name="compute1", instance_type="t2.medium", spot_price=10.0),
+                SlurmComputeResource(name="compute1", instance_type="t3.medium", spot_price=10.0),
                 {
                     "MarketType": "spot",
                     "SpotOptions": {
@@ -3194,7 +3194,7 @@ class TestDictLaunchTemplateBuilder:
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="spot"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium"),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium"),
                 {
                     "MarketType": "spot",
                     "SpotOptions": {
@@ -3206,7 +3206,7 @@ class TestDictLaunchTemplateBuilder:
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="ondemand"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium", spot_price=10.0),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium", spot_price=10.0),
                 None,
                 id="test without spot capacity",
             ),
@@ -3231,7 +3231,7 @@ class TestDictLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     ),
@@ -3254,7 +3254,7 @@ class TestDictLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                 ),
                 {
                     "CapacityReservationTarget": {
@@ -3271,7 +3271,7 @@ class TestDictLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                 ),
                 None,
                 id="test with no capacity reservation",

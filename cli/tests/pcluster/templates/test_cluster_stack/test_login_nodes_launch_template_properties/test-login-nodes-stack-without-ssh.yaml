@@ -4,7 +4,7 @@ Image:
 LoginNodes:
   Pools:
   - Name: testloginnodespool1
-    InstanceType: t2.micro
+    InstanceType: t3.micro
     Count: 2
     GracetimePeriod: 120
     Networking:
@@ -15,7 +15,7 @@ LoginNodes:
       - sg-34567892
       - sg-34567893
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
   Ssh:

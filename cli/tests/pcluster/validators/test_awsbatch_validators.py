@@ -42,17 +42,17 @@ def boto3_stubber_path():
 @pytest.mark.parametrize(
     "instance_type, max_vcpus, expected_message",
     [
-        ("t2.micro", 2, "Max vCPUs must be greater than or equal to 4"),
-        ("t2.micro", 4, None),
+        ("t3.micro", 2, "Max vCPUs must be greater than or equal to 4"),
+        ("t3.micro", 4, None),
         ("p4d.24xlarge", 4, None),
         ("c4.xlarge", 4, "is not supported"),
-        ("t2", 2, None),  # t2 family
+        ("t3", 2, None),  # t3 family
         ("optimal", 4, None),
     ],
 )
 def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "p4d.24xlarge"])
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t3.micro", "p4d.24xlarge"])
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(

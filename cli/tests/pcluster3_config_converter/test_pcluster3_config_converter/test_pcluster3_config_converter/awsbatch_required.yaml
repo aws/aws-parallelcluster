@@ -31,5 +31,5 @@ Scheduling:
       ComputeResources:
         - Name: batch-compute
           InstanceTypes:
-            - t2.micro
+            - t3.micro
             - optimal

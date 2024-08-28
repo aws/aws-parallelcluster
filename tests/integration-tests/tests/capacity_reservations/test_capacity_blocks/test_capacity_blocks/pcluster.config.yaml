@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: t2.large
+  InstanceType: t3.large
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -17,7 +17,7 @@ Scheduling:
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: cr1
-          InstanceType: t2.micro
+          InstanceType: t3.micro
           MinCount: 2
           MaxCount: 4
       Networking:

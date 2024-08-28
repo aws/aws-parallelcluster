@@ -1,7 +1,7 @@
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
   Ssh:
@@ -14,7 +14,7 @@ Scheduling:
       ComputeResources:
         - Name: queue1-i1
           Instances:
-            - InstanceType: t2.micro
+            - InstanceType: t3.micro
           MinCount: 0
           MaxCount: 2
       Networking:
@@ -25,7 +25,7 @@ Scheduling:
       ComputeResources:
         - Name: queue-a-cr-static
           Instances:
-            - InstanceType: t2.micro
+            - InstanceType: t3.micro
           MinCount: 1
           MaxCount: 2
       Networking:

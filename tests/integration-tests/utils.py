@@ -144,7 +144,7 @@ class InstanceTypesData:
         The file must contain two keys:
           - "instance_types_data": The json structure to be passed to cluster configuration files
           - "instance_types_map": A dict containing logical instance types names (that can be used in cluster config
-            files) vs real ones (e.g. "t2.micro")
+            files) vs real ones (e.g. "t3.micro")
         """
         instance_types_data_file_content = read_json_file(instance_types_data_file)
         InstanceTypesData.additional_instance_types_data = instance_types_data_file_content.get(

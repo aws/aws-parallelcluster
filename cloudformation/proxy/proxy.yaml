@@ -210,7 +210,7 @@ Resources:
     Properties:
       IamInstanceProfile: !Ref ProxyInstanceProfile
       ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-      InstanceType: t2.medium
+      InstanceType: t3.medium
       KeyName: !Ref Keypair
       NetworkInterfaces:
         - DeviceIndex: 0
@@ -302,7 +302,7 @@ Resources:
     Properties:
       IamInstanceProfile: !Ref ProxyClientNodeInstanceProfile
       ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-      InstanceType: t2.medium
+      InstanceType: t3.medium
       KeyName: !Ref Keypair
       SecurityGroupIds:
         - !Ref ProxyClientSecurityGroup
