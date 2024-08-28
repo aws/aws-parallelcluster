@@ -145,11 +145,11 @@ class Ec2Client(Boto3Client):
     @Cache.cached
     def _describe_images_with_pagination(self, **kwargs):
         """Use paginator to describe images and handle pagination."""
-        paginator = self._client.get_paginator('describe_images')
+        paginator = self._client.get_paginator("describe_images")
         page_iterator = paginator.paginate(**kwargs)
         images = []
         for page in page_iterator:
-            images.extend(page['Images'])
+            images.extend(page["Images"])
         return images
 
     @AWSExceptionHandler.handle_client_exception
