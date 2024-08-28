@@ -463,6 +463,7 @@ def test_build_image_custom_components(
     # Create S3 bucket for pre install scripts, to remove epel package if it is installed
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    time.sleep(60)
     bucket.upload_file(str(test_datadir / custom_script_file), "scripts/custom_script.sh")
 
     # Get ParallelCluster AMI as base AMI
