@@ -23,4 +23,28 @@ Scheduling:
           MaxCount: {{ max_cluster_size }}
       Networking:
         SubnetIds:
+          {% for private_subnet_id in private_subnet_ids %}
           - {{ private_subnet_id }}
+          {% endfor %}
+    - Name: queue-1
+      ComputeResources:
+        - Name: compute-resource-2
+          Instances:
+            - InstanceType: {{ instance }}
+          MaxCount: {{ max_cluster_size }}
+      Networking:
+        SubnetIds:
+          {% for private_subnet_id in private_subnet_ids %}
+          - {{ private_subnet_id }}
+          {% endfor %}
+    - Name: queue-2
+      ComputeResources:
+        - Name: compute-resource-2
+          Instances:
+            - InstanceType: {{ instance }}
+          MaxCount: {{ max_cluster_size }}
+      Networking:
+        SubnetIds:
+          {% for private_subnet_id in private_subnet_ids %}
+          - {{ private_subnet_id }}
+          {% endfor %}

@@ -24,3 +24,22 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+    - Name: dynamic-1
+      ComputeResources:
+        - Name: compute-resource-1
+          InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: {{ max_cluster_size }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: dynamic-2
+      ComputeResources:
+        - Name: compute-resource-2
+          InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: {{ max_cluster_size }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+
