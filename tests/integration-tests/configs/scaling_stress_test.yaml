@@ -2,13 +2,13 @@ test-suites:
   performance_tests:
     test_scaling.py::test_scaling_stress_test:
       dimensions:
-        - regions: [ "use1-az6" ]
-          instances: [ "c5.large" ]
+        - regions: [ "us-east-1" ]
+          instances: [ "t3.medium" ]
           oss: [ "alinux2" ]
           schedulers: [ "slurm" ]
     test_scaling.py::test_static_scaling_stress_test:
       dimensions:
-        - regions: [ "use1-az6" ]
-          instances: [ "c5.large" ]
+        - regions: [ "us-east-1" ]
+          instances: [ "t3.medium" ]
           oss: [ "alinux2" ]
           schedulers: [ "slurm" ]

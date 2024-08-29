@@ -13,6 +13,8 @@ from utils import disable_protected_mode
 from tests.common.assertions import assert_no_msg_in_logs
 from tests.common.scaling_common import get_bootstrap_errors, get_scaling_metrics, validate_and_get_scaling_test_config
 
+MAX_QUEUE_SIZE = 50000
+
 
 @pytest.mark.parametrize(
     "max_nodes",
@@ -123,7 +125,7 @@ def test_scaling_stress_test(
     cluster_config = pcluster_config_reader(
         # Prevent nodes being set down before we start monitoring the scale down metrics
         scaledown_idletime=max_monitoring_time_in_mins,
-        max_cluster_size=max(scaling_targets),
+        max_cluster_size=MAX_QUEUE_SIZE,
         head_node_instance_type=head_node_instance_type,
         shared_headnode_storage_type=shared_headnode_storage_type,
         scaling_strategy=scaling_strategy,
@@ -137,6 +139,7 @@ def test_scaling_stress_test(
 
     with soft_assertions():
         for scaling_target in scaling_targets:
+            logging.info("Scaling to %d nodes", scaling_target)
             _scale_up_and_down(
                 cluster,
                 head_node_instance_type,
@@ -156,7 +159,7 @@ def test_scaling_stress_test(
             # ref https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html
             if scaling_target != scaling_targets[-1]:
                 logging.info("Waiting for the RunInstances Resource Token Bucket to refill")
-                time.sleep(300)
+                time.sleep(500)
 
 
 @pytest.mark.usefixtures("scheduler")
@@ -212,7 +215,7 @@ def test_static_scaling_stress_test(
                 shared_headnode_storage_type=shared_headnode_storage_type,
                 scaling_strategy=scaling_strategy,
                 min_cluster_size=scaling_target,
-                max_cluster_size=scaling_target,
+                max_cluster_size=MAX_QUEUE_SIZE,
                 output_file=f"{scaling_target}-upscale-pcluster.config.yaml",
             )
             _scale_up_and_down(
