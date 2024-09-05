@@ -74,9 +74,9 @@ def test_efa(
 
         fabtests_report = _execute_fabtests(remote_command_executor, test_datadir, instance)
 
-        num_tests = int(fabtests_report.get("testsuites", {}).get("@tests", None))
-        num_failures = int(fabtests_report.get("testsuites", {}).get("@failures", None))
-        num_errors = int(fabtests_report.get("testsuites", {}).get("@errors", None))
+        num_tests = int(fabtests_report.get("testsuites", {}).get("testsuite", {})[0].get("@tests", None))
+        num_failures = int(fabtests_report.get("testsuites", {}).get("testsuite", {})[0].get("@failures", None))
+        num_errors = int(fabtests_report.get("testsuites", {}).get("testsuite", {})[0].get("@errors", None))
 
         with soft_assertions():
             assert_that(num_tests, description="Cannot read number of tests from Fabtests report").is_not_none()
@@ -107,6 +107,10 @@ def _execute_fabtests(remote_command_executor, test_datadir, instance):
 
     logging.info("Running Fabtests")
     test_cases = FABTESTS_BASIC_TESTS + FABTESTS_GDRCOPY_TESTS if instance == "p4d.24xlarge" else FABTESTS_BASIC_TESTS
+
+    if "g6" in instance:
+        test_cases = test_cases + ["not cuda"]
+
     remote_command_executor.run_remote_script(
         str(test_datadir / "run-fabtests.sh"),
         args=[
