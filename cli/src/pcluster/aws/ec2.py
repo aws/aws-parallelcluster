@@ -549,14 +549,30 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def is_subnet_public(self, subnet_id):
-        """Check if a subnet is public."""
+        """
+        Check if a subnet is public by determining if its route table has an internet gateway (igw).
+
+        :param subnet_id: The ID of the subnet to check.
+        :return: True if the subnet is public (associated with an internet gateway); False otherwise.
+        :raises Exception: If no route tables are found for the subnet or its VPC.
+        """
         route_tables = self.describe_route_tables(filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}])
+
+        # If the subnet doesn't have a specific route table, this typically happens when
+        # the subnet is using the VPC's main route table. Needs to fetch the VPC-level route table.
         if not route_tables:
-            raise Exception("No route tables found. The subnet configuration may be incorrect.")
+            # Retrieve the VPC ID for the given subnet ID
+            subnets = self.describe_subnets([subnet_id])
+            if not subnets:
+                raise Exception(f"No subnet found with ID {subnet_id}")
+            vpc_id = subnets[0].get('VpcId')
 
-        route_table = route_tables[0]
+            route_tables = self.describe_route_tables(filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
+            if not route_tables:
+                raise Exception("No route tables found. The subnet or VPC configuration may be incorrect.")
 
-        for route in route_table.get("Routes", []):
+        # Check if any route contains an internet gateway (igw)
+        for route in route_tables[0].get("Routes", []):
             if "GatewayId" in route and route["GatewayId"].startswith("igw-"):
                 return True
 
