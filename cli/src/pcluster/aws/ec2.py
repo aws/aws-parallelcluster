@@ -565,7 +565,7 @@ class Ec2Client(Boto3Client):
             subnets = self.describe_subnets([subnet_id])
             if not subnets:
                 raise Exception(f"No subnet found with ID {subnet_id}")
-            vpc_id = subnets[0].get('VpcId')
+            vpc_id = subnets[0].get("VpcId")
 
             route_tables = self.describe_route_tables(filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
             if not route_tables:
