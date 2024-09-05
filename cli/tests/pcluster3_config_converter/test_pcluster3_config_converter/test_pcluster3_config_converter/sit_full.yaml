@@ -13,7 +13,7 @@ SharedStorage:
     Name: default-ebs
     StorageType: Ebs
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-0bfad12f6b586686c
   DisableSimultaneousMultithreading: false

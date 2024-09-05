@@ -250,7 +250,7 @@ class EBSSnapshotsFactory:
             KeyName=self.config.key_name,
             MinCount=1,
             MaxCount=1,
-            InstanceType="t2.micro",
+            InstanceType="t3.micro",
             MetadataOptions={"HttpTokens": "required", "HttpEndpoint": "enabled"},
             NetworkInterfaces=[
                 {

@@ -131,7 +131,7 @@ Scheduling:
             Enabled: true
         - Name: queue3-i2
           Instances:
-            - InstanceType: t2.xlarge
+            - InstanceType: t3.xlarge
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: false

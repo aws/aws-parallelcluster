@@ -4,7 +4,7 @@ AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: True
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
 Scheduling:

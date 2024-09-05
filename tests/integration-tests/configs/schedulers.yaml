@@ -85,7 +85,7 @@ test-suites:
     test_slurm.py::test_scontrol_reboot_ec2_health_checks:
       dimensions:
         - regions: ["us-east-2"]
-          instances: ["t2.medium"]
+          instances: ["t3.medium"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_overrides:

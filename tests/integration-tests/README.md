@@ -507,7 +507,7 @@ function arguments with this annotation: `@pytest.mark.usefixtures("region", "os
 
 ```python
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5.xlarge", "t2.large"])
+@pytest.mark.instances(["c5.xlarge", "t3.large"])
 @pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_case_2():
@@ -544,13 +544,13 @@ The available markers are the following:
 For example, given the following test definition:
 ```python
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5.xlarge", "t2.large"])
+@pytest.mark.instances(["c5.xlarge", "t3.large"])
 @pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
 def test_case_1(region, instance, os, scheduler):
 ```
 The test is allowed to run against the following subset of dimensions:
 * region has to be one of `["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"]`
-* instance has to be one of `"c5.xlarge", "t2.large"`
+* instance has to be one of `"c5.xlarge", "t3.large"`
 * os has to be `alinux2`
 * scheduler has to be `awsbatch`
 

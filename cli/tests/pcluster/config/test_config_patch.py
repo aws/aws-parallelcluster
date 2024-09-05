@@ -30,7 +30,7 @@ default_cluster_params = {
     "compute_subnet_id": "subnet-12345678",
     "additional_sg": "sg-12345678",
     "max_count": 10,
-    "compute_instance_type": "t2.micro",
+    "compute_instance_type": "t3.micro",
     "shared_dir": "mountdir1",
     "ebs_encrypted": True,
 }
@@ -171,7 +171,7 @@ def _compare_changes(changes, expected_changes):
             ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
             "compute_instance_type",
             "InstanceType",
-            "t2.micro",
+            "t3.micro",
             "c4.xlarge",
             UpdatePolicy.COMPUTE_FLEET_STOP,
             False,

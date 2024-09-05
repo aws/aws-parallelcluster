@@ -324,12 +324,12 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
             call(instance_type="c5d.xlarge", image="ami-12345678"),
-            call(instance_type="t2.large", image="ami-12345678"),
+            call(instance_type="t3.large", image="ami-12345678"),
             call(instance_type="c4.2xlarge", image="ami-12345678"),
             call(instance_type="c5.4xlarge", image="ami-12345678"),
             call(instance_type="c5d.xlarge", image="ami-12345678"),
-            call(instance_type="t2.large", image="ami-12345678"),
-            call(instance_type="t2.xlarge", image="ami-12345678"),
+            call(instance_type="t3.large", image="ami-12345678"),
+            call(instance_type="t3.xlarge", image="ami-12345678"),
         ],
         any_order=True,
     )
@@ -346,13 +346,13 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     architecture_os_validator.assert_has_calls([call(os="alinux2", architecture="x86_64")])
     _assert_instance_architecture(
         expected_instance_architecture_validator_input=[
-            {"instance_types": ["t2.large"], "architecture": "x86_64"},
+            {"instance_types": ["t3.large"], "architecture": "x86_64"},
             {"instance_types": ["c4.2xlarge"], "architecture": "x86_64"},
             {"instance_types": ["c5.4xlarge"], "architecture": "x86_64"},
             {"instance_types": ["c5d.xlarge"], "architecture": "x86_64"},
-            {"instance_types": ["t2.large"], "architecture": "x86_64"},
-            {"instance_types": ["t2.xlarge"], "architecture": "x86_64"},
-            {"instance_types": ["t2.xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["t3.large"], "architecture": "x86_64"},
+            {"instance_types": ["t3.xlarge"], "architecture": "x86_64"},
+            {"instance_types": ["t3.xlarge"], "architecture": "x86_64"},
         ],
         validator=instance_architecture_compatibility_validator,
     )
@@ -397,21 +397,21 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         [
             call(
                 capacity_reservation_id="cr-34567",
-                instance_types=["t2.large"],
+                instance_types=["t3.large"],
                 is_flexible=True,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.ONDEMAND,
             ),
             call(
                 capacity_reservation_id="cr-12345",
-                instance_types=["t2.xlarge"],
+                instance_types=["t3.xlarge"],
                 is_flexible=True,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.CAPACITY_BLOCK,
             ),
             call(
                 capacity_reservation_id="cr-23456",
-                instance_types=["t2.xlarge"],
+                instance_types=["t3.xlarge"],
                 is_flexible=False,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.CAPACITY_BLOCK,
@@ -420,16 +420,16 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
     capacity_type_validator.assert_has_calls(
         [
-            call(capacity_type=CapacityType.SPOT, instance_type="t2.large", capacity_reservation_id=None),
+            call(capacity_type=CapacityType.SPOT, instance_type="t3.large", capacity_reservation_id=None),
             call(capacity_type=CapacityType.SPOT, instance_type="c4.2xlarge", capacity_reservation_id=None),
             call(capacity_type=CapacityType.ONDEMAND, instance_type="c5.4xlarge", capacity_reservation_id=None),
             call(capacity_type=CapacityType.ONDEMAND, instance_type="c5d.xlarge", capacity_reservation_id=None),
-            call(capacity_type=CapacityType.ONDEMAND, instance_type="t2.large", capacity_reservation_id="cr-34567"),
+            call(capacity_type=CapacityType.ONDEMAND, instance_type="t3.large", capacity_reservation_id="cr-34567"),
             call(
-                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t2.xlarge", capacity_reservation_id="cr-12345"
+                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t3.xlarge", capacity_reservation_id="cr-12345"
             ),
             call(
-                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t2.xlarge", capacity_reservation_id="cr-23456"
+                capacity_type=CapacityType.CAPACITY_BLOCK, instance_type="t3.xlarge", capacity_reservation_id="cr-23456"
             ),
         ],
         any_order=True,

@@ -28,13 +28,13 @@ Scheduling:
             Port: 20000
             RealMemory: 4000
           Instances:
-            - InstanceType: t2.large
+            - InstanceType: t3.large
           MinCount: 0
         - Name: cr2
           CustomSlurmSettings:
             Port: 25000
             RealMemory: 4100
           Instances:
-            - InstanceType: t2.large
+            - InstanceType: t3.large
           MinCount: 0
 

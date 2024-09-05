@@ -393,7 +393,7 @@ Resources:
       IamInstanceProfile:
         Ref: JoinProfile
       ImageId: !Ref AdminNodeAmiId
-      InstanceType: t2.micro
+      InstanceType: t3.micro
       KeyName: !Ref Keypair
       LaunchTemplate:
         LaunchTemplateId: !Ref 'DisableImdsv1LaunchTemplate'

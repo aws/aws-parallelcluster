@@ -143,20 +143,31 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
+    def _describe_images_with_pagination(self, **kwargs):
+        """Use paginator to describe images and handle pagination."""
+        paginator = self._client.get_paginator("describe_images")
+        page_iterator = paginator.paginate(**kwargs)
+        images = []
+        for page in page_iterator:
+            images.extend(page["Images"])
+        return images
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_image(self, ami_id):
         """Describe image by image id, return an object of ImageInfo."""
-        result = self._client.describe_images(ImageIds=[ami_id])
-        if result.get("Images"):
-            return ImageInfo(result.get("Images")[0])
+        images = self._describe_images_with_pagination(ImageIds=[ami_id])
+        if images:
+            return ImageInfo(images[0])
         raise AWSClientError(function_name="describe_images", message=f"Image {ami_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def describe_images(self, ami_ids, filters, owners):
         """Return a list of objects of ImageInfo."""
-        result = self._client.describe_images(ImageIds=ami_ids, Filters=filters, Owners=owners)
-        if result.get("Images"):
-            return [ImageInfo(image) for image in result.get("Images")]
+        images = self._describe_images_with_pagination(ImageIds=ami_ids, Filters=filters, Owners=owners)
+        if images:
+            return [ImageInfo(image) for image in images]
         raise ImageNotFoundError(function_name="describe_images")
 
     def image_exists(self, image_id: str):
@@ -301,7 +312,7 @@ class Ec2Client(Boto3Client):
 
         filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
-        images = self._client.describe_images(Owners=[owner], Filters=filters, IncludeDeprecated=True).get("Images")
+        images = self._describe_images_with_pagination(Owners=[owner], Filters=filters, IncludeDeprecated=True)
         if not images:
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return self._find_valid_official_image(images).get("ImageId")
@@ -313,10 +324,11 @@ class Ec2Client(Boto3Client):
         owners = ["amazon"]
         name = f"{self._get_official_image_name_prefix(os, architecture)}*"
         filters = [{"Name": "name", "Values": [name]}]
+        images = self._describe_images_with_pagination(Owners=owners, Filters=filters, IncludeDeprecated=True)
         return [
             ImageInfo(self._find_valid_official_image(images_os_arch))
             for _, images_os_arch in itertools.groupby(
-                self._client.describe_images(Owners=owners, Filters=filters, IncludeDeprecated=True).get("Images"),
+                images,
                 key=lambda image: f'{self.extract_os_from_official_image_name(image["Name"])}-{image["Architecture"]}',
             )
         ]
@@ -393,11 +405,11 @@ class Ec2Client(Boto3Client):
 
         Example:
         If instance_types is:
-        ["t2.micro", "t2.large"]
+        ["t3.micro", "t3.large"]
         Result can be:
         {
-            "t2.micro": (us-east-1a, us-east-1b),
-            "t2.large": (us-east-1a, us-east-1b)
+            "t3.micro": (us-east-1a, us-east-1b),
+            "t3.large": (us-east-1a, us-east-1b)
         }
         """
         # first looks for info in cache, then using only one API call for all infos that is not inside the cache

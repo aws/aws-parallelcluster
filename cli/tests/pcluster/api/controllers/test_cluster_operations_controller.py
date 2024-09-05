@@ -84,7 +84,7 @@ class TestCreateCluster:
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t3.micro
   Networking:
     SubnetId: subnet-12345678
   Ssh:
@@ -607,7 +607,7 @@ class TestDescribeCluster:
                 ),
                 {
                     "InstanceId": "i-020c2ec1b6d550000",
-                    "InstanceType": "t2.micro",
+                    "InstanceType": "t3.micro",
                     "LaunchTime": datetime(2021, 5, 10, 13, 55, 48),
                     "PrivateIpAddress": "192.168.61.109",
                     "PublicIpAddress": "34.251.236.164",
@@ -636,7 +636,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -759,7 +759,7 @@ class TestDescribeCluster:
                 ),
                 {
                     "InstanceId": "i-020c2ec1b6d550000",
-                    "InstanceType": "t2.micro",
+                    "InstanceType": "t3.micro",
                     "LaunchTime": datetime(2021, 5, 10, 13, 55, 48),
                     "PrivateIpAddress": "192.168.61.109",
                     "State": {"Code": 16, "Name": "running"},
@@ -787,7 +787,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "state": "running",
@@ -1216,7 +1216,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -1257,7 +1257,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -1312,7 +1312,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -1367,7 +1367,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -1422,7 +1422,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -1473,7 +1473,7 @@ class TestDescribeCluster:
                     "version": get_installed_version(),
                     "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
-                        "instanceType": "t2.micro",
+                        "instanceType": "t3.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
@@ -1506,7 +1506,7 @@ class TestDescribeCluster:
         )
         head_node_data = {
             "InstanceId": "i-020c2ec1b6d550000",
-            "InstanceType": "t2.micro",
+            "InstanceType": "t3.micro",
             "LaunchTime": datetime(2021, 5, 10, 13, 55, 48),
             "PrivateIpAddress": "192.168.61.109",
             "PublicIpAddress": "34.251.236.164",
@@ -1806,7 +1806,7 @@ class TestUpdateCluster:
     url = "/v3/clusters/{cluster_name}"
     method = "PUT"
 
-    CONFIG = "Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t2.micro"
+    CONFIG = "Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t3.micro"
 
     def _send_test_request(
         self,
@@ -1921,7 +1921,7 @@ class TestUpdateCluster:
             assert_that(response.get_json()).is_equal_to(expected_response)
         cluster_update_mock.assert_called_with(
             force=not (force_update or True),
-            target_source_config="Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t2.micro",
+            target_source_config="Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t3.micro",
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
         )

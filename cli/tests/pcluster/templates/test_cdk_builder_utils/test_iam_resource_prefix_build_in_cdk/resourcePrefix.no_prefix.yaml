@@ -16,7 +16,7 @@ Scheduling:
     - Name: queue1
       ComputeResources:
         - Name: compute_resource1
-          InstanceType: t2.micro
+          InstanceType: t3.micro
           MinCount: 1
           MaxCount: 5
       Networking:

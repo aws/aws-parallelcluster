@@ -311,7 +311,7 @@ class TestCdkLaunchTemplateBuilder:
         [
             pytest.param(
                 BaseQueue(name="queue1", capacity_type="spot"),
-                SlurmComputeResource(name="compute1", instance_type="t2.medium", spot_price=10.0),
+                SlurmComputeResource(name="compute1", instance_type="t3.medium", spot_price=10.0),
                 ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
                     market_type="spot",
                     spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
@@ -322,7 +322,7 @@ class TestCdkLaunchTemplateBuilder:
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="spot"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium"),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium"),
                 ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
                     market_type="spot",
                     spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
@@ -333,13 +333,13 @@ class TestCdkLaunchTemplateBuilder:
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="ondemand"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium", spot_price="10.0"),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium", spot_price="10.0"),
                 None,
                 id="test without spot capacity",
             ),
             pytest.param(
                 BaseQueue(name="queue2", capacity_type="capacity_block"),
-                SlurmComputeResource(name="compute2", instance_type="t2.medium"),
+                SlurmComputeResource(name="compute2", instance_type="t3.medium"),
                 ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(market_type="capacity-block"),
                 id="test with capacity block",
             ),
@@ -364,7 +364,7 @@ class TestCdkLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                     capacity_reservation_target=CapacityReservationTarget(
                         capacity_reservation_resource_group_arn="comp_res_cr_rg_arn",
                     ),
@@ -388,7 +388,7 @@ class TestCdkLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                 ),
                 ec2.CfnLaunchTemplate.CapacityReservationSpecificationProperty(
                     capacity_reservation_target=ec2.CfnLaunchTemplate.CapacityReservationTargetProperty(
@@ -406,7 +406,7 @@ class TestCdkLaunchTemplateBuilder:
                 ),
                 SlurmComputeResource(
                     name="compute1",
-                    instance_type="t2.medium",
+                    instance_type="t3.medium",
                 ),
                 None,
                 id="test with no capacity reservation",
