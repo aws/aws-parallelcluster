@@ -20,6 +20,7 @@ CHANGELOG
 - Fix issue with login nodes being marked unhealthy when restricting SSH access.
 - Fix `retrieve_supported_regions` so that it can get the correct S3 url.
 - Fix `describe_images` so that it uses pagination.
+- Fix `No route tables found` bug when specifying default VPC subnet to LoginNodes/Networking/SubnetIds.
 
 3.10.1
 ------
