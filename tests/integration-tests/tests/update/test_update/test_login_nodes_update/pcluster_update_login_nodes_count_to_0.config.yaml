@@ -1,5 +1,21 @@
 Image:
   Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Name: loginnode1
+      InstanceType: {{ instance }}
+      Count: 0
+      GracetimePeriod: 3
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: loginnode2
+      InstanceType: {{ instance }}
+      Count: 0
+      GracetimePeriod: 4
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -18,8 +34,7 @@ Scheduling:
           MaxCount: 2
         - Name: queue1-i2
           Instances:
-            - InstanceType: t3.medium
-            - InstanceType: t3.micro
+            - InstanceType: t3.large
           MinCount: 1
           MaxCount: 2
       Networking:

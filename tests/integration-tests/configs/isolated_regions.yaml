@@ -558,6 +558,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_update.py::test_login_nodes_update:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
 # This test cannot be executed in US isolated regions
 # because it uses CloudFormation resources that are not available in the regions:
 # CapacityReservation and ResourceGroup.
