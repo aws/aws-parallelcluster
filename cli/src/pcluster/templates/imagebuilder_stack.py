@@ -979,7 +979,7 @@ class ImageBuilderCdkStack(Stack):
                     description="This component is custom component for script, script name is {0}, script url is "
                     "{1}".format(component_script_name, custom_component.value),
                     platform="Linux",
-                    data=wrap_script_to_component(custom_component.value),
+                    data=Fn.sub(wrap_script_to_component(custom_component.value)),
                 )
                 components.append(
                     imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref(component_id))
