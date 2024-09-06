@@ -1933,8 +1933,8 @@ def _wait_until_instances_are_stopped(cluster):
     return n_compute_instances <= 1
 
 
-@pytest.mark.usefixtures("instance")
-def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, test_datadir):
+@pytest.mark.usefixtures("instance", "scheduler")
+def test_login_nodes_update(os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test cluster Updates (add, remove LN pools)."""
 
     # Start a cluster without login nodes
@@ -1950,36 +1950,25 @@ def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, 
     update_config_1 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_3.config.yaml")
     cluster.update(str(update_config_1))
 
-    # TODO Update once describe-cluster API response supports multiple pools
-    # Describe cluster, verify the response has the login node section and the sum of healthy and unhealthy nodes is 3
-    cluster_info = cluster.describe_cluster()
-    assert_that(cluster_info).is_not_none()
-    assert_that(cluster_info).contains("loginNodes")
-    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
-        3
-    )
+    with open(update_config_1, encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    _verify_login_nodes(cluster, config)
 
-    # Describe cluster instances, verify the response contains three login nodes
-    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
-    assert_that(len(instances)).is_equal_to(3)
-
-    # Update the cluster with count = 0
-    update_config_2 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_0.config.yaml")
+    # Update the cluster with count = 1
+    update_config_2 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_1.config.yaml")
     cluster.update(str(update_config_2))
 
-    # Describe cluster, verify the response has the login node section, but it contains only the lb information
-    cluster_info = cluster.describe_cluster()
-    assert_that(cluster_info).is_not_none()
-    assert_that(cluster_info).contains("loginNodes")
-    assert_that(cluster_info["loginNodes"]).contains("address")
-    assert_that(cluster_info["loginNodes"]["address"]).is_not_none()
-    assert_that(cluster_info["loginNodes"]["healthyNodes"] + cluster_info["loginNodes"]["unhealthyNodes"]).is_equal_to(
-        0
-    )
+    with open(update_config_2, encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    _verify_login_nodes(cluster, config)
 
-    # Describe cluster instances, verify the response doesn't contain login nodes
-    instances = cluster.get_cluster_instance_ids(node_type="LoginNode")
-    assert_that(len(instances)).is_equal_to(0)
+    # Update the cluster with count = 0
+    update_config_3 = pcluster_config_reader(config_file="pcluster_update_login_nodes_count_to_0.config.yaml")
+    cluster.update(str(update_config_3))
+
+    with open(update_config_3, encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    _verify_login_nodes(cluster, config)
 
     # Update the cluster to remove LoginNodes section
     cluster.update(str(initial_config))
@@ -1988,3 +1977,63 @@ def test_login_nodes_count_update(os, pcluster_config_reader, clusters_factory, 
     cluster_info = cluster.describe_cluster()
     assert_that(cluster_info).is_not_none()
     assert_that(cluster_info).does_not_contain("loginNodes")
+
+
+def _verify_login_nodes(cluster, config):
+    """
+    :param cluster: The cluster object
+    :param config: The config dictionary
+    :return: This function check the consistency between cluster and config
+    """
+    logging.info("Verifying login nodes")
+    _wait_autoscaling_group_capacity_update(cluster)
+    time.sleep(30)
+    logging.info("Verifying describe-cluster output")
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("loginNodes")
+    total_login_nodes = 0
+    for pool in cluster_info["loginNodes"]:
+        total_login_nodes += pool["healthyNodes"] + pool["unhealthyNodes"]
+        assert_that(pool.get("address")).is_not_none()
+    config_total_login_nodes = _total_login_nodes(config)
+    assert_that(total_login_nodes).is_equal_to(config_total_login_nodes)
+    logging.info("Verifying describe-cluster-instances output")
+    instances = cluster.describe_cluster_instances(node_type="LoginNode")
+    assert_that(len(instances)).is_equal_to(config_total_login_nodes)
+    logging.info("Verifying each login node configuration")
+    login_nodes_config = config["LoginNodes"]["Pools"]
+    login_nodes_dict = {node["Name"]: node for node in login_nodes_config}
+    for login_node in instances:
+        logging.info("Verifying login node %s", login_node.get("instanceId"))
+        pool_name = login_node.get("poolName")
+        login_node_config = login_nodes_dict[pool_name]
+        assert_that(login_node.get("instanceType")).is_equal_to(login_node_config.get("InstanceType"))
+        if login_node_config.get("GracetimePeriod"):
+            command_executor = RemoteCommandExecutor(
+                cluster, compute_node_ip=login_node.get("publicIpAddress") or login_node.get("privateIpAddress")
+            )
+            output = command_executor.run_remote_command("cat /etc/parallelcluster/loginmgtd_config.json").stdout
+            assert_that(output).contains(f" {login_node_config.get('GracetimePeriod')} minutes")
+    logging.info("Finished verifying login nodes")
+
+
+@retry(retry_on_result=lambda result: result is False, wait_fixed=seconds(20), stop_max_delay=seconds(700))
+def _wait_autoscaling_group_capacity_update(cluster):
+    logging.info("Waiting AutoScaling Group Capacity update")
+    for logical_id, physical_id in cluster.cfn_resources.items():
+        if "AutoScalingGroup" in logical_id:
+            asg_response = boto3.client("autoscaling").describe_auto_scaling_groups(
+                AutoScalingGroupNames=[physical_id]
+            )["AutoScalingGroups"][0]
+            for instance in asg_response["Instances"]:
+                if "Pending" in instance["LifecycleState"] or "Terminating" in instance["LifecycleState"]:
+                    return False
+    return True
+
+
+def _total_login_nodes(config):
+    total_login_nodes = 0
+    for pool in config["LoginNodes"]["Pools"]:
+        total_login_nodes += pool["Count"]
+    return total_login_nodes

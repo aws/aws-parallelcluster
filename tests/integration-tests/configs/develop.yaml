@@ -805,6 +805,12 @@ test-suites:
           schedulers: ["slurm"]
           oss: ["alinux2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
+    test_update.py::test_login_nodes_update:
+      dimensions:
+        - regions: ["us-east-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["rhel8"]
+          schedulers: ["slurm"]
   users:
     test_default_user_home.py::test_default_user_local_home:
       dimensions:
