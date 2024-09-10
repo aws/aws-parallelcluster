@@ -330,7 +330,7 @@ class QueuesStack(NestedStack):
                     # The file is needed by the product
                     # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
                     # This file is never created. Keeping the content as config version to signify an Update for cfn-hup
-                    "/tmp/config_version.txt": {  # nosec B108
+                    "config_version": {  # nosec B108
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
