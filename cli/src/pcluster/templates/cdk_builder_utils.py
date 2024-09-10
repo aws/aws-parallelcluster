@@ -1035,7 +1035,7 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
             ),
             iam.PolicyStatement(
                 sid="S3GetLaunchTemplate",
-                actions=["s3:GetObject", "s3:ListBucket", "s3:ListObjectVersions", "s3:ListBucketVersions"],
+                actions=["s3:GetObject", "s3:ListBucket"],
                 effect=iam.Effect.ALLOW,
                 resources=[
                     self._format_arn(service="s3", resource=self._cluster_bucket.name, region="", account=""),
