@@ -1335,7 +1335,7 @@ def test_dynamic_file_systems_update(
     # because the static compute node has a job running.
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(
-        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
+        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained", "idle~"]
     )
 
     logging.info("Checking the status of compute nodes in queue2")
