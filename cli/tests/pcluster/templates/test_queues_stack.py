@@ -45,6 +45,34 @@ from tests.pcluster.utils import get_asset_content_with_resource_name
                             "Sid": "S3GetObj",
                         },
                         {
+                            "Action": ["s3:GetObject", "s3:ListBucket"],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {"Ref": "AWS::Partition"},
+                                            ":s3:::parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                                        ],
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {"Ref": "AWS::Partition"},
+                                            ":s3:::parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete/"
+                                            "parallelcluster/clusters/dummy-cluster-randomstring123/*",
+                                        ],
+                                    ]
+                                },
+                            ],
+                            "Sid": "S3GetLaunchTemplate",
+                        },
+                        {
                             "Action": "cloudformation:DescribeStackResource",
                             "Effect": "Allow",
                             "Resource": {
@@ -105,16 +133,18 @@ def test_compute_nodes_iam_permissions(
 
 @freeze_time("2024-01-15T15:30:45")
 @pytest.mark.parametrize(
-    "config_file_name, expected_compute_node_dna_json_file_name, expected_compute_node_extra_json_file_name",
+    "config_file_name, expected_common_dna_json_file_name, "
+    "expected_compute_node_dna_json_file_name, expected_compute_node_extra_json_file_name",
     [
-        ("config-1.yaml", "dna-1.json", "extra-1.json"),
-        ("config-2.yaml", "dna-2.json", "extra-2.json"),
+        ("config-1.yaml", "common-dna-1.json", "compute-dna-1.json", "extra-1.json"),
+        ("config-2.yaml", "common-dna-2.json", "compute-dna-2.json", "extra-2.json"),
     ],
 )
 def test_compute_nodes_dna_json(
     mocker,
     test_datadir,
     config_file_name,
+    expected_common_dna_json_file_name,
     expected_compute_node_dna_json_file_name,
     expected_compute_node_extra_json_file_name,
 ):
@@ -132,22 +162,32 @@ def test_compute_nodes_dna_json(
     compute_node_lt_asset = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplateA7211c84b953696f")
     compute_node_lt = compute_node_lt_asset["Resources"]["LaunchTemplateA7211c84b953696f"]
     compute_node_cfn_init_files = compute_node_lt["Metadata"]["AWS::CloudFormation::Init"]["deployConfigFiles"]["files"]
-    compute_node_dna_json = compute_node_cfn_init_files["/tmp/dna.json"]
+    common_dna_json = compute_node_cfn_init_files["/tmp/common-dna.json"]
+    compute_node_dna_json = compute_node_cfn_init_files["/tmp/compute-dna.json"]
     compute_node_extra_json = compute_node_cfn_init_files["/tmp/extra.json"]
 
     # Expected dna.json and extra.json
+    expected_commom_dna_json = load_json_dict(test_datadir / expected_common_dna_json_file_name)
     expected_compute_node_dna_json = load_json_dict(test_datadir / expected_compute_node_dna_json_file_name)
     expected_compute_node_extra_json = load_json_dict(test_datadir / expected_compute_node_extra_json_file_name)
     expected_owner = expected_group = "root"
     expected_mode = "000644"
 
     # Assertions on dna.json
-    rendered_dna_json_content = render_join(compute_node_dna_json["content"]["Fn::Join"])
-    rendered_dna_json_content_as_json = json.loads(rendered_dna_json_content)
-    assert_that(compute_node_dna_json["owner"]).is_equal_to(expected_owner)
-    assert_that(compute_node_dna_json["group"]).is_equal_to(expected_group)
-    assert_that(compute_node_dna_json["mode"]).is_equal_to(expected_mode)
-    assert_that(rendered_dna_json_content_as_json).is_equal_to(expected_compute_node_dna_json)
+
+    for file_json, expected_json, keys in [
+        (common_dna_json, expected_commom_dna_json, "Fn::Join"),
+        (compute_node_dna_json, expected_compute_node_dna_json, None),
+    ]:
+        if keys:
+            rendered_content = render_join(file_json["content"][keys])
+        else:
+            rendered_content = file_json["content"]
+        rendered_json = json.loads(rendered_content)
+        assert_that(file_json["owner"]).is_equal_to(expected_owner)
+        assert_that(file_json["group"]).is_equal_to(expected_group)
+        assert_that(file_json["mode"]).is_equal_to(expected_mode)
+        assert_that(rendered_json).is_equal_to(expected_json)
 
     # Assertions on extra.json
     assert_that(compute_node_extra_json["owner"]).is_equal_to(expected_owner)

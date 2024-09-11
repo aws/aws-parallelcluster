@@ -1,0 +1,14 @@
+{
+  "cluster": {
+    "cluster_name": "clustername",
+    "enable_efa": "NONE",
+    "enable_efa_gdr": "NONE",
+    "ephemeral_dir": "/scratch",
+    "launch_template_id": "LaunchTemplateA7211c84b953696f",
+    "node_type": "ComputeFleet",
+    "proxy": "NONE",
+    "scheduler_compute_resource_name": "cr1",
+    "scheduler_queue_name": "queue1",
+    "stack_name": "clustername"
+  }
+}
