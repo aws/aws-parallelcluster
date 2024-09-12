@@ -15,9 +15,10 @@ import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import is_fsx_lustre_supported, is_fsx_ontap_supported, is_fsx_openzfs_supported
+from utils import get_username_for_os, is_fsx_lustre_supported, is_fsx_ontap_supported, is_fsx_openzfs_supported
 
 from tests.storage.storage_common import (
+    assert_fsx_correctly_shared,
     check_fsx,
     create_fsx_ontap,
     create_fsx_open_zfs,
@@ -41,6 +42,7 @@ from tests.storage.test_fsx_lustre import create_file_cache  # noqa  # pylint: d
 def test_shared_home(
     region,
     scheduler,
+    os,
     pcluster_config_reader,
     create_file_cache,
     vpc_stack,
@@ -86,13 +88,13 @@ def test_shared_home(
                 mount_dir=mount_dir, storage_type=storage_type, shared_storage_type=shared_storage_type
             )
         cluster1 = clusters_factory(cluster_config)
-        _check_shared_home(cluster1, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
+        _check_shared_home(cluster1, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
         cluster2 = clusters_factory(cluster_config)
-        _check_shared_home(cluster2, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
+        _check_shared_home(cluster2, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
 
 
 def _check_shared_home(
-    cluster, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
+    cluster, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, file_cache_path
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
@@ -101,12 +103,15 @@ def _check_shared_home(
     if storage_type == "Efs":
         test_efs_correctly_mounted(remote_command_executor, mount_dir)
         logging.info("Testing efs correctly mounted on compute nodes")
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, run_sudo=True)
+        verify_directory_correctly_shared(
+            remote_command_executor, f"{mount_dir}/{get_username_for_os(os)}", scheduler_commands
+        )
         test_efs_correctly_mounted(remote_command_executor_login_node, mount_dir)
         test_directory_correctly_shared_between_ln_and_hn(
-            remote_command_executor, remote_command_executor_login_node, mount_dir, run_sudo=True
+            remote_command_executor, remote_command_executor_login_node, f"{mount_dir}/{get_username_for_os(os)}"
         )
     elif storage_type in ["FsxLustre", "FsxOpenZfs", "FsxOntap"]:
+        # Use headnode only to skip the file test and run that test separately for the user's home directory
         check_fsx(
             cluster,
             region,
@@ -115,18 +120,24 @@ def _check_shared_home(
             bucket_name,
             file_cache_path=file_cache_path,
             run_sudo=True,
+            headnode_only=True,
+        )
+        assert_fsx_correctly_shared(
+            scheduler_commands, remote_command_executor, f"{mount_dir}/{get_username_for_os(os)}"
         )
     elif storage_type == "Ebs":
         _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=40)
         _test_ebs_correctly_mounted(remote_command_executor_login_node, mount_dir, volume_size=40)
         # Test ebs correctly shared between HeadNode and ComputeNodes
         logging.info("Testing ebs correctly mounted on compute nodes")
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+        verify_directory_correctly_shared(
+            remote_command_executor, f"{mount_dir}/{get_username_for_os(os)}", scheduler_commands
+        )
 
 
 def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
-    logging.info("Testing ebs {0} is correctly mounted on login".format(mount_dir))
-    result = remote_command_executor.run_remote_command("df -h | grep {0}".format(mount_dir))
+    logging.info(f"Testing ebs {mount_dir} is correctly mounted on login")
+    result = remote_command_executor.run_remote_command(f"df -h | grep {mount_dir}")
     assert_that(result.stdout).matches(r"{size}G.*{mount_dir}".format(size=volume_size, mount_dir=mount_dir))
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
