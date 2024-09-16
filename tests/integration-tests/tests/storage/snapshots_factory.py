@@ -133,10 +133,10 @@ class EBSSnapshotsFactory:
         device_name = ssh_conn.run("readlink -f /dev/sdf").stdout.strip()
         # formats the 1st partition of disk
         logging.info("Formatting 1st partition...")
-        ssh_conn.run("sudo sh -c 'mkfs.ext4 {}1'".format(device_name))
+        ssh_conn.run(f"sudo sh -c 'mkfs.ext4 {device_name}'")
         logging.info("Mounting partition...")
         ssh_conn.run("sudo mkdir /mnt/tmp")
-        ssh_conn.run("sudo mount {}1 /mnt/tmp".format(device_name))
+        ssh_conn.run(f"sudo mount {device_name} /mnt/tmp")
         logging.info("Writing test data...")
         ssh_conn.run("echo 'hello world' | sudo tee -a /mnt/tmp/test.txt")
         logging.info("Device ready")
