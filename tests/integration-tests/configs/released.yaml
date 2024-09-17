@@ -226,7 +226,7 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   spot:
     test_spot.py::test_spot_default:
