@@ -289,14 +289,14 @@ def _test_ebs_resize(remote_command_executor, mount_dir, volume_size):
     # /dev/nvme1n1p1  9.8G   37M  9.3G   1% /ebs_mount_dir
     # /dev/nvme2n1p1  9.8G   37M  9.3G   1% /existing_mount_dir
     filesystem_name = remote_command_executor.run_remote_command(
-        "df -h -t ext4 | tail -n +2 |grep '{mount_dir}' | awk '{{print $1}}'".format(mount_dir=mount_dir)
+        "df -h -t ext4 | tail -n +2 | grep '{mount_dir}' | awk '{{print $1}}'".format(mount_dir=mount_dir)
     ).stdout
 
     # get the volume name given the filesystem name
     # example input: /dev/nvme1n1p1
     # example output: nvme1n1
     volume_name = remote_command_executor.run_remote_command(
-        "lsblk -no pkname {filesystem_name}".format(filesystem_name=filesystem_name)
+        "lsblk -no name {filesystem_name}".format(filesystem_name=filesystem_name)
     ).stdout
 
     # get the volume size of the volume
