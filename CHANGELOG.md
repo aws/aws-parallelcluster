@@ -6,12 +6,13 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add support for custom actions on login nodes.
-- Allow DCV connection on login nodes.
+- Allow DCV connection to login nodes.
 - Add support for ap-southeast-3 region.
 - Add security groups to login node network load balancer.
 - Add `AllowedIps` configuration for login nodes.
 - Add new configuration `SharedStorage/EfsSettings/AccessPointId` to specify an optional EFS access point for a mount
-- Allow multiple login node pools.
+- Allow up to 10 login node pools.
+- Install enroot and pyxis in official pcluster AMIs
 
 **CHANGES**
 - Upgrade Slurm to 23.11.10 (from 23.11.7).
