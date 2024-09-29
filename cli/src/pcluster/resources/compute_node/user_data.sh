@@ -51,6 +51,15 @@ datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/ttyS0"
 write_files:
+  - path: /tmp/stack-arn.json
+    permissions: '0644'
+    owner: root:root
+    content: |
+       {
+          "cluster":{
+            "stack_arn": "${AWS::StackId}"
+          }
+       }
   - path: /tmp/bootstrap.sh
     permissions: '0744'
     owner: root:root
@@ -93,11 +102,23 @@ write_files:
         fi
       }
 
+      function get_s3_dna_json_files
+      {
+        AWS_RETRY_MODE=standard
+        JSON_FILES="common-dna-${ClusterConfigVersion}.json;common-dna.json ComputeNode/compute-dna-${LaunchTemplateResourceId}-${ClusterConfigVersion}.json;compute-dna.json extra-${ClusterConfigVersion}.json;extra.json"
+        for file_name_tuple in ${!JSON_FILES[@]}; do
+          file_names=(${!file_name_tuple//;/ })
+          s3_prefix_to_download=${!file_names[0]}
+          tmp_file_name=${!file_names[1]}
+          S3_RESULT=$(aws s3api get-object --bucket ${S3_BUCKET} --key  "${S3_ARTIFACT_DIR}/assets/${!s3_prefix_to_download}" --region ${AWS::Region} /tmp/${!tmp_file_name} 2>&1 ) || error_exit "${!S3_RESULT}"
+        done
+      }
+
       export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 
       [ -f /etc/parallelcluster/pcluster_cookbook_environment.sh ] && . /etc/parallelcluster/pcluster_cookbook_environment.sh
 
-      $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the compute node. Please check /var/log/cfn-init.log in the compute node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
+      get_s3_dna_json_files
 
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
@@ -139,9 +160,11 @@ write_files:
         vendor_cookbook
       fi
       cd /tmp
+      mkdir -p /etc/chef/ohai/hints
+      touch /etc/chef/ohai/hints/ec2.json
 
       start=$(date +%s)
-
+      jq -s ".[0] * .[1] * .[2] * .[3]" /tmp/common-dna.json /tmp/compute-dna.json /tmp/stack-arn.json /tmp/extra.json > /etc/chef/dna.json || ( echo "jq not installed"; cp /tmp/common-dna.json /tmp/compute-dna.json  /etc/chef/dna.json )
       {
         CINC_CMD="cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist"
         FR_CMD="/opt/parallelcluster/scripts/fetch_and_run"

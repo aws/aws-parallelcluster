@@ -1335,7 +1335,7 @@ def test_dynamic_file_systems_update(
     # because the static compute node has a job running.
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(
-        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
+        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained", "idle~"]
     )
 
     logging.info("Checking the status of compute nodes in queue2")
@@ -1344,7 +1344,7 @@ def test_dynamic_file_systems_update(
     # or under replacement (drained, draining).
     queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
     assert_compute_node_states(
-        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*", "draining"]
+        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*", "draining", "idle~"]
     )
 
     logging.info("Checking that shared storage is visible on the head node")

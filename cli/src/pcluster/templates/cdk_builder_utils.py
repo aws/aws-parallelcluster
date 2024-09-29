@@ -648,7 +648,13 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             iam.PolicyStatement(
                 sid="ResourcesS3Bucket",
                 effect=iam.Effect.ALLOW,
-                actions=["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketLocation", "s3:ListBucket"],
+                actions=[
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:GetObjectVersion",
+                    "s3:GetBucketLocation",
+                    "s3:ListBucket",
+                ],
                 resources=[
                     self._format_arn(service="s3", resource=self._cluster_bucket.name, region="", account=""),
                     self._format_arn(
@@ -997,7 +1003,9 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
         node: Union[HeadNode, BaseQueue, LoginNodesPool],
         shared_storage_infos: dict,
         name: str,
+        cluster_bucket: S3Bucket,
     ):
+        self._cluster_bucket = cluster_bucket
         super().__init__(scope, id, config, node, shared_storage_infos, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
@@ -1021,6 +1029,20 @@ class ComputeNodeIamResources(NodeIamResourcesBase):
                         region="",
                         account="",
                     )
+                ],
+            ),
+            iam.PolicyStatement(
+                sid="S3GetLaunchTemplate",
+                actions=["s3:GetObject", "s3:ListBucket"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    self._format_arn(service="s3", resource=self._cluster_bucket.name, region="", account=""),
+                    self._format_arn(
+                        service="s3",
+                        resource=f"{self._cluster_bucket.name}/{self._cluster_bucket.artifact_directory}/*",
+                        region="",
+                        account="",
+                    ),
                 ],
             ),
             iam.PolicyStatement(
