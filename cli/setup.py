@@ -54,7 +54,7 @@ REQUIRES = [
 ]
 
 LAMBDA_REQUIRES = [
-    "aws-lambda-powertools~=1.14",
+    "aws-lambda-powertools>=1.14,<3.0",
 ]
 
 setup(
