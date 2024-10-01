@@ -57,4 +57,4 @@ ENV PATH "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib6
 # expose ssh port
 EXPOSE 22
 
-ENTRYPOINT ["/parallelcluster/bin/entrypoint.sh"]
+USER root ENTRYPOINT ["/parallelcluster/bin/entrypoint.sh"]
