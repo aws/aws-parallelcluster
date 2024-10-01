@@ -16,6 +16,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_LOGIN_NODES_POOL_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
+    Feature,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
@@ -32,7 +33,13 @@ from pcluster.templates.cdk_builder_utils import (
     get_user_data_content,
     to_comma_separated_string,
 )
-from pcluster.utils import get_attr, get_http_tokens_setting, get_resource_name_from_resource_arn, get_service_endpoint
+from pcluster.utils import (
+    get_attr,
+    get_http_tokens_setting,
+    get_resource_name_from_resource_arn,
+    get_service_endpoint,
+    is_feature_supported,
+)
 
 
 class Pool(Construct):
@@ -432,12 +439,13 @@ class Pool(Construct):
                 ]
             ),
         )
-        # This is a workaround to add security groups to the NLB
-        # The currently used version of aws-elasticloadbalancingv2 (v1.204) doesn't support
-        # creating NLB with security groups directly
-        login_nodes_load_balancer.node.default_child.add_property_override(
-            "SecurityGroups", self._load_balancer_security_groups
-        )
+        if is_feature_supported(Feature.NLB_SECURITY_GROUP):
+            # This is a workaround to add security groups to the NLB
+            # The currently used version of aws-elasticloadbalancingv2 (v1.204) doesn't support
+            # creating NLB with security groups directly
+            login_nodes_load_balancer.node.default_child.add_property_override(
+                "SecurityGroups", self._load_balancer_security_groups
+            )
         listener = login_nodes_load_balancer.add_listener(f"LoginNodesListener{self._pool.name}", port=22)
         listener.add_target_groups(f"LoginNodesListenerTargets{self._pool.name}", target_group)
         return login_nodes_load_balancer
