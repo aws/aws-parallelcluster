@@ -22,7 +22,7 @@ def readme():
 
 VERSION = "1.4.0"
 REQUIRES = [
-    "setuptools<70.0.0",
+    "setuptools>=70.0.0",
     "boto3>=1.16.14",
     "tabulate>=0.8.8,<=0.8.10",
 ]
