@@ -60,37 +60,34 @@ def test_shared_home(
     mount_dir = "/home"
     bucket_name = None
 
-    fsx_supported = (
-        is_fsx_lustre_supported(region) or is_fsx_ontap_supported(region) or is_fsx_openzfs_supported(region)
-    )
-
-    if fsx_supported or storage_type in ["Efs", "Ebs"]:
-        if is_fsx_openzfs_supported(region) and storage_type == "FsxOpenZfs":
-            fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
-            fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
-            cluster_config = pcluster_config_reader(
-                mount_dir=mount_dir,
-                storage_type=storage_type,
-                volume_id=fsx_open_zfs_volume_id,
-                shared_storage_type=shared_storage_type,
-            )
-        elif is_fsx_ontap_supported(region) and storage_type == "FsxOntap":
-            fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
-            fsx_on_tap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
-            cluster_config = pcluster_config_reader(
-                mount_dir=mount_dir,
-                storage_type=storage_type,
-                volume_id=fsx_on_tap_volume_id,
-                shared_storage_type=shared_storage_type,
-            )
-        else:
-            cluster_config = pcluster_config_reader(
-                mount_dir=mount_dir, storage_type=storage_type, shared_storage_type=shared_storage_type
-            )
-        cluster1 = clusters_factory(cluster_config)
-        _check_shared_home(cluster1, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
-        cluster2 = clusters_factory(cluster_config)
-        _check_shared_home(cluster2, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
+    if is_fsx_openzfs_supported(region) and storage_type == "FsxOpenZfs":
+        fsx_open_zfs_root_volume_id = create_fsx_open_zfs(fsx_factory, num=1)[0]
+        fsx_open_zfs_volume_id = open_zfs_volume_factory(fsx_open_zfs_root_volume_id, num_volumes=1)[0]
+        cluster_config = pcluster_config_reader(
+            mount_dir=mount_dir,
+            storage_type=storage_type,
+            volume_id=fsx_open_zfs_volume_id,
+            shared_storage_type=shared_storage_type,
+        )
+    elif is_fsx_ontap_supported(region) and storage_type == "FsxOntap":
+        fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1)[0]
+        fsx_on_tap_volume_id = svm_factory(fsx_ontap_fs_id, num_volumes=1)[0]
+        cluster_config = pcluster_config_reader(
+            mount_dir=mount_dir,
+            storage_type=storage_type,
+            volume_id=fsx_on_tap_volume_id,
+            shared_storage_type=shared_storage_type,
+        )
+    elif (is_fsx_lustre_supported(region) and storage_type == "FsxLustre") or storage_type in ["Efs", "Ebs"]:
+        cluster_config = pcluster_config_reader(
+            mount_dir=mount_dir, storage_type=storage_type, shared_storage_type=shared_storage_type
+        )
+    else:
+        pytest.skip("Skipping due to unsupported storage type")
+    cluster1 = clusters_factory(cluster_config)
+    _check_shared_home(cluster1, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
+    cluster2 = clusters_factory(cluster_config)
+    _check_shared_home(cluster2, os, scheduler_commands_factory, storage_type, mount_dir, region, bucket_name, None)
 
 
 def _check_shared_home(
