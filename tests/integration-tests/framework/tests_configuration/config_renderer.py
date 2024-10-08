@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
+from datetime import date
 from functools import lru_cache
 
 import yaml
@@ -18,8 +19,53 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
+from pcluster.constants import SUPPORTED_OSES
 
-def read_config_file(config_file, print_rendered=False, **kwargs):
+
+def _get_os_parameters(config=None, args=None):
+    """
+    Gets OS jinja parameters.
+    The input could be args from arg parser or config from pytest. This function is used both by arg parser and pytest.
+    :param args: args from arg parser
+    :param config: config from pytest
+    """
+    available_amis_oss_x86 = _get_available_amis_oss("x86", config=config, args=args)
+    available_amis_oss_arm = _get_available_amis_oss("arm", config=config, args=args)
+    result = {}
+    today_number = (date.today() - date(2020, 1, 1)).days
+    for index in range(len(SUPPORTED_OSES)):
+        result[f"OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
+        result[f"OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
+    return result
+
+
+def _get_available_amis_oss(architecture, args=None, config=None):
+    """
+    Gets available AMIs for given architecture from input.
+    The input could be args from arg parser or config from pytest. This function is used both by arg parser and pytest.
+    :param architecture:  The architecture of the OS (x86 or arm)
+    :param args: args from arg parser
+    :param config: config from pytest
+    :return: list of available AMIs from input or all supported AMIs if input is not provided
+    :rtype: list
+    """
+    available_amis_oss = None
+    if args:
+        args_dict = vars(args)
+        available_amis_oss = args_dict.get(f"available_amis_oss_{architecture}")
+    elif config and config.getoption(f"available_amis_oss_{architecture}"):
+        available_amis_oss = config.getoption(f"available_amis_oss_{architecture}").split(" ")
+    if available_amis_oss:
+        logging.info("Using available %s AMIs OSes from input", architecture)
+        return available_amis_oss
+    else:
+        logging.info(
+            "Using all supported x86 OSes because the list of available %s AMIs OSes is not provided.", architecture
+        )
+        return SUPPORTED_OSES
+
+
+def read_config_file(config_file, print_rendered=False, config=None, args=None, **kwargs):
     """
     Read the test config file and apply Jinja rendering.
     Multiple invocations of the same function within the same process produce the same rendering output. This is done
@@ -30,7 +76,7 @@ def read_config_file(config_file, print_rendered=False, **kwargs):
     :return: a dict containig the parsed config file
     """
     logging.info("Parsing config file: %s", config_file)
-    rendered_config = _render_config_file(config_file, **kwargs)
+    rendered_config = _render_config_file(config_file, **kwargs, **_get_os_parameters(config=config, args=args))
     try:
         return yaml.safe_load(rendered_config)
     except Exception:
