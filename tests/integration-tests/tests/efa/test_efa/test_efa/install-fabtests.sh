@@ -8,7 +8,7 @@ set -ex
 FABTESTS_DIR="$1"
 
 FABTESTS_REPO="https://github.com/ofiwg/libfabric.git"
-FABTESTS_VERSION="1.21.0"
+FABTESTS_VERSION="1.22.0"
 FABTESTS_SOURCES_DIR="$FABTESTS_DIR/sources"
 LIBFABRIC_DIR="/opt/amazon/efa"
 CUDA_DIR="/usr/local/cuda"
