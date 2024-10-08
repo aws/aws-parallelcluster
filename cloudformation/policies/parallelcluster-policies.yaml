@@ -572,11 +572,13 @@ Resources:
               - autoscaling:DeleteAutoScalingGroup
               - autoscaling:DeleteLifecycleHook
               - autoscaling:DescribeAutoScalingGroups
+              - autoscaling:DescribeLifecycleHooks
               - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
               - elasticloadbalancing:CreateListener
               - elasticloadbalancing:CreateTargetGroup
+              - elasticloadbalancing:DescribeTags
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
