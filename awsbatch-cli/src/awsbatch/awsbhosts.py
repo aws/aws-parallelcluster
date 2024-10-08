@@ -66,7 +66,7 @@ class Host:
         mem_registered,
         cpu_avail,
         mem_avail,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """Initialize the object."""
         self.container_instance_arn = container_instance_arn
         self.status = status
