@@ -1,10 +1,10 @@
 CHANGELOG
 =========
-3.11.0
+3.12.0
 ------
 
 **BUG FIXES**
-- Remove requirement of outbound ports on VPC security groups for FSx for OpenZFS
+- When mounting an external OpenZFS, it is no longer required to set the outbound rules for ports 111, 2049, 20001, 20002, 20003
 
 3.11.0
 ------

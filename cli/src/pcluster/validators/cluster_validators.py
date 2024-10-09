@@ -667,10 +667,13 @@ class ExistingFsxNetworkingValidator(Validator):
                     )
 
                     if missing_ports:
+                        direction = "inbound and outbound"
+                        if file_storage.file_storage_type == "OPENZFS":
+                            direction = "inbound"
                         self._add_failure(
                             f"The current security group settings on file storage '{file_storage_id}' does not"
                             " satisfy mounting requirement. The file storage must be associated to a security group"
-                            f" that allows inbound and outbound {protocol.upper()} traffic through ports {ports}. "
+                            f" that allows {direction } {protocol.upper()} traffic through ports {ports}. "
                             f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
                         )

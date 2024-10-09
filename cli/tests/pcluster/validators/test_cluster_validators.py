@@ -1072,11 +1072,13 @@ def test_queue_name_validator(name, expected_message):
 
 
 @pytest.mark.parametrize(
-    "fsx_file_system_type, fsx_vpc, ip_permissions, nodes_security_groups, network_interfaces, " "expected_message",
+    "fsx_file_system_type, fsx_vpc, ip_permissions, ip_permissions_egress, nodes_security_groups, network_interfaces, "
+    "expected_message",
     [
         (  # working case, right vpc and sg, multiple network interfaces
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f", "eni-001b3cef7c78b45c4"],
@@ -1086,6 +1088,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             None,
@@ -1093,6 +1096,7 @@ def test_queue_name_validator(name, expected_message):
         (  # working case (LUSTRE) CIDR specified in the security group through ip ranges
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
@@ -1103,6 +1107,10 @@ def test_queue_name_validator(name, expected_message):
             # do not cover the subnet
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.0.1.0/25"}]},
+                {"IpProtocol": "tcp", "FromPort": 988, "ToPort": 988, "IpRanges": [{"CidrIp": "10.0.1.128/25"}]},
+            ],
             [
                 {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.0.1.0/25"}]},
                 {"IpProtocol": "tcp", "FromPort": 988, "ToPort": 988, "IpRanges": [{"CidrIp": "10.0.1.128/25"}]},
@@ -1119,6 +1127,10 @@ def test_queue_name_validator(name, expected_message):
                 {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.1.1.0/25"}]},
                 {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]},
             ],
+            [
+                {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.1.1.0/25"}]},
+                {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]},
+            ],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             None,
@@ -1131,14 +1143,19 @@ def test_queue_name_validator(name, expected_message):
                 {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.0.0.0/23"}]},
                 {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-34567890"}]},
             ],
+            [
+                {"IpProtocol": "-1", "IpRanges": [{"CidrIp": "10.0.0.0/23"}]},
+                {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-34567890"}]},
+            ],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             None,
         ),
-        (  # working case (OPENZFS), CIDR specified in the security group through ip ranges
+        (  # working case (OPENZFS), CIDR specified in the security group through ip ranges, no egress rules
             "OPENZFS",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+            [],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             None,
@@ -1146,6 +1163,7 @@ def test_queue_name_validator(name, expected_message):
         (  # working case (ONTAP), CIDR specified in the security group through ip ranges
             "ONTAP",
             "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
             [{"IpProtocol": "-1", "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
@@ -1155,6 +1173,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "PrefixListIds": [{"PrefixListId": "pl-12345"}]}],
+            [{"IpProtocol": "-1", "PrefixListIds": [{"PrefixListId": "pl-12345"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             None,
@@ -1163,6 +1182,7 @@ def test_queue_name_validator(name, expected_message):
             # Security group without CIDR/prefix cannot work with clusters containing pcluster created security group.
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
@@ -1175,6 +1195,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-23456789"}]}],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-23456789"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file storage .* does not satisfy mounting requirement. "
@@ -1186,16 +1207,18 @@ def test_queue_name_validator(name, expected_message):
             "OPENZFS",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
             "The current security group settings on file storage .* does not satisfy mounting requirement. "
             "The file storage must be associated to a security group that "
-            r"allows inbound and outbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\].",
+            r"allows inbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\].",
         ),
         (  # not working case, wrong security group. Ontap
             # Security group without CIDR cannot work with clusters containing pcluster created security group.
             "ONTAP",
             "vpc-06e4ab6c6cEXAMPLE",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({None}), frozenset({None})},
             ["eni-09b9460295ddd4e5f"],
@@ -1207,6 +1230,7 @@ def test_queue_name_validator(name, expected_message):
             "LUSTRE",
             "vpc-06e4ab6c6cEXAMPLE",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             [],
             "doesn't have Elastic Network Interfaces attached",
@@ -1214,6 +1238,7 @@ def test_queue_name_validator(name, expected_message):
         (  # not working case --> wrong vpc
             "LUSTRE",
             "vpc-06e4ab6c6ccWRONG",
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
@@ -1232,12 +1257,43 @@ def test_queue_name_validator(name, expected_message):
                     "UserIdGroupPairs": [],
                 }
             ],
+            [
+                {
+                    "PrefixListIds": [],
+                    "FromPort": 22,
+                    "IpRanges": [{"CidrIp": "203.0.113.0/24"}],
+                    "ToPort": 22,
+                    "IpProtocol": "tcp",
+                    "UserIdGroupPairs": [],
+                }
+            ],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
             ["eni-09b9460295ddd4e5f"],
             [
                 "only support using FSx file storage that is in the same VPC as the cluster",
                 "does not satisfy mounting requirement",
             ],
+        ),
+        (  # not working case (OPENZFS), ingress rules don't cover all ports required
+            "OPENZFS",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {
+                    "PrefixListIds": [],
+                    "FromPort": 111,
+                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                    "ToPort": 111,
+                    "IpProtocol": "tcp",
+                    "UserIdGroupPairs": [],
+                },
+            ],
+            [],
+            {frozenset({None}), frozenset({None})},
+            ["eni-09b9460295ddd4e5f"],
+            "The current security group settings on file storage .* does not satisfy mounting requirement. "
+            "The file storage must be associated to a security group that "
+            r"allows inbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\]. Missing ports: "
+            r"\[2049, 20001, 20002, 20003\]",
         ),
     ],
 )
@@ -1246,6 +1302,7 @@ def test_fsx_network_validator(
     fsx_file_system_type,
     fsx_vpc,
     ip_permissions,
+    ip_permissions_egress,
     nodes_security_groups,
     network_interfaces,
     expected_message,
@@ -1406,7 +1463,7 @@ def test_fsx_network_validator(
             describe_security_groups_response = {
                 "SecurityGroups": [
                     {
-                        "IpPermissionsEgress": ip_permissions,
+                        "IpPermissionsEgress": ip_permissions_egress,
                         "Description": "My security group",
                         "IpPermissions": ip_permissions,
                         "GroupName": "MySecurityGroup",
