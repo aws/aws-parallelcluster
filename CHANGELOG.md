@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.12.0
+------
+
+**CHANGES**
+- Upgrade Python to version 3.12 and NodeJS to version 18 in ParallelCluster Lambda Layer.
+
 3.11.1
 ------
 
