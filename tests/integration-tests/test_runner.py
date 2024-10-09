@@ -61,6 +61,8 @@ TEST_DEFAULTS = {
     "cookbook_git_ref": None,
     "node_git_ref": None,
     "ami_owner": None,
+    "available_amis_oss_x86": [],
+    "available_amis_oss_arm": [],
     "createami_custom_node_url": None,
     "custom_awsbatchcli_url": None,
     "custom_ami": None,
@@ -303,6 +305,20 @@ def _init_argparser():
         help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
         default=TEST_DEFAULTS.get("ami_owner"),
     )
+    ami_group.add_argument(
+        "--available-amis-oss-x86",
+        help="(optional) set to available x86 AMIs OSes in the account. "
+        "If not specified, all supported OSes will be used.",
+        default=TEST_DEFAULTS.get("available_amis_oss_x86"),
+        nargs="*",
+    )
+    ami_group.add_argument(
+        "--available-amis-oss-arm",
+        help="(optional) set to available ARM AMIs OSes in the account. "
+        "If not specified, all supported OSes will be used.",
+        default=TEST_DEFAULTS.get("available_amis_oss_arm"),
+        nargs="*",
+    )
 
     banchmarks_group = parser.add_argument_group("Benchmarks")
     banchmarks_group.add_argument(
@@ -504,13 +520,14 @@ def _is_url(value):
         raise argparse.ArgumentTypeError("'{0}' is not a valid url".format(value))
 
 
-def _test_config_file(config_file_path, config_args=None):
+def _test_config_file(args, config_args=None):
+    config_file_path = args.tests_config
     _is_file(config_file_path)
     try:
         if config_args:
-            config = read_config_file(config_file_path, **config_args)
+            config = read_config_file(config_file_path, args=args, **config_args)
         else:
-            config = read_config_file(config_file_path)
+            config = read_config_file(config_file_path, args=args)
         return config
     except Exception:
         raise argparse.ArgumentTypeError("'{0}' is not a valid test config".format(config_file_path))
@@ -655,6 +672,12 @@ def _set_ami_args(args, pytest_args):
 
     if args.ami_owner:
         pytest_args.extend(["--ami-owner", args.ami_owner])
+
+    if args.available_amis_oss_x86:
+        pytest_args.extend(["--available-amis-oss-x86", " ".join(args.available_amis_oss_x86)])
+
+    if args.available_amis_oss_arm:
+        pytest_args.extend(["--available-amis-oss-arm", " ".join(args.available_amis_oss_arm)])
 
 
 def _set_custom_stack_args(args, pytest_args):  # noqa: C901
@@ -829,7 +852,7 @@ def _check_args(args):
     else:
         try:
             test_config_args = _get_config_arguments(args)
-            args.tests_config = _test_config_file(args.tests_config, test_config_args)
+            args.tests_config = _test_config_file(args, test_config_args)
             assert_valid_config(args.tests_config, args.tests_root_dir)
             logger.info("Found valid config file:\n%s", dump_rendered_config_file(args.tests_config))
         except Exception:
