@@ -462,7 +462,9 @@ class EfaMultiAzValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
-def _is_access_allowed(security_groups_ids, subnets, port, security_groups_by_nodes, protocol="tcp"):
+def _is_access_allowed(
+    security_groups_ids, subnets, port, security_groups_by_nodes, protocol="tcp", check_outbound=True
+):
     """
     Verify given list of security groups to check if they allow in and out access on the given port.
 
@@ -508,7 +510,9 @@ def _is_access_allowed(security_groups_ids, subnets, port, security_groups_by_no
     out_access = out_access or _are_ip_ranges_and_sg_accessible(
         security_groups_by_nodes, dst_ip_ranges, dst_security_groups, subnets
     )
-    return in_access and out_access
+    if check_outbound:
+        return in_access and out_access
+    return in_access
 
 
 def _are_ip_ranges_and_sg_accessible(security_groups_by_nodes, allowed_ip_ranges, allowed_security_groups, subnets):
@@ -654,7 +658,12 @@ class ExistingFsxNetworkingValidator(Validator):
 
                 for protocol, ports in FSX_PORTS[file_storage.file_storage_type].items():
                     missing_ports = self._get_missing_ports(
-                        security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol
+                        security_groups_by_nodes,
+                        subnet_ids,
+                        network_interfaces,
+                        ports,
+                        protocol,
+                        file_storage.file_storage_type,
                     )
 
                     if missing_ports:
@@ -666,19 +675,25 @@ class ExistingFsxNetworkingValidator(Validator):
                             FailureLevel.ERROR,
                         )
 
-    def _get_missing_ports(self, security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol):
+    def _get_missing_ports(
+        self, security_groups_by_nodes, subnet_ids, network_interfaces, ports, protocol, storage_type
+    ):
         missing_ports = []
         for port in ports:
             fs_access = False
             for network_interface in network_interfaces:
                 # Get list of security group IDs
                 sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
+                check_outbound = True
+                if storage_type == "OPENZFS":
+                    check_outbound = False
                 if _is_access_allowed(
                     sg_ids,
                     subnet_ids,
                     port=port,
                     security_groups_by_nodes=security_groups_by_nodes,
                     protocol=protocol,
+                    check_outbound=check_outbound,
                 ):
                     fs_access = True
                     break
