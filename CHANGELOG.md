@@ -1,5 +1,10 @@
 CHANGELOG
 =========
+3.11.0
+------
+
+**BUG FIXES**
+- Remove requirement of outbound ports on VPC security groups for FSx for OpenZFS
 
 3.12.0
 ------
