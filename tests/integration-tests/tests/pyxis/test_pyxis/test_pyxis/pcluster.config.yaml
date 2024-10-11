@@ -1,0 +1,27 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          Instances:
+            - InstanceType: c5.xlarge
+          MinCount: 0
+          MaxCount: 2000
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ mount_dir }}
+    Name: efs
+    StorageType: Efs
+
+
