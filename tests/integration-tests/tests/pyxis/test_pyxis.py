@@ -47,7 +47,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir):
     # Submit the Pyxis job which is expected to fail
     logging.info("Submitting Pyxis job which should fail")
     result = slurm_commands.submit_script(
-        script=str(test_datadir / "mpi_job.sh"),
+        script=str(test_datadir / "test.sh"),
         other_options="--wait -o slurm.out",
     )
 
