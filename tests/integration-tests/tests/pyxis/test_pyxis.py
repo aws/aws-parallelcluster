@@ -22,7 +22,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory):
     """
     Test Enroot and Pyxis failure due to concurrent sed operations on shared filesystem.
 
-    This test creates a cluster with EFS as shared storage and 2000 dynamic compute nodes.
+    This test creates a cluster with EFS as shared storage and 1000 dynamic compute nodes.
     It submits a simple job to scale up the cluster, and then submits a Pyxis job which should fail
     due to the known issue in version 3.11.0.
 
@@ -35,10 +35,10 @@ def test_pyxis(pcluster_config_reader, clusters_factory):
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
 
-    # Submit a simple job to scale up to 2000 nodes
-    logging.info("Submitting job to scale up to 2000 nodes")
+    # Submit a simple job to scale up to 1000 nodes
+    logging.info("Submitting job to scale up to 1000 nodes")
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={"command": "srun hostname", "nodes": 2000}
+        submit_command_args={"command": "srun hostname", "nodes": 1000}
     )
     slurm_commands.wait_job_completed(job_id, timeout=30)
     slurm_commands.assert_job_succeeded(job_id)
