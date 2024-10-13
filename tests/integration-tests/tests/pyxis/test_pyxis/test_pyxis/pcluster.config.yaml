@@ -15,7 +15,7 @@ Scheduling:
           Instances:
             - InstanceType: t3.small
           MinCount: 0
-          MaxCount: 2000
+          MaxCount: 1000
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
