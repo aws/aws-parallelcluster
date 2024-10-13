@@ -50,7 +50,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory):
 echo "Hello World"
 # Pyxis Job
 """
-    remote_script_path = "/shared/test.sh"
+    remote_script_path = "~/test.sh"
     remote_command_executor.run_remote_command(f"echo '{script_content}' > {remote_script_path}")
     remote_command_executor.run_remote_command(f"chmod +x {remote_script_path}")
 
