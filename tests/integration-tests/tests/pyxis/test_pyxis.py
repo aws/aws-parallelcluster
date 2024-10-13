@@ -10,15 +10,16 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import pytest
 
+import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.schedulers_common import SlurmCommands
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_pyxis(pcluster_config_reader, clusters_factory):
+def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir):
     """
     Test Enroot and Pyxis failure due to concurrent sed operations on shared filesystem.
 
@@ -43,21 +44,10 @@ def test_pyxis(pcluster_config_reader, clusters_factory):
     slurm_commands.wait_job_completed(job_id, timeout=30)
     slurm_commands.assert_job_succeeded(job_id)
 
-    # Create the test.sh script for the Pyxis job
-    logging.info("Creating test.sh script for Pyxis job")
-    script_content = """#!/bin/bash
-#SBATCH --container-image docker://ubuntu:22.04
-echo "Hello World"
-# Pyxis Job
-"""
-    remote_script_path = "~/test.sh"
-    remote_command_executor.run_remote_command(f"echo '{script_content}' > {remote_script_path}")
-    remote_command_executor.run_remote_command(f"chmod +x {remote_script_path}")
-
     # Submit the Pyxis job which is expected to fail
     logging.info("Submitting Pyxis job which should fail")
     result = slurm_commands.submit_script(
-        script=remote_script_path,
+        script=str(test_datadir / "mpi_job.sh"),
         other_options="--wait -o slurm.out",
     )
 
