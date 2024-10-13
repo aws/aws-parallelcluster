@@ -13,7 +13,7 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           Instances:
-            - InstanceType: c5.xlarge
+            - InstanceType: t3.small
           MinCount: 0
           MaxCount: 2000
       Networking:
