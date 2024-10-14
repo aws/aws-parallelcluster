@@ -1,17 +1,13 @@
 CHANGELOG
 =========
 
-3.12.0
-------
-
-**CHANGES**
-- Upgrade Python to version 3.12 and NodeJS to version 18 in ParallelCluster Lambda Layer.
-
 3.11.1
 ------
 
 **CHANGES**
 - Pyxis is now disabled by default and it must be manually enabled on the head node.
+- Upgrade Python runtime to version 3.12 in ParallelCluster Lambda Layer.
+- Remove version pinning for setuptools to version prior to 70.0.0.
 
 **BUG FIXES**
 - Fix an issue in the way we configure the Pyxis Slurm plugin in ParallelCluster that can lead to job submission failures.
