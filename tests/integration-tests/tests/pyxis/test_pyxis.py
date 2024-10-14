@@ -40,7 +40,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir):
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={"command": "srun hostname", "nodes": 2000}
     )
-    slurm_commands.wait_job_completed(job_id)
+    slurm_commands.wait_job_completed(job_id, timeout=30)
     slurm_commands.assert_job_succeeded(job_id)
 
     # Submit the Pyxis job which is expected to fail
