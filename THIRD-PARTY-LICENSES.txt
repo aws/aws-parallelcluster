@@ -675,7 +675,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Copyright 2007 Pallets
 ** Flask; version 2.2.5 -- https://palletsprojects.com/p/flask
 Copyright 2010 Pallets
-** Werkzeug; version 2.3.8 -- https://pypi.org/project/Werkzeug/
+** Werkzeug; version 3.0.3 -- https://pypi.org/project/Werkzeug/
 Copyright 2007 Pallets
 
 Redistribution and use in source and binary forms, with or without
