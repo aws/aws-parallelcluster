@@ -6,6 +6,7 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  SharedStorageType: Efs
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
@@ -15,13 +16,7 @@ Scheduling:
           Instances:
             - InstanceType: t3.small
           MinCount: 0
-          MaxCount: 1000
+          MaxCount: 2000
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-SharedStorage:
-  - MountDir: {{ mount_dir }}
-    Name: efs
-    StorageType: Efs
-
-
