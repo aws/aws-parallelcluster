@@ -5,12 +5,13 @@ CHANGELOG
 ------
 
 **CHANGES**
-- Pyxis is now disabled by default and it must be manually enabled on the head node.
+- Pyxis is now disabled by default, so it must be manually enabled as documented in the product documentation.
 - Upgrade Python runtime to version 3.12 in ParallelCluster Lambda Layer.
 - Remove version pinning for setuptools to version prior to 70.0.0.
 
 **BUG FIXES**
 - Fix an issue in the way we configure the Pyxis Slurm plugin in ParallelCluster that can lead to job submission failures.
+  https://github.com/aws/aws-parallelcluster/issues/6459
 - Add missing permissions required by login nodes to the public template of policies.
 
 3.11.0
