@@ -81,7 +81,9 @@ class AWSBoutCommand:
         self.log = log
         self.boto3_factory = boto3_factory
 
-    def run(self, job_id, head=None, tail=None, stream=None, stream_period=None):
+    def run(
+        self, job_id, head=None, tail=None, stream=None, stream_period=None
+    ):  # pylint: disable=too-many-positional-arguments
         """Print job output."""
         log_stream = self.__get_log_stream(job_id)
         if log_stream:
@@ -124,7 +126,9 @@ class AWSBoutCommand:
             fail("Error listing jobs from AWS Batch. Failed with exception: %s" % e)
         return log_stream
 
-    def __print_log_stream(self, log_stream, head=None, tail=None, stream=None, stream_period=None):  # noqa: C901 FIXME
+    def __print_log_stream(  # noqa: C901 FIXME
+        self, log_stream, head=None, tail=None, stream=None, stream_period=None
+    ):  # pylint:disable=too-many-positional-arguments
         """
         Ask for log stream and print it.
 

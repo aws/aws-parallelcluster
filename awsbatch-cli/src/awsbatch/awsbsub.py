@@ -444,7 +444,7 @@ class AWSBsubCommand:
         timeout=None,
         dependencies=None,
         env=None,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """Submit the job."""
         try:
             # array properties

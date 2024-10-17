@@ -202,6 +202,7 @@ jobs:
           python-version: '3.12'
       - name: Install AWS CDK
         run: |
+          pip install typeguard~=2.13
           npm install -g aws-cdk
           pip install -r cloudformation/external-slurmdbd/requirements.txt
       - working-directory: cloudformation/external-slurmdbd
