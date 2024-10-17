@@ -63,7 +63,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     slurm_out_1 = remote_command_executor.run_remote_command("cat slurm-1.out").stdout
 
     logging.info("Checking for expected messages in first job output")
-    assert_that(slurm_out_1).contains("pyxis: importing docker image: docker://ubuntu:22.04")
+    assert_that(slurm_out_1).contains("pyxis: imported docker image: docker://ubuntu:22.04")
 
     # Submit the second containerized job with fixed 3 nodes after the first one completes
     logging.info("Submitting second containerized job")
@@ -80,4 +80,4 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     slurm_out_2 = remote_command_executor.run_remote_command("cat slurm-2.out").stdout
 
     logging.info("Checking for expected messages in second job output")
-    assert_that(slurm_out_2).contains("pyxis: importing docker image: docker://ubuntu:22.04")
+    assert_that(slurm_out_2).contains("pyxis: imported docker image: docker://ubuntu:22.04")
