@@ -836,4 +836,3 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
-          scale_up_fleet: ["false"]

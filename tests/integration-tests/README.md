@@ -518,7 +518,7 @@ test cases then you can do it in the following way:
 
 ```python
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-@pytest.mark.parametrized("cluster_max_size", [5, 10])
+@pytest.mark.parametrize("cluster_max_size", [5, 10])
 def test_case_2(cluster_max_size):
 ```
 
