@@ -94,7 +94,7 @@ class Job:
         log_stream,
         log_stream_url,
         s3_folder_url,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """Initialize the object."""
         self.id = job_id
         self.name = name
@@ -282,7 +282,9 @@ class AWSBstatCommand:
         self.boto3_factory = boto3_factory
         self.batch_client = boto3_factory.get_client("batch")
 
-    def run(self, job_status, expand_children, job_queue=None, job_ids=None, show_details=False):
+    def run(
+        self, job_status, expand_children, job_queue=None, job_ids=None, show_details=False
+    ):  # pylint: disable=too-many-positional-arguments
         """Print list of jobs, by filtering by queue or by ids."""
         if job_ids:
             self.__populate_output_by_job_ids(job_ids, show_details or len(job_ids) == 1, include_parents=True)
