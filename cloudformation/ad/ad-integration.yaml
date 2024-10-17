@@ -708,9 +708,6 @@ Resources:
                   - iam:UploadServerCertificate
                   - iam:TagServerCertificate
                 Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:server-certificate/*
-                Condition:
-                  StringEquals:
-                    aws:RequestTag/StackId: !Sub ${AWS::StackId}
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue

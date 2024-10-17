@@ -107,11 +107,15 @@ def get_ad_config_param_vals(
     }
 
 
-def get_fsx_config_param_vals(fsx_factory, svm_factory, vpc=None, subnet=None):
+def get_fsx_ontap_config_param_vals(fsx_factory, svm_factory, vpc=None, subnet=None):
     fsx_ontap_fs_id = create_fsx_ontap(fsx_factory, num=1, vpc=vpc, subnet=subnet)[0]
     fsx_ontap_volume_id = svm_factory(fsx_ontap_fs_id)[0]
+    return {"fsx_ontap_volume_id": fsx_ontap_volume_id}
+
+
+def get_fsx_open_zfs_config_param_vals(fsx_factory, svm_factory, vpc=None, subnet=None):
     fsx_open_zfs_volume_id = create_fsx_open_zfs(fsx_factory, num=1, vpc=vpc, subnet=subnet)[0]
-    return {"fsx_ontap_volume_id": fsx_ontap_volume_id, "fsx_open_zfs_volume_id": fsx_open_zfs_volume_id}
+    return {"fsx_open_zfs_volume_id": fsx_open_zfs_volume_id}
 
 
 def _add_file_to_zip(zip_file, path, arcname):
@@ -579,11 +583,18 @@ def test_ad_integration(  # noqa: C901
 
     vpc = directory_stack_outputs.get("VpcId")
     config_params.update(get_vpc_public_subnet(vpc))
-    config_params.update(
-        get_fsx_config_param_vals(
-            fsx_factory, svm_factory, vpc=vpc, subnet=get_vpc_public_subnet(vpc).get("public_subnet_id")
+    if fsx_ontap_supported:
+        config_params.update(
+            get_fsx_ontap_config_param_vals(
+                fsx_factory, svm_factory, vpc=vpc, subnet=get_vpc_public_subnet(vpc).get("public_subnet_id")
+            )
         )
-    )
+    if fsx_openzfs_supported:
+        config_params.update(
+            get_fsx_open_zfs_config_param_vals(
+                fsx_factory, svm_factory, vpc=vpc, subnet=get_vpc_public_subnet(vpc).get("public_subnet_id")
+            )
+        )
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 

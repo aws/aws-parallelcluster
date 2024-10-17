@@ -237,6 +237,7 @@ class Feature(Enum):
     SLURM_DATABASE = "SLURM Database"
     CLUSTER_HEALTH_METRICS = "Cluster Health Metrics"
     CAPACITY_BLOCK = "Capacity Block"
+    NLB_SECURITY_GROUP = "Network Load Balancer Security Group"
 
 
 UNSUPPORTED_FEATURES_MAP = {
@@ -249,6 +250,7 @@ UNSUPPORTED_FEATURES_MAP = {
     Feature.SLURM_DATABASE: [],
     Feature.CLUSTER_HEALTH_METRICS: ["us-iso"],
     Feature.CAPACITY_BLOCK: ["us-iso"],
+    Feature.NLB_SECURITY_GROUP: ["us-iso"],
 }
 
 
