@@ -9,6 +9,9 @@ HeadNode:
   CustomActions:
     OnNodeConfigured:
       Script: s3://{{ bucket_name }}/head_node_configure.sh
+  Iam:
+    S3Access:
+      - BucketName: { { bucket_name } }
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
@@ -25,3 +28,6 @@ Scheduling:
     CustomActions:
       OnNodeStart:
         Script: s3://{{ bucket_name }}/compute_node_start.sh
+    Iam:
+      S3Access:
+        - BucketName: { { bucket_name } }
