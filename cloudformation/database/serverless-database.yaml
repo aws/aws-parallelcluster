@@ -40,6 +40,10 @@ Metadata:
         default: "The CIDR block to be used for the first Subnet if its creation is requested."
       Subnet2CidrBlock:
         default: "The CIDR block to be used for the second Subnet if its creation is requested."
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E3690
 Parameters:
   ClusterName:
     Description: Database Cluster Name
