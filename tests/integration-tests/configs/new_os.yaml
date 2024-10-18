@@ -226,7 +226,7 @@ test-suites:
     test_ephemeral.py::test_head_node_stop:
       dimensions:
         - regions: ["use1-az4"]
-          instances: ["m5d.xlarge", "d2.2xlarge"]
+          instances: ["m5d.xlarge"]
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
   update:

@@ -493,13 +493,13 @@ Here is how to define a simple parametrized test case:
 def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
-For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux2"
+For example, given as input dimensions `--regions "eu-west-1" --instances "c5.xlarge" --oss "alinux2"
 "ubuntu1804" --scheduler "awsbatch" "slurm"`, the following tests will run:
 ```
-test_case_1[eu-west-1-c4.xlarge-alinux2-awsbatch]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1804-awsbatch]
-test_case_1[eu-west-1-c4.xlarge-alinux2-slurm]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1804-slurm]
+test_case_1[eu-west-1-c5.xlarge-alinux2-awsbatch]
+test_case_1[eu-west-1-c5.xlarge-ubuntu1804-awsbatch]
+test_case_1[eu-west-1-c5.xlarge-alinux2-slurm]
+test_case_1[eu-west-1-c5.xlarge-ubuntu1804-slurm]
 ```
 
 If you don't need to reference the parametrized arguments in your test case you can simply replace the
@@ -558,13 +558,13 @@ While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "slurm")
+@pytest.mark.skip_dimensions("*", "c5.xlarge", "centos7", "slurm")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
-`("c4.xlarge", "ubuntu2004", "slurm")`
+`("c5.xlarge", "ubuntu2004", "slurm")`
 
 #### Default Invalid Dimensions
 

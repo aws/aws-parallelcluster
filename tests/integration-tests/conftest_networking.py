@@ -38,12 +38,8 @@ AVAILABLE_AVAILABILITY_ZONE = {
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
     # FSx for Luster is not supported in apne1-az1
     "ap-northeast-1": ["apne1-az4", "apne1-az2"],
-    # c4.xlarge is not supported in apne2-az2
-    "ap-northeast-2": ["apne2-az1", "apne2-az3"],
     # c5.xlarge is not supported in apse1-az3
     "ap-southeast-1": ["apse1-az2", "apse1-az1"],
-    # c4.xlarge is not supported in aps1-az2
-    "ap-south-1": ["aps1-az1", "aps1-az3"],
     # NAT Gateway not available in sae1-az2 , c5n.18xlarge is not supported in sae1-az3
     "sa-east-1": ["sae1-az1"],
     # m6g.xlarge instances not available in euw1-az3

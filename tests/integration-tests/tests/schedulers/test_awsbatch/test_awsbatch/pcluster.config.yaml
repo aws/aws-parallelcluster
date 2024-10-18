@@ -19,7 +19,7 @@ Scheduling:
         - Name: compute-resource-11
           InstanceTypes:
             - {{ instance }}
-          # we usually use c4.xlarge and c5.xlarge for test, the min vcpus for one instance is 4.
+          # we usually use c5.xlarge for test, the min vcpus for one instance is 4.
           MinvCpus: 4
           DesiredvCpus: 8
           MaxvCpus: 64
