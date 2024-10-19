@@ -162,7 +162,7 @@ class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
 
     def __init__(self, name: str, config: str = None, stack: ClusterStack = None):
-        self.name = name
+        self.name = name.lower()
         self.__source_config_text = config
         self.__stack = stack
         self.__bucket = None
