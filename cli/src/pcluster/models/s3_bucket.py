@@ -159,14 +159,14 @@ class S3Bucket:
     def _get_bucket_policy(self):
         """Retrieve the existing bucket policy, or return an empty policy if none exists."""
         try:
-            response = AWSApi.instance().s3.get_bucket_policy(bucket_name=self.get_bucket_name())
+            response = AWSApi.instance().s3.get_bucket_policy(bucket_name=self.name)
             policy = json.loads(response["Policy"])
         except AWSClientError as e:
             if e.error_code == "NoSuchBucketPolicy":
                 # No existing policy
                 policy = {"Version": "2012-10-17", "Statement": []}
             else:
-                LOGGER.error("Unable to retrieve bucket policy for %s. Error: %s", self.get_bucket_name(), str(e))
+                LOGGER.error("Unable to retrieve bucket policy for %s. Error: %s", self.name, str(e))
                 raise e
         return policy
 
