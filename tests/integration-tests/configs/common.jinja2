@@ -16,7 +16,7 @@
 {%- set INSTANCES_DEFAULT_ARM = ["m6g.xlarge"] -%} # m6g.xlarge is not supported in af-south-1, eu-south-1, eu-west-3, me-south-1
 {%- set INSTANCES_DEFAULT = ["c5.xlarge", "m6g.xlarge"] -%}
 {%- set INSTANCES_EFA_SUPPORTED_X86 = ["c5n.9xlarge"] -%}
-{%- set INSTANCES_EFA_UNSUPPORTED_X86 = ["t2.micro"] -%}
+{%- set INSTANCES_EFA_UNSUPPORTED_X86 = ["t3.micro"] -%}
 {%- set NOT_RELEASED_OSES = ["rocky8", "rocky9"] -%}
 
 {%- macro instance(instance_key) -%}

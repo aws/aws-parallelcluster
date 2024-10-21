@@ -294,7 +294,6 @@ Resources:
     Properties:
       GroupSet:
         - !Ref ProxySecurityGroup
-      InterfaceType: interface
       SourceDestCheck: false
       SubnetId: !Ref PublicSubnet
 

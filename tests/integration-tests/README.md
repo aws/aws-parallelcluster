@@ -36,19 +36,19 @@ that lists all the available options:
 
 ```
 python -m test_runner --help
-usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--use-default-iam-credentials] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
-                      [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
-                      [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR] [--custom-node-url CUSTOM_NODE_URL]
-                      [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL]
-                      [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
-                      [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
-                      [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI] [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--lambda-layer-source LAMBDA_LAYER_SOURCE]
-                      [--no-delete] [--retain-ad-stack] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--directory-stack-name DIRECTORY_STACK_NAME] [--ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME] [--external-shared-storage-stack-name SHARED_STORAGE_STACK_NAME]
-                      [--bucket-name BUCKET_NAME] [--proxy-stack PROXY_STACK_NAME] [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK_NAME] [--api-stack API_STACK_NAME]
+usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--use-default-iam-credentials] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [--global-build-number GLOBAL_BUILD_NUMBER] [-c TESTS_CONFIG] [-i [INSTANCES ...]]
+                      [-o [OSS ...]] [-s [SCHEDULERS ...]] [-r [REGIONS ...]] [-f FEATURES [FEATURES ...]] [--show-output] [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL]
+                      [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--available-amis-oss-x86 [AVAILABLE_AMIS_OSS_X86 ...]]
+                      [--available-amis-oss-arm [AVAILABLE_AMIS_OSS_ARM ...]] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--scaling-test-config SCALING_TEST_CONFIG]
+                      [--cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN] [--resource-bucket RESOURCE_BUCKET] [--lambda-layer-source LAMBDA_LAYER_SOURCE] [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI]
+                      [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--iam-user-role-stack-name IAM_USER_ROLE_STACK_NAME] [--directory-stack-name DIRECTORY_STACK_NAME]
+                      [--slurm-database-stack-name SLURM_DATABASE_STACK_NAME] [--slurm-dbd-stack-name SLURM_DBD_STACK_NAME] [--munge-key-secret-arn MUNGE_KEY_SECRET_ARN] [--external-shared-storage-stack-name EXTERNAL_SHARED_STORAGE_STACK_NAME] [--bucket-name BUCKET_NAME]
+                      [--custom-security-groups-stack-name CUSTOM_SECURITY_GROUPS_STACK_NAME] [--force-run-instances] [--force-elastic-ip] [--retain-ad-stack] [--proxy-stack PROXY_STACK] [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK]
 
 Run integration tests suite.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --key-name KEY_NAME   Key to use for EC2 instances (default: None)
   --key-path KEY_PATH   Path to the key to use for SSH connections (default: None)
@@ -56,26 +56,27 @@ optional arguments:
                         Tests parallelism for every region. (default: None)
   --sequential          Run tests in a single process. When not specified tests will spawn a process for each region under test. (default: False)
   --credential CREDENTIAL
-                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times. <region> represents the region
-                        credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role to assume is defined, <externalId> is the id to use when
-                        assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId) (default: None)
+                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times. <region> represents the region credentials are used for, <endpoint> is the sts endpoint to contact in
+                        order to assume credentials, <account-id> is the id of the account where the role to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId) (default: None)
   --use-default-iam-credentials
                         Use the default IAM creds to run pcluster CLI commands. Skips the creation of pcluster CLI IAM role. (default: False)
   --retry-on-failures   Retry once more the failed tests after a delay of 60 seconds. (default: False)
   --tests-root-dir TESTS_ROOT_DIR
                         Root dir where integration tests are defined (default: ./tests)
+  --global-build-number GLOBAL_BUILD_NUMBER
+                        The build number passed from the testing pipelines (default: 0)
 
 Test dimensions:
   -c TESTS_CONFIG, --tests-config TESTS_CONFIG
-                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. Refer to the docs
-                        for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
-  -i [INSTANCES [INSTANCES ...]], --instances [INSTANCES [INSTANCES ...]]
+                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-
+                        parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
+  -i [INSTANCES ...], --instances [INSTANCES ...]
                         AWS instances under test. Ignored when tests-config is used. (default: [])
-  -o [OSS [OSS ...]], --oss [OSS [OSS ...]]
+  -o [OSS ...], --oss [OSS ...]
                         OSs under test. Ignored when tests-config is used. (default: [])
-  -s [SCHEDULERS [SCHEDULERS ...]], --schedulers [SCHEDULERS [SCHEDULERS ...]]
+  -s [SCHEDULERS ...], --schedulers [SCHEDULERS ...]
                         Schedulers under test. Ignored when tests-config is used. (default: [])
-  -r [REGIONS [REGIONS ...]], --regions [REGIONS [REGIONS ...]]
+  -r [REGIONS ...], --regions [REGIONS ...]
                         AWS regions where tests are executed. Ignored when tests-config is used. (default: [])
   -f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]
                         Run only tests for the listed features. Prepending the not keyword to the feature name causes the feature to be excluded. (default: )
@@ -83,8 +84,7 @@ Test dimensions:
 Test reports:
   --show-output         Do not redirect tests stdout to file. Not recommended when running in multiple regions. (default: None)
   --reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]
-                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into
-                        CloudWatch (default: [])
+                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into CloudWatch (default: [])
   --cw-region CW_REGION
                         Region where to publish CloudWatch metrics (default: us-east-1)
   --cw-namespace CW_NAMESPACE
@@ -123,19 +123,27 @@ AMI selection parameters:
                         Git ref of the custom node package used to build the AMI. (default: None)
   --ami-owner AMI_OWNER
                         Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon. (default: None)
+  --available-amis-oss-x86 [AVAILABLE_AMIS_OSS_X86 ...]
+                        (optional) set to available x86 AMIs OSes in the account. If not specified, all supported OSes will be used. (default: [])
+  --available-amis-oss-arm [AVAILABLE_AMIS_OSS_ARM ...]
+                        (optional) set to available ARM AMIs OSes in the account. If not specified, all supported OSes will be used. (default: [])
 
 Benchmarks:
-  --benchmarks          Run benchmarks tests. Benchmarks tests will be run together with functionality tests. (default: False)
-  
-Scaling test options:
-    --scaling-test-config SCALING_TEST_CONFIG
-                        Path to the config file containing scaling stress test parameters  (default: None)
+  --benchmarks          run benchmarks tests. This disables the execution of all tests defined under the tests directory. (default: False)
+  --benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY
+                        set the target capacity for benchmarks tests (default: 200)
+  --benchmarks-max-time BENCHMARKS_MAX_TIME
+                        set the max waiting time in minutes for benchmarks tests (default: 30)
+
+Scaling stress test options:
+  --scaling-test-config SCALING_TEST_CONFIG
+                        config file with scaling test parameters (default: None)
 
 CloudFormation / Custom Resource options:
   --cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN
                         ServiceToken (ARN) Cluster CloudFormation custom resource provider (default: None)
   --resource-bucket RESOURCE_BUCKET
-                        Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates. {region} can be used to parametrize this value, and the bucket name will be formatted with the region where the test will be run (default: None)
+                        Name of bucket to use to to retrieve standard hosted resources like CloudFormation templates. (default: None)
   --lambda-layer-source LAMBDA_LAYER_SOURCE
                         S3 URI of lambda layer to copy instead of building. (default: None)
 
@@ -152,36 +160,39 @@ Debugging/Development options:
   --vpc-stack VPC_STACK
                         Name of an existing vpc stack. (default: None)
   --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
-  --iam-user-role-stack-name
-                        Name of an existing IAM user role stack. (default: None)
-  --directory-stack-name
-                        Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
-  --ldaps-nlb-stack-name
-                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
-
   --no-delete           Don't delete stacks after tests are complete. (default: False)
-
-  --retain-ad-stack     Retain AD stack and corresponding VPC stack after tests are complete. (default: False)
-
   --delete-logs-on-success
                         delete CloudWatch logs when a test succeeds (default: False)
   --stackname-suffix STACKNAME_SUFFIX
                         set a suffix in the integration tests stack names (default: )
   --dry-run             Only show the list of tests that would run with specified options. (default: False)
+  --iam-user-role-stack-name IAM_USER_ROLE_STACK_NAME
+                        Name of an existing IAM user role stack. (default: None)
   --directory-stack-name DIRECTORY_STACK_NAME
                         Name of CFN stack providing AD domain to be used for testing AD integration feature. (default: None)
-  --ldaps-nlb-stack-name LDAPS_NLB_STACK_NAME
-                        Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD integration feature. (default: None)
-  --external-shared-storage-stack-name
-                        Name of an existing external shared storage stack. (default: None)
-  --bucket-name
-                        Name of an existing bucket. (default: None)
-  --proxy-stack
-                        Name of an existing proxy stack. (default: None)
-  --build-image-roles-stack
-                        Name of CFN stack providing the build image permissions. (default: None)
-  --api-stack
+  --slurm-database-stack-name SLURM_DATABASE_STACK_NAME
+                        Name of CFN stack providing database stack to be used for testing Slurm accounting feature. (default: None)
+  --slurm-dbd-stack-name SLURM_DBD_STACK_NAME
+                        Name of CFN stack providing external Slurm dbd stack to be used for testing Slurm accounting feature. (default: None)
+  --munge-key-secret-arn MUNGE_KEY_SECRET_ARN
+                        ARN of the secret containing the munge key to be used for testing Slurm accounting feature. (default: None)
+  --external-shared-storage-stack-name EXTERNAL_SHARED_STORAGE_STACK_NAME
+                        Name of existing external shared storage stack. (default: None)
+  --bucket-name BUCKET_NAME
+                        Name of existing bucket. (default: None)
+  --custom-security-groups-stack-name CUSTOM_SECURITY_GROUPS_STACK_NAME
+                        Name of existing custom security groups stack. (default: None)
+  --force-run-instances
+                        Force the usage of EC2 run-instances boto3 API instead of create-fleet for compute fleet scaling up.Note: If there are multiple instances in the list, only the first will be used. (default: False)
+  --force-elastic-ip    Force the usage of Elastic IP for Multi network interface EC2 instances (default: False)
+  --retain-ad-stack     Retain AD stack and corresponding VPC stack. (default: False)
+  --proxy-stack PROXY_STACK
+                        Name of CFN stack providing a Proxy environment. (default: None)
+  --build-image-roles-stack BUILD_IMAGE_ROLES_STACK
+                        Name of CFN stack providing build image permissions. (default: None)
+  --api-stack API_STACK
                         Name of CFN stack providing the ParallelCluster API infrastructure. (default: None)
+
 ```
 
 Here is an example of tests submission:
@@ -493,13 +504,13 @@ Here is how to define a simple parametrized test case:
 def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
-For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux2"
+For example, given as input dimensions `--regions "eu-west-1" --instances "c5.xlarge" --oss "alinux2"
 "ubuntu1804" --scheduler "awsbatch" "slurm"`, the following tests will run:
 ```
-test_case_1[eu-west-1-c4.xlarge-alinux2-awsbatch]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1804-awsbatch]
-test_case_1[eu-west-1-c4.xlarge-alinux2-slurm]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1804-slurm]
+test_case_1[eu-west-1-c5.xlarge-alinux2-awsbatch]
+test_case_1[eu-west-1-c5.xlarge-ubuntu1804-awsbatch]
+test_case_1[eu-west-1-c5.xlarge-alinux2-slurm]
+test_case_1[eu-west-1-c5.xlarge-ubuntu1804-slurm]
 ```
 
 If you don't need to reference the parametrized arguments in your test case you can simply replace the
@@ -518,7 +529,7 @@ test cases then you can do it in the following way:
 
 ```python
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-@pytest.mark.parametrized("cluster_max_size", [5, 10])
+@pytest.mark.parametrize("cluster_max_size", [5, 10])
 def test_case_2(cluster_max_size):
 ```
 
@@ -558,13 +569,13 @@ While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "slurm")
+@pytest.mark.skip_dimensions("*", "c5.xlarge", "centos7", "slurm")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
-`("c4.xlarge", "ubuntu2004", "slurm")`
+`("c5.xlarge", "ubuntu2004", "slurm")`
 
 #### Default Invalid Dimensions
 
