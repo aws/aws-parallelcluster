@@ -244,7 +244,12 @@ phases:
                 fi
                 apt-get --purge autoremove -y
               fi
-
+      - name: RebootStep
+        action: Reboot
+        onFailure: Abort
+        maxAttempts: 2
+        inputs:
+          delaySeconds: 10
       - name: InstallAdditionalKernelPackages
         action: ExecuteBash
         inputs:
@@ -321,13 +326,6 @@ phases:
               else
                  echo "SSM agent is installed by default"
               fi
-
-      - name: RebootStep
-        action: Reboot
-        onFailure: Abort
-        maxAttempts: 2
-        inputs:
-            delaySeconds: 10
 
   - name: validate
     steps:
