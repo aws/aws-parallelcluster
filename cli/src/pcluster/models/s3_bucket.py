@@ -24,7 +24,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, get_url_domain_suffix, yaml_load, zip_dir, error
+from pcluster.utils import get_partition, get_url_domain_suffix, yaml_load, zip_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -186,13 +186,11 @@ class S3Bucket:
                 "Resource": bucket_arn,
                 "Principal": {"Service": logs_service_principal},
                 "Condition": {
-                    "StringEquals": {
-                        "aws:SourceAccount": account_id
-                    },
+                    "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*"
-                    }
-                }
+                    },
+                },
             },
             {
                 "Sid": "AllowPutObjectForExportLogs",
@@ -201,25 +199,21 @@ class S3Bucket:
                 "Resource": bucket_arn_with_wildcard,
                 "Principal": {"Service": logs_service_principal},
                 "Condition": {
-                    "StringEquals": {
-                        "s3:x-amz-acl": "bucket-owner-full-control",
-                        "aws:SourceAccount": account_id
-                    },
+                    "StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control", "aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*"
-                    }
-                }
+                    },
+                },
             },
             {
                 "Sid": "DenyPutObjectOnReservedPath",
                 "Action": "s3:PutObject",
                 "Effect": "Deny",
                 "Resource": f"{bucket_arn}/parallelcluster/*",
-                "Principal": {"Service": logs_service_principal}
-            }
+                "Principal": {"Service": logs_service_principal},
+            },
         ]
         return policy_statements
-
 
     def ensure_bucket_policy_for_logs(self):
         """Ensure the bucket policy includes necessary statements for exporting logs."""
@@ -243,7 +237,6 @@ class S3Bucket:
             LOGGER.info(f"Bucket policy for {self.name} has been updated to include necessary permissions.")
         else:
             LOGGER.info(f"Bucket policy for {self.name} already includes necessary permissions.")
-
 
     # --------------------------------------- S3 objects utils --------------------------------------- #
 
