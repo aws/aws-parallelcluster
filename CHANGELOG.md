@@ -3,13 +3,11 @@ CHANGELOG
 3.12.0
 ------
 
+**CHANGES**
+- export-cluster-logs/export-image-logs now is able to download the logs using the default/custom PCluster bucket as staging bucket
+
 **BUG FIXES**
 - When mounting an external OpenZFS, it is no longer required to set the outbound rules for ports 111, 2049, 20001, 20002, 20003
-
-3.12.0
-------
-
-**CHANGES**
 
 3.11.1
 ------

@@ -24,7 +24,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, get_url_domain_suffix, yaml_load, zip_dir
+from pcluster.utils import get_partition, get_url_domain_suffix, yaml_load, zip_dir, error
 
 LOGGER = logging.getLogger(__name__)
 
@@ -154,6 +154,96 @@ class S3Bucket:
             '"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},"Principal":"*"}}]}}'
         ).format(bucket_name=self.name, partition=self.partition)
         AWSApi.instance().s3.put_bucket_policy(bucket_name=self.name, policy=deny_http_policy)
+        self.ensure_bucket_policy_for_logs()
+
+    def _get_bucket_policy(self):
+        """Retrieve the existing bucket policy, or return an empty policy if none exists."""
+        try:
+            response = AWSApi.instance().s3.get_bucket_policy(bucket_name=self.get_bucket_name())
+            policy = json.loads(response["Policy"])
+        except AWSClientError as e:
+            if e.error_code == "NoSuchBucketPolicy":
+                # No existing policy
+                policy = {"Version": "2012-10-17", "Statement": []}
+            else:
+                LOGGER.error("Unable to retrieve bucket policy for %s. Error: %s", self.get_bucket_name(), str(e))
+                raise e
+        return policy
+
+    def _get_bucket_policy_for_cloudwatch_logs(self):
+        """Generate the required bucket policy statements for CloudWatch Logs export."""
+        partition = self.partition
+        region = self.region
+        account_id = self.account_id
+        bucket_arn = f"arn:{partition}:s3:::{self.name}"
+        bucket_arn_with_wildcard = f"{bucket_arn}/*"
+        logs_service_principal = f"logs.{region}.{get_url_domain_suffix(partition)}"
+        policy_statements = [
+            {
+                "Sid": "AllowReadBucketAclForExportLogs",
+                "Action": "s3:GetBucketAcl",
+                "Effect": "Allow",
+                "Resource": bucket_arn,
+                "Principal": {"Service": logs_service_principal},
+                "Condition": {
+                    "StringEquals": {
+                        "aws:SourceAccount": account_id
+                    },
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*"
+                    }
+                }
+            },
+            {
+                "Sid": "AllowPutObjectForExportLogs",
+                "Action": "s3:PutObject",
+                "Effect": "Allow",
+                "Resource": bucket_arn_with_wildcard,
+                "Principal": {"Service": logs_service_principal},
+                "Condition": {
+                    "StringEquals": {
+                        "s3:x-amz-acl": "bucket-owner-full-control",
+                        "aws:SourceAccount": account_id
+                    },
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*"
+                    }
+                }
+            },
+            {
+                "Sid": "DenyPutObjectOnReservedPath",
+                "Action": "s3:PutObject",
+                "Effect": "Deny",
+                "Resource": f"{bucket_arn}/parallelcluster/*",
+                "Principal": {"Service": logs_service_principal}
+            }
+        ]
+        return policy_statements
+
+
+    def ensure_bucket_policy_for_logs(self):
+        """Ensure the bucket policy includes necessary statements for exporting logs."""
+        existing_policy = self._get_bucket_policy()
+
+        # Generate the required policy statements
+        required_statements = self._get_bucket_policy_for_cloudwatch_logs()
+
+        # Check which statements are missing
+        existing_sids = {stmt.get("Sid") for stmt in existing_policy.get("Statement", []) if "Sid" in stmt}
+        missing_statements = [stmt for stmt in required_statements if stmt.get("Sid") not in existing_sids]
+
+        if missing_statements:
+            # Add missing statements to the policy
+            existing_policy["Statement"].extend(missing_statements)
+            # Ensure the policy has the correct version
+            existing_policy["Version"] = "2012-10-17"
+
+            # Update the bucket policy
+            AWSApi.instance().s3.put_bucket_policy(bucket_name=self.name, policy=json.dumps(existing_policy))
+            LOGGER.info(f"Bucket policy for {self.name} has been updated to include necessary permissions.")
+        else:
+            LOGGER.info(f"Bucket policy for {self.name} already includes necessary permissions.")
+
 
     # --------------------------------------- S3 objects utils --------------------------------------- #
 
@@ -354,6 +444,13 @@ class S3BucketFactory:
             bucket.check_bucket_is_bootstrapped()
         except AWSClientError as e:
             cls._configure_bucket(bucket, e)
+        else:
+            # Bucket exists and is bootstrapped, ensure bucket policy is up-to-date
+            try:
+                bucket.ensure_bucket_policy_for_logs()
+            except AWSClientError as e:
+                LOGGER.error("Failed to ensure bucket policy for %s. Error: %s", bucket.name, str(e))
+                raise e
 
         return bucket
 

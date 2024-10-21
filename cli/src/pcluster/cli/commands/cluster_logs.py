@@ -38,8 +38,10 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         # Export options
         parser.add_argument(
             "--bucket",
-            required=True,
-            help="S3 bucket to export cluster logs data to. It must be in the same region of the cluster",
+            help=(
+                "S3 bucket to export cluster logs data to. It must be in the same region of the cluster. "
+                "If not specified, the default/custom ParallelCluster S3 bucket will be used."
+            ),
         )
         # Export options
         parser.add_argument(
@@ -65,18 +67,32 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         try:
             if args.output_file:
                 self._validate_output_file_path(args.output_file)
-            return self._export_cluster_logs(args, args.output_file)
+
+            is_cluster_bucket = False if args.bucket else True
+
+            if is_cluster_bucket:
+                self._validate_bucket_prefix(args.bucket_prefix)
+
+            return self._export_cluster_logs(args, args.output_file, is_cluster_bucket)
         except Exception as e:
             utils.error(f"Unable to export cluster's logs.\n{e}")
             return None
 
     @staticmethod
-    def _export_cluster_logs(args: Namespace, output_file: str = None):
+    def _validate_bucket_prefix(bucket_prefix: str) -> None:
+        if bucket_prefix and bucket_prefix.startswith("parallelcluster/"):
+            raise ValueError(
+                "Cannot export logs to the protected folder 'parallelcluster/'. Please use another folder."
+            )
+
+    @staticmethod
+    def _export_cluster_logs(args: Namespace, output_file: str = None, is_cluster_bucket: bool = False):
         """Export the logs associated to the cluster."""
         LOGGER.debug("Beginning export of logs for the cluster: %s", args.cluster_name)
         cluster = Cluster(args.cluster_name)
         url = cluster.export_logs(
-            bucket=args.bucket,
+            # cluster.bucket will handle the bucket init including policy update
+            bucket=cluster.bucket if is_cluster_bucket else args.bucket,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,

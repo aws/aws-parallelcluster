@@ -43,8 +43,10 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
         # Export options
         parser.add_argument(
             "--bucket",
-            required=True,
-            help="S3 bucket to export image builder logs data to. It must be in the same region of the image",
+            help=(
+                "S3 bucket to export image builder logs data to. It must be in the same region of the image. "
+                "If not specified, the default ParallelCluster S3 bucket will be used."
+            ),
         )
         # Export options
         parser.add_argument(
@@ -58,20 +60,34 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
         try:
             if args.output_file:
                 self._validate_output_file_path(args.output_file)
-            return self._export_image_logs(args, args.output_file)
+
+            is_cluster_bucket = False if args.bucket else True
+
+            if is_cluster_bucket:
+                self._validate_bucket_prefix(args.bucket_prefix)
+
+            return self._export_image_logs(args, args.output_file, is_cluster_bucket)
         except Exception as e:
             utils.error(f"Unable to export image's logs.\n{e}")
             return None
 
     @staticmethod
-    def _export_image_logs(args: Namespace, output_file: str = None):
+    def _validate_bucket_prefix(bucket_prefix: str) -> None:
+        if bucket_prefix and bucket_prefix.startswith("parallelcluster/"):
+            raise ValueError(
+                "Cannot export logs to the protected folder 'parallelcluster/'. Please use another folder."
+            )
+
+    @staticmethod
+    def _export_image_logs(args: Namespace, output_file: str = None, is_cluster_bucket: bool = False):
         """Export the logs associated to the image."""
         LOGGER.debug("Beginning export of logs for the image: %s", args.image_id)
 
         # retrieve imagebuilder config and generate model
         imagebuilder = ImageBuilder(image_id=args.image_id)
         url = imagebuilder.export_logs(
-            bucket=args.bucket,
+            # imagebuilder.bucket will handle the bucket init including policy update
+            bucket=imagebuilder.bucket if is_cluster_bucket else args.bucket,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,
