@@ -829,3 +829,10 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2004"]
           schedulers: ["slurm"]
+  pyxis:
+    test_pyxis.py::test_pyxis:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2204"]
+          schedulers: ["slurm"]
