@@ -50,7 +50,7 @@ def _get_parser():
 class Queue:
     """Generic queue object."""
 
-    def __init__(self, arn, name, priority, status, status_reason):
+    def __init__(self, arn, name, priority, status, status_reason):  # pylint: disable=too-many-positional-arguments
         """Initialize the object."""
         self.arn = arn
         self.name = name
