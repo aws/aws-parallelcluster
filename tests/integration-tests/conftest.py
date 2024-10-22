@@ -578,7 +578,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, architecture):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -605,7 +605,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         output_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(output_file_path, request, region, benchmarks)
+            inject_additional_config_settings(output_file_path, request, region, architecture, benchmarks)
         else:
             inject_additional_image_configs_settings(output_file_path, request)
         return output_file_path
@@ -672,7 +672,7 @@ def _inject_additional_iam_policies_for_nodes(
             _inject_additional_iam_policies(pool, policies)
 
 
-def inject_additional_config_settings(cluster_config, request, region, benchmarks=None):  # noqa C901
+def inject_additional_config_settings(cluster_config, request, region, architecture, benchmarks=None):  # noqa C901
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -708,6 +708,7 @@ def inject_additional_config_settings(cluster_config, request, region, benchmark
                 region,
                 config_content["Image"]["Os"],
                 ami_type="pcluster",
+                architecture=architecture,
             ),
             ("Image", "CustomAmi"),
         )
