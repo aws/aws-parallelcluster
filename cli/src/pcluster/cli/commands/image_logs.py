@@ -73,10 +73,11 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
 
     @staticmethod
     def _validate_bucket_prefix(bucket_prefix: str) -> None:
-        if bucket_prefix and bucket_prefix.startswith("parallelcluster/"):
-            raise ValueError(
-                "Cannot export logs to the protected folder 'parallelcluster/'. Please use another folder."
-            )
+        if bucket_prefix:
+            if bucket_prefix.startswith("parallelcluster/") or bucket_prefix=="parallelcluster":
+                raise ValueError(
+                    "Cannot export logs to the protected folder 'parallelcluster/'. Please use another folder."
+                )
 
     @staticmethod
     def _export_image_logs(args: Namespace, output_file: str = None, is_cluster_bucket: bool = False):
@@ -87,7 +88,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
         imagebuilder = ImageBuilder(image_id=args.image_id)
         url = imagebuilder.export_logs(
             # imagebuilder.bucket will handle the bucket init including policy update
-            bucket=imagebuilder.bucket if is_cluster_bucket else args.bucket,
+            bucket=imagebuilder.bucket.name if is_cluster_bucket else args.bucket,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,

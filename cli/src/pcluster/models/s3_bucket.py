@@ -188,7 +188,10 @@ class S3Bucket:
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
-                        "aws:SourceArn": f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*"
+                        "aws:SourceArn": [
+                            f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*",
+                            f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/imagebuilder/*",
+                        ]
                     },
                 },
             },
@@ -201,7 +204,10 @@ class S3Bucket:
                 "Condition": {
                     "StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control", "aws:SourceAccount": account_id},
                     "ArnLike": {
-                        "aws:SourceArn": f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*"
+                        "aws:SourceArn": [
+                            f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/parallelcluster/*",
+                            f"arn:{partition}:logs:{region}:{account_id}:log-group:/aws/imagebuilder/*",
+                        ]
                     },
                 },
             },
