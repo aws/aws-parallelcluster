@@ -52,7 +52,7 @@ LoginNodes:
             - 'arg3 arg3'
       Iam:
         AdditionalIamPolicies:
-          - Policy: "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+          - Policy: "arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess"
 {% endif %}
 Scheduling:
   Scheduler: {{ scheduler }}
