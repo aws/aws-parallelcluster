@@ -424,7 +424,16 @@ Resources:
               sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
               chattr +i /etc/resolv.conf
               ADMIN_PW="${AdminPassword}"
-              echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}"
+              
+              attempt=0
+              max_attempts=5
+              until [ $attempt -ge $max_attempts ]; do
+                attempt=$((attempt+1))
+                echo "Joining domain (attempt $attempt/$max_attempts) ..."
+                echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}" && echo "Domain joined" && break
+                sleep 10
+              done
+              
               sleep 10
               echo "Registering ReadOnlyUser..."
               echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
