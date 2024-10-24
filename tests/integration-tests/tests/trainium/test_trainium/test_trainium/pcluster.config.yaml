@@ -21,7 +21,7 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-trn32
           Instances:
-            - InstanceType: trn1.32xlarge
+            - InstanceType: {{instance}}
           MinCount: 2
           Efa:
             Enabled: true
