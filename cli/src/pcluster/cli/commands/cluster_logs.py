@@ -15,6 +15,7 @@ from argparse import ArgumentParser, ArgumentTypeError, Namespace
 
 from pcluster import utils
 from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
+from pcluster.constants import PCLUSTER_BUCKET_PROTECTED_FOLDER, PCLUSTER_BUCKET_PROTECTED_PREFIX
 from pcluster.models.cluster import Cluster
 
 LOGGER = logging.getLogger(__name__)
@@ -38,14 +39,18 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         # Export options
         parser.add_argument(
             "--bucket",
-            required=True,
-            help="S3 bucket to export cluster logs data to. It must be in the same region of the cluster",
+            help=(
+                "S3 bucket to export cluster logs data to. It must be in the same region of the cluster. "
+                "If not specified, the ParallelCluster default bucket or "
+                "the CustomS3Bucket (if specified in the config) will be used."
+            ),
         )
         # Export options
         parser.add_argument(
             "--bucket-prefix",
             help="Keypath under which exported logs data will be stored in s3 bucket. Defaults to "
-            "<cluster_name>-logs-<current time in the format of yyyyMMddHHmm>",
+            "<cluster_name>-logs-<current time in the format of yyyyMMddHHmm>, If not specify `--bucket` option, "
+            f"cannot export logs to {PCLUSTER_BUCKET_PROTECTED_PREFIX} as it is a protected folder.",
         )
         super()._register_common_command_args(parser)
         # Filters
@@ -65,10 +70,28 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         try:
             if args.output_file:
                 self._validate_output_file_path(args.output_file)
+
+            is_pcluster_bucket = not args.bucket
+
+            if is_pcluster_bucket:
+                self._validate_bucket_prefix(args.bucket_prefix)
+
             return self._export_cluster_logs(args, args.output_file)
         except Exception as e:
             utils.error(f"Unable to export cluster's logs.\n{e}")
             return None
+
+    @staticmethod
+    def _validate_bucket_prefix(bucket_prefix: str) -> None:
+        if bucket_prefix:
+            if (
+                bucket_prefix.startswith(PCLUSTER_BUCKET_PROTECTED_PREFIX)
+                or bucket_prefix == PCLUSTER_BUCKET_PROTECTED_FOLDER
+            ):
+                raise ValueError(
+                    f"Cannot export logs to {bucket_prefix} as it is a protected folder "
+                    f"in {PCLUSTER_BUCKET_PROTECTED_PREFIX}. Please use another folder."
+                )
 
     @staticmethod
     def _export_cluster_logs(args: Namespace, output_file: str = None):
@@ -76,7 +99,8 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         LOGGER.debug("Beginning export of logs for the cluster: %s", args.cluster_name)
         cluster = Cluster(args.cluster_name)
         url = cluster.export_logs(
-            bucket=args.bucket,
+            # cluster.bucket will handle the bucket init including policy update
+            bucket=args.bucket if args.bucket else cluster.bucket.name,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,

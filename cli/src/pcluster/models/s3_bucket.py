@@ -24,7 +24,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, get_url_domain_suffix, yaml_load, zip_dir
+from pcluster.utils import format_arn, get_partition, get_service_principal, get_url_domain_suffix, yaml_load, zip_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ class S3FileType(Enum):
 
 class S3Bucket:
     """Represent the s3 bucket configuration."""
+
+    REQUIRED_BOOTSTRAP_FEATURES = ["basic", "export-logs"]
 
     def __init__(
         self,
@@ -148,12 +150,96 @@ class S3Bucket:
             bucket_name=self.name,
             configuration={"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]},
         )
-        deny_http_policy = (
-            '{{"Id":"DenyHTTP","Version":"2012-10-17","Statement":[{{"Sid":"AllowSSLRequestsOnly","Action":"s3:*",'
-            '"Effect":"Deny","Resource":["arn:{partition}:s3:::{bucket_name}","arn:{partition}:s3:::{bucket_name}/*"],'
-            '"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},"Principal":"*"}}]}}'
-        ).format(bucket_name=self.name, partition=self.partition)
-        AWSApi.instance().s3.put_bucket_policy(bucket_name=self.name, policy=deny_http_policy)
+
+        bucket_policy = self._generate_bucket_policy()
+        AWSApi.instance().s3.put_bucket_policy(bucket_name=self.name, policy=json.dumps(bucket_policy))
+
+    def _generate_bucket_policy(self):
+        """Generate the complete bucket policy for the S3 bucket."""
+        partition = self.partition
+        bucket_arn = format_arn(partition, "s3", "", "", self.name)
+        bucket_arn_with_wildcard = f"{bucket_arn}/*"
+
+        # Generate DenyHTTP policy statement
+        deny_http_statement = {
+            "Sid": "AllowSSLRequestsOnly",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [bucket_arn, bucket_arn_with_wildcard],
+            "Condition": {"Bool": {"aws:SecureTransport": "false"}},
+        }
+
+        # Get the policy statements required for CloudWatch Logs export
+        logs_policy_statements = self._get_bucket_policy_for_cloudwatch_logs()
+
+        # Combine all policy statements
+        all_statements = [deny_http_statement] + logs_policy_statements
+
+        # Create the combined bucket policy
+        bucket_policy = {
+            "Version": "2012-10-17",
+            "Statement": all_statements,
+        }
+
+        return bucket_policy
+
+    def _get_bucket_policy_for_cloudwatch_logs(self):
+        """Generate the required bucket policy statements for CloudWatch Logs export."""
+        partition = self.partition
+        region = self.region
+        account_id = self.account_id
+        bucket_arn = format_arn(partition, "s3", "", "", self.name)
+        bucket_arn_with_wildcard = f"{bucket_arn}/*"
+        logs_service_principal = get_service_principal(
+            service_name="logs", partition=partition, region=region, regional=True
+        )
+
+        # Define allowed log group ARNs
+        log_group_arns = [
+            format_arn(partition, "logs", region, account_id, "log-group:/aws/parallelcluster/*"),
+            format_arn(partition, "logs", region, account_id, "log-group:/aws/imagebuilder/*"),
+        ]
+
+        policy_statements = [
+            {
+                "Sid": "AllowReadBucketAclForExportLogs",
+                "Action": "s3:GetBucketAcl",
+                "Effect": "Allow",
+                "Resource": bucket_arn,
+                "Principal": {"Service": logs_service_principal},
+                "Condition": {
+                    "StringEquals": {"aws:SourceAccount": account_id},
+                    "ArnLike": {
+                        "aws:SourceArn": log_group_arns,
+                    },
+                },
+            },
+            {
+                "Sid": "AllowPutObjectForExportLogs",
+                "Action": "s3:PutObject",
+                "Effect": "Allow",
+                "Resource": bucket_arn_with_wildcard,
+                "Principal": {"Service": logs_service_principal},
+                "Condition": {
+                    "StringEquals": {
+                        "s3:x-amz-acl": "bucket-owner-full-control",
+                        "aws:SourceAccount": account_id,
+                    },
+                    "ArnLike": {
+                        "aws:SourceArn": log_group_arns,
+                    },
+                },
+            },
+            {
+                "Sid": "DenyPutObjectOnReservedPath",
+                "Action": "s3:PutObject",
+                "Effect": "Deny",
+                "Resource": f"{bucket_arn}/parallelcluster/*",
+                "Principal": {"Service": logs_service_principal},
+            },
+        ]
+        return policy_statements
 
     # --------------------------------------- S3 objects utils --------------------------------------- #
 
@@ -184,19 +270,41 @@ class S3Bucket:
                     str(e),
                 )
 
-    def upload_bootstrapped_file(self):
+    def upload_bootstrapped_file(self, bootstrapped_features):
         """Upload bootstrapped file to identify bucket is configured successfully."""
+        bootstrapped_content = json.dumps({"bootstrapped_features": bootstrapped_features})
         AWSApi.instance().s3.put_object(
             bucket_name=self.name,
-            body="bucket is configured successfully.",
+            body=bootstrapped_content,
             key="/".join([self._root_directory, self._bootstrapped_file_name]),
         )
 
     def check_bucket_is_bootstrapped(self):
-        """Check bucket is configured successfully or not by bootstrapped file."""
-        AWSApi.instance().s3.head_object(
-            bucket_name=self.name, object_name="/".join([self._root_directory, self._bootstrapped_file_name])
-        )
+        """Check if the bucket is configured successfully by reading the bootstrapped file."""
+        try:
+            response = AWSApi.instance().s3.get_object(
+                bucket_name=self.name,
+                key="/".join([self._root_directory, self._bootstrapped_file_name]),
+            )
+            file_content = response["Body"].read().decode("utf-8")
+            try:
+                bootstrapped_info = json.loads(file_content)
+                bootstrapped_features = bootstrapped_info.get("bootstrapped_features", [])
+            except json.JSONDecodeError:
+                LOGGER.info("Bootstrap file is in old format. Assuming basic features are bootstrapped.")
+                bootstrapped_features = ["basic"]
+
+            for feature in self.REQUIRED_BOOTSTRAP_FEATURES:
+                if feature not in bootstrapped_features:
+                    return False
+            return True
+        except AWSClientError as e:
+            if e.error_code == "404":
+                LOGGER.info("Bootstrap file doesn't exist. S3 Bucket %s is not configured.", self.name)
+                return False
+            else:
+                LOGGER.error("Unable to check S3 bucket %s is configured properly.", self.name)
+                raise e
 
     def upload_config(self, config, config_name, format=S3FileFormat.YAML):
         """Upload config file to S3 bucket."""
@@ -350,10 +458,11 @@ class S3BucketFactory:
         except AWSClientError as e:
             cls._create_bucket(bucket, e)
 
-        try:
-            bucket.check_bucket_is_bootstrapped()
-        except AWSClientError as e:
-            cls._configure_bucket(bucket, e)
+        is_bootstrapped = bucket.check_bucket_is_bootstrapped()
+        if not is_bootstrapped:
+            cls._configure_bucket(bucket)
+        else:
+            LOGGER.info("Bucket %s is already bootstrapped with required features.", bucket.name)
 
         return bucket
 
@@ -370,17 +479,13 @@ class S3BucketFactory:
             raise e
 
     @classmethod
-    def _configure_bucket(cls, bucket: S3Bucket, e: AWSClientError):
-        if e.error_code == "404":
-            try:
-                bucket.configure_s3_bucket()
-                bucket.upload_bootstrapped_file()
-            except AWSClientError as error:
-                LOGGER.error("Configure S3 bucket %s failed.", bucket.name)
-                raise error
-        else:
-            LOGGER.error("Unable to check S3 bucket %s is configured properly.", bucket.name)
-            raise e
+    def _configure_bucket(cls, bucket: S3Bucket):
+        try:
+            bucket.configure_s3_bucket()
+            bucket.upload_bootstrapped_file(bootstrapped_features=bucket.REQUIRED_BOOTSTRAP_FEATURES)
+        except AWSClientError as error:
+            LOGGER.error("Configure S3 bucket %s failed.", bucket.name)
+            raise error
 
 
 def parse_bucket_url(url):

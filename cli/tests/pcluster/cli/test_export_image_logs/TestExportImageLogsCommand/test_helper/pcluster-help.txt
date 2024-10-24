@@ -2,8 +2,9 @@ usage: pcluster export-image-logs [-h] [--debug] [-r REGION]
                                   [--output-file OUTPUT_FILE]
                                   [--keep-s3-objects KEEP_S3_OBJECTS]
                                   [--start-time START_TIME]
-                                  [--end-time END_TIME] -i IMAGE_ID --bucket
-                                  BUCKET [--bucket-prefix BUCKET_PREFIX]
+                                  [--end-time END_TIME] -i IMAGE_ID
+                                  [--bucket BUCKET]
+                                  [--bucket-prefix BUCKET_PREFIX]
 
 Export the logs of the image builder stack to a local tar.gz archive by
 passing through an Amazon S3 Bucket.
@@ -33,8 +34,13 @@ options:
   -i IMAGE_ID, --image-id IMAGE_ID
                         Export the logs related to the image id provided here.
   --bucket BUCKET       S3 bucket to export image builder logs data to. It
-                        must be in the same region of the image
+                        must be in the same region of the image. If not
+                        specified, the ParallelCluster default bucket or the
+                        CustomS3Bucket (if specified in the config) will be
+                        used.
   --bucket-prefix BUCKET_PREFIX
                         Keypath under which exported logs data will be stored
                         in s3 bucket. Defaults to <image_id>-logs-<current
-                        time in the format of yyyyMMddHHmm>
+                        time in the format of yyyyMMddHHmm>. If not specify
+                        `--bucket` option, cannot export logs to
+                        parallelcluster/ as it is a protected folder.

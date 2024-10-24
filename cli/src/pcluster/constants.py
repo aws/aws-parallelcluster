@@ -301,3 +301,6 @@ MAX_TAGS_COUNT = 40  # Tags are limited to 50, reserve some tags for parallelclu
 IAM_ROLE_REGEX = "^arn:.*:role/"
 IAM_INSTANCE_PROFILE_REGEX = "^arn:.*:instance-profile/"
 IAM_POLICY_REGEX = "^arn:.*:policy/"
+
+PCLUSTER_BUCKET_PROTECTED_PREFIX = "parallelcluster/"
+PCLUSTER_BUCKET_PROTECTED_FOLDER = "parallelcluster"

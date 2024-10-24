@@ -30,7 +30,7 @@ class TestExportImageLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output_file": "path"}, "the following arguments are required: -i/--image-id, --bucket")],
+        [({"output_file": "path"}, "the following arguments are required: -i/--image-id")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
