@@ -300,7 +300,7 @@ class S3Bucket:
             return True
         except AWSClientError as e:
             if e.error_code == "404":
-                LOGGER.info(f"Bootstrap file doesn't exist. S3 Bucket %s is not configured.", self.name)
+                LOGGER.info("Bootstrap file doesn't exist. S3 Bucket %s is not configured.", self.name)
                 return False
             else:
                 LOGGER.error("Unable to check S3 bucket %s is configured properly.", self.name)
