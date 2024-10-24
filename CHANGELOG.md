@@ -4,7 +4,7 @@ CHANGELOG
 ------
 
 **CHANGES**
-- export-cluster-logs/export-image-logs now is able to download the logs using the default/custom PCluster bucket as staging bucket
+- The CLI commands `export-cluster-logs` and `export-image-logs` can now export the logs to the default ParallelCluster bucket and the `CustomS3Bucket` if no other bucket is specified.
 
 **BUG FIXES**
 - When mounting an external OpenZFS, it is no longer required to set the outbound rules for ports 111, 2049, 20001, 20002, 20003

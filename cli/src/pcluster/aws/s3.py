@@ -136,11 +136,6 @@ class S3Client(Boto3Client):
             ExpiresIn=expiration,
         )
 
-    @AWSExceptionHandler.handle_client_exception
-    def get_bucket_policy(self, bucket_name):
-        """Retrieve the policy of an S3 bucket."""
-        return self._client.get_bucket_policy(Bucket=bucket_name)
-
 
 def _process_s3_bucket_error(client_error, bucket_name, expected_bucket_owner=None, object_name=None):
     error_message = client_error.response.get("Error").get("Message")

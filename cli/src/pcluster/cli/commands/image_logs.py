@@ -16,7 +16,7 @@ from pcluster import utils
 from pcluster.api.controllers.common import assert_supported_operation
 from pcluster.aws.common import get_region
 from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
-from pcluster.constants import Operation
+from pcluster.constants import PCLUSTER_BUCKET_PROTECTED_FOLDER, PCLUSTER_BUCKET_PROTECTED_PREFIX, Operation
 from pcluster.models.imagebuilder import ImageBuilder
 
 LOGGER = logging.getLogger(__name__)
@@ -45,14 +45,16 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             "--bucket",
             help=(
                 "S3 bucket to export image builder logs data to. It must be in the same region of the image. "
-                "If not specified, the default ParallelCluster S3 bucket will be used."
+                "If not specified, the ParallelCluster default bucket or "
+                "the CustomS3Bucket (if specified in the config) will be used."
             ),
         )
         # Export options
         parser.add_argument(
             "--bucket-prefix",
             help="Keypath under which exported logs data will be stored in s3 bucket. Defaults to "
-            "<image_id>-logs-<current time in the format of yyyyMMddHHmm>",
+            "<image_id>-logs-<current time in the format of yyyyMMddHHmm>. If not specify `--bucket` option, "
+            f"cannot export logs to {PCLUSTER_BUCKET_PROTECTED_PREFIX} as it is a protected folder.",
         )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
@@ -61,12 +63,12 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             if args.output_file:
                 self._validate_output_file_path(args.output_file)
 
-            is_cluster_bucket = False if args.bucket else True
+            is_pcluster_bucket = False if args.bucket else True
 
-            if is_cluster_bucket:
+            if is_pcluster_bucket:
                 self._validate_bucket_prefix(args.bucket_prefix)
 
-            return self._export_image_logs(args, args.output_file, is_cluster_bucket)
+            return self._export_image_logs(args, args.output_file)
         except Exception as e:
             utils.error(f"Unable to export image's logs.\n{e}")
             return None
@@ -74,13 +76,17 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
     @staticmethod
     def _validate_bucket_prefix(bucket_prefix: str) -> None:
         if bucket_prefix:
-            if bucket_prefix.startswith("parallelcluster/") or bucket_prefix=="parallelcluster":
+            if (
+                bucket_prefix.startswith(PCLUSTER_BUCKET_PROTECTED_PREFIX)
+                or bucket_prefix == PCLUSTER_BUCKET_PROTECTED_FOLDER
+            ):
                 raise ValueError(
-                    "Cannot export logs to the protected folder 'parallelcluster/'. Please use another folder."
+                    f"Cannot export logs to {bucket_prefix} as it is a protected folder "
+                    f"in {PCLUSTER_BUCKET_PROTECTED_PREFIX}. Please use another folder."
                 )
 
     @staticmethod
-    def _export_image_logs(args: Namespace, output_file: str = None, is_cluster_bucket: bool = False):
+    def _export_image_logs(args: Namespace, output_file: str = None):
         """Export the logs associated to the image."""
         LOGGER.debug("Beginning export of logs for the image: %s", args.image_id)
 
@@ -88,7 +94,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
         imagebuilder = ImageBuilder(image_id=args.image_id)
         url = imagebuilder.export_logs(
             # imagebuilder.bucket will handle the bucket init including policy update
-            bucket=imagebuilder.bucket.name if is_cluster_bucket else args.bucket,
+            bucket=args.bucket if args.bucket else imagebuilder.bucket.name,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,

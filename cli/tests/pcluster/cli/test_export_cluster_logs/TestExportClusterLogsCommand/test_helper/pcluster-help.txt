@@ -1,5 +1,5 @@
 usage: pcluster export-cluster-logs [-h] [--debug] [-r REGION] -n CLUSTER_NAME
-                                    --bucket BUCKET
+                                    [--bucket BUCKET]
                                     [--bucket-prefix BUCKET_PREFIX]
                                     [--output-file OUTPUT_FILE]
                                     [--keep-s3-objects KEEP_S3_OBJECTS]
@@ -18,11 +18,16 @@ options:
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Export the logs of the cluster name provided here.
   --bucket BUCKET       S3 bucket to export cluster logs data to. It must be
-                        in the same region of the cluster
+                        in the same region of the cluster. If not specified,
+                        the ParallelCluster default bucket or the
+                        CustomS3Bucket (if specified in the config) will be
+                        used.
   --bucket-prefix BUCKET_PREFIX
                         Keypath under which exported logs data will be stored
                         in s3 bucket. Defaults to <cluster_name>-logs-<current
-                        time in the format of yyyyMMddHHmm>
+                        time in the format of yyyyMMddHHmm>, If not specify
+                        `--bucket` option, cannot export logs to
+                        parallelcluster/ as it is a protected folder.
   --output-file OUTPUT_FILE
                         File path to save log archive to. If this is provided
                         the logs are saved locally. Otherwise they are

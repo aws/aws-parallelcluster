@@ -579,3 +579,19 @@ def retrieve_supported_regions():
             with open(pkg_resources.resource_filename(__name__, "/resources/supported-regions"), encoding="utf-8") as f:
                 retrieve_supported_regions.cache = f.read().split("\n")
     return retrieve_supported_regions.cache
+
+
+def get_service_principal(service_name: str, partition: str, region: str = None, regional: bool = False) -> str:
+    """Generate the service principal for a given service."""
+    domain_suffix = get_url_domain_suffix(partition)
+    if regional:
+        if not region:
+            raise ValueError("Region must be provided when 'regional' is True.")
+        return f"{service_name}.{region}.{domain_suffix}"
+    else:
+        return f"{service_name}.{domain_suffix}"
+
+
+def format_arn(partition: str, service: str, region: str, account: str, resource: str) -> str:
+    """Format an ARN string."""
+    return f"arn:{partition}:{service}:{region}:{account}:{resource}"
