@@ -53,7 +53,7 @@ PROMPTS = {
 
 
 def test_pcluster_configure(
-    request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir
+    request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir, architecture
 ):
     """Verify that the config file produced by `pcluster configure` can be used to create a cluster."""
     skip_if_unsupported_test_options_were_used(request)
@@ -61,7 +61,7 @@ def test_pcluster_configure(
 
     _create_and_test_standard_configuration(request, config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
-    inject_additional_config_settings(config_path, request, region)
+    inject_additional_config_settings(config_path, request, region, architecture)
     clusters_factory(config_path)
 
 
@@ -142,6 +142,7 @@ def test_efa_and_placement_group(
     region,
     os,
     instance,
+    architecture,
     scheduler,
     clusters_factory,
     test_datadir,
@@ -187,7 +188,7 @@ def test_efa_and_placement_group(
         efa_config=efa_config,
         placement_group_config=placement_group_config["configuration"],
     )
-    inject_additional_config_settings(config_path, request, region)
+    inject_additional_config_settings(config_path, request, region, architecture)
     clusters_factory(config_path)
 
 
