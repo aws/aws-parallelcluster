@@ -57,4 +57,8 @@ ENV PATH "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib6
 # expose ssh port
 EXPOSE 22
 
-USER root ENTRYPOINT ["/parallelcluster/bin/entrypoint.sh"]
+# We can ignore this rule because we expect the entrypoint to be executed as root.
+# Furthermore, specifying USER root in front of ENTRYPOINT throws the below error:
+# "unable to find user root ENTRYPOINT [/parallelcluster/bin/entrypoint.sh]: no matching entries in passwd file"
+# nosemgrep: dockerfile.security.missing-user-entrypoint.missing-user-entrypoint
+ENTRYPOINT ["/parallelcluster/bin/entrypoint.sh"]
