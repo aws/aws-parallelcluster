@@ -63,7 +63,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             if args.output_file:
                 self._validate_output_file_path(args.output_file)
 
-            is_pcluster_bucket = False if args.bucket else True
+            is_pcluster_bucket = not args.bucket
 
             if is_pcluster_bucket:
                 self._validate_bucket_prefix(args.bucket_prefix)
