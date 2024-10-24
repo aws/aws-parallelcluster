@@ -19,6 +19,7 @@ test-suites:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
       dimensions:
         - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:
