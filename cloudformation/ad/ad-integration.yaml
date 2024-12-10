@@ -416,7 +416,7 @@ Resources:
       IamInstanceProfile:
         Ref: JoinProfile
       ImageId: !Ref AdminNodeAmiId
-      InstanceType: t3.micro
+      InstanceType: t3.xlarge
       KeyName: !Ref Keypair
       LaunchTemplate:
         LaunchTemplateId: !Ref 'DisableImdsv1LaunchTemplate'
@@ -451,14 +451,14 @@ Resources:
               ADMIN_PW="${AdminPassword}"
               
               attempt=0
-              max_attempts=5
+              max_attempts=8
               until [ $attempt -ge $max_attempts ]; do
                 attempt=$((attempt+1))
                 echo "[DEBUG] Checking domain name resolution for ${DirectoryDomain} ..."
                 dig ${DirectoryDomain}
                 echo "Joining domain (attempt $attempt/$max_attempts) ..."
                 echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}" --verbose && echo "Domain joined" && break
-                sleep 10
+                sleep 12
               done
               
               sleep 10
