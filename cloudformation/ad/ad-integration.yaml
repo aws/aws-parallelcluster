@@ -446,6 +446,7 @@ Resources:
               DNS=${DnsIp1} ${DnsIp2}
               Domains=~.
               EOF
+              sudo rm /usr/lib/systemd/resolved.conf.d/resolved-disable-stub-listener.conf
               service systemd-resolved restart
               
               ADMIN_PW="${AdminPassword}"
