@@ -5,6 +5,8 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
+import re
+
 import pytest
 from assertpy import assert_that
 
@@ -24,8 +26,8 @@ class TestDescribeClusterInstancesCommand:
             (["--cluster-name", "cluster", "--invalid"], "Invalid arguments ['--invalid']"),
             (
                 ["--cluster-name", "cluster", "--node-type", "invalid"],
-                "error: argument --node-type: invalid choice: 'invalid' (choose from 'HeadNode', 'ComputeNode', "
-                "'LoginNode')",
+                r"error: argument --node-type: invalid choice: 'invalid' \(choose from .*HeadNode.*, .*ComputeNode.*, "
+                r".*LoginNode.*\)",
             ),
             (
                 ["--cluster-name", "cluster", "--region", "eu-west-"],
@@ -38,4 +40,4 @@ class TestDescribeClusterInstancesCommand:
         run_cli(command, expect_failure=True)
 
         out, err = capsys.readouterr()
-        assert_that(out + err).contains(error_message)
+        assert_that(re.search(error_message, out + err) or error_message in out + err).is_true()
