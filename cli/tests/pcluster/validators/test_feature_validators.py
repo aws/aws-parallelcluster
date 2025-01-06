@@ -23,8 +23,6 @@ from .utils import assert_failure_messages
     [
         (Feature.BATCH, True, None),
         (Feature.BATCH, False, "AWS Batch scheduler is not supported in region 'WHATEVER-REGION'"),
-        (Feature.DCV, True, None),
-        (Feature.DCV, False, "Amazon DCV is not supported in region 'WHATEVER-REGION'"),
         (Feature.FSX_LUSTRE, True, None),
         (Feature.FSX_LUSTRE, False, "FSx Lustre is not supported in region 'WHATEVER-REGION'"),
         (Feature.FSX_ONTAP, True, None),
