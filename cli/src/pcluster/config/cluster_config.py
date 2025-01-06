@@ -1639,7 +1639,6 @@ class BaseClusterConfig(Resource):
             imds_support=self.imds.imds_support,
         )
         if self.head_node.dcv:
-            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
             self._register_validator(
                 DcvValidator,
                 instance_type=self.head_node.instance_type,
@@ -2973,7 +2972,6 @@ class SlurmClusterConfig(BaseClusterConfig):
 
     def _register_login_node_validators(self):
         """Register all login node validators to ensure that the resource parameters are valid."""
-        has_dcv_configured = False
         # Check if all subnets(head node, Login nodes, compute nodes) are in the same VPC and support DNS.
         self._register_validator(
             SubnetsValidator,
@@ -3013,10 +3011,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                     os=self.image.os,
                     architecture=pool.architecture,
                 )
-                has_dcv_configured = True
-
-        if has_dcv_configured:
-            self._register_validator(FeatureRegionValidator, feature=Feature.DCV, region=self.region)
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: C901
         super()._register_validators(context)
