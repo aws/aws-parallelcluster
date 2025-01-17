@@ -605,6 +605,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             iam.PolicyStatement(
                 sid="Ec2",
                 actions=[
+                    "ec2:DescribeLaunchTemplateVersions",
                     "ec2:DescribeInstanceAttribute",
                     "ec2:DescribeInstances",
                     "ec2:DescribeInstanceStatus",

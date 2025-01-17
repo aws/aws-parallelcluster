@@ -1523,7 +1523,7 @@ class ClusterCdkStack:
             lt_config["Queues"][queue] = {"ComputeResources": {}}
             for compute_resource, launch_template in compute_resources.items():
                 lt_config["Queues"][queue]["ComputeResources"][compute_resource] = {
-                    "LaunchTemplate": {"Id": launch_template.ref, "Version": launch_template.attr_latest_version_number}
+                    "LaunchTemplate": {"Id": launch_template.ref, "Version": launch_template.attr_latest_version_number, "LogicalId": launch_template.logical_id}
                 }
 
         return lt_config
