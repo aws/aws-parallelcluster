@@ -199,100 +199,6 @@ class QueuesStack(NestedStack):
             instance_role_name = self.managed_compute_instance_roles[queue.name].ref
 
         launch_template_id = f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}"
-        launch_template = ec2.CfnLaunchTemplate(
-            self,
-            launch_template_id,
-            launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name}",
-            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
-                    queue.compute_settings.local_storage.root_volume,
-                    AWSApi.instance().ec2.describe_image(self._config.image_dict[queue.name]).device_name,
-                ),
-                # key_name=,
-                network_interfaces=compute_lt_nw_interfaces,
-                placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=placement_group),
-                image_id=self._config.image_dict[queue.name],
-                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
-                    name=instance_profiles[queue.name]
-                ),
-                instance_market_options=self._launch_template_builder.get_instance_market_options(
-                    queue, compute_resource
-                ),
-                instance_initiated_shutdown_behavior="terminate",
-                capacity_reservation_specification=self._launch_template_builder.get_capacity_reservation(
-                    queue,
-                    compute_resource,
-                ),
-                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
-                    http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
-                ),
-                user_data=Fn.base64(
-                    Fn.sub(
-                        get_user_data_content("../resources/compute_node/user_data.sh"),
-                        {
-                            **{
-                                # Disable multithreading using logic from
-                                # https://aws.amazon.com/blogs/compute/disabling-intel-hyper-threading-technology-on-amazon-linux/
-                                # thread_siblings_list contains a comma (,) or dash (-) separated list of CPU hardware
-                                # threads within the same core as cpu
-                                # e.g. 0-1 or 0,1
-                                # cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list
-                                #     | tr '-' ','       # convert hyphen (-) to comma (,), to account that
-                                #                        # some kernels and CPU architectures use a hyphen
-                                #                        # instead of a comma
-                                #     | cut -s -d, -f2-  # split over comma (,) and take the right part
-                                #     | tr ',' '\n'      # convert remaining comma (,) into new lines
-                                #     | sort -un         # sort and unique
-                                "DisableMultiThreadingManually": (
-                                    "true" if compute_resource.disable_simultaneous_multithreading_manually else "false"
-                                ),
-                                "BaseOS": self._config.image.os,
-                                "OSUser": OS_MAPPING[self._config.image.os]["user"],
-                                "ClusterName": self.stack_name,
-                                "Timeout": str(
-                                    get_attr(
-                                        self._config,
-                                        "dev_settings.timeouts.compute_node_bootstrap_timeout",
-                                        NODE_BOOTSTRAP_TIMEOUT,
-                                    )
-                                ),
-                                "ComputeStartupTimeMetricEnabled": str(
-                                    get_attr(
-                                        self._config,
-                                        "dev_settings.compute_startup_time_metric_enabled",
-                                        default=False,
-                                    )
-                                ),
-                                "LaunchTemplateResourceId": launch_template_id,
-                                "CloudFormationUrl": get_service_endpoint("cloudformation", self._config.region),
-                                "CfnInitRole": instance_role_name,
-                            },
-                            **get_common_user_data_env(queue, self._config),
-                        },
-                    )
-                ),
-                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=is_detailed_monitoring_enabled),
-                tag_specifications=[
-                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
-                        resource_type="instance",
-                        tags=get_default_instance_tags(
-                            self.stack_name, self._config, compute_resource, "Compute", self._shared_storage_infos
-                        )
-                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
-                        + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + self._get_custom_compute_resource_tags(queue, compute_resource),
-                    ),
-                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
-                        resource_type="volume",
-                        tags=get_default_volume_tags(self.stack_name, "Compute")
-                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
-                        + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
-                        + self._get_custom_compute_resource_tags(queue, compute_resource),
-                    ),
-                ],
-                **conditional_template_properties,
-            ),
-        )
 
         dna_json = json.dumps(
             {
@@ -397,64 +303,100 @@ class QueuesStack(NestedStack):
                     "launch_template_id": launch_template_id,
                 }
             },
-            indent=4,
+            indent=None, # Keep indent as None for compact sizing and proper parsing in user_data.sh
         )
 
-        cfn_init = {
-            "configSets": {
-                "deployFiles": ["deployConfigFiles"],
-                "update": ["deployConfigFiles", "chefUpdate"],
-            },
-            "deployConfigFiles": {
-                "files": {
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/dna.json": {  # nosec B108
-                        "content": dna_json,
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "encoding": "plain",
-                    },
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/extra.json": {  # nosec B108
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "content": self._config.extra_chef_attributes,
-                    },
-                },
-                "commands": {
-                    "mkdir": {"command": "mkdir -p /etc/chef/ohai/hints"},
-                    "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
-                    "jq": {
-                        "command": (
-                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
-                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
+        launch_template = ec2.CfnLaunchTemplate(
+            self,
+            launch_template_id,
+            launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name}",
+            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    queue.compute_settings.local_storage.root_volume,
+                    AWSApi.instance().ec2.describe_image(self._config.image_dict[queue.name]).device_name,
+                ),
+                # key_name=,
+                network_interfaces=compute_lt_nw_interfaces,
+                placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=placement_group),
+                image_id=self._config.image_dict[queue.name],
+                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
+                    name=instance_profiles[queue.name]
+                ),
+                instance_market_options=self._launch_template_builder.get_instance_market_options(
+                    queue, compute_resource
+                ),
+                instance_initiated_shutdown_behavior="terminate",
+                capacity_reservation_specification=self._launch_template_builder.get_capacity_reservation(
+                    queue,
+                    compute_resource,
+                ),
+                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
+                    http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
+                ),
+                user_data=Fn.base64(
+                    Fn.sub(
+                        get_user_data_content("../resources/compute_node/user_data.sh"),
+                        {
+                            **{
+                                # Disable multithreading using logic from
+                                # https://aws.amazon.com/blogs/compute/disabling-intel-hyper-threading-technology-on-amazon-linux/
+                                # thread_siblings_list contains a comma (,) or dash (-) separated list of CPU hardware
+                                # threads within the same core as cpu
+                                # e.g. 0-1 or 0,1
+                                # cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list
+                                #     | tr '-' ','       # convert hyphen (-) to comma (,), to account that
+                                #                        # some kernels and CPU architectures use a hyphen
+                                #                        # instead of a comma
+                                #     | cut -s -d, -f2-  # split over comma (,) and take the right part
+                                #     | tr ',' '\n'      # convert remaining comma (,) into new lines
+                                #     | sort -un         # sort and unique
+                                "DisableMultiThreadingManually": (
+                                    "true" if compute_resource.disable_simultaneous_multithreading_manually else "false"
+                                ),
+                                "BaseOS": self._config.image.os,
+                                "ClusterName": self.stack_name,
+                                "Timeout": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.timeouts.compute_node_bootstrap_timeout",
+                                        NODE_BOOTSTRAP_TIMEOUT,
+                                    )
+                                ),
+                                "ComputeStartupTimeMetricEnabled": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.compute_startup_time_metric_enabled",
+                                        default=False,
+                                    )
+                                ),
+                                "DnaJson": dna_json,
+                                "ExtraJson": self._config.extra_chef_attributes,
+                            },
+                            **get_common_user_data_env(queue, self._config),
+                        },
+                    )
+                ),
+                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=is_detailed_monitoring_enabled),
+                tag_specifications=[
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="instance",
+                        tags=get_default_instance_tags(
+                            self.stack_name, self._config, compute_resource, "Compute", self._shared_storage_infos
                         )
-                    },
-                },
-            },
-            "chefUpdate": {
-                "commands": {
-                    "chef": {
-                        "command": (
-                            ". /etc/parallelcluster/pcluster_cookbook_environment.sh; "
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
-                            " --logfile /var/log/chef-client.log --force-formatter --no-color"
-                            " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
-                            " --override-runlist aws-parallelcluster-entrypoints::update &&"
-                            " /opt/parallelcluster/scripts/fetch_and_run -postupdate"
-                        ),
-                        "cwd": "/etc/chef",
-                    }
-                }
-            },
-        }
-
-        launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
+                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
+                        + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
+                        + self._get_custom_compute_resource_tags(queue, compute_resource),
+                    ),
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="volume",
+                        tags=get_default_volume_tags(self.stack_name, "Compute")
+                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
+                        + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
+                        + self._get_custom_compute_resource_tags(queue, compute_resource),
+                    ),
+                ],
+                **conditional_template_properties,
+            ),
+        )
 
         return launch_template
