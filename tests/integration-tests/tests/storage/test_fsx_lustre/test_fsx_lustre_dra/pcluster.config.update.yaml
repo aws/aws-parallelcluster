@@ -43,7 +43,6 @@ SharedStorage:
           FileSystemPath: /test1
           ImportedFileChunkSize: 1024
           AutoExportPolicy: [ NEW, CHANGED, DELETED ]
-          AutoImportPolicy: [ NEW, CHANGED ]
         - Name: dra_2
           BatchImportMetaDataOnCreate: True
           DataRepositoryPath: s3://{{ bucket_name }}/test2
