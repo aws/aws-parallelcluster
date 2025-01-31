@@ -210,7 +210,7 @@ def test_fsx_lustre_dra(
 
     check_dra(cluster, region, 1, "test1", mount_dir)
 
-    # Add a second DRA and modify a parameter of the first DRA
+    # Add a second DRA
     cluster_update_config = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         mount_dir=mount_dir,
