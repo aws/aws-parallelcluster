@@ -416,8 +416,8 @@ def test_compute_launch_template_properties(
         "UserData"
     ]["Fn::Base64"]["Fn::Sub"][1]
     expected_user_data_variables = {
-        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-        "LaunchTemplateResourceId": launch_template_logical_id,
+        'DisableMultiThreadingManually': 'true',
+        'ProxyServer': 'NONE',
     }
     for k, v in expected_user_data_variables.items():
         assert_that(user_data_variables[k]).is_equal_to(v)

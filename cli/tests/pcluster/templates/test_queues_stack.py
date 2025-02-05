@@ -131,29 +131,19 @@ def test_compute_nodes_dna_json(
     # Generated dna.json and extra.json
     compute_node_lt_asset = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplateA7211c84b953696f")
     compute_node_lt = compute_node_lt_asset["Resources"]["LaunchTemplateA7211c84b953696f"]
-    compute_node_cfn_init_files = compute_node_lt["Metadata"]["AWS::CloudFormation::Init"]["deployConfigFiles"]["files"]
-    compute_node_dna_json = compute_node_cfn_init_files["/tmp/dna.json"]
-    compute_node_extra_json = compute_node_cfn_init_files["/tmp/extra.json"]
+    compute_node_dna_json = render_join(compute_node_lt['Properties']['LaunchTemplateData']['UserData']['Fn::Base64']['Fn::Sub'][1]['DnaJson']['Fn::Join'])
+
+    compute_node_extra_json = compute_node_lt['Properties']['LaunchTemplateData']['UserData']['Fn::Base64']['Fn::Sub'][1]['ExtraJson']
 
     # Expected dna.json and extra.json
     expected_compute_node_dna_json = load_json_dict(test_datadir / expected_compute_node_dna_json_file_name)
     expected_compute_node_extra_json = load_json_dict(test_datadir / expected_compute_node_extra_json_file_name)
-    expected_owner = expected_group = "root"
-    expected_mode = "000644"
 
     # Assertions on dna.json
-    rendered_dna_json_content = render_join(compute_node_dna_json["content"]["Fn::Join"])
-    rendered_dna_json_content_as_json = json.loads(rendered_dna_json_content)
-    assert_that(compute_node_dna_json["owner"]).is_equal_to(expected_owner)
-    assert_that(compute_node_dna_json["group"]).is_equal_to(expected_group)
-    assert_that(compute_node_dna_json["mode"]).is_equal_to(expected_mode)
-    assert_that(rendered_dna_json_content_as_json).is_equal_to(expected_compute_node_dna_json)
+    assert_that(json.loads(compute_node_dna_json)).is_equal_to(expected_compute_node_dna_json)
 
     # Assertions on extra.json
-    assert_that(compute_node_extra_json["owner"]).is_equal_to(expected_owner)
-    assert_that(compute_node_extra_json["group"]).is_equal_to(expected_group)
-    assert_that(compute_node_extra_json["mode"]).is_equal_to(expected_mode)
-    assert_that(json.loads(compute_node_extra_json["content"])).is_equal_to(expected_compute_node_extra_json)
+    assert_that(json.loads(compute_node_extra_json)).is_equal_to(expected_compute_node_extra_json)
 
 
 def render_join(elem: dict):
