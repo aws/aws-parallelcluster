@@ -131,9 +131,15 @@ def test_compute_nodes_dna_json(
     # Generated dna.json and extra.json
     compute_node_lt_asset = get_asset_content_with_resource_name(cdk_assets, "LaunchTemplateA7211c84b953696f")
     compute_node_lt = compute_node_lt_asset["Resources"]["LaunchTemplateA7211c84b953696f"]
-    compute_node_dna_json = render_join(compute_node_lt['Properties']['LaunchTemplateData']['UserData']['Fn::Base64']['Fn::Sub'][1]['DnaJson']['Fn::Join'])
+    compute_node_dna_json = render_join(
+        compute_node_lt["Properties"]["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]["DnaJson"][
+            "Fn::Join"
+        ]
+    )
 
-    compute_node_extra_json = compute_node_lt['Properties']['LaunchTemplateData']['UserData']['Fn::Base64']['Fn::Sub'][1]['ExtraJson']
+    compute_node_extra_json = compute_node_lt["Properties"]["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][
+        1
+    ]["ExtraJson"]
 
     # Expected dna.json and extra.json
     expected_compute_node_dna_json = load_json_dict(test_datadir / expected_compute_node_dna_json_file_name)

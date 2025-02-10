@@ -303,7 +303,7 @@ class QueuesStack(NestedStack):
                     "launch_template_id": launch_template_id,
                 }
             },
-            indent=None, # Keep indent as None for compact sizing and proper parsing in user_data.sh
+            indent=None,  # Keep indent as None for compact sizing and proper parsing in user_data.sh
         )
 
         launch_template = ec2.CfnLaunchTemplate(
