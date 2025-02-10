@@ -1,7 +1,12 @@
 CHANGELOG
 =========
+
 3.13.0
 ------
+**ANNOUNCEMENTS**
+Ubuntu 20.04 will no longer be supported starting with the next minor release 
+as it will reach End of Standard Support on April 2025.
+
 **ENHANCEMENTS**
 
 **CHANGES**
