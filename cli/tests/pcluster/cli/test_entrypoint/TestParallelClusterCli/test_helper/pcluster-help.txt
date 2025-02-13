@@ -50,7 +50,7 @@ COMMANDS:
                         List Official ParallelCluster AMIs.
     configure           Start the AWS ParallelCluster configuration.
     dcv-connect         Permits connection to the head or login nodes through
-                        an interactive session by using NICE DCV.
+                        an interactive session by using Amazon DCV.
     export-cluster-logs
                         Export the logs of the cluster to a local tar.gz
                         archive by passing through an Amazon S3 Bucket.

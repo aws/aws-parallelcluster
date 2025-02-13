@@ -183,10 +183,6 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
         {"ParameterKey": "PrivateSubnetOne", "ParameterValue": private_subnet},
         {"ParameterKey": "PrivateSubnetTwo", "ParameterValue": private_subnets[0]},
         {"ParameterKey": "Keypair", "ParameterValue": keypair},
-        {
-            "ParameterKey": "AdminNodeAmiId",
-            "ParameterValue": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2",
-        },
     ]
     return stack_parameters
 

@@ -66,7 +66,31 @@ Parameters:
   AdminNodeAmiId:
     Description: AMI for the Admin Node
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Directory
+        Parameters:
+          - DirectoryType
+          - DomainName
+          - Vpc
+          - PrivateSubnetOne
+          - PrivateSubnetTwo
+      - Label:
+          default: Users
+        Parameters:
+          - AdminPassword
+          - ReadOnlyPassword
+          - UserNames
+          - UserPassword
+      - Label:
+          default: Administrative Node
+        Parameters:
+          - AdminNodeAmiId
+          - Keypair
 
 Transform: AWS::Serverless-2016-10-31
 
@@ -334,7 +358,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: ec2.amazonaws.com
+              Service: !Sub ec2.${AWS::URLSuffix}
         Version: "2012-10-17"
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -387,7 +411,6 @@ Resources:
               samba-common-tools: []
               krb5-workstation: []
               openldap-clients: []
-              policycoreutils-python: []
               openssl: []
     Properties:
       IamInstanceProfile:
@@ -416,25 +439,25 @@ Resources:
               echo "Domain Name: ${DirectoryDomain}"
               echo "Domain Certificate Secret: ${DomainCertificateSecretArn}"
               echo "Domain Private Key Secret: ${DomainPrivateKeySecretArn}"
-              cat << EOF > /etc/resolv.conf
-              search           ${DirectoryDomain}
-              nameserver       ${DnsIp1}
-              nameserver       ${DnsIp2}
+              
+              mkdir -p /etc/systemd/resolved.conf.d
+              cat << EOF > /etc/systemd/resolved.conf.d/pcluster-ad-domain-dns-server.conf
+              [Resolve]
+              DNS=${DnsIp1} ${DnsIp2}
+              Domains=~.
               EOF
-              sed -i 's/PEERDNS=.*/PEERDNS=no/' /etc/sysconfig/network-scripts/ifcfg-eth0
-              chattr +i /etc/resolv.conf
+              service systemd-resolved restart
+              
               ADMIN_PW="${AdminPassword}"
               
               attempt=0
               max_attempts=5
               until [ $attempt -ge $max_attempts ]; do
                 attempt=$((attempt+1))
-                echo "[DEBUG] Content of /etc/resolv.conf is:"
-                cat /etc/resolv.conf
-                echo "[DEBUG] Resolving ${DirectoryDomain} ..."
-                dig ${DirectoryDomain} 
+                echo "[DEBUG] Checking domain name resolution for ${DirectoryDomain} ..."
+                dig ${DirectoryDomain}
                 echo "Joining domain (attempt $attempt/$max_attempts) ..."
-                echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain} --verbose" && echo "Domain joined" && break
+                echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}" --verbose && echo "Domain joined" && break
                 sleep 10
               done
               

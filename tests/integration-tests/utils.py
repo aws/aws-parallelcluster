@@ -612,6 +612,18 @@ def get_network_interfaces_count(instance_type, region_name=None):
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
 
 
+def get_gpu_count(instance_type, region_name=None):
+    """Return the number of GPU for the provided instance type."""
+    gpu_info = get_instance_info(instance_type, region_name).get("GpuInfo", None)
+    gpu_count = 0
+    if gpu_info:
+        for gpu in gpu_info.get("Gpus", []):
+            manufacturer = gpu.get("Manufacturer", "")
+            if manufacturer.upper() == "NVIDIA":
+                gpu_count += gpu.get("Count", 0)
+    return gpu_count
+
+
 def get_root_volume_id(instance_id, region, os):
     """Return the root EBS volume's ID for the given EC2 instance."""
     logging.info("Getting root volume for instance %s", instance_id)

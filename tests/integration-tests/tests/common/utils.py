@@ -52,8 +52,8 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
-    "rhel9": {"name": "RHEL-9.3*_HVM-*", "owners": RHEL_OWNERS},
-    "rocky9": {"name": "Rocky-9-EC2-Base-9.3*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
+    "rocky9": {"name": "Rocky-9-EC2-Base-9.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
@@ -67,8 +67,8 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
-    "rhel9": {"name": "RHEL-9.3*_HVM-*", "owners": RHEL_OWNERS},
-    "rocky9": {"name": "Rocky-9-EC2-Base-9.3*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
+    "rocky9": {"name": "Rocky-9-EC2-Base-9.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
 OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
@@ -140,15 +140,18 @@ def retrieve_latest_ami(
         else:
             ami_name = _get_ami_for_os(ami_type, os).get("name")
         logging.info("Parent image name %s" % ami_name)
-        response = boto3.client("ec2", region_name=region).describe_images(
+        paginator = boto3.client("ec2", region_name=region).get_paginator("describe_images")
+        page_iterator = paginator.paginate(
             Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
             Owners=_get_ami_for_os(ami_type, os).get("owners"),
             IncludeDeprecated=_get_ami_for_os(ami_type, os).get("includeDeprecated", False),
         )
+        images = []
+        for page in page_iterator:
+            images.extend(page["Images"])
         # Sort on Creation date Desc
-        amis = sorted(response.get("Images", []), key=lambda x: x["CreationDate"], reverse=True)
-        return amis[0]["ImageId"]
+        return sorted(images, key=lambda x: x["CreationDate"], reverse=True)[0]["ImageId"]
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         raise
@@ -177,14 +180,18 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
         official_ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
             version=version, ami_name=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("name")
         )
-        official_amis = client.describe_images(
+        paginator = client.get_paginator("describe_images")
+        page_iterator = paginator.paginate(
             Filters=[
                 {"Name": "name", "Values": [official_ami_name]},
                 {"Name": "architecture", "Values": [architecture]},
             ],
             Owners=["self", "amazon"],
             IncludeDeprecated=True,
-        ).get("Images", [])
+        )
+        official_amis = []
+        for page in page_iterator:
+            official_amis.extend(page["Images"])
         ami_id = client.copy_image(
             Description="This AMI is a copy from an official AMI but uses a different naming. "
             "It is used to bypass the AMI's name validation of pcluster version "

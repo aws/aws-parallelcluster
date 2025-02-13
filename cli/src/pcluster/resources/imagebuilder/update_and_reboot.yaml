@@ -230,7 +230,7 @@ phases:
 
                 if [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rhel9" ]] || [[ ${!OS} == "rocky9" ]] || [[ ${!OS} == "alinux2023" ]] ; then
                   # package-cleanup has changed in RHEL8 and it works differently https://access.redhat.com/solutions/1227
-                  yum remove $(yum repoquery --installonly --latest-limit=-2 -q)
+                  yum remove -y $(yum repoquery --installonly --latest-limit=-2 -q)
                 else
                   package-cleanup -y --oldkernels --count=1
                 fi

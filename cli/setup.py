@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-VERSION = "3.12.0"
+VERSION = "3.13.0"
 CDK_VERSION = "1.164"
 REQUIRES = [
     "setuptools",
@@ -67,7 +67,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     install_requires=REQUIRES,
     extras_require={
         "awslambda": LAMBDA_REQUIRES,
@@ -86,8 +86,6 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

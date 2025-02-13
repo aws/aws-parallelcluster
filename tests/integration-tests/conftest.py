@@ -1209,6 +1209,7 @@ def _odcr_azs(vpc_stack):
 def scaling_odcr_stack(
     request,
     region,
+    os,
     cfn_stacks_factory,
     vpc_stack: CfnVpcStack,
 ):
@@ -1229,12 +1230,13 @@ def scaling_odcr_stack(
         odcr_template.set_description("ODCR stack to test scaling with special cases")
         default_public_az, availability_zone_1, availability_zone_2 = _odcr_azs(vpc_stack).values()
 
+        instance_platform = "Red Hat Enterprise Linux" if "rhel" in os else "Linux/UNIX"
         first_odcr_instances_count = int(instances_count // 2)
         scaling_odcr_a = ec2.CapacityReservation(
             "integTestsScalingOdcrA",
             AvailabilityZone=default_public_az,
             InstanceCount=first_odcr_instances_count,
-            InstancePlatform="Linux/UNIX",
+            InstancePlatform=instance_platform,
             InstanceType="c5.large",
             InstanceMatchCriteria="targeted",
         )
@@ -1242,7 +1244,7 @@ def scaling_odcr_stack(
             "integTestsScalingOdcrB",
             AvailabilityZone=default_public_az,
             InstanceCount=instances_count - first_odcr_instances_count,
-            InstancePlatform="Linux/UNIX",
+            InstancePlatform=instance_platform,
             InstanceType="c5.large",
             InstanceMatchCriteria="targeted",
         )
@@ -1302,6 +1304,7 @@ def scaling_odcr_stack(
 def odcr_stack(
     request,
     region,
+    os,
     placement_group_stack,
     cfn_stacks_factory,
     vpc_stack: CfnVpcStack,
@@ -1314,18 +1317,20 @@ def odcr_stack(
     odcr_template.set_description("ODCR stack to test open, targeted, and PG ODCRs")
     default_public_az, availability_zone_1, availability_zone_2 = _odcr_azs(vpc_stack).values()
 
+    instance_platform = "Red Hat Enterprise Linux" if "rhel" in os else "Linux/UNIX"
+
     open_odcr = ec2.CapacityReservation(
         "integTestsOpenOdcr",
         AvailabilityZone=default_public_az,
         InstanceCount=6,
-        InstancePlatform="Linux/UNIX",
+        InstancePlatform=instance_platform,
         InstanceType="m5.2xlarge",
     )
     target_odcr = ec2.CapacityReservation(
         "integTestsTargetOdcr",
         AvailabilityZone=default_public_az,
         InstanceCount=6,
-        InstancePlatform="Linux/UNIX",
+        InstancePlatform=instance_platform,
         InstanceType="r5.xlarge",
         InstanceMatchCriteria="targeted",
     )
@@ -1334,7 +1339,7 @@ def odcr_stack(
         "integTestsPgOdcr",
         AvailabilityZone=default_public_az,
         InstanceCount=3,
-        InstancePlatform="Linux/UNIX",
+        InstancePlatform=instance_platform,
         InstanceType="m5.xlarge",
         InstanceMatchCriteria="targeted",
         PlacementGroupArn=boto3.resource("ec2").PlacementGroup(pg_name).group_arn,
@@ -1383,7 +1388,7 @@ def odcr_stack(
         "az1Odcr",
         AvailabilityZone=availability_zone_1,
         InstanceCount=2,
-        InstancePlatform="Linux/UNIX",
+        InstancePlatform=instance_platform,
         InstanceMatchCriteria="targeted",
         InstanceType="c5.xlarge",
     )
@@ -1391,7 +1396,7 @@ def odcr_stack(
         "az2Odcr",
         AvailabilityZone=availability_zone_2,
         InstanceCount=2,
-        InstancePlatform="Linux/UNIX",
+        InstancePlatform=instance_platform,
         InstanceMatchCriteria="targeted",
         InstanceType="c5.xlarge",
     )

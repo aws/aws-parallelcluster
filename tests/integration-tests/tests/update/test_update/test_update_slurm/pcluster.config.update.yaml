@@ -46,9 +46,9 @@ Scheduling:
       ComputeResources:
         - Name: queue1-i1
           Instances:
-            - InstanceType: c5.xlarge
-            - InstanceType: c5n.xlarge
-            - InstanceType: c5d.xlarge
+            - InstanceType: c5.large
+            - InstanceType: c5n.large
+            - InstanceType: c5d.large
           MinCount: 2 # Increased parameter value
           MaxCount: 4 # Increased parameter value
         - Name: queue1-i2
@@ -58,7 +58,9 @@ Scheduling:
           # Removed MinCount
         - Name: queue1-i3 # New compute resource
           Instances:
-            - InstanceType: t3.small
+          {% for instance_type in spot_instance_types %}
+            - InstanceType: {{ instance_type }}
+          {% endfor %}
               # Removed MinCount
       Networking:
         SubnetIds:

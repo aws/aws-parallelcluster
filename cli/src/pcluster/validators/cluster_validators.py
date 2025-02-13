@@ -1037,7 +1037,7 @@ class DcvValidator(Validator):
             allowed_oses = get_supported_dcv_os(architecture)
             if os not in allowed_oses:
                 self._add_failure(
-                    f"NICE DCV can be used with one of the following operating systems "
+                    f"Amazon DCV can be used with one of the following operating systems "
                     f"when using {architecture} architecture: {allowed_oses}. "
                     "Please double check the os configuration.",
                     FailureLevel.ERROR,
@@ -1046,7 +1046,7 @@ class DcvValidator(Validator):
             if re.search(r"(micro)|(nano)", instance_type):
                 self._add_failure(
                     "The packages required for desktop virtualization in the selected instance type '{0}' "
-                    "may cause instability of the instance. If you want to use NICE DCV it is recommended "
+                    "may cause instability of the instance. If you want to use Amazon DCV it is recommended "
                     "to use an instance type with at least 1.7 GB of memory.".format(instance_type),
                     FailureLevel.WARNING,
                 )
@@ -1308,6 +1308,42 @@ class HeadNodeImdsValidator(Validator):
             self._add_failure(
                 f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
                 FailureLevel.ERROR,
+            )
+
+
+class HeadNodeMemorySizeValidator(Validator):
+    """
+    Head Node Memory Size Validator.
+
+    Verify if the Head Node has enough memory to manage compute nodes.
+    """
+
+    def _validate(self, head_node_instance_type: str, total_max_compute_nodes: int):
+        head_node_memory = (
+            AWSApi.instance().ec2.get_instance_type_info(head_node_instance_type).ec2memory_size_in_mib() / 1024
+        )
+        # Assume OS takes up 0.6GB memory. Only check upto 16GB memory to prevent usage of small instance types.
+        required_memory = min(total_max_compute_nodes / 25 + 0.6, 16)
+        if head_node_memory < required_memory:
+            self._add_failure(
+                f"Head node instance type {head_node_instance_type} has {head_node_memory} GB of memory. "
+                f"Please choose a head node instance type with at least {required_memory} GB of memory"
+                f" to manage {total_max_compute_nodes} compute nodes.",
+                FailureLevel.ERROR,
+            )
+
+
+class SharedEbsPerformanceBottleNeckValidator(Validator):
+    """Warn potential performance bottleneck of using Shared EBS."""
+
+    def _validate(self, total_max_compute_nodes: int):
+        if total_max_compute_nodes > 100:
+            self._add_failure(
+                "EBS shared storage is mounted on the head node and shared to the compute nodes. "
+                "Therefore, the head node network bandwidth is a network performance bottle neck "
+                "if the compute nodes rely on this shared storage. "
+                "Please use FSx and EFS for better performance.",
+                FailureLevel.WARNING,
             )
 
 

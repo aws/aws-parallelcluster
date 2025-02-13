@@ -54,3 +54,17 @@ class SecurityGroupsAndSubnetValidator(Validator):
                     "Subnet id {0} is specified, security groups is required.".format(subnet_id),
                     FailureLevel.ERROR,
                 )
+
+
+class InstanceTypeSoftwareValidator(Validator):
+    """Validate software compatibility with instance type."""
+
+    def _validate(self, instance_type: str, nvidia: bool):
+        if nvidia:
+            instance_type_info = AWSApi.instance().ec2.get_instance_type_info(instance_type)
+            if instance_type_info.gpu_count() == 0:
+                self._add_failure(
+                    f"Instance type {instance_type} does not have GPU. "
+                    "NVIDIA software can only be installed on GPU instances.",
+                    FailureLevel.ERROR,
+                )

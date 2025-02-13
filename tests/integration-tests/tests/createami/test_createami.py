@@ -27,7 +27,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from troposphere import Template, iam
-from utils import generate_stack_name, get_arn_partition
+from utils import generate_stack_name, get_arn_partition, get_gpu_count
 
 from tests.common.assertions import (
     assert_head_node_is_running,
@@ -94,10 +94,11 @@ def test_invalid_config(
     assert_that(suppressed.message).contains("Request would have succeeded")
 
 
-@pytest.mark.usefixtures("instance", "scheduler")
+@pytest.mark.usefixtures("scheduler")
 def test_build_image(
     region,
     os,
+    instance,
     pcluster_config_reader,
     architecture,
     s3_bucket_factory,
@@ -123,10 +124,14 @@ def test_build_image(
     bucket_name = s3_bucket_factory()
     _set_s3_bucket_policy(bucket_name, get_arn_partition(region), region)
 
+    enable_nvidia = True
+    update_os_packages = False
+    enable_lustre_client = True
     # Get base AMI
     if os in ["alinux2", "ubuntu2004"]:
         # Test Deep Learning AMIs
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+        enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
     elif "rhel" in os or "rocky" in os or "ubuntu" in os:
         # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
         try:
@@ -135,12 +140,22 @@ def test_build_image(
             # Therefore, the test tries to succeed at best effort.
             logging.info("First stage AMI not available, using official AMI instead.")
             base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
+            update_os_packages = True
+            if os in ["ubuntu2204", "rhel9", "rocky9"]:
+                enable_lustre_client = False
     else:
         # Test vanilla AMIs.
         base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-
+    if os in ["alinux2", "alinux2023"]:
+        update_os_packages = True
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml", parent_image=base_ami, instance_role=instance_role, bucket_name=bucket_name
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        instance_role=instance_role,
+        bucket_name=bucket_name,
+        enable_nvidia=str(enable_nvidia and get_gpu_count(instance) > 0).lower(),
+        update_os_packages=str(update_os_packages).lower(),
+        enable_lustre_client=str(enable_lustre_client).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
@@ -393,7 +408,7 @@ def _test_image_tag_and_volume(image):
         )
         .get("Images")
     )
-    logging.info(image_list)
+    logging.info(f"Image List: {image_list}, length {len(image_list)}")
     assert_that(len(image_list)).is_equal_to(1)
 
     created_image = image_list[0]

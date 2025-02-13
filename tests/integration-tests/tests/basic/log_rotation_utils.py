@@ -138,6 +138,10 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
         "sync",
         compute_node_ip,
     )
+    # remove date extension to old rotated file
+    _run_command_on_node(
+        remote_command_executor, "sudo sed -i 's/dateext/nodateext/g' /etc/logrotate.conf", compute_node_ip
+    )
     # force log rotate without waiting for logs to reach certain size
     _run_command_on_node(remote_command_executor, "sudo logrotate -f /etc/logrotate.conf", compute_node_ip)
     # check if logs are rotated
@@ -191,9 +195,11 @@ def _test_logs_uploaded_to_cloudwatch(
     # write a log message to log file after log rotation in case log is empty
     for log in logs:
         if log.get("existence"):
+            log_path = log.get("log_path")
+            log_file_user = remote_command_executor.get_user_to_operate_on_file(log_path)
             _run_command_on_node(
                 remote_command_executor,
-                f"echo '{after_log_rotation_message}' | sudo tee --append {log.get('log_path')}",
+                f"echo '{after_log_rotation_message}' | sudo -u {log_file_user} tee --append {log_path}",
                 compute_private_ip,
             )
             # assert both logs are in the cloudwatch logs

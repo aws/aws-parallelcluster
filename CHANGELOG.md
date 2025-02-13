@@ -1,13 +1,48 @@
 CHANGELOG
 =========
+3.13.0
+------
+**ENHANCEMENTS**
+
+**CHANGES**
+
+**BUG FIXES**
+- Fix an issue where when using Proxy, compute node bootstrap would fail.
+
+
 3.12.0
 ------
 
-**CHANGES**
+**ENHANCEMENTS**
+- Add new build image configuration section `Build/Installation` to turn on/off Nvidia software and Lustre client installations. By default, Nvidia software, although included in official ParallelCluster AMIs, is not installed by `build-image`. By default, Lustre client is installed.
 - The CLI commands `export-cluster-logs` and `export-image-logs` can now by default export the logs to the default ParallelCluster bucket or to the CustomS3Bucket if specified in the config.
+- Extend Amazon DCV support to Ubuntu2204 on ARM instances.
+
+**CHANGES**
+- Upgrade NVIDIA driver to version 550.127.08 (from 550.90.07). This addresses [a known issue from Nivdia](https://docs.nvidia.com/datacenter/tesla/tesla-release-notes-550-90-07/index.html#known-issues).
+- Upgrade Amazon DCV to version `2024.0-18131`.
+  - server: `2024.0-18131-1`
+  - xdcv: `2024.0.631-1`
+  - gl: `2024.0.1078-1`
+  - web_viewer: `2024.0-18131-1`
+- Upgrade EFA installer to `1.36.0`.
+  - Efa-driver: `efa-2.13.0-1`
+  - Efa-config: `efa-config-1.17-1`
+  - Efa-profile: `efa-profile-1.7-1`
+  - Libfabric-aws: `libfabric-aws-1.22.0-1`
+  - Rdma-core: `rdma-core-54.0-1`
+  - Open MPI: `openmpi40-aws-4.1.7-1` and `openmpi50-aws-5.0.5`
+- Auto-restart slurmctld on failure.
+- Upgrade mysql-community-client to version 8.0.39.
+- Remove support for Python 3.7 and 3.8, which are in end of life.
 
 **BUG FIXES**
-- When mounting an external OpenZFS, it is no longer required to set the outbound rules for ports 111, 2049, 20001, 20002, 20003
+- Fix an issue where changes in sequence of custom actions scripts were not detected during cluster updates.
+- Add missing permissions for ParallelCluster API to create the service linked roles for Elastic Load Balancing and Auto Scaling, that are required to deploy login nodes.
+- Fix retrieval of regions when managing volumes to correctly handle local zones.
+- Fix an issue where adding EFS filesystems with AccessPointIds during an update would fail.
+- Fix an issue where when using PCAPI, cluster update could fail when updating a parameter that is not type `String` (e.g. `MaxCount`).
+- When mounting an external OpenZFS, it is no longer required to set the outbound rules for ports 111, 2049, 20001, 20002, 20003.
 
 3.11.1
 ------
@@ -21,8 +56,8 @@ CHANGELOG
 **BUG FIXES**
 - Fix an issue in the way we configure the Pyxis Slurm plugin in ParallelCluster that can lead to job submission failures.
   https://github.com/aws/aws-parallelcluster/issues/6459
-- Fix an issue that was causing failing deployment in configurations with login nodes 
-  by add missing permissions required by login nodes in the public template of policies. 
+- Fix an issue that was causing failing deployment in configurations with login nodes
+  by add missing permissions required by login nodes in the public template of policies.
   https://github.com/aws/aws-parallelcluster/issues/6483
 
 3.11.0
@@ -39,8 +74,8 @@ CHANGELOG
 - Install enroot and pyxis in official pcluster AMIs
 
 **CHANGES**
-- *[BREAKING]* The `loginNodes` field returned by the API `DescribeCluster` and the CLI command `describe-cluster` 
-  has been changed from a dictionary to an array to support multiple pools of login nodes. 
+- *[BREAKING]* The `loginNodes` field returned by the API `DescribeCluster` and the CLI command `describe-cluster`
+  has been changed from a dictionary to an array to support multiple pools of login nodes.
   This change breaks backward compatibility, making these operations incompatible with clusters deployed with older versions.
 - Upgrade Slurm to 23.11.10 (from 23.11.7).
 - Upgrade Pmix to 5.0.3 (from 5.0.2).
@@ -114,7 +149,7 @@ CHANGELOG
   `IMPORT_*`, `REVIEW_IN_PROGRESS` and `UPDATE_FAILED`.
 - Fix an issue that prevented cluster updates from including EFS filesystems with encryption in transit.
 - Fix an issue that prevented slurmctld and slurmdbd services from restarting on head node reboot when
-  EFS is used for shared internal data. 
+  EFS is used for shared internal data.
 - On Ubuntu systems, remove default logrotate configuration for cloud-init log files that clashed with the
   configuration coming from Parallelcluster.
 - Fix image build failure with RHEL 8.10 or newer.
@@ -126,7 +161,7 @@ CHANGELOG
 - Add support for FSx Lustre as a shared storage type in us-iso-east-1.
 
 **BUG FIXES**
-- Remove `cloud_dns` from the `SlurmctldParameters` in the Slurm config to avoid Slurm fanout issues.  
+- Remove `cloud_dns` from the `SlurmctldParameters` in the Slurm config to avoid Slurm fanout issues.
   This is also not required since we set the IP addresses on instance launch.
 
 3.9.2

@@ -2,7 +2,9 @@ Image:
   Os: {{ os }}
 HeadNode:
   InstanceType: {{ instance }}
+  {% if scheduler == "slurm" %}
   SharedStorageType: {{ shared_headnode_storage_type }}
+  {% endif %}
   Networking:
     SubnetId: {{ public_subnet_ids[0] }}
   Ssh:

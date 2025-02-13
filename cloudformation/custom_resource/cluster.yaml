@@ -23,7 +23,7 @@ Parameters:
 Mappings:
   ParallelCluster:
     Constants:
-      Version: 3.12.0  # major.minor.patch+alpha/beta_identifier
+      Version: 3.13.0  # major.minor.patch+alpha/beta_identifier
 
 Conditions:
   CustomRoleCondition: !Not [!Equals [!Ref CustomLambdaRole, '']]

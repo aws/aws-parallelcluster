@@ -99,3 +99,28 @@ through unit tests and integration tests that exercise the operations.
 In order to test the API specifically, there are integraiton tests which will deploy the API and test the functionality using
 the generated client.
 
+### Invoking the API
+
+Install requirements for the example:
+```
+pip install -r client/requirements.txt
+```
+
+Invoke a deployed ParallelCluster API:
+```
+python client/example.py --region [REGION] --stack-name [PCAPI_STACK_NAME]
+```
+
+### Testing with Docker
+You can test ParallelCluster API locally with Docker.
+To this aim you need to build the Docker image:
+```
+bash tests/docker-build.sh
+```
+
+then run ParallelCluster API as Flask application:
+```
+docker run -p 8080:8080 -v ~/.aws:/root/.aws:ro --entrypoint python pcluster-lambda -m pcluster.api.flask_app
+```
+
+Notice that, the application will use the AWS credentials of your local default profile, defined in `~/.aws/config`.

@@ -78,7 +78,7 @@ def remove_disabled_tests(session, config, items):
         if item.nodeid.split("[")[0] not in enabled_tests:
             if get_xdist_worker_id(session) in ["master", "gw0"]:
                 # log only in master process to avoid duplicate log entries
-                logging.warning("Skipping test %s because not defined in config", item.nodeid)
+                logging.debug("Skipping test %s because not defined in config", item.nodeid)
             items.remove(item)
 
 

@@ -2,7 +2,7 @@ openapi: 3.0.2
 info:
   description: ParallelCluster API
   title: ParallelCluster
-  version: 3.12.0
+  version: 3.13.0
 servers:
 - url: /
 # override: auth is defined the the API GW level

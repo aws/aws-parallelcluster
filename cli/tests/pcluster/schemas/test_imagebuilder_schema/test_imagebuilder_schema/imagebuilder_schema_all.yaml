@@ -37,6 +37,11 @@ Build:
   SubnetId: subnet-0d03dc52
   UpdateOsPackages:
     Enabled: true
+  Installation:
+    NvidiaSoftware:
+      Enabled: true
+    LustreClient:
+      Enabled: true
 
 DevSettings:
   DisablePclusterComponent: False

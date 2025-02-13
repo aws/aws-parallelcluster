@@ -88,7 +88,7 @@ def _check_declared_tests_exist(config, tests_root_dir):
         logging.error("Some of the configured tests do not exist: %s", e)
         raise
 
-    logging.info("Found following unused test functions: %s", json.dumps(unused_test_functions, indent=2))
+    logging.debug("Found following unused test functions: %s", json.dumps(unused_test_functions, indent=2))
 
 
 if __name__ == "__main__":

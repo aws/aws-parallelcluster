@@ -38,8 +38,6 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         name:
-          - Python 3.7 Tests
-          - Python 3.8 Tests
           - Python 3.9 Tests
           - Python 3.10 Tests
           - Python 3.11 Tests
@@ -50,14 +48,6 @@ jobs:
           - API CloudFormation Templates Checks
           - Integration Tests Config Checks
         include:
-          - name: Python 3.7 Tests
-            python: 3.7
-            toxdir: cli
-            toxenv: py37-nocov
-          - name: Python 3.8 Tests
-            python: 3.8
-            toxdir: cli
-            toxenv: py38-nocov
           - name: Python 3.9 Tests
             python: 3.9
             toxdir: cli
@@ -119,8 +109,6 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         name:
-          - Python 3.7 AWS Batch CLI Tests
-          - Python 3.8 AWS Batch CLI Tests
           - Python 3.9 AWS Batch CLI Tests
           - Python 3.10 AWS Batch CLI Tests
           - Python 3.11 AWS Batch CLI Tests
@@ -128,14 +116,6 @@ jobs:
           - Python 3.10 AWS Batch CLI Tests Coverage
           - Code Checks AWS Batch CLI
         include:
-          - name: Python 3.7 AWS Batch CLI Tests
-            python: 3.7
-            toxdir: awsbatch-cli
-            toxenv: py37-nocov
-          - name: Python 3.8 AWS Batch CLI Tests
-            python: 3.8
-            toxdir: awsbatch-cli
-            toxenv: py38-nocov
           - name: Python 3.9 AWS Batch CLI Tests
             python: 3.9
             toxdir: awsbatch-cli

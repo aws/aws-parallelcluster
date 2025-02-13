@@ -1,0 +1,58 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  SharedStorageType: {{ shared_headnode_storage_type }}
+  Networking:
+    SubnetId: {{ public_subnet_ids[0] }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  - Name: queue-0
+    ComputeResources:
+      - Name: compute-resource-0
+        {% if scheduler == "awsbatch" %}
+        InstanceTypes:
+          - {{ instance }}
+        MinvCpus: 4
+        DesiredvCpus: 4
+        {% else %}
+        Instances:
+          - InstanceType: {{ instance }}
+        MinCount: 1
+        MaxCount: 1
+        {% endif %}
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_ids[1] }}
+  {% if scheduler == "slurm" %}
+  - Name: queue-1
+    ComputeResources:
+      - Name: compute-resource-0
+        Instances:
+          - InstanceType: {{ instance }}
+        MinCount: 1
+        MaxCount: 1
+    Networking:
+      SubnetIds:
+        - {% if private_subnet_ids|length >= 3 %} {{ private_subnet_ids[2] }} {% else %} {{ private_subnet_ids[1] }} {% endif %}
+  {% endif %}
+SharedStorage:
+  - MountDir: {{ mount_dir }}
+    Name: efs
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: {{ efs_filesystem_id }}
+      AccessPointId: {{ access_point_id }}
+      EncryptionInTransit: true
+  - MountDir: {{ mount_dir_2 }}
+    Name: efs_2
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: {{ efs_filesystem_id_2 }}
+      AccessPointId: {{ access_point_id_2 }}
+      EncryptionInTransit: true

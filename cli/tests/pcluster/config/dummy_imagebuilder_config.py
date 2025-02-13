@@ -19,6 +19,9 @@ from pcluster.config.imagebuilder_config import (
     ImageBuilderConfig,
     ImagebuilderDeploymentSettings,
     ImagebuilderDevSettings,
+    Installation,
+    LustreClient,
+    NvidiaSoftware,
     UpdateOsPackages,
     Volume,
 )
@@ -39,6 +42,9 @@ CLASS_DICT = {
     "additional_iam_policies": AdditionalIamPolicy,
     "update_os_packages": UpdateOsPackages,
     "imds": Imds,
+    "installation": Installation,
+    "lustre_client": LustreClient,
+    "nvidia_software": NvidiaSoftware,
 }
 
 

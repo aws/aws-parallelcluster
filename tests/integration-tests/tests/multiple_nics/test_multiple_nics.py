@@ -54,7 +54,7 @@ def _test_head_node_nics(remote_command_executor, region):
     ).stdout
 
     head_node_ip_addresses = _get_private_ip_addresses(head_node_instance_id, region, remote_command_executor)
-    ip_a_result = remote_command_executor.run_remote_command("ip a").stdout
+    ip_a_result = remote_command_executor.run_remote_command("ip a | col -b").stdout
 
     for ip_address in head_node_ip_addresses:
         assert_that(ip_a_result).matches(".* inet {0}.*".format(ip_address))

@@ -89,10 +89,6 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
           oss: ["rocky8", "rhel8", "rhel9", "rocky9", "ubuntu2204"]
-        - regions: ["cn-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: ["alinux2"]
     test_createami.py::test_build_image_custom_components:
       # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
       # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)

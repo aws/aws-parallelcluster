@@ -59,12 +59,18 @@ def _compare_changes(changes, expected_changes):
         is_old_value_equal = (
             source.old_value["Name"] == target.old_value["Name"]
             if isinstance(source.old_value, dict) and "Name" in source.old_value
-            else source.old_value == target.old_value
+            else (
+                source.old_value == target.old_value
+                or (source.old_value in ["-", None] and target.old_value in ["-", None])
+            )
         )
         is_new_value_equal = (
             source.new_value["Name"] == target.new_value["Name"]
             if isinstance(source.new_value, dict) and "Name" in source.new_value
-            else source.new_value == target.new_value
+            else (
+                source.new_value == target.new_value
+                or (source.new_value in ["-", None] and target.new_value in ["-", None])
+            )
         )
 
         return (
@@ -89,6 +95,7 @@ def _compare_changes(changes, expected_changes):
     sorted_changes = sorted(changes, key=_sorting_func)
     sorted_expected_changes = sorted(expected_changes, key=_sorting_func)
 
+    assert_that(sorted_changes).is_length(len(expected_changes))
     assert_that(
         all([_compare_change(source, target) for source, target in zip(sorted_changes, sorted_expected_changes)])
     ).is_true()
@@ -439,6 +446,35 @@ def _test_no_updatable_custom_actions(base_conf, target_conf):
     )
 
 
+def _test_no_updatable_custom_actions_sequence(base_conf, target_conf):
+    base_conf["HeadNode"].update(
+        {
+            "CustomActions": {
+                "OnNodeConfigured": {"Sequence": [{"Script": "test-to-edit.sh", "Args": ["1", "2"]}]},
+            }
+        }
+    )
+    target_conf["HeadNode"].update(
+        {"CustomActions": {"OnNodeConfigured": {"Sequence": [{"Script": "test-to-edit.sh", "Args": ["2"]}]}}}
+    )
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions", "OnNodeConfigured"],
+                "Sequence",
+                [{"Script": "test-to-edit.sh", "Args": ["1", "2"]}],
+                [{"Script": "test-to-edit.sh", "Args": ["2"]}],
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.UNSUPPORTED,
+    )
+
+
 def _test_updatable_custom_actions_attributes(base_conf, target_conf):
     base_conf["HeadNode"].update(
         {"CustomActions": {"OnNodeUpdated": {"Script": "test-to-edit.sh", "Args": ["1", "2"]}}}
@@ -483,6 +519,94 @@ def _test_updatable_custom_actions(base_conf, target_conf):
                 "OnNodeUpdated",
                 {"Script": "test-to-remove.sh"},
                 "-",
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_updatable_custom_actions_sequence_add(base_conf, target_conf):
+    target_conf["HeadNode"].update(
+        {"CustomActions": {"OnNodeUpdated": {"Sequence": [{"Script": "test-to-remove.sh"}]}}}
+    )
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions"],
+                "OnNodeUpdated",
+                "-",
+                {"Sequence": [{"Script": "test-to-remove.sh"}]},
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_updatable_custom_actions_sequence_change(base_conf, target_conf):
+    base_conf["HeadNode"].update({"CustomActions": {"OnNodeUpdated": {"Sequence": [{"Script": "test-to-remove.sh"}]}}})
+    target_conf["HeadNode"].update(
+        {"CustomActions": {"OnNodeUpdated": {"Sequence": [{"Script": "another-script.sh"}]}}}
+    )
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions", "OnNodeUpdated"],
+                "Sequence",
+                [{"Script": "test-to-remove.sh"}],
+                [{"Script": "another-script.sh"}],
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_updatable_custom_actions_sequence_remove(base_conf, target_conf):
+    base_conf["HeadNode"].update({"CustomActions": {"OnNodeUpdated": {"Sequence": [{"Script": "test-to-remove.sh"}]}}})
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions"],
+                "OnNodeUpdated",
+                {"Sequence": [{"Script": "test-to-remove.sh"}]},
+                "-",
+                UpdatePolicy.SUPPORTED,
+                is_list=False,
+            ),
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_updatable_custom_actions_single_to_sequence(base_conf, target_conf):
+    base_conf["HeadNode"].update({"CustomActions": {"OnNodeUpdated": {"Script": "test-to-remove.sh"}}})
+    target_conf["HeadNode"].update(
+        {"CustomActions": {"OnNodeUpdated": {"Sequence": [{"Script": "another-script.sh"}]}}}
+    )
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["HeadNode", "CustomActions"],
+                "OnNodeUpdated",
+                {"Script": "test-to-remove.sh"},
+                {"Sequence": [{"Script": "another-script.sh"}]},
                 UpdatePolicy.SUPPORTED,
                 is_list=False,
             ),
@@ -859,11 +983,11 @@ def _test_iam(base_conf, target_conf):
     # Check the update of Iam section with both updatable and not updatable keys
     for iam_section_child_key, iam_section_child_value in {
         "ResourcePrefix": {"old_config_value": "/path/name-prefix", "expected_update_policy": UpdatePolicy.UNSUPPORTED},
-        "PermissionBoundary": {
+        "PermissionsBoundary": {
             "old_config_value": "arn:aws:iam::aws:policy/some_old_permission_boundary",
             "expected_update_policy": UpdatePolicy.SUPPORTED,
         },
-        "Role": {
+        "Roles": {
             "old_config_value": {"LambdaFunctionsRole": "arn:aws:iam::aws:role/some_old_role"},
             "expected_update_policy": UpdatePolicy.SUPPORTED,
         },
@@ -905,8 +1029,13 @@ def _test_iam(base_conf, target_conf):
         _test_compute_resources,
         _test_queues,
         _test_no_updatable_custom_actions,
+        _test_no_updatable_custom_actions_sequence,
         _test_updatable_custom_actions,
         _test_updatable_custom_actions_attributes,
+        _test_updatable_custom_actions_sequence_add,
+        _test_updatable_custom_actions_sequence_change,
+        _test_updatable_custom_actions_sequence_remove,
+        _test_updatable_custom_actions_single_to_sequence,
         _test_storage,
         _test_iam,
     ],

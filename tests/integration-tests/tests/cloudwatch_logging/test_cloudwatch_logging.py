@@ -208,6 +208,9 @@ class CloudWatchLoggingClusterState:
 
     def _add_login_instance(self, instance):
         """Update the cluster's log state by adding a login node."""
+        # Ensure the instance is in 'running' state
+        if instance.get("State", {}).get("Name") != "running":
+            return
         login_hostname = self._run_command_on_head_node(
             "ssh -o StrictHostKeyChecking=no -q {} hostname -f".format(instance.get("PrivateDnsName"))
         )

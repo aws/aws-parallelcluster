@@ -78,5 +78,5 @@ def discover_all_test_functions(tests_root_dir):
             discovered_test_functions.get(module_dirname, []) + test_functions_identifiers
         )
 
-    logging.info("Discovered following test functions:\n%s", json.dumps(discovered_test_functions, indent=2))
+    logging.debug("Discovered following test functions:\n%s", json.dumps(discovered_test_functions, indent=2))
     return discovered_test_functions

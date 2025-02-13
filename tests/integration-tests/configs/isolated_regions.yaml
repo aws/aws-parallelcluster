@@ -80,6 +80,7 @@ test-suites:
         - regions: {{ REGIONS }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+          instances: ["t3.micro"]
     test_pcluster_configure.py::test_efa_and_placement_group:
       dimensions:
         - regions: {{ REGIONS }}

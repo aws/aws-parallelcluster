@@ -170,7 +170,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: ec2.amazonaws.com
+              Service: !Sub ec2.${AWS::URLSuffix}
         Version: 2012-10-17
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -189,7 +189,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: ec2.amazonaws.com
+              Service: !Sub ec2.${AWS::URLSuffix}
         Version: 2012-10-17
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore

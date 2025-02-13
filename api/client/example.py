@@ -13,19 +13,18 @@
 # language governing permissions and limitations under the License.
 
 import boto3
+import click
 from pcluster_client.api import cluster_operations_api
 from pcluster_client import Configuration, ApiClient, ApiException
 
-apigateway = boto3.client("apigateway")
 
-
-def request():
+@click.command()
+@click.option("--stack-name", help="ParallelCluster API stack name")
+@click.option("--region", help="AWS region")
+def request(stack_name: str, region: str):
     """Makes a simple request to the API Gateway"""
-    apis = apigateway.get_rest_apis()["items"]
-    api_id = next(api["id"] for api in apis if api["name"] == "ParallelCluster")
-    region = boto3.session.Session().region_name
-    host = f"{api_id}.execute-api.{region}.amazonaws.com"
-    configuration = Configuration(host=f"https://{host}/prod")
+    invoke_url = describe_stack_output(region, stack_name, "ParallelClusterApiInvokeUrl")
+    configuration = Configuration(host=invoke_url)
 
     with ApiClient(configuration) as api_client:
         client = cluster_operations_api.ClusterOperationsApi(api_client)
@@ -33,10 +32,30 @@ def request():
 
         try:
             response = client.list_clusters(region=region_filter)
-            print("clusters: ", [c["cluster_name"] for c in response["clusters"]])
+            print("Response: ", response)
         except ApiException as ex:
             print("Exception when calling ClusterOperationsApi->list_clusters: %s\n" % ex)
 
+
+def describe_stack_output(region: str, stack_name: str, output_name: str):
+    try:
+        # Describe stack
+        cloudformation = boto3.client("cloudformation", region_name=region)
+        response = cloudformation.describe_stacks(StackName=stack_name)
+
+        # Get the stack details
+        stacks = response.get("Stacks", [])
+        if not stacks:
+            print(f"No stacks found with the name: {stack_name}")
+            return None
+
+        # Extract output
+        outputs = stacks[0].get("Outputs", [])
+        return list(filter(lambda o: o['OutputKey'] == 'ParallelClusterApiInvokeUrl', outputs))[0]['OutputValue']
+
+    except Exception as e:
+        print(f"Cannot describe output '{output_name}' for stack '{stack_name}': {e}")
+        return None
 
 if __name__ == "__main__":
     request()

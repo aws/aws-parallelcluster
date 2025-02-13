@@ -20,7 +20,7 @@ use aws.api#service
 @sigv4(name: "ParallelCluster")
 @documentation("ParallelCluster API")
 service ParallelCluster {
-    version: "3.12.0",
+    version: "3.13.0",
     resources: [Cluster, ClusterInstances, ClusterComputeFleet, ClusterLogStream, ClusterStackEvents,
     ImageLogStream, ImageStackEvents, CustomImage, OfficialImage],
     operations: []

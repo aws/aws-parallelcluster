@@ -27,6 +27,7 @@ SUPPORTED_OSES = ["alinux2", "alinux2023", "ubuntu2004", "ubuntu2204", "rhel8", 
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
 UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
+UNSUPPORTED_ARM_OSES_FOR_DCV = ["ubuntu2004"]
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
 DELETION_POLICIES = [DELETE_POLICY, RETAIN_POLICY]
@@ -131,8 +132,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.12.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.12.0",
+    "parallelcluster": "3.13.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.13.0",
     "chef": "18.4.12",
     "berkshelf": "8.0.7",
     "ami": "dev",
@@ -230,7 +231,7 @@ class Feature(Enum):
     """
 
     BATCH = "AWS Batch scheduler"
-    DCV = "NICE DCV"
+    DCV = "Amazon DCV"
     FSX_LUSTRE = "FSx Lustre"
     FILE_CACHE = "FileCache"
     FSX_ONTAP = "FSx ONTAP"

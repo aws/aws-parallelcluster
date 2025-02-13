@@ -32,7 +32,9 @@ from pcluster.config.common import (
     DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
-from pcluster.config.common import Resource
+from pcluster.config.common import (
+    Resource,
+)
 from pcluster.constants import (
     CIDR_ALL_IPS,
     CW_ALARMS_ENABLED_DEFAULT,
@@ -88,6 +90,7 @@ from pcluster.validators.cluster_validators import (
     FsxArchitectureOsValidator,
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
+    HeadNodeMemorySizeValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
@@ -108,6 +111,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerDisableSudoAccessForDefaultUserValidator,
     SchedulerOsValidator,
     SchedulerValidator,
+    SharedEbsPerformanceBottleNeckValidator,
     SharedFileCacheNotHomeValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
@@ -3030,6 +3034,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
         capacity_reservation_id_max_count_map = {}
+        total_max_compute_nodes = 0
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
             if index == 0:
@@ -3064,6 +3069,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                 self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
 
             for compute_resource in queue.compute_resources:
+                total_max_compute_nodes += compute_resource.max_count
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
                     instance_type_info_list=list(compute_resource.instance_type_info_map.values()),
@@ -3180,6 +3186,18 @@ class SlurmClusterConfig(BaseClusterConfig):
                     compute_resource_tags=compute_resource.get_tags(),
                 )
 
+        self._register_validator(
+            HeadNodeMemorySizeValidator,
+            head_node_instance_type=self.head_node.instance_type,
+            total_max_compute_nodes=total_max_compute_nodes,
+        )
+        if self.shared_storage:
+            for storage in self.shared_storage:
+                if isinstance(storage, SharedEbs):
+                    self._register_validator(
+                        SharedEbsPerformanceBottleNeckValidator,
+                        total_max_compute_nodes=total_max_compute_nodes,
+                    )
         for capacity_reservation_id, num_of_instances in capacity_reservation_id_max_count_map.items():
             self._register_validator(
                 CapacityReservationSizeValidator,

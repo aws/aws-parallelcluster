@@ -689,7 +689,7 @@ class CWDashboardConstruct(Construct):
                 ],
             ),
             SectionWidgets(
-                "NICE DCV integration logs",
+                "Amazon DCV integration logs",
                 [
                     self._new_cw_log_widget(
                         title="dcv-ext-authenticator",

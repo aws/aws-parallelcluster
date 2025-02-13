@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ instance }}
+  InstanceType: {{ non_gpu_instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -18,35 +18,35 @@ Scheduling:
     ComputeResources:
     - Name: compute-resource-1
       Instances:
-        - InstanceType: g4dn.xlarge
+        - InstanceType: {{ instance }}
       HealthChecks:
         Gpu:
           Enabled: false
     - Name: compute-resource-2
       Instances:
-        - InstanceType: g4dn.xlarge
+        - InstanceType: {{ instance }}
       HealthChecks:
         Gpu:
           Enabled: true
     - Name: compute-resource-3
       Instances:
-        - InstanceType: g4dn.xlarge
+        - InstanceType: {{ instance }}
       MinCount: 1
     - Name: compute-resource-4
       Instances:
-        - InstanceType: c5.xlarge
+        - InstanceType: {{ non_gpu_instance }}
       HealthChecks:
         Gpu:
           Enabled: false
     - Name: compute-resource-5
       Instances:
-        - InstanceType: c5.xlarge
+        - InstanceType: {{ non_gpu_instance }}
       HealthChecks:
         Gpu:
           Enabled: true
     - Name: compute-resource-6
       Instances:
-        - InstanceType: c5.xlarge
+        - InstanceType: {{ non_gpu_instance }}
     Networking:
       SubnetIds:
         - {{ private_subnet_id }}
@@ -54,13 +54,13 @@ Scheduling:
     ComputeResources:
     - Name: compute-resource-1
       Instances:
-        - InstanceType: g4dn.xlarge
+        - InstanceType: {{ instance }}
       HealthChecks:
         Gpu:
           Enabled: true
     - Name: compute-resource-2
       Instances:
-        - InstanceType: c5.xlarge
+        - InstanceType: {{ non_gpu_instance }}
       HealthChecks:
         Gpu:
           Enabled: true

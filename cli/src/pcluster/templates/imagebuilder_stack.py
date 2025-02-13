@@ -197,7 +197,7 @@ class ImageBuilderCdkStack(Stack):
             self,
             "CfnParamChefDnaJson",
             type="String",
-            default=ImageBuilderExtraChefAttributes(self.config.dev_settings).dump_json(),
+            default=ImageBuilderExtraChefAttributes(self.config).dump_json(),
             description="ChefAttributes",
         )
         CfnParameter(

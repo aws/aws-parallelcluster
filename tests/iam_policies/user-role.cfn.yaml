@@ -534,6 +534,7 @@ Resources:
               - ec2:DescribeImages
               - ec2:DescribeInstanceTypeOfferings
               - ec2:DescribeInstanceTypes
+              - ec2:DescribeSecurityGroups
             Resource: '*'
           - Sid: IAM
             Effect: Allow

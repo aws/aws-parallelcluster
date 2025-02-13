@@ -81,9 +81,9 @@ write_files:
       # Load ParallelCluster environment variables
       [ -f /etc/parallelcluster/pcluster_cookbook_environment.sh ] && . /etc/parallelcluster/pcluster_cookbook_environment.sh
 
-      $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the login node. Please check /var/log/cfn-init.log in the login node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
-
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
+
+      $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the login node. Please check /var/log/cfn-init.log in the login node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
 
       # Configure AWS CLI using the expected overrides, if any.
       [ -f /etc/profile.d/aws-cli-default-config.sh ] && . /etc/profile.d/aws-cli-default-config.sh

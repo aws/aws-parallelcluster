@@ -28,7 +28,7 @@ from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.test_slurm import _assert_job_state
 
 
-@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.usefixtures("os")
 @pytest.mark.parametrize(
     "scaling_strategy, scaling_behaviour_by_capacity",
     [
@@ -185,6 +185,7 @@ from tests.schedulers.test_slurm import _assert_job_state
 )
 def test_job_level_scaling(
     region,
+    instance,
     pcluster_config_reader,
     clusters_factory,
     scheduler_commands_factory,
@@ -201,6 +202,7 @@ def test_job_level_scaling(
         scaledown_idletime=scaledown_idletime,
         scaling_strategy=scaling_strategy,
         no_of_queues=no_of_queues,
+        head_node_instance_type=instance.replace(".xlarge", ".2xlarge"),
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)

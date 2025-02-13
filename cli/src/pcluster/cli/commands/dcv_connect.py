@@ -180,7 +180,7 @@ class DcvConnectCommand(CliCommand):
 
     # CLI
     name = "dcv-connect"
-    help = "Permits connection to the head or login nodes through an interactive session by using NICE DCV."
+    help = "Permits connection to the head or login nodes through an interactive session by using Amazon DCV."
     description = help
 
     def __init__(self, subparsers):

@@ -33,6 +33,7 @@ from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfi
 from pcluster.validators.imagebuilder_validators import (
     AMIVolumeSizeValidator,
     ComponentsValidator,
+    InstanceTypeSoftwareValidator,
     SecurityGroupsAndSubnetValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
@@ -143,6 +144,41 @@ class UpdateOsPackages(Resource):
         self.enabled = enabled
 
 
+class LustreClient(Resource):
+    """Represent the LustreClient configuration for the ImageBuilder."""
+
+    def __init__(
+        self,
+        enabled: bool = None,
+    ):
+        super().__init__()
+        self.enabled = Resource.init_param(enabled, default=True)
+
+
+class NvidiaSoftware(Resource):
+    """Represent the NvidiaSoftware configuration for the ImageBuilder."""
+
+    def __init__(
+        self,
+        enabled: bool = None,
+    ):
+        super().__init__()
+        self.enabled = Resource.init_param(enabled, default=False)
+
+
+class Installation(Resource):
+    """Represent the installation configuration for the ImageBuilder."""
+
+    def __init__(
+        self,
+        lustre_client: LustreClient = None,
+        nvidia_software: NvidiaSoftware = None,
+    ):
+        super().__init__()
+        self.lustre_client = lustre_client or LustreClient()
+        self.nvidia_software = nvidia_software or NvidiaSoftware()
+
+
 class Build(Resource):
     """Represent the build configuration for the ImageBuilder."""
 
@@ -157,6 +193,7 @@ class Build(Resource):
         components: List[Component] = None,
         update_os_packages: UpdateOsPackages = None,
         imds: Imds = None,
+        installation: Installation = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -168,12 +205,18 @@ class Build(Resource):
         self.components = components
         self.update_os_packages = update_os_packages
         self.imds = imds or Imds(implied="v2.0")
+        self.installation = installation or Installation()
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(
             InstanceTypeBaseAMICompatibleValidator,
             instance_type=self.instance_type,
             image=self.parent_image,
+        )
+        self._register_validator(
+            InstanceTypeSoftwareValidator,
+            instance_type=self.instance_type,
+            nvidia=self.installation.nvidia_software.enabled,
         )
         self._register_validator(
             ComponentsValidator,
@@ -282,21 +325,24 @@ class ImageBuilderConfig(Resource):
 class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
     """Extra Attributes for ImageBuilder Chef Client."""
 
-    def __init__(self, dev_settings: ImagebuilderDevSettings):
-        super().__init__(dev_settings)
+    def __init__(self, config: ImageBuilderConfig):
+        super().__init__(config.dev_settings)
         self.region = None
         self.nvidia = None
+        self.lustre = None
         self.is_official_ami_build = None
         self.custom_node_package = None
         self.custom_awsbatchcli_package = None
         self.base_os = None
         self.disable_kernel_update = None
         self.slurm_patches_s3_archive = None
-        self._set_default(dev_settings)
+        self._set_default(config)
 
-    def _set_default(self, dev_settings: ImagebuilderDevSettings):
+    def _set_default(self, config: ImageBuilderConfig):
+        dev_settings = config.dev_settings
         self.region = "{{ build.AWSRegion.outputs.stdout }}"
-        self.nvidia = {"enabled": "no"}
+        self.nvidia = {"enabled": "yes"} if config.build.installation.nvidia_software.enabled else {"enabled": "no"}
+        self.lustre = {"enabled": "yes"} if config.build.installation.lustre_client.enabled else {"enabled": "no"}
         self.is_official_ami_build = "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.custom_awsbatchcli_package = (

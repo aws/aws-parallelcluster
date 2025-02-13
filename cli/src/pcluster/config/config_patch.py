@@ -137,14 +137,35 @@ class ConfigPatch:
                             )
             else:
                 # Simple param
-                target_value = target_section.get(data_key, None) if target_section else None
-                base_value = base_section.get(data_key, None) if base_section else None
+                target_value, target_data_key = self._get_value_from_section(data_key, target_section)
+                base_value, base_data_key = self._get_value_from_section(data_key, base_section)
+                if target_data_key != base_data_key:
+                    # So far, this only happens when custom actions scripts are changed across simple and sequence.
+                    data_key = param_path.pop()
+                    base_value = {base_data_key: base_value}
+                    target_value = {target_data_key: target_value}
+                else:
+                    # So far, target_data_key is different from data_key only when
+                    # custom actions scripts are in sequence.
+                    data_key = target_data_key
 
                 if target_value != base_value:
                     # Add param change information
                     self.changes.append(
                         Change(param_path, data_key, base_value, target_value, change_update_policy, is_list=False)
                     )
+
+    def _get_value_from_section(self, data_key, section):
+        value = None
+        if section:
+            value = section.get(data_key, None)
+            if data_key == "Script" and value is None:
+                # This handles special case when multiple installation scripts are provided.
+                # The schema of script sequence is customized. The following code correctly detect changes.
+                value = section.get("Sequence", None)
+                if value:
+                    data_key = "Sequence"
+        return value, data_key
 
     def _compare_nested_section(self, param_path, data_key, base_value, target_value, field_obj):
         # Compare nested sections and params

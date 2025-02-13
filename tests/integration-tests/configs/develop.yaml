@@ -17,8 +17,8 @@ test-suites:
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
-        - regions: ["af-south-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_AZ }}]
+          instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
           oss: [{{ OS_X86_1 }}]
           schedulers: ["slurm"]
   capacity_reservations:
@@ -149,18 +149,18 @@ test-suites:
           oss: [{{ OS_X86_3 }}]
     test_createami.py::test_build_image:
       dimensions:
-        - regions: ["eu-west-3"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: ["euw3-az1"]
+          instances: ["g4dn.2xlarge"]
           schedulers: [ "slurm" ]
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-        - regions: ["cn-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: ["cnn1-az1"]
+          instances: ["g4dn.2xlarge"]
           schedulers: ["slurm"]
-          oss: [{{ OS_X86_5 }}]
+          oss: ["alinux2023"]
         - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          instances: ["g4dn.2xlarge"]
           schedulers: ["slurm"]
-          oss: [{{ OS_X86_7 }}]
+          oss: ["alinux2023"]
     test_createami.py::test_build_image_custom_components:
       # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
       # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
@@ -267,29 +267,29 @@ test-suites:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["rhel9"]
+          oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
         - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
-          oss: ["alinux2"]
+          oss: [{{ NO_RHEL_OS_X86_1 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
         - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
           instances: ["c6gn.16xlarge"]
-          oss: ["rhel8"]
+          oss: [{{ OS_X86_2 }}]
           schedulers: ["slurm"]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: ["hpc6id.32xlarge"]
-          oss: ["rocky9"]
+          oss: [{{ OS_X86_4 }}]
           schedulers: [ "slurm" ]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
-          oss: ["ubuntu2204"]
+          oss: [{{ OS_X86_6 }}]
           schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
-        - regions: ["eu-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_AZ }}]
+          instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}.xlarge]
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
   iam:
@@ -332,9 +332,9 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: ["use1-az6"]
+        - regions: ["use1-az1"]
           instances: ["c6in.32xlarge"]
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
           schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:
@@ -361,15 +361,15 @@ test-suites:
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: [{{ OS_ARM_3 }}]
+          oss: [{{ DCV_OS_ARM_3 }}]
           schedulers: ["slurm"]
         - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_5 }}]
+          oss: [{{ DCV_OS_X86_3 }}]
           schedulers: ["slurm"]
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ DCV_OS_X86_4 }}]
           schedulers: ["slurm"]
     test_multi_cidr.py::test_multi_cidr:
       dimensions:
@@ -828,5 +828,5 @@ test-suites:
       dimensions:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
+          oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]

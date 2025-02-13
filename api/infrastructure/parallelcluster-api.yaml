@@ -17,7 +17,7 @@ Parameters:
   ApiDefinitionS3Uri:
     Description: S3 URI of the ParallelCluster API spec
     Type: String
-    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.12.0/api/ParallelCluster.openapi.yaml
+    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.13.0/api/ParallelCluster.openapi.yaml
 
   CustomDomainName:
     Description: When specified, the custom domain name of the ParallelCluster API. Requires specifying a custom domain certificate
@@ -35,7 +35,7 @@ Parameters:
     Default: ''
 
   PoliciesTemplateUri:
-    Description: "S3 URI of the ParallelCluster Policies Template. Defaults to: s3://<REGION>-aws-parallelcluster/parallelcluster/3.12.0/templates/policies/policies.yaml"
+    Description: "S3 URI of the ParallelCluster Policies Template. Defaults to: s3://<REGION>-aws-parallelcluster/parallelcluster/3.13.0/templates/policies/policies.yaml"
     Type: String
     Default: ''
 
@@ -106,8 +106,8 @@ Parameters:
 Mappings:
   ParallelCluster:
     Constants:
-      Version: 3.12.0  # major.minor.patch+alpha/beta_identifier
-      ShortVersion: 3.12.0  # major.minor.patch
+      Version: 3.13.0  # major.minor.patch+alpha/beta_identifier
+      ShortVersion: 3.13.0  # major.minor.patch
       Stage: prod
 
 

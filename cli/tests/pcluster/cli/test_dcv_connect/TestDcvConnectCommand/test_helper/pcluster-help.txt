@@ -3,7 +3,7 @@ usage: pcluster dcv-connect [-h] [--debug] [-r REGION] -n CLUSTER_NAME
                             [--login-node-ip LOGIN_NODE_IP]
 
 Permits connection to the head or login nodes through an interactive session
-by using NICE DCV.
+by using Amazon DCV.
 
 options:
   -h, --help            show this help message and exit

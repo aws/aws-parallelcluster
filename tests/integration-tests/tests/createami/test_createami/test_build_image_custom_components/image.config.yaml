@@ -2,9 +2,9 @@ Build:
   InstanceType: {{ instance_type }}
   ParentImage: {{ parent_image }}
   Components:
-    # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
-    # Test script custom component with combination (ap-southeast-2, c5.xlarge, centos7) and (ap-southeast-2, c5.xlarge, ubuntu2004)
-    {% if region == "eu-west-1" %}
+    # Test arn custom component in eu-west-1 except Rocky and Ubuntu because stig-build-linux-high component doesn't support these ParallelCuster AMIs.
+    # Test script custom component in other regions.
+    {% if region == "eu-west-1" and "rocky" not in os and "ubuntu" not in os %}
     - Type: arn
       Value: arn:{{ partition }}:imagebuilder:{{ region }}:aws:component/stig-build-linux-high/2024.2.3/1
     {% else %}

@@ -105,6 +105,21 @@ phases:
 
               echo ${!OS}
 
+      - name: OperatingSystemVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              FILE=/etc/os-release
+              if [ -e ${!FILE} ]; then
+                . ${!FILE}
+                echo "${!VERSION_ID}"
+              else
+                echo "The file '${!FILE}' does not exist. Failing build."
+                exit {{ FailExitCode }}
+              fi
+
       # Get platform name
       - name: PlatformName
         action: ExecuteBash
@@ -176,9 +191,19 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              VERSION='{{ build.OperatingSystemVersion.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
+                if [[ ${!OS} == rhel9 ]] || [[ ${!OS} == rocky9 ]]; then
+                  if [[ ! -f /etc/yum/vars/releasever ]]; then
+                    echo "yes" > /opt/parallelcluster/pin_releasesever
+                    echo ${!VERSION} > /etc/yum/vars/releasever
+                    yum clean all
+                  fi
+                fi
+                yum -y update krb5-libs
                 yum -y groupinstall development && sudo yum -y install curl wget jq
+              
 
                 if [[ ${!OS} =~ ^centos ]]; then
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config

@@ -489,6 +489,8 @@ Resources:
                 iam:AWSServiceName:
                   - fsx.amazonaws.com
                   - s3.data-source.lustre.fsx.amazonaws.com
+                  - elasticloadbalancing.amazonaws.com
+                  - autoscaling.amazonaws.com
           - Action:
               - lambda:CreateFunction
               - lambda:TagResource

@@ -2,7 +2,7 @@ Image:
   Os: {{ os }}
 CustomS3Bucket: {{ bucket }}
 HeadNode:
-  InstanceType: {{ instance }}
+  InstanceType: "c5.2xlarge"
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:

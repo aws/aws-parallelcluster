@@ -26,6 +26,9 @@ from pcluster.config.imagebuilder_config import (
     ImageBuilderConfig,
     ImagebuilderDeploymentSettings,
     ImagebuilderDevSettings,
+    Installation,
+    LustreClient,
+    NvidiaSoftware,
     UpdateOsPackages,
     Volume,
 )
@@ -167,6 +170,40 @@ class UpdateOsPackagesSchema(BaseSchema):
         return UpdateOsPackages(**data)
 
 
+class LustreClientSchema(BaseSchema):
+    """Represent the schema of the ImageBuilder NvidiaSoftware."""
+
+    enabled = fields.Bool()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LustreClient(**data)
+
+
+class NvidiaSoftwareSchema(BaseSchema):
+    """Represent the schema of the ImageBuilder NvidiaSoftware."""
+
+    enabled = fields.Bool()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return NvidiaSoftware(**data)
+
+
+class InstallationSchema(BaseSchema):
+    """Represent the schema of the ImageBuilder Installation."""
+
+    lustre_client = fields.Nested(LustreClientSchema)
+    nvidia_software = fields.Nested(NvidiaSoftwareSchema)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Installation(**data)
+
+
 class BuildSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Build."""
 
@@ -179,6 +216,7 @@ class BuildSchema(BaseSchema):
     subnet_id = fields.Str(validate=get_field_validator("subnet_id"))
     update_os_packages = fields.Nested(UpdateOsPackagesSchema)
     imds = fields.Nested(ImdsSchema)
+    installation = fields.Nested(InstallationSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):

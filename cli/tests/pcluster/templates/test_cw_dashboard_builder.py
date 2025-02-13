@@ -210,7 +210,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
 
     # conditional DCV logs
     if cluster_config.head_node.dcv and cluster_config.head_node.dcv.enabled:
-        assert_that(output_yaml).contains("NICE DCV integration logs")
+        assert_that(output_yaml).contains("Amazon DCV integration logs")
         assert_that(output_yaml).contains("dcv-ext-authenticator")
         assert_that(output_yaml).contains("dcv-authenticator")
         assert_that(output_yaml).contains("dcv-agent")
@@ -219,7 +219,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
         assert_that(output_yaml).contains("dcv-session-launcher")
         assert_that(output_yaml).contains("Xdcv")
     else:
-        assert_that(output_yaml).does_not_contain("NICE DCV integration logs")
+        assert_that(output_yaml).does_not_contain("Amazon DCV integration logs")
 
     # Conditional System logs
     if cluster_config.image.os in ["alinux2", "rhel8"]:

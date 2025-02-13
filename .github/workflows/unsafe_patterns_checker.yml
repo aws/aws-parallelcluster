@@ -1,0 +1,15 @@
+name: Unsafe Patterns Checker
+on:
+  pull_request:
+      types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+jobs:
+  # Prevent bad URL suffix
+  bad-url-suffix-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check PR for Disallowed URL Suffixes
+      uses: francesco-giordano/gh-pr-content-checker@v1.0.0
+      with:
+        diffDoesNotContainRegex: "amazonaws\\.com|amazonaws\\.com\\.cn|c2s\\.ic\\.gov|sc2s\\.sgov\\.gov"
+        skipLabels: skip-bad-url-suffix-check

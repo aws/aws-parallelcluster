@@ -1969,9 +1969,9 @@ class TestUpdateCluster:
             "message": "Request would have succeeded, but DryRun flag is set.",
             "changeSet": [
                 {
-                    "currentValue": 10,
+                    "currentValue": "10",
                     "parameter": "Scheduling.SlurmQueues[queue0].ComputeResources[queue0-i0].MaxCount",
-                    "requestedValue": 11,
+                    "requestedValue": "11",
                 }
             ],
         }
@@ -2460,10 +2460,12 @@ def test_cluster_update_change_succeded(check_result):
                 ],
             ],
             "-",
-            {
-                "ComputeResources": [{"InstanceType": "c5.9xlarge", "MinCount": 0, "Name": "compute2"}],
-                "Name": "queue2",
-            },
+            str(
+                {
+                    "Name": "queue2",
+                    "ComputeResources": [{"Name": "compute2", "InstanceType": "c5.9xlarge", "MinCount": 0}],
+                }
+            ),
         ),
         (
             [
@@ -2491,10 +2493,12 @@ def test_cluster_update_change_succeded(check_result):
                     "COMPUTE_FLEET_STOP_ON_REMOVE",
                 ],
             ],
-            {
-                "ComputeResources": [{"InstanceType": "c5.xlarge", "MinCount": 0, "Name": "compute1"}],
-                "Name": "queue1",
-            },
+            str(
+                {
+                    "Name": "queue1",
+                    "ComputeResources": [{"Name": "compute1", "InstanceType": "c5.xlarge", "MinCount": 0}],
+                }
+            ),
             "-",
         ),
     ],

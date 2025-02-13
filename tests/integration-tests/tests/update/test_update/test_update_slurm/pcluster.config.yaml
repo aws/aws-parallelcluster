@@ -43,14 +43,16 @@ Scheduling:
       ComputeResources:
         - Name: queue1-i1
           Instances:
-            - InstanceType: c5.xlarge
-            - InstanceType: c5n.xlarge
-            - InstanceType: c5d.xlarge
+            - InstanceType: c5.large
+            - InstanceType: c5n.large
+            - InstanceType: c5d.large
           MinCount: 1
           MaxCount: 2
         - Name: queue1-i2
           Instances:
-            - InstanceType: t3.small
+          {% for instance_type in spot_instance_types %}
+            - InstanceType: {{ instance_type }}
+          {% endfor %}
           MinCount: 1
       Networking:
         SubnetIds:
