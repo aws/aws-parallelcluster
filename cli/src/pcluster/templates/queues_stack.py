@@ -315,7 +315,6 @@ class QueuesStack(NestedStack):
                     queue.compute_settings.local_storage.root_volume,
                     AWSApi.instance().ec2.describe_image(self._config.image_dict[queue.name]).device_name,
                 ),
-                # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
                 placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=placement_group),
                 image_id=self._config.image_dict[queue.name],
