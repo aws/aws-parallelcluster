@@ -62,7 +62,6 @@ test-suites:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
-          schedulers: ["slurm"]
   monitoring:
     test_monitoring.py::test_monitoring:
       dimensions:
