@@ -31,7 +31,7 @@ from troposphere.iam import InstanceProfile, Role
 from utils import get_arn_partition
 
 TAGS_PREFIX = "ParallelCluster"
-BASTION_INSTANCE_TYPE = "c5.large"
+BASTION_INSTANCE_TYPE = "t3.large"
 
 
 class Gateways(Enum):
