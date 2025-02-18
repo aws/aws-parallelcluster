@@ -4,6 +4,7 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 - Add support Ubuntu2404
+- Add support for ap-southeast-5 region.
 
 **CHANGES**
 
