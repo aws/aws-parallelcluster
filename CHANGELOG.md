@@ -3,6 +3,7 @@ CHANGELOG
 3.13.0
 ------
 **ENHANCEMENTS**
+- Add support Ubuntu2404
 
 **CHANGES**
 
