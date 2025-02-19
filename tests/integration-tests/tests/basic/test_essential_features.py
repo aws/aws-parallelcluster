@@ -12,7 +12,6 @@
 import logging
 
 import boto3
-import pytest
 from assertpy import assert_that, soft_assertions
 from constants import UNSUPPORTED_OSES_FOR_DCV
 from remote_command_executor import RemoteCommandExecutor
@@ -31,7 +30,6 @@ from tests.common.mpi_common import _test_mpi
 from tests.common.utils import fetch_instance_slots, run_system_analyzer
 
 
-@pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_essential_features(
     region,
     pcluster_config_reader,
@@ -41,6 +39,7 @@ def test_essential_features(
     scheduler_commands_factory,
     os,
     instance,
+    architecture,
     scheduler,
     default_threads_per_core,
     request,
@@ -53,7 +52,11 @@ def test_essential_features(
     bucket.upload_file(str(test_datadir / "pre_install.sh"), "scripts/pre_install.sh")
     bucket.upload_file(str(test_datadir / "post_install.sh"), "scripts/post_install.sh")
 
-    dcv_enabled = is_dcv_supported(region) and os not in UNSUPPORTED_OSES_FOR_DCV
+    dcv_enabled = (
+        is_dcv_supported(region)
+        and os not in UNSUPPORTED_OSES_FOR_DCV
+        and (os != "ubuntu2004" or architecture != "arm64")
+    )
     scaledown_idletime = 3
     max_queue_size = 3
 
