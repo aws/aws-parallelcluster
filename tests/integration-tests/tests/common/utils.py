@@ -45,6 +45,10 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
         "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-*-server-*",
         "owners": ["099720109477"],
     },
+    "ubuntu2404": {
+        "name": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*-server-*",
+        "owners": ["099720109477"],
+    },
     # FIXME: unpin once Lustre client is available for RHEL8.9
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
@@ -83,6 +87,7 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2023": {"name": "amzn2023-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "ubuntu2404": {"name": "ubuntu-2404-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rhel8": {"name": "rhel8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rocky8": {"name": "rocky8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rhel9": {"name": "rhel9-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
@@ -95,6 +100,7 @@ OS_TO_FIRST_STAGE_AMI_NAME_MAP = {
     "alinux2023": {"name": "first-stage-aws-parallelcluster-*-amzn2023-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2004": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2004-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2204": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2204-*", "owners": FIRST_STAGE_AMI_OWNERS},
+    "ubuntu2404": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2404-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "rhel8": {"name": "first-stage-aws-parallelcluster-*-rhel8-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "rocky8": {"name": "first-stage-aws-parallelcluster-*-rocky8-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "rhel9": {"name": "first-stage-aws-parallelcluster-*-rhel9-*", "owners": FIRST_STAGE_AMI_OWNERS},
