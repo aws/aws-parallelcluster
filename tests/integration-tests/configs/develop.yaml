@@ -8,11 +8,11 @@ test-suites:
       dimensions:
         - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ {{ OS_X86_0 }}, {{ OS_X86_2 }}]
+          oss: [ {{ LUSTRE_OS_X86_0 }}, {{ LUSTRE_OS_X86_2 }}]
           schedulers: ["slurm"]
         - regions: ["ap-northeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_4 }}, {{ OS_X86_6 }}]
+          oss: [{{ LUSTRE_OS_X86_4 }}, {{ LUSTRE_OS_X86_6 }}]
           schedulers: ["slurm"]
   basic:
     test_essential_features.py::test_essential_features:
@@ -341,7 +341,7 @@ test-suites:
       dimensions:
         - regions: ["il-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_6 }}]
+          oss: [{{ LUSTRE_OS_X86_6 }}]
           schedulers: ["slurm"]
     test_cluster_networking.py::test_existing_eip:
       dimensions:
@@ -361,15 +361,15 @@ test-suites:
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: [{{ DCV_OS_ARM_3 }}]
+          oss: ["rhel8"]
           schedulers: ["slurm"]
         - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_3 }}]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_4 }}]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     test_multi_cidr.py::test_multi_cidr:
       dimensions:
@@ -387,7 +387,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_6 }}]
+          oss: [{{ LUSTRE_OS_X86_6 }}]
           schedulers: ["slurm"]
     test_placement_group.py::test_placement_group:
       dimensions:
@@ -709,7 +709,7 @@ test-suites:
       dimensions:
         - regions: [ "us-west-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_0 }}]
+          oss: [{{ LUSTRE_OS_X86_0 }}]
           schedulers: [ "slurm" ]
   pcluster_api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
@@ -783,13 +783,13 @@ test-suites:
       dimensions:
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_2 }}]
+          oss: [{{ LUSTRE_OS_X86_2 }}]
           schedulers: ["slurm"]
     test_update.py::test_dynamic_file_systems_update_data_loss:
       dimensions:
         - regions: [ "eu-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_4 }}]
+          oss: [{{ LUSTRE_OS_X86_4 }}]
           schedulers: [ "slurm" ]
     test_update.py::test_dynamic_file_systems_update_rollback:
       dimensions:
