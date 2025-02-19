@@ -33,7 +33,7 @@ from pcluster.templates.cdk_builder_utils import (
     to_comma_separated_string,
 )
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting, get_resource_name_from_resource_arn, get_service_endpoint
+from pcluster.utils import get_attr, get_http_tokens_setting
 
 
 class QueuesStack(NestedStack):
@@ -183,20 +183,6 @@ class QueuesStack(NestedStack):
             conditional_template_properties.update({"ebs_optimized": True})
         if isinstance(compute_resource, SlurmComputeResource):
             conditional_template_properties.update({"instance_type": compute_resource.instance_types[0]})
-
-        if queue.instance_profile:
-            instance_profile_name = get_resource_name_from_resource_arn(queue.instance_profile)
-            instance_role_name = (
-                AWSApi.instance()
-                .iam.get_instance_profile(instance_profile_name)
-                .get("InstanceProfile")
-                .get("Roles")[0]
-                .get("RoleName")
-            )
-        elif queue.instance_role:
-            instance_role_name = get_resource_name_from_resource_arn(queue.instance_role)
-        else:
-            instance_role_name = self.managed_compute_instance_roles[queue.name].ref
 
         launch_template_id = f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}"
 
