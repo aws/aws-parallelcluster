@@ -10,6 +10,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix an issue where when using Proxy, compute node bootstrap would fail.
+- Remove usage of cfn-init for compute node bootstrapping to reduce node scale up time.
 
 
 3.12.0
