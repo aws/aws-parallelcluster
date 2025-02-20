@@ -19,7 +19,12 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
-from pcluster.constants import SUPPORTED_OSES, UNSUPPORTED_ARM_OSES_FOR_DCV, UNSUPPORTED_OSES_FOR_DCV
+from pcluster.constants import (
+    SUPPORTED_OSES,
+    UNSUPPORTED_ARM_OSES_FOR_DCV,
+    UNSUPPORTED_OSES_FOR_DCV,
+    UNSUPPORTED_OSES_FOR_LUSTRE,
+)
 
 
 def _get_os_parameters(config=None, args=None):
@@ -50,6 +55,17 @@ def _get_os_parameters(config=None, args=None):
         ]
         result[f"DCV_OS_ARM_{index}"] = dcv_available_amis_oss_arm[
             (today_number + index) % len(dcv_available_amis_oss_arm)
+        ]
+
+    lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
+    lustre_available_amis_oss_x86 = list(set(lustre_supported_oses) & set(available_amis_oss_x86))
+    lustre_available_amis_oss_arm = list(set(lustre_supported_oses) & set(available_amis_oss_arm))
+    for index in range(len(dcv_supported_oses)):
+        result[f"LUSTRE_OS_X86_{index}"] = lustre_available_amis_oss_x86[
+            (today_number + index) % len(lustre_available_amis_oss_x86)
+        ]
+        result[f"LUSTRE_OS_ARM_{index}"] = lustre_available_amis_oss_arm[
+            (today_number + index) % len(lustre_available_amis_oss_arm)
         ]
 
     no_rhel_oss = [os for os in SUPPORTED_OSES if "rhel" not in os]

@@ -3,12 +3,14 @@ CHANGELOG
 3.13.0
 ------
 **ENHANCEMENTS**
-- Add support Ubuntu2404
+- Add support for Ubuntu24.
+- Add support for ap-southeast-5 region.
 
 **CHANGES**
 
 **BUG FIXES**
 - Fix an issue where when using Proxy, compute node bootstrap would fail.
+- Remove usage of cfn-init for compute node bootstrapping to reduce node scale up time.
 
 
 3.12.0

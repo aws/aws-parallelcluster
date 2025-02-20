@@ -42,7 +42,7 @@ phases:
                 OS='ubuntu2004'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.22'` ]; then
                 OS='ubuntu2204'
-              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.24'` ]; then
+              elif [ `echo "${RELEASE}" | grep '^ubuntu\.24'` ]; then
                 OS='ubuntu2404'
               elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
                 OS='rhel8'
