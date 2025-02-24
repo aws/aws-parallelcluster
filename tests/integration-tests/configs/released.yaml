@@ -191,8 +191,8 @@ test-suites:
           schedulers: ["awsbatch"]
     test_slurm.py::test_slurm:
       dimensions:
-        - regions: ["eu-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: ["ap-southeast-5"] # c5 instance type is not available in ap-southeast-5
+          instances: ["m6i.xlarge"]
           oss: ["ubuntu2204"]
           schedulers: ["slurm"]
     test_slurm.py::test_error_handling:
