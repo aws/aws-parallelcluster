@@ -252,7 +252,7 @@ def test_static_scaling_stress_test(
             # ref https://docs.aws.amazon.com/AWSEC2/latest/APIReference/throttling.html
             if scaling_target != scaling_targets[-1]:
                 logging.info("Waiting for the RunInstances Resource Token Bucket to refill")
-                time.sleep(300)
+                time.sleep(500)
 
 
 def _scale_up_and_down(
