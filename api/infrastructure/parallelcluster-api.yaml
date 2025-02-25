@@ -14,6 +14,14 @@ Parameters:
     Type: String
     Default: ''
 
+  ParallelClusterFunctionAdditionalPolicies:
+    Description: |
+      (OPTIONAL) ARN of the additional IAM policy to be attached to the default execution role for the ParallelCluster Lambda function.
+      Only one policy can be specified.
+    Type: String
+    Default: ''
+    AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
+
   ApiDefinitionS3Uri:
     Description: S3 URI of the ParallelCluster API spec
     Type: String
@@ -186,6 +194,7 @@ Resources:
         PermissionsBoundaryPolicy: !Ref PermissionsBoundaryPolicy
         IAMRoleAndPolicyPrefix: !Ref IAMRoleAndPolicyPrefix
         EnableBatchAccess: true
+        AdditionalPolicies: !Ref ParallelClusterFunctionAdditionalPolicies
 
   PclusterLayer:
     Type: AWS::Lambda::LayerVersion

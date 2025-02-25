@@ -20,6 +20,7 @@ CHANGELOG
 - Add new build image configuration section `Build/Installation` to turn on/off Nvidia software and Lustre client installations. By default, Nvidia software, although included in official ParallelCluster AMIs, is not installed by `build-image`. By default, Lustre client is installed.
 - The CLI commands `export-cluster-logs` and `export-image-logs` can now by default export the logs to the default ParallelCluster bucket or to the CustomS3Bucket if specified in the config.
 - Extend Amazon DCV support to Ubuntu2204 on ARM instances.
+- Add new parameter 'ParallelClusterFunctionAdditionalPolicies' to the ParallelCluster API stack to add custom permissions for the API Lambda role, on top of the default ones.
 
 **CHANGES**
 - Upgrade NVIDIA driver to version 550.127.08 (from 550.90.07). This addresses [a known issue from Nivdia](https://docs.nvidia.com/datacenter/tesla/tesla-release-notes-550-90-07/index.html#known-issues).

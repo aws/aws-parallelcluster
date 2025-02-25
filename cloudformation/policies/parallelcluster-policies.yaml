@@ -62,6 +62,14 @@ Parameters:
     Default: ''
     MaxLength: 10
 
+  AdditionalPolicies:
+    Description: |
+      (OPTIONAL) ARN of the additional IAM policy to be attached to the default execution role for the ParallelCluster Lambda function.
+      Only one policy can be specified.
+    Type: String
+    Default: ''
+    AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
+
 Outputs:
   ParallelClusterLogRetrievalPolicy:
     Value: !Ref ParallelClusterLogRetrievalPolicy
@@ -97,6 +105,7 @@ Conditions:
   EnableFSxS3AccessCondition: !Equals [!Ref EnableFSxS3Access, true]
   EnableBatchAccessCondition: !Equals [!Ref EnableBatchAccess, true]
   EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
+  UseAdditionalPolicies: !Not [!Equals [!Ref AdditionalPolicies, '']]
   UseAllBucketsForFSxS3: !Equals [!Ref FsxS3Buckets, "*"]
   EnableIamPolicy: !Or
     - !Equals [!Ref EnableIamAdminAccess, true]
@@ -202,6 +211,10 @@ Resources:
           - !Ref AWS::NoValue
         - !Ref ParallelClusterImageManagedPolicy
         - !Ref ParallelClusterLogRetrievalPolicy
+        - !If
+          - UseAdditionalPolicies
+          - !Ref AdditionalPolicies
+          - !Ref AWS::NoValue
 
   ### CLUSTER ACTIONS POLICIES
 

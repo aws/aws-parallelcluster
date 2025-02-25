@@ -7,7 +7,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-usage="$(basename "$0") [-h] --s3-bucket bucket-name --region aws-region [--stack-name name] [--enable-iam-admin true|false] [--create-api-user true|false] [--lambda-layer abs_path]"
+usage="$(basename "$0") [-h] --s3-bucket bucket-name --region aws-region [--stack-name name] [--enable-iam-admin true|false] [--create-api-user true|false] [--lambda-layer abs_path] [--additional-iam-policies policy_arn]"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
@@ -16,6 +16,7 @@ STACK_NAME="ParallelClusterApi"
 ENABLE_IAM_ADMIN="true"
 CREATE_API_USER="false"
 LAMBDA_LAYER=
+PC_FUNCTION_ADDITIONAL_IAM_POLICIES=
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -65,6 +66,11 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    --additional-iam-policies)
+    export PC_FUNCTION_ADDITIONAL_IAM_POLICIES=$2
+    shift # past argument
+    shift # past value
+    ;;
     *)    # unknown option
     echo "$usage" >&2
     exit 1
@@ -104,5 +110,6 @@ aws cloudformation deploy \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" \
                           PoliciesTemplateUri="${POLICIES_TEMPLATE_URI}" \
                           EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
+                          ParallelClusterFunctionAdditionalPolicies="${PC_FUNCTION_ADDITIONAL_IAM_POLICIES}" \
                           "$([[ -n "${LAMBDA_LAYER}" ]] && echo "CustomBucket=${S3_BUCKET}" || echo " ")" \
     --capabilities CAPABILITY_NAMED_IAM
