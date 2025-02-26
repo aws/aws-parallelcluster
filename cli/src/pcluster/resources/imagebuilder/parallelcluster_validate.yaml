@@ -314,8 +314,10 @@ phases:
                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               else
                  cd /usr/local/{{ validate.CudaSamplesSrcDir.outputs.stdout }}/1_Utilities/deviceQuery
+                 cmake .. -D CMAKE_CUDA_ARCHITECTURES=native -D CMAKE_PREFIX_PATH=/usr/local/cuda-${cuda_ver}
+                 cd deviceQuery
                  make
-                 /usr/local/{{ validate.CudaSamplesBinDir.outputs.stdout }}/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
+                 ./deviceQuery | grep -o "Result = PASS"
                  [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               fi
               echo "CUDA deviceQuery test passed"
