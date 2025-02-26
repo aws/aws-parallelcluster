@@ -31,7 +31,7 @@ test-suites:
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
-        - regions: ["ap-east-1"]
+        - regions: ["ap-southeast-7"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
           schedulers: ["slurm"]

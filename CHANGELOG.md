@@ -4,7 +4,7 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 - Add support for Ubuntu24.
-- Add support for ap-southeast-5 region. At the time of this version launch, AWS CodeBuild is not supported in ap-southeast-5. Therefore, ParallelCluster AWS Batch integration is not supported.
+- Add support for ap-southeast-5 and ap-southeast-7 regions. At the time of this version launch, AWS CodeBuild is not supported in ap-southeast-5 or ap-southeast-7. Therefore, ParallelCluster AWS Batch integration is not supported.
 
 **CHANGES**
 
