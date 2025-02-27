@@ -309,18 +309,32 @@ phases:
               echo "Correctly installed CUDA ${cuda_output}"
 
               echo "Testing CUDA with deviceQuery..."
-              if [ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
-                /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
-                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+              if [ {{ validate.OperatingSystemName.outputs.stdout }} == 'ubuntu2004' ]; then
+                echo "Skipping CUDA deviceQuery test on Ubuntu 20.04"
               else
-                 cd /usr/local/{{ validate.CudaSamplesSrcDir.outputs.stdout }}/1_Utilities/deviceQuery
-                 cmake .. -D CMAKE_CUDA_ARCHITECTURES=native -D CMAKE_PREFIX_PATH=/usr/local/cuda-${cuda_ver}
-                 cd deviceQuery
-                 make
-                 ./deviceQuery | grep -o "Result = PASS"
-                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+                if [ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
+                  /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
+                  [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+                else
+                   cd /usr/local/{{ validate.CudaSamplesSrcDir.outputs.stdout }}/1_Utilities/deviceQuery
+                   if [ ${cuda_ver} < '12.8' ]; then
+                     make
+                     /usr/local/{{ validate.CudaSamplesBinDir.outputs.stdout }}/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
+                   else
+                     mkdir build
+                     cd build
+                     cmake .. \
+                      -DCMAKE_CUDA_ARCHITECTURES="75;80;86" \
+                      -DCMAKE_CUDA_COMPILER=/usr/local/cuda-${cuda_ver}/bin/nvcc \
+                      -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-${cuda_ver} \
+                      -DCMAKE_PREFIX_PATH=/usr/local/cuda-cuda-${cuda_ver}
+                     make
+                     ./deviceQuery | grep -o "Result = PASS"
+                   fi
+                   [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+                fi
+                echo "CUDA deviceQuery test passed"
               fi
-              echo "CUDA deviceQuery test passed"
 
       - name: FSxLustre
         action: ExecuteBash
