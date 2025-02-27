@@ -642,6 +642,18 @@ def test_compute_resource_size_validator(min_count, max_count, capacity_type, ex
             5,
             "Invalid number of ComputeResources (6) specified. Currently only supports up to 5 ComputeResources.",
         ),
+        (
+            "LoginNodePools",
+            11,
+            10,
+            "Invalid number of LoginNodePools (11) specified. Currently only supports up to 10 LoginNodePools.",
+        ),
+        (
+            "LoginNodePools",
+            9,
+            10,
+            None,
+        ),
     ],
 )
 def test_max_count_validator(resource_name, resources_length, max_length, expected_message):
