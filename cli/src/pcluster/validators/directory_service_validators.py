@@ -83,7 +83,7 @@ class PasswordSecretArnValidator(Validator):
 
         In particular, the ARN should be one of the following resources:
          1. a readable secret in AWS Secrets Manager, which is supported in all regions.
-         2. a readable parameter in SSM Parameter Store, which is supported only in us-isob-east-1
+         2. a readable parameter in SSM Parameter Store, which is supported only in -east-1
             for retro-compatibility.
         """
         try:
@@ -95,7 +95,7 @@ class PasswordSecretArnValidator(Validator):
             elif (
                 service == "ssm"
                 and resource_type == "parameter"  # pylint: disable=E0606
-                and region == "us-isob-east-1"
+                and region == "-east-1"
             ):
                 parameter_name = resource.split("/")[1]
                 AWSApi.instance().ssm.get_parameter(parameter_name)
