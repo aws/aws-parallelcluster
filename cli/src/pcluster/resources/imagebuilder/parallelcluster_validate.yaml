@@ -317,7 +317,7 @@ phases:
                   [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
                 else
                    cd /usr/local/{{ validate.CudaSamplesSrcDir.outputs.stdout }}/1_Utilities/deviceQuery
-                   if [ ${cuda_ver} < '12.8' ]; then
+                   if [ {{ validate.OperatingSystemName.outputs.stdout }} == 'alinux2' ]; then
                      make
                      /usr/local/{{ validate.CudaSamplesBinDir.outputs.stdout }}/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
                    else
