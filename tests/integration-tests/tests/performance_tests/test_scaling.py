@@ -8,12 +8,13 @@ from assertpy import assert_that, soft_assertions
 from benchmarks.common.metrics_reporter import produce_benchmark_metrics_report
 from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
-from utils import disable_protected_mode
+from utils import disable_protected_mode, retrieve_clustermgtd_conf_path
 
 from tests.common.assertions import assert_no_msg_in_logs
 from tests.common.scaling_common import get_bootstrap_errors, get_scaling_metrics, validate_and_get_scaling_test_config
+from tests.schedulers.test_slurm import _set_insufficient_capacity_timeout
 
-MAX_QUEUE_SIZE = 5000
+MAX_QUEUE_SIZE = 3000
 
 
 @pytest.mark.parametrize(
@@ -148,6 +149,10 @@ def test_scaling_stress_test(
     # Disable protected mode since bootstrap errors are likely to occur given the large cluster sizes
     disable_protected_mode(remote_command_executor)
 
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    # disable Fast Failover by setting insufficient_capacity_timeout to 0
+    _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
+
     with soft_assertions():
         for scaling_target in scaling_targets:
             logging.info("Scaling to %d nodes", scaling_target)
@@ -217,6 +222,10 @@ def test_static_scaling_stress_test(
 
     # Disable protected mode since bootstrap errors are likely to occur given the large cluster sizes
     disable_protected_mode(remote_command_executor)
+
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    # disable Fast Failover by setting insufficient_capacity_timeout to 0
+    _set_insufficient_capacity_timeout(remote_command_executor, 0, clustermgtd_conf_path)
 
     with soft_assertions():
         for scaling_target in scaling_targets:
