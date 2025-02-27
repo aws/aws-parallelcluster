@@ -20,6 +20,9 @@ Scheduling:
         - Name: compute-resource-0
           Instances:
             - InstanceType: {{ instance }}
+            - InstanceType: t3.large
+            - InstanceType: t3.small
+            - InstanceType: t3.micro
           MaxCount: {{ max_cluster_size }}
       Networking:
         SubnetIds:
