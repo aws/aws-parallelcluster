@@ -11,6 +11,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix an issue where when using Proxy, compute node bootstrap would fail.
 - Remove usage of cfn-init for compute node bootstrapping to reduce node scale up time.
+- Add validator to enforce up to 10 login node pools. 
 
 
 3.12.0
