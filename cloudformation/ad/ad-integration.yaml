@@ -437,40 +437,23 @@ Resources:
               yum update -y aws-cfn-bootstrap
               /opt/aws/bin/cfn-init -v --stack "${AWS::StackName}" --resource AdDomainAdminNode --configsets setup --region "${AWS::Region}"
               echo "Domain Name: ${DirectoryDomain}"
+              echo "Domain DNS IP 1: ${DnsIp1}"
+              echo "Domain DNS IP 2: ${DnsIp2}"
               echo "Domain Certificate Secret: ${DomainCertificateSecretArn}"
               echo "Domain Private Key Secret: ${DomainPrivateKeySecretArn}"
               
-              mkdir -p /etc/systemd/resolved.conf.d
-              cat << EOF > /etc/systemd/resolved.conf.d/pcluster-ad-domain-dns-server.conf
-              [Resolve]
-              DNS=${DnsIp1} ${DnsIp2}
-              Domains=~.
-              EOF
-              service systemd-resolved restart
-              
               ADMIN_PW="${AdminPassword}"
-              
-              attempt=0
-              max_attempts=5
-              until [ $attempt -ge $max_attempts ]; do
-                attempt=$((attempt+1))
-                echo "[DEBUG] Checking domain name resolution for ${DirectoryDomain} ..."
-                dig ${DirectoryDomain}
-                echo "Joining domain (attempt $attempt/$max_attempts) ..."
-                echo "$ADMIN_PW" | sudo realm join -U "${Admin}" "${DirectoryDomain}" --verbose && echo "Domain joined" && break
-                sleep 10
-              done
               
               sleep 10
               echo "Registering ReadOnlyUser..."
-              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name=ReadOnlyUser ReadOnlyUser
+              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name=ReadOnlyUser ReadOnlyUser
               sleep 0.5
               echo "Registering Users..."
               USERNAMES="${UserNames}"
               for username in $(echo $USERNAMES | sed "s/,/ /g")
               do
                 echo "Registering user: $username"
-                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain="${DirectoryDomain}" --display-name="$username" "$username"
+                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username"
               done
 
               echo "Creating domain certificate..."
