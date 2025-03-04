@@ -268,9 +268,9 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: [{{ NO_RHEL_OS_X86_1 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: ["use1-az4"]  # There is no reservation for this instance, but it has higher availability in this AZ
           instances: ["c6gn.16xlarge"]
-          oss: [{{ OS_X86_2 }}]
+          oss: [{{ OS_ARM_0 }}]
           schedulers: ["slurm"]
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: ["hpc6id.32xlarge"]
