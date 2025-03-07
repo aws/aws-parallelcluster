@@ -42,7 +42,7 @@ def test_trainium(
 
 
 def _test_allreduce_single_node(test_datadir, remote_command_executor, scheduler_commands):
-    result = scheduler_commands.submit_script(str(test_datadir / "neuron-allreduce.sh"), partition="queue-trn2")
+    result = scheduler_commands.submit_script(str(test_datadir / "neuron-allreduce.sh"), partition="queue-trn32")
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
