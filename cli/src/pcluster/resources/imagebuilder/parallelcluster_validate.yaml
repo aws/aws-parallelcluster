@@ -169,7 +169,7 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
-      - name: CudaSamplesSrcDir
+      - name: CudaSamplesDir
         action: ExecuteBash
         inputs:
           commands:
@@ -179,24 +179,9 @@ phases:
               if [ ${cuda_ver} \> '11.4' ]; then
                 PATTERN=$(jq '.default.cluster.nvidia.cuda_samples_version' {{ CookbookDefaultFile }})
                 VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-                echo cuda-samples-${VERSION}/Samples
+                echo cuda-samples-${VERSION}
               else
-                echo cuda-${cuda_ver}/samples
-              fi
-
-      - name: CudaSamplesBinDir
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
-              if [ ${cuda_ver} \> '11.4' ]; then
-                PATTERN=$(jq '.default.cluster.nvidia.cuda_samples_version' {{ CookbookDefaultFile }})
-                VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-                echo cuda-samples-${VERSION}/bin
-              else
-                echo cuda-${cuda_ver}/samples/bin
+                echo cuda-${cuda_ver}
               fi
 
       ### utils ###
@@ -313,10 +298,10 @@ phases:
                 /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               else
-                 cd /usr/local/{{ validate.CudaSamplesSrcDir.outputs.stdout }}/1_Utilities/deviceQuery
+                 cd /usr/local/{{ validate.CudaSamplesDir.outputs.stdout }}//Samples/1_Utilities/deviceQuery
                  if [ {{ validate.OperatingSystemName.outputs.stdout }} == 'alinux2' ]; then
                    make
-                   /usr/local/{{ validate.CudaSamplesBinDir.outputs.stdout }}/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
+                   /usr/local/{{ validate.CudaSamplesDir.outputs.stdout }}/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
                  else
                    if [ {{ validate.OperatingSystemName.outputs.stdout }} == 'ubuntu2004' ]; then
                      MINI_CMAKE_VER_REQ=$(sed -n 's/cmake_minimum_required(\(VERSION \)\?\([0-9.]*\)).*/\2/p' CMakeLists.txt)
