@@ -444,16 +444,19 @@ Resources:
               
               ADMIN_PW="${AdminPassword}"
               
-              sleep 10
-              echo "Registering ReadOnlyUser..."
-              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name=ReadOnlyUser ReadOnlyUser
-              sleep 0.5
-              echo "Registering Users..."
-              USERNAMES="${UserNames}"
+              USERNAMES="ReadOnlyUser,${UserNames}"
+              echo "Registering Users: $USERNAMES ..."
               for username in $(echo $USERNAMES | sed "s/,/ /g")
               do
-                echo "Registering user: $username"
-                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username"
+                attempt=0
+                max_attempts=5
+                until [ $attempt -ge $max_attempts ]; do
+                  attempt=$((attempt+1))
+                  echo "Registering user $username (attempt $attempt/$max_attempts) ..."
+                  echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username" && echo "User registered: $username" && break
+                  echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp2}" --display-name="$username" "$username" && echo "User registered: $username" && break
+                  sleep 10
+                done
               done
 
               echo "Creating domain certificate..."
