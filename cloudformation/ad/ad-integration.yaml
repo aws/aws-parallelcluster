@@ -389,11 +389,20 @@ Resources:
       Roles:
         - Ref: JoinRole
 
+  AdDomainAdminNodeWaitConditionHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  AdDomainAdminNodeWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn:
+      - Prep
+    Properties:
+      Count: 1
+      Handle: !Ref AdDomainAdminNodeWaitConditionHandle
+      Timeout: 900
+
   AdDomainAdminNode:
     Type: AWS::EC2::Instance
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT15M
     Metadata:
       "AWS::CloudFormation::Init":
         configSets:
@@ -473,7 +482,7 @@ Resources:
               echo "Deleting private key and certificate from local file system..."
               rm -rf "$PRIVATE_KEY" "$CERTIFICATE"
 
-              /opt/aws/bin/cfn-signal -e "$?" --stack "${AWS::StackName}" --resource AdDomainAdminNode --region "${AWS::Region}"
+              /opt/aws/bin/cfn-signal -e "$?" --stack "${AWS::StackName}" --region "${AWS::Region}" "${AdDomainAdminNodeWaitConditionHandle}"
 
             - { DirectoryDomain: !GetAtt Prep.DomainName,
                 AdminPassword: !Ref AdminPassword,
@@ -482,7 +491,8 @@ Resources:
                 DnsIp2: !GetAtt Prep.DnsIpAddress2,
                 DomainCertificateSecretArn: !Ref DomainCertificateSecret,
                 DomainPrivateKeySecretArn: !Ref DomainPrivateKeySecret,
-                Admin: !If [UseMicrosoftAD, "Admin", "Administrator" ]
+                Admin: !If [UseMicrosoftAD, "Admin", "Administrator" ],
+                AdDomainAdminNodeWaitConditionHandle: !Ref AdDomainAdminNodeWaitConditionHandle
             }
 
   PostRole:
