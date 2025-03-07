@@ -1,3 +1,6 @@
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 2400
 Image:
   Os: {{ os }}
 HeadNode:
