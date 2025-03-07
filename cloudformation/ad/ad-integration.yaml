@@ -462,8 +462,8 @@ Resources:
                 until [ $attempt -ge $max_attempts ]; do
                   attempt=$((attempt+1))
                   echo "Registering user $username (attempt $attempt/$max_attempts) ..."
-                  echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username" && echo "User registered: $username" && break
-                  echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp2}" --display-name="$username" "$username" && echo "User registered: $username" && break
+                  echo "$ADMIN_PW" | adcli create-user -v -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username" && echo "User registered: $username" && break
+                  echo "$ADMIN_PW" | adcli create-user -v -x -U "${Admin}" --domain-controller="${DnsIp2}" --display-name="$username" "$username" && echo "User registered: $username" && break
                   sleep 10
                 done
               done
