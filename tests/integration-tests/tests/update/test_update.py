@@ -938,6 +938,8 @@ def _test_update_queue_strategy_with_running_job(
     scheduler_commands.assert_job_state(queue1_job_id, "RUNNING")
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=["mixed", "allocated"])
+    if queue_update_strategy == "TERMINATE":
+        scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
     # check queue1 AMIs are not replaced
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
 
@@ -952,8 +954,6 @@ def _test_update_queue_strategy_with_running_job(
         assert_compute_node_states(scheduler_commands, queue2_nodes, expected_states=["draining", "draining!"])
         # requeue job in queue2 to launch new instances for nodes
         remote_command_executor.run_remote_command(f"scontrol requeue {queue2_job_id}")
-    elif queue_update_strategy == "TERMINATE":
-        scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
 
     # Be sure the queue2 job is running even after the forced termination: we need the nodes active so that we
     # can check the AMI id on the instances
