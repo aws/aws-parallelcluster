@@ -544,7 +544,7 @@ def test_ad_integration(  # noqa: C901
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     remote_command_executor.run_remote_command(
-        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo service sssd restart",
+        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
         additional_files=[test_datadir / "certificate.crt"],
     )
     if directory_certificate_verification:
@@ -670,7 +670,7 @@ def test_ad_integration_on_login_nodes(
     # Publish compute node count metric every minute via cron job
     remote_command_executor = RemoteCommandExecutor(cluster)
     remote_command_executor.run_remote_command(
-        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo service sssd restart",
+        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i service sssd restart",
         additional_files=[test_datadir / "certificate.crt"],
     )
     if directory_certificate_verification:
