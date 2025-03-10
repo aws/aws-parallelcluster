@@ -9,6 +9,9 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
+
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -32,13 +35,14 @@ def test_multiple_nics(
     _test_compute_node_nics(cluster, region, remote_command_executor, scheduler_commands)
 
 
-def _get_private_ip_addresses(instance_id, region, remote_command_executor):
-    result = remote_command_executor.run_remote_command(
-        "sudo aws ec2 describe-instances --instance-id {0} --region {1} "
-        '--query "Reservations[0].Instances[0].NetworkInterfaces[*].PrivateIpAddresses[*].PrivateIpAddress" '
-        "--output text".format(instance_id, region)
-    )
-    return result.stdout.strip().split("\n")
+def _get_private_ip_addresses(instance_id):
+    ec2_client = boto3.client("ec2")
+    instance_info = ec2_client.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+    return [
+        ip_address["PrivateIpAddress"]
+        for nic in instance_info["NetworkInterfaces"]
+        for ip_address in nic["PrivateIpAddresses"]
+    ]
 
 
 def _test_head_node_nics(remote_command_executor, region):
@@ -53,7 +57,8 @@ def _test_head_node_nics(remote_command_executor, region):
         "http://169.254.169.254/latest/meta-data/instance-id"
     ).stdout
 
-    head_node_ip_addresses = _get_private_ip_addresses(head_node_instance_id, region, remote_command_executor)
+    head_node_ip_addresses = _get_private_ip_addresses(head_node_instance_id)
+    logging.info("Head node IP addresses: %s", head_node_ip_addresses)
     ip_a_result = remote_command_executor.run_remote_command("ip a | col -b").stdout
 
     for ip_address in head_node_ip_addresses:
@@ -63,7 +68,8 @@ def _test_head_node_nics(remote_command_executor, region):
 def _test_compute_node_nics(cluster, region, remote_command_executor, scheduler_commands):
     compute_instance_id = get_compute_nodes_instance_ids(cluster.cfn_name, region)[0]
     # Get compute node's IP addresses
-    compute_ip_addresses = _get_private_ip_addresses(compute_instance_id, region, remote_command_executor)
+    compute_ip_addresses = _get_private_ip_addresses(compute_instance_id)
+    logging.info("Compute node IP addresses: %s", compute_ip_addresses)
     for ip_address in compute_ip_addresses:
         _test_compute_node_nic(ip_address, remote_command_executor, scheduler_commands)
 
