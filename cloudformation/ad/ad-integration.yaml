@@ -284,6 +284,7 @@ Resources:
                   physical_resource_id = create_physical_resource_id()
 
                   # provide outputs
+                  response_data['DirectoryId'] = directory_id
                   response_data['DomainName'] = domain
                   response_data['DomainShortName'] = domain.split(".")[0].upper()
                   response_data['VpcId'] = vpc_id
@@ -368,6 +369,8 @@ Resources:
             Statement:
               - Action:
                   - ds:ResetUserPassword
+                  - ds:DescribeDirectories
+                  - ds:DescribeDomainControllers
                 Effect: Allow
                 Resource: !Sub
                   - arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryId}
@@ -389,11 +392,20 @@ Resources:
       Roles:
         - Ref: JoinRole
 
+  AdDomainAdminNodeWaitConditionHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  AdDomainAdminNodeWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn:
+      - Prep
+    Properties:
+      Count: 1
+      Handle: !Ref AdDomainAdminNodeWaitConditionHandle
+      Timeout: 900
+
   AdDomainAdminNode:
     Type: AWS::EC2::Instance
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT15M
     Metadata:
       "AWS::CloudFormation::Init":
         configSets:
@@ -436,24 +448,36 @@ Resources:
               exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
               yum update -y aws-cfn-bootstrap
               /opt/aws/bin/cfn-init -v --stack "${AWS::StackName}" --resource AdDomainAdminNode --configsets setup --region "${AWS::Region}"
+              echo "Directory Id: ${DirectoryId}"
               echo "Domain Name: ${DirectoryDomain}"
               echo "Domain DNS IP 1: ${DnsIp1}"
               echo "Domain DNS IP 2: ${DnsIp2}"
               echo "Domain Certificate Secret: ${DomainCertificateSecretArn}"
               echo "Domain Private Key Secret: ${DomainPrivateKeySecretArn}"
               
+              echo "Describing directory..."
+              aws ds describe-directories --directory-id "${DirectoryId}" --region "${AWS::Region}"
+              echo "Describing domain controllers..."
+              aws ds describe-domain-controllers --directory-id "${DirectoryId}" --region "${AWS::Region}"
+              
               ADMIN_PW="${AdminPassword}"
               
-              sleep 10
-              echo "Registering ReadOnlyUser..."
-              echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name=ReadOnlyUser ReadOnlyUser
-              sleep 0.5
-              echo "Registering Users..."
-              USERNAMES="${UserNames}"
+              USERNAMES="ReadOnlyUser,${UserNames}"
+              echo "Registering Users: $USERNAMES ..."
               for username in $(echo $USERNAMES | sed "s/,/ /g")
               do
-                echo "Registering user: $username"
-                echo "$ADMIN_PW" | adcli create-user -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username"
+                attempt=0
+                max_attempts=5
+                until [ $attempt -ge $max_attempts ]; do
+                  attempt=$((attempt+1))
+                  echo "Registering user $username (attempt $attempt/$max_attempts) ..."
+                  echo "$ADMIN_PW" | adcli create-user -v -x -U "${Admin}" --domain-controller="${DnsIp1}" --display-name="$username" "$username" && echo "User registered: $username" && break
+                  echo "$ADMIN_PW" | adcli create-user -v -x -U "${Admin}" --domain-controller="${DnsIp2}" --display-name="$username" "$username" && echo "User registered: $username" && break
+                  echo "User creation failed, describing directory and controllers for troubleshooting..."
+                  aws ds describe-directories --directory-id "${DirectoryId}" --region "${AWS::Region}"
+                  aws ds describe-domain-controllers --directory-id "${DirectoryId}" --region "${AWS::Region}"
+                  sleep 10
+                done
               done
 
               echo "Creating domain certificate..."
@@ -470,16 +494,18 @@ Resources:
               echo "Deleting private key and certificate from local file system..."
               rm -rf "$PRIVATE_KEY" "$CERTIFICATE"
 
-              /opt/aws/bin/cfn-signal -e "$?" --stack "${AWS::StackName}" --resource AdDomainAdminNode --region "${AWS::Region}"
+              /opt/aws/bin/cfn-signal -e "$?" --stack "${AWS::StackName}" --region "${AWS::Region}" "${AdDomainAdminNodeWaitConditionHandle}"
 
-            - { DirectoryDomain: !GetAtt Prep.DomainName,
+            - { DirectoryId: !GetAtt Prep.DirectoryId,
+                DirectoryDomain: !GetAtt Prep.DomainName,
                 AdminPassword: !Ref AdminPassword,
                 UserNames: !Ref UserNames,
                 DnsIp1: !GetAtt Prep.DnsIpAddress1,
                 DnsIp2: !GetAtt Prep.DnsIpAddress2,
                 DomainCertificateSecretArn: !Ref DomainCertificateSecret,
                 DomainPrivateKeySecretArn: !Ref DomainPrivateKeySecret,
-                Admin: !If [UseMicrosoftAD, "Admin", "Administrator" ]
+                Admin: !If [UseMicrosoftAD, "Admin", "Administrator" ],
+                AdDomainAdminNodeWaitConditionHandle: !Ref AdDomainAdminNodeWaitConditionHandle
             }
 
   PostRole:
