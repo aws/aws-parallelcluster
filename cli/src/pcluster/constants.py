@@ -54,6 +54,7 @@ OS_MAPPING = {
     "alinux2023": {"user": "ec2-user"},
     "ubuntu2004": {"user": "ubuntu"},
     "ubuntu2204": {"user": "ubuntu"},
+    "ubuntu2404": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
     "rocky8": {"user": "rocky"},
     "rhel9": {"user": "ec2-user"},
@@ -65,6 +66,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "alinux2023": "amzn2023-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",
+    "ubuntu2404": "ubuntu-2404-lts-hvm",
     "rhel8": "rhel8-hvm",
     "rocky8": "rocky8-hvm",
     "rhel9": "rhel9-hvm",
@@ -129,6 +131,7 @@ EBS_VOLUME_TYPE_DEFAULT = "gp3"
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
 MAX_NUMBER_OF_QUEUES = 50
+MAX_NUMBER_OF_LOGIN_NODE_POOLS = 10
 # Allow for flexibility in how compute resources are distributed in the cluster
 MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER = MAX_COMPUTE_RESOURCES_PER_QUEUE = 50
 MIN_SLURM_NODE_PRIORITY = 1

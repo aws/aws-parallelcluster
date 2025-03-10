@@ -57,6 +57,7 @@ from pcluster.constants import (
     MAX_EXISTING_STORAGE_COUNT,
     MAX_NEW_STORAGE_COUNT,
     MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
+    MAX_NUMBER_OF_LOGIN_NODE_POOLS,
     MAX_NUMBER_OF_QUEUES,
     NODE_BOOTSTRAP_TIMEOUT,
     ONTAP,
@@ -2980,6 +2981,13 @@ class SlurmClusterConfig(BaseClusterConfig):
             subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id],
         )
         self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
+
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.login_nodes.pools),
+            max_length=MAX_NUMBER_OF_LOGIN_NODE_POOLS,
+            resource_name="LoginNodePools",
+        )
 
         for pool in self.login_nodes.pools:
             # Check the LoginNodes CustomAMI must be an ami of the same os family and the same arch.
