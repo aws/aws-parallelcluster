@@ -135,7 +135,10 @@ def _get_instance_type_parameters():  # noqa: C901
             for page in paginator.paginate(InstanceTypes=xlarge_instances):
                 for instance_type in page["InstanceTypes"]:
                     if instance_type.get("GpuInfo"):
-                        if instance_type.get("GpuInfo").get('Gpus') and instance_type.get("GpuInfo").get("Gpus")[0].get("Manufacturer") == "NVIDIA":
+                        if (
+                            instance_type.get("GpuInfo").get("Gpus")
+                            and instance_type.get("GpuInfo").get("Gpus")[0].get("Manufacturer") == "NVIDIA"
+                        ):
                             gpu_instances.append(instance_type["InstanceType"])
 
             xlarge_instances.sort()
