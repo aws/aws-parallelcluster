@@ -23,6 +23,7 @@ pytest-html
 pytest-rerunfailures
 pytest-sugar
 pytest-xdist
+pytest-timeout
 PyYAML
 requests
 retrying
