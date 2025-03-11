@@ -30,7 +30,7 @@ from tests.common.scaling_common import get_compute_nodes_allocation
 from tests.common.utils import get_ddb_item
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(6))
 def wait_instance_replaced_or_terminating(instance_id, region):
     assert_instance_replaced_or_terminating(instance_id, region)
 
