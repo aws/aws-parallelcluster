@@ -2,7 +2,7 @@
 {% if REGIONS  %}
 {%- set REGIONS = [ REGIONS ] -%}
 {% else %}
-{%- set REGIONS = ["us-isob-east-1","us-iso-east-1"] -%}
+{%- set REGIONS = ["us-isob-east-1","us-iso-east-1", "us-iso-west-1"] -%}
 {% endif %}
 {%- set INSTANCES = ["c5.xlarge"] -%}
 {% if OSS  %}

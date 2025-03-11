@@ -92,6 +92,13 @@ def test_configure_s3_bucket(mocker, put_bucket_versioning_error, put_bucket_enc
             "https://bucket-name.s3.us-iso-east-1.c2s.ic.gov/cluster-name/templates/file-name",
         ),
         (
+            "us-iso-west-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-iso-west-1.c2s.ic.gov/cluster-name/templates/file-name",
+        ),
+        (
             "us-isob-east-1",
             "bucket-name",
             "cluster-name",
@@ -138,6 +145,13 @@ def test_get_cfn_template_url(region, bucket_name, cluster_name, template_name, 
             "https://bucket-name.s3.us-iso-east-1.c2s.ic.gov/cluster-name/configs/file-name",
         ),
         (
+            "us-iso-west-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-iso-west-1.c2s.ic.gov/cluster-name/configs/file-name",
+        ),
+        (
             "us-isob-east-1",
             "bucket-name",
             "cluster-name",
@@ -182,6 +196,13 @@ def test_get_config_url(region, bucket_name, cluster_name, config_name, expected
             "cluster-name",
             "file-name",
             "https://bucket-name.s3.us-iso-east-1.c2s.ic.gov/cluster-name/custom_resources/file-name",
+        ),
+        (
+            "us-iso-west-1",
+            "bucket-name",
+            "cluster-name",
+            "file-name",
+            "https://bucket-name.s3.us-iso-west-1.c2s.ic.gov/cluster-name/custom_resources/file-name",
         ),
         (
             "us-isob-east-1",

@@ -557,6 +557,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
 
     pytest_args.append("--tests-log-file={0}/{1}".format(args.output_dir, log_file))
     pytest_args.append("--output-dir={0}/{1}".format(args.output_dir, out_dir))
+    pytest_args.append("--timeout=25200")
     pytest_args.append(f"--key-name={args.key_name}")
     pytest_args.append(f"--key-path={args.key_path}")
     pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
