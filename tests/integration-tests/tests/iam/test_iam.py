@@ -315,7 +315,7 @@ def _test_s3_access(remote_command_executor, region):
 def _test_batch_access(remote_command_executor, region):
     logging.info("Testing AWS Batch Access")
     result = remote_command_executor.run_remote_command(
-        f"aws batch describe-compute-environments --region {region}"
+        f"aws batch describe-compute-environments --region {region}", timeout=60
     ).stdout
     # An error occurred (AccessDeniedException) when calling the DescribeComputeEnvironments operation: ...
     assert_that(result).does_not_contain("AccessDeniedException")
