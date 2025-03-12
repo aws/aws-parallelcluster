@@ -36,7 +36,7 @@ from pcluster.constants import (
     RETAIN_POLICY,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
-    SUPPORTED_SCHEDULERS,
+    SUPPORTED_SCHEDULERS, UNSUPPORTED_OSES_FOR_LUSTRE,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.utils import (
@@ -62,8 +62,8 @@ EFS_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": SUPPORTED_OSES,
-    "arm64": SUPPORTED_OSES,
+    "x86_64": [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE],
+    "arm64": [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE],
 }
 
 FSX_MESSAGES = {

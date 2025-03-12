@@ -1550,6 +1550,20 @@ def test_fsx_network_validator(
             ),
         ),
         (
+                "x86_64",
+                "ubuntu2404",
+                FSX_MESSAGES["errors"]["unsupported_os"].format(
+                    architecture="x86_64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("x86_64")
+                ),
+        ),
+        (
+                "arm64",
+                "ubuntu2404",
+                FSX_MESSAGES["errors"]["unsupported_os"].format(
+                    architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+                ),
+        ),
+        (
             "UnsupportedArchitecture",
             "alinux2",
             FSX_MESSAGES["errors"]["unsupported_architecture"].format(

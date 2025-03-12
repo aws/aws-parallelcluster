@@ -5,6 +5,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add support for Ubuntu24.
 - Add support for ap-southeast-5 and ap-southeast-7 regions. At the time of this version launch, AWS CodeBuild is not supported in ap-southeast-5 or ap-southeast-7. Therefore, ParallelCluster AWS Batch integration is not supported.
+- Add validator to show Ubuntu2404 and FSX are unsupported in a cluster. Please suppress this validator when you have a Ubuntu2404 CustomAmi which has kernel compatible lustre client.  
 
 **CHANGES**
 
