@@ -1720,7 +1720,10 @@ class BaseClusterConfig(Resource):
                         new_storage_count["fsx"] += 1
                     self._register_validator(FeatureRegionValidator, feature=Feature.FSX_LUSTRE, region=self.region)
                     self._register_validator(
-                        FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
+                        FsxArchitectureOsValidator,
+                        architecture=self.head_node.architecture,
+                        os=self.image.os,
+                        custom_ami=self.image.custom_ami,
                     )
                 elif isinstance(storage, ExistingFsxOpenZfs):
                     existing_storage_count["fsx"] += 1

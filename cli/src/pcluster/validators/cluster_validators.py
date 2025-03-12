@@ -37,6 +37,7 @@ from pcluster.constants import (
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_SCHEDULERS,
+    UNSUPPORTED_OSES_FOR_LUSTRE,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.utils import (
@@ -62,8 +63,8 @@ EFS_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": SUPPORTED_OSES,
-    "arm64": SUPPORTED_OSES,
+    "x86_64": [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE],
+    "arm64": [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE],
 }
 
 FSX_MESSAGES = {
@@ -712,7 +713,7 @@ class FsxArchitectureOsValidator(Validator):
     Validate that OS and architecture are compatible with FSx.
     """
 
-    def _validate(self, architecture: str, os):
+    def _validate(self, architecture: str, os, custom_ami):
         if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
             self._add_failure(
                 FSX_MESSAGES["errors"]["unsupported_architecture"].format(
@@ -721,12 +722,15 @@ class FsxArchitectureOsValidator(Validator):
                 FailureLevel.ERROR,
             )
         elif os not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
-            self._add_failure(
-                FSX_MESSAGES["errors"]["unsupported_os"].format(
-                    architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
-                ),
-                FailureLevel.ERROR,
-            )
+            if os in ["ubuntu2404"] and custom_ami:
+                pass
+            else:
+                self._add_failure(
+                    FSX_MESSAGES["errors"]["unsupported_os"].format(
+                        architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
+                    ),
+                    FailureLevel.ERROR,
+                )
 
 
 def _find_duplicate_params(param_list):

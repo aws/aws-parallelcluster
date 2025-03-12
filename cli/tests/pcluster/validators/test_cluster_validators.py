@@ -1525,19 +1525,20 @@ def test_fsx_network_validator(
 
 
 @pytest.mark.parametrize(
-    "architecture, os, expected_message",
+    "architecture, os, custom_ami, expected_message",
     [
         # Supported combinations
-        ("x86_64", "alinux2", None),
-        ("x86_64", "rhel8", None),
-        ("x86_64", "ubuntu2004", None),
-        ("arm64", "ubuntu2004", None),
-        ("arm64", "rhel8", None),
-        ("arm64", "alinux2", None),
+        ("x86_64", "alinux2", None, None),
+        ("x86_64", "rhel8", None, None),
+        ("x86_64", "ubuntu2004", None, None),
+        ("arm64", "ubuntu2004", None, None),
+        ("arm64", "rhel8", None, None),
+        ("arm64", "alinux2", None, None),
         # Unsupported combinations
         (
             "x86_64",
             "ubuntu1804",
+            None,
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="x86_64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("x86_64")
             ),
@@ -1545,6 +1546,24 @@ def test_fsx_network_validator(
         (
             "arm64",
             "ubuntu1804",
+            None,
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "x86_64",
+            "ubuntu2404",
+            None,
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="x86_64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("x86_64")
+            ),
+        ),
+        ("x86_64", "ubuntu2404", "ami-1234567890", None),
+        (
+            "arm64",
+            "ubuntu2404",
+            None,
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
@@ -1552,14 +1571,15 @@ def test_fsx_network_validator(
         (
             "UnsupportedArchitecture",
             "alinux2",
+            None,
             FSX_MESSAGES["errors"]["unsupported_architecture"].format(
                 supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
             ),
         ),
     ],
 )
-def test_fsx_architecture_os_validator(architecture, os, expected_message):
-    actual_failures = FsxArchitectureOsValidator().execute(architecture, os)
+def test_fsx_architecture_os_validator(architecture, os, custom_ami, expected_message):
+    actual_failures = FsxArchitectureOsValidator().execute(architecture, os, custom_ami)
     assert_failure_messages(actual_failures, expected_message)
 
 
