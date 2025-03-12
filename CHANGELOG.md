@@ -1,17 +1,57 @@
 CHANGELOG
 =========
+
 3.13.0
 ------
+
+**DEPRECATIONS**
+- This is the last ParallelCluster release supporting Ubuntu 20.04  
+  as Ubuntu 20.04 will be in End-Of-Standard-Support on May 2025.
+
 **ENHANCEMENTS**
-- Add support for Ubuntu24.
-- Add support for ap-southeast-5 and ap-southeast-7 regions. At the time of this version launch, AWS CodeBuild is not supported in ap-southeast-5 or ap-southeast-7. Therefore, ParallelCluster AWS Batch integration is not supported.
+- Add support for Ubuntu 24.04.
+  Notice that ParallelCluster official AMI for Ubuntu 24.04 does not support Lustre.
+- Add support for ap-southeast-5 region.
+- Disable unused services cups and wpa_supplicant from Official ParallelCluster AMIs to improve security.
 
 **CHANGES**
+- Upgrade Slurm to version 24.05.6.
+- Upgrade NVIDIA driver to version 570.86.15 (from 550.127.08) for all OSs except AL2.
+- Upgrade CUDA Toolkit to version 12.8.0 (from 12.4.1) for all OSs except AL2.
+- Upgrade Python to 3.12.8 for all OSs except AL2 (from 3.9.20).
+- On Ubuntu 22.04, install the Nvidia driver with the same compiler version used to compile the kernel.
+- Upgrade aws-cfn-bootstrap to version 2.0-33.
+- Upgrade EFA installer to 1.38.0 (from 1.36.0).
+  - Efa-driver: efa-2.13.0-1
+  - Efa-config: efa-config-1.17-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-1.22.0-1
+  - Rdma-core: rdma-core-54.0-1
+  - Open MPI: openmpi40-aws-4.1.7-1 and openmpi50-aws-5.0.5
+- Upgrade amazon-efs-utils to version 2.1.0.
+- Remove third-party cookbook: apt-7.5.22 and pyenv-4.2.3.
+- Upgrade third-party cookbook dependencies:
+  - line-4.5.21 (from line-4.5.13)
+  - nfs-5.1.5 (from nfs-5.1.2)
+  - openssh-2.11.14 (from openssh-2.11.12)
+  - yum-7.4.20 (from yum-7.4.13)
+  - yum-epel-5.0.8 (from yum-epel-5.0.2)
+- Upgrade Pmix to 5.0.6 (from 5.0.3).
+- Upgrade ARM PL to version 24.10 (from 23.10).
+- Upgrade Python to version 3.12.8 (from 3.9.17) in Lambda layer and installer.
+- Upgrade NodeJS to version 20.18.3 (from 18.20.3) in Lambda layer and installer.
+- Remove generation of DSA keys for login nodes as DSA, which became unsupported in OpenSSH 9.7+.
+- Set instance ID and instance type information in Slurm upon compute nodes launch.
+- Install NVIDIA drivers without the option 'no-cc-version-check', which is now deprecated in the NVIDIA installer.
+- Add validator to enforce up to 10- login node pools.
 
 **BUG FIXES**
-- Fix an issue where when using Proxy, compute node bootstrap would fail.
 - Remove usage of cfn-init for compute node bootstrapping to reduce node scale up time.
-- Add validator to enforce up to 10 login node pools. 
+- Fix an issue causing compute node bootstrap failure when a proxy is used.
+- On Ubuntu 22.04, install the Nvidia driver with the same compiler version used to compile the kernel
+  to prevent inmstallation failures.- Fix the execution of overriding aws-parallelcluster-node package only on the head node during update.
+- Fix an issue where containerized jobs executed through Pyxis/Enroot in a multi-user environment (integrated with Active Directory) would fail.
+- Fix usage of authselect causing node bootstrap failures on Rocky 9.5+ when directory service is used.
 
 
 3.12.0
