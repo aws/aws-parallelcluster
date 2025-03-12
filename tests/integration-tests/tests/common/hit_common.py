@@ -85,7 +85,7 @@ def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reas
         assert_that(node_info).contains(f"Reason={expected_reason}")
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(6))
 def wait_for_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition=None):
     assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition)
 
