@@ -745,8 +745,8 @@ def test_queue_parameters_update(
 ):
     """Test update cluster with drain strategy."""
     # Create cluster with initial configuration
-    initial_compute_root_volume_size = 40
-    updated_compute_root_volume_size = 45
+    initial_compute_root_volume_size = 45
+    updated_compute_root_volume_size = 50
     # If you are running this test in your personal account, then you must have
     # ParallelCluster AMIs following the official naming convention
     # and set allow_private_ami to True.

@@ -50,7 +50,7 @@ HeadNode:
       DeleteOnTermination: true
       Encrypted: true
       Iops: 100
-      Size: 40
+      Size: 45
       Throughput: null
       VolumeType: gp2
   Networking:

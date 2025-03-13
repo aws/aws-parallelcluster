@@ -17,7 +17,7 @@ HeadNode:
     AllowedIps: 1.2.3.4/32
   LocalStorage:
     RootVolume:
-      Size: 40
+      Size: 45
       Encrypted: true
     EphemeralVolume:
       MountDir: /test
