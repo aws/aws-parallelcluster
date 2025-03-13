@@ -6,7 +6,7 @@
 
 cat <<'EOF' >submission-script.sh
 #!/bin/bash
-set -x
+set -xe
 
 # FIXME remove this repo once packages are public available
 TEMPORARY_ARTIFACTS_BUCKET_PATH=s3://aws-parallelcluster-beta/neuron/
@@ -52,7 +52,7 @@ TOTAL_RANK=$(($SLURM_NNODES*32))
 # python3 inst-sweep/genneffs_nccl.py -n <total-number-of-ranks> --all --output <output-dir>
 NEFF_FILE=test_nccl_64r_50allg_int8_393216/0/file.neff
 if [[ ! -f $NEFF_FILE ]]; then
-  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_50allg_int8_393216_0_file.neff $NEFF_FILE
+  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_50allg_int8_393216_0_file.neff $NEFF_FILE --region us-east-1
 fi
 
 # Print eth0 ip
