@@ -3225,7 +3225,7 @@ class TestDictLaunchTemplateBuilder:
                         "Ebs": {
                             "Encrypted": True,
                             "VolumeType": "mockVolumeType",
-                            "VolumeSize": 40,
+                            "VolumeSize": 45,
                             "Iops": 15,
                             "Throughput": 20,
                             "DeleteOnTermination": True,

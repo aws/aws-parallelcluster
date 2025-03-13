@@ -3,7 +3,7 @@ Image:
         - Key: dummyImageTag
           Value: dummyImageTag
     RootVolume:
-        Size: 40
+        Size: 45
 
 Build:
     Iam:

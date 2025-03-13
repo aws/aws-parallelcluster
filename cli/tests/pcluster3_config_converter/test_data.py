@@ -872,7 +872,7 @@ queue_settings = queue1, queue2
 scaling_settings = custom
 scheduler = slurm
 disable_cluster_dns = true
-compute_root_volume_size = 40
+compute_root_volume_size = 45
 
 [vpc default]
 vpc_id = vpc-0e0f223cc35256b9a
@@ -957,7 +957,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 40
+            Size: 45
       Networking:
         AdditionalSecurityGroups:
           - sg-xxxxxx
@@ -1001,7 +1001,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 40
+            Size: 45
       Networking:
         AdditionalSecurityGroups:
           - sg-xxxxxx

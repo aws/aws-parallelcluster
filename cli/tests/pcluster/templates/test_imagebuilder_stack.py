@@ -3317,7 +3317,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
                     }
                 ],
             },
-            {"Encrypted": False, "VolumeSize": 40, "VolumeType": "gp3"},
+            {"Encrypted": False, "VolumeSize": 45, "VolumeType": "gp3"},
         ),
         (
             {
@@ -3350,7 +3350,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
             {
                 "imagebuilder": {
                     "image": {
-                        "root_volume": {"size": 40, "encrypted": True},
+                        "root_volume": {"size": 45, "encrypted": True},
                     },
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
@@ -3369,7 +3369,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
                     }
                 ],
             },
-            {"Encrypted": True, "VolumeSize": 40, "VolumeType": "gp3"},
+            {"Encrypted": True, "VolumeSize": 45, "VolumeType": "gp3"},
         ),
         (
             {
@@ -3399,7 +3399,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
             },
             {
                 "Encrypted": True,
-                "VolumeSize": 82,
+                "VolumeSize": 87,
                 "VolumeType": "gp3",
                 "KmsKeyId": "arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab",
             },
