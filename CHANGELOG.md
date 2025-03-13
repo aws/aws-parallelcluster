@@ -44,6 +44,7 @@ CHANGELOG
 - Set instance ID and instance type information in Slurm upon compute nodes launch.
 - Install NVIDIA drivers without the option 'no-cc-version-check', which is now deprecated in the NVIDIA installer.
 - Add validator to enforce up to 10- login node pools.
+- Update the default root volume size to 45 GB.
 
 **BUG FIXES**
 - Remove usage of cfn-init for compute node bootstrapping to reduce node scale up time.

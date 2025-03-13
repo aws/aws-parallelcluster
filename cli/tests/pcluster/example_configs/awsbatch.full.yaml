@@ -31,7 +31,7 @@ HeadNode:
     AllowedIps: 1.2.3.4/32
   LocalStorage:
     RootVolume:
-      Size: 37
+      Size: 45
       Encrypted: true
       DeleteOnTermination: true
     EphemeralVolume:
