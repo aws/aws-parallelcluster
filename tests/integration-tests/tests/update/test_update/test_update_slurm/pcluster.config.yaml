@@ -29,7 +29,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 40
+            Size: 45
       CustomActions:
         OnNodeStart:
           Script: s3://{{ resource_bucket }}/scripts/preinstall.sh
@@ -65,7 +65,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 40
+            Size: 45
       ComputeResources:
         - Name: queue2-i1
           Efa:
