@@ -1198,7 +1198,7 @@ def _test_replace_down_nodes(
     _set_nodes_to_down_manually(scheduler_commands, dynamic_nodes)
     # TOFIX We observe in 3.13.0 an increase in the bootstrap time for Rocky and RHEL.
     # We must address it and restore the default wait time to 300s.
-    stop_max_delay_secs = 360 if os.starts_with("rocky") else 300
+    stop_max_delay_secs = 360 if os.startswith("rocky") else 300
     _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes, stop_max_delay_secs=stop_max_delay_secs)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
 
