@@ -55,8 +55,6 @@ if [[ ! -f $NEFF_FILE ]]; then
   aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_50allg_int8_393216_0_file.neff $NEFF_FILE --region us-east-1
 fi
 
-# Print eth0 ip
-/usr/sbin/ip -br addr show dev eth0 scope global
 
 # Export variables required for neuron-bench
 export PATH="/opt/aws/neuron/bin:$PATH"
