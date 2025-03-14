@@ -126,6 +126,8 @@ EBS_VOLUME_TYPE_IOPS_DEFAULT = {
     "gp3": 3000,
 }
 EBS_VOLUME_SIZE_DEFAULT = 40
+# This value must be greater than or equal to the AMI volume size
+EBS_ROOT_VOLUME_SIZE_DEFAULT = 45
 EBS_VOLUME_TYPE_DEFAULT = "gp3"
 
 DEFAULT_MAX_COUNT = 10
