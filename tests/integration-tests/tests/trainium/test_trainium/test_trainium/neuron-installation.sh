@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 
 # Private Repository Access
 # I manually created a TrainiumPreviewRepository secret and TrainiumPreviewPolicy on 447714826191 account to permit access to Secret below
@@ -115,7 +116,7 @@ EOF
 
 function main() {
   # Download packages from S3 --> FIXME they should be installed from configured repository
-  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH} . --recursive
+  aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH} . --recursive --region us-east-1
 
   local OS="$(grep "^ID=" /etc/os-release | cut -d"=" -f 2 | xargs)"
   case ${OS} in
