@@ -123,8 +123,8 @@ def _check_shared_home(
             scheduler_commands, remote_command_executor, f"{mount_dir}/{get_username_for_os(os)}"
         )
     elif storage_type == "Ebs":
-        _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=40)
-        _test_ebs_correctly_mounted(remote_command_executor_login_node, mount_dir, volume_size=40)
+        _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=45)
+        _test_ebs_correctly_mounted(remote_command_executor_login_node, mount_dir, volume_size=45)
         # Test ebs correctly shared between HeadNode and ComputeNodes
         logging.info("Testing ebs correctly mounted on compute nodes")
         verify_directory_correctly_shared(
