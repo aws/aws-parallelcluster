@@ -47,6 +47,7 @@ from pcluster.constants import (
     DEFAULT_MIN_COUNT,
     DELETE_POLICY,
     DETAILED_MONITORING_ENABLED_DEFAULT,
+    EBS_ROOT_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
@@ -256,12 +257,10 @@ class RootVolume(Ebs):
         super().__init__(**kwargs)
         # When the RootVolume size is None, EC2 implicitly sets it as the AMI size.
         # In US Isolated regions, the root volume size cannot be left unspecified,
-        # so we consider it as the default EBS volume size.
-        # In theory, the default value should be maximum between the default EBS volume size (35GB) and the AMI size,
-        # but in US Isolated region this is fine because the only supported AMI as of 2023 Feb
-        # is the official ParallelCluster AMI for Amazon Linux 2, which has size equal to
-        # the default EBS volume size (35GB).
-        self.size = Resource.init_param(size, EBS_VOLUME_SIZE_DEFAULT if get_region().startswith("us-iso") else None)
+        # so we consider it as the default EBS root volume size.
+        self.size = Resource.init_param(
+            size, EBS_ROOT_VOLUME_SIZE_DEFAULT if get_region().startswith("us-iso") else None
+        )
         # The default delete_on_termination takes effect both on head and compute nodes.
         # If the default of the head node is to be changed, please separate this class for different defaults.
         self.delete_on_termination = Resource.init_param(delete_on_termination, default=True)
