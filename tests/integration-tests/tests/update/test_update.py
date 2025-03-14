@@ -939,7 +939,8 @@ def _test_update_queue_strategy_with_running_job(
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=["mixed", "allocated"])
     if queue_update_strategy == "TERMINATE":
-        scheduler_commands.assert_job_state(queue2_job_id, "PENDING")
+        time.sleep(10)
+        scheduler_commands.assert_job_state(queue2_job_id, "CONFIGURING")
     # check queue1 AMIs are not replaced
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
 
