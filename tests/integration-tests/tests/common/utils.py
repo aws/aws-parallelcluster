@@ -64,6 +64,10 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
     "ubuntu2004": {"name": "Deep Learning Base GPU AMI (Ubuntu 20.04)*", "owners": ["amazon"]},
+    "ubuntu2404": {
+        "name": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*-server-*",
+        "owners": ["099720109477"],
+    },
     # Simple redhat8 to be able to build in remarkable test
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
