@@ -1144,7 +1144,14 @@ def _test_partition_states(
 
 
 def _test_reset_terminated_nodes(
-    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type, stop_max_delay_secs
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+    stop_max_delay_secs,
 ):
     """
     Test that slurm nodes are reset if instances are terminated manually.
@@ -1206,7 +1213,14 @@ def _test_replace_down_nodes(
 
 
 def _test_keep_or_replace_suspended_nodes(
-    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type, stop_max_delay_secs
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+    stop_max_delay_secs,
 ):
     """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
     logging.info(
@@ -1214,7 +1228,8 @@ def _test_keep_or_replace_suspended_nodes(
     )
     job_id = submit_initial_job(
         scheduler_commands,
-        # Job running time should at least bigger than `_wait_for_node_reset timeout` plus `_assert_nodes_not_terminated timeout`
+        # Job running time should at least bigger than `_wait_for_node_reset` timeout
+        # plus `_assert_nodes_not_terminated` timeout
         "sleep 700",
         partition,
         dynamic_instance_type,
@@ -1227,13 +1242,17 @@ def _test_keep_or_replace_suspended_nodes(
     # Set all nodes to drain, static should be in DRAINED and dynamic in DRAINING
     _set_nodes_to_suspend_state_manually(scheduler_commands, static_nodes + dynamic_nodes)
     # Static nodes in DRAINED are immediately replaced
-    _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[], stop_max_delay_secs=stop_max_delay_secs)
+    _wait_for_node_reset(
+        scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[], stop_max_delay_secs=stop_max_delay_secs
+    )
     # Assert dynamic nodes in DRAINING are not terminated during job run
     _assert_nodes_not_terminated(scheduler_commands, dynamic_nodes)
     # wait until the job is completed and check that the DRAINING dynamic nodes are then terminated
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
-    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes, stop_max_delay_secs=stop_max_delay_secs)
+    _wait_for_node_reset(
+        scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes, stop_max_delay_secs=stop_max_delay_secs
+    )
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
 
 
