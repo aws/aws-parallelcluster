@@ -32,8 +32,8 @@ from tests.common.utils import reboot_head_node, retrieve_latest_ami
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, architecture, request):
     """Test error message when os provide is different from the os of custom AMI"""
-    # rhel8 is specified in the config file but an AMI of ubuntu2004 is provided
-    wrong_os = "ubuntu2004"
+    # rhel8 is specified in the config file but an AMI of ubuntu2204 is provided
+    wrong_os = "ubuntu2204"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
     custom_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture, request=request)

@@ -38,8 +38,6 @@ phases:
                 OS='alinux2'
               elif [ `echo "${RELEASE}" | grep -w '^amzn\.2023'` ]; then
                 OS='alinux2023'
-              elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
-                OS='ubuntu2004'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.22'` ]; then
                 OS='ubuntu2204'
               elif [ `echo "${RELEASE}" | grep '^ubuntu\.24'` ]; then
@@ -303,18 +301,6 @@ phases:
                    make
                    /usr/local/{{ validate.CudaSamplesDir.outputs.stdout }}/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
                  else
-                   if [ {{ validate.OperatingSystemName.outputs.stdout }} == 'ubuntu2004' ]; then
-                     MINI_CMAKE_VER_REQ=$(sed -n 's/cmake_minimum_required(\(VERSION \)\?\([0-9.]*\)).*/\2/p' CMakeLists.txt)
-                     COOKBOOK_ENV=$(jq '.default.cluster.cookbook_virtualenv_path' {{ CookbookDefaultFile }})
-                     COOKBOOK_ENV_PATH=$(echo ${COOKBOOK_ENV} | tr -d '\n' | cut -d = -f 2 | xargs)
-                     echo "Installing Cmake >= ${MINI_CMAKE_VER_REQ} in $COOKBOOK_ENV_PATH/bin"
-                     . $COOKBOOK_ENV_PATH/bin/activate
-                     $COOKBOOK_ENV_PATH/bin/pip3 install cmake>=$MINI_CMAKE_VER_REQ
-                     CMAKE_ARGS=""
-                     if [ -e $COOKBOOK_ENV_PATH/bin/cmake ]; then
-                       CMAKE_ARGS="-DCMAKE_INSTALL_PREFIX=$COOKBOOK_ENV_PATH/bin/cmake ${CMAKE_ARGS}"
-                     fi
-                   fi
                    mkdir build && cd build
                    cmake .. \
                     -DCMAKE_CUDA_ARCHITECTURES="75;80;86" \
@@ -324,10 +310,6 @@ phases:
                      ${CMAKE_ARGS}
                    make
                    ./deviceQuery | grep -o "Result = PASS"
-                   if [ "${OS}" == 'ubuntu2004' ]; then
-                     $COOKBOOK_ENV_PATH/bin/pip3 uninstall cmake -y
-                     deactivate
-                   fi
                  fi
                  [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               fi

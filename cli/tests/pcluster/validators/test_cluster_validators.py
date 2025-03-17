@@ -547,15 +547,14 @@ def test_region_validator(region, expected_message):
 @pytest.mark.parametrize(
     "os, scheduler, expected_message",
     [
-        ("ubuntu2004", "slurm", None),
+        ("ubuntu2404", "slurm", None),
         ("alinux2", "slurm", None),
         ("rhel8", "slurm", None),
         ("rocky8", "slurm", None),
-        ("ubuntu1804", "slurm", "scheduler supports the following operating systems"),
+        ("awsbatch", "awsbatch", "scheduler supports the following operating systems"),
         ("rhel8", "awsbatch", "scheduler supports the following operating systems"),
         ("rocky8", "awsbatch", "scheduler supports the following operating systems"),
-        ("ubuntu1804", "awsbatch", "scheduler supports the following operating systems"),
-        ("ubuntu2004", "awsbatch", "scheduler supports the following operating systems"),
+        ("ubuntu2204", "awsbatch", "scheduler supports the following operating systems"),
         ("alinux2", "awsbatch", None),
     ],
 )
@@ -961,10 +960,10 @@ def test_efa_security_group_validator(
     [
         (True, "alinux2", "x86_64", None),
         (True, "alinux2", "arm64", None),
-        (True, "ubuntu1804", "x86_64", None),
-        (True, "ubuntu1804", "arm64", None),
-        (True, "ubuntu2004", "x86_64", None),
-        (True, "ubuntu2004", "arm64", None),
+        (True, "alinux2023", "x86_64", None),
+        (True, "ubuntu2204", "arm64", None),
+        (True, "ubuntu2404", "x86_64", None),
+        (True, "rocky9", "arm64", None),
         (True, "rhel8", "x86_64", None),
         (True, "rhel8", "arm64", None),
     ],
@@ -1007,16 +1006,16 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
             "x86_64",
             "The architecture x86_64 is only supported for the following operating systems",
         ),
-        ("ubuntu2004", "x86_64", None),
+        ("ubuntu2404", "x86_64", None),
         # All OSes supported for ARM
         ("alinux2", "arm64", None),
         ("alinux2", "arm64", None),
         (
-            "ubuntu1804",
+            "ubuntu04",
             "arm64",
             "The architecture arm64 is only supported for the following operating systems",
         ),
-        ("ubuntu2004", "arm64", None),
+        ("ubuntu2204", "arm64", None),
         ("rhel8", "arm64", None),
         ("rhel8", "arm64", None),
     ],
@@ -1530,8 +1529,8 @@ def test_fsx_network_validator(
         # Supported combinations
         ("x86_64", "alinux2", None),
         ("x86_64", "rhel8", None),
-        ("x86_64", "ubuntu2004", None),
-        ("arm64", "ubuntu2004", None),
+        ("x86_64", "ubuntu2204", None),
+        ("arm64", "ubuntu2404", None),
         ("arm64", "rhel8", None),
         ("arm64", "alinux2", None),
         # Unsupported combinations
@@ -1740,14 +1739,14 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
     [
         (True, "rhel8", "t3.medium", None, None, None),
         (True, "ubuntu1804", "t3.medium", None, "1.2.3.4/32", "Please double check the os configuration"),
-        (True, "ubuntu2004", "t3.medium", None, None, None),
+        (True, "ubuntu2404", "t3.medium", None, None, None),
         (True, "alinux2", "t3.medium", None, None, None),
         (True, "alinux2", "t3.nano", None, None, "is recommended to use an instance type with at least"),
         (True, "alinux2", "t3.micro", None, None, "is recommended to use an instance type with at least"),
         (False, "alinux2", "t3.micro", None, None, None),  # doesn't fail because DCV is disabled
         (True, "alinux2", "m6g.xlarge", None, None, None),
         (True, "rhel8", "m6g.xlarge", None, None, None),
-        (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),
+        (True, "alinux2023", "m6g.xlarge", None, None, "Please double check the os configuration"),
     ],
 )
 def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expected_message):
@@ -1782,8 +1781,8 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
     [
         ("centos7", None),
         ("alinux2", "the operating system is required to be set"),
-        ("ubuntu1804", "the operating system is required to be set"),
-        ("ubuntu2004", "the operating system is required to be set"),
+        ("ubuntu2204", "the operating system is required to be set"),
+        ("ubuntu2404", "the operating system is required to be set"),
         ("rhel8", "the operating system is required to be set"),
         # TODO migrate the parametrization below to unit test for the whole model
         # intel hpc disabled, you can use any os
@@ -3507,9 +3506,8 @@ def test_multi_network_interfaces_instances_validator(
         ("ami-000000000000", "rocky8", None, None),
         ("ami-000000000000", "alinux2", None, None),
         ("ami-000000000000", "rhel8", None, None),
-        ("ami-000000000000", "ubuntu22", None, None),
-        ("ami-000000000000", "ubuntu20", None, None),
-        ("ami-000000000000", "ubuntu24", None, None),
+        ("ami-000000000000", "ubuntu2204", None, None),
+        ("ami-000000000000", "ubuntu2404", None, None),
         (
             None,
             "rocky8",
@@ -3521,9 +3519,8 @@ def test_multi_network_interfaces_instances_validator(
         ),
         (None, "alinux2", None, None),
         (None, "rhel8", None, None),
-        (None, "ubuntu22", None, None),
-        (None, "ubuntu20", None, None),
-        (None, "ubuntu24", None, None),
+        (None, "ubuntu2204", None, None),
+        (None, "ubuntu2404", None, None),
     ],
 )
 def test_compute_ami_os_compatible_validator(mocker, custom_ami_id, os, expected_message, expected_failure_level):

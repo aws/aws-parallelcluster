@@ -472,10 +472,21 @@ BadKeyPairsDict = {"KeyPairs": [{"KeyType": "rsa"}]}
             "does not exist",
         ),
         ("key-name", GoodKeyPairsDict, "ubuntu2204", None, None),
-        ("key-name", BadKeyPairsDict, "ubuntu2204", None, "ubuntu2204 does not support RSA keys"),
-        ("key-name", BadKeyPairsDict, "ubuntu2404", None, "ubuntu2404 does not support RSA keys"),
-        ("key-name", GoodKeyPairsDict, "ubuntu2004", None, None),
-        ("key-name", BadKeyPairsDict, "ubuntu2004", None, None),
+        (
+            "key-name",
+            BadKeyPairsDict,
+            "ubuntu2204",
+            None,
+            "ubuntu2204 does not support RSA keys. Please generate and use an ed25519 key",
+        ),
+        ("key-name", GoodKeyPairsDict, "ubuntu2404", None, None),
+        (
+            "key-name",
+            BadKeyPairsDict,
+            "ubuntu2404",
+            None,
+            "ubuntu2404 does not support RSA keys. Please generate and use an ed25519 key",
+        ),
         ("key-name", GoodKeyPairsDict, "rhel8", None, None),
         ("key-name", BadKeyPairsDict, "rhel8", None, None),
         ("key-name", GoodKeyPairsDict, "alinux2", None, None),
@@ -566,8 +577,8 @@ def test_capacity_type_validator(
         (
             "ami-111111111111",
             "alinux2",
-            ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "ubuntu2004"}]}),
-            "The OS of node AMI ami-111111111111 is ubuntu2004, it is not compatible with cluster OS alinux2.",
+            ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "ubuntu2404"}]}),
+            "The OS of node AMI ami-111111111111 is ubuntu2404, it is not compatible with cluster OS alinux2.",
         ),
         (
             "ami-222222222222",
@@ -779,10 +790,10 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             CapacityType.SPOT,
-            "ubuntu2004",
+            "ubuntu2404",
             [
                 "Capacity reservation .* has platform Red Hat Enterprise Linux, which is not "
-                + "compatible with the cluster OS ubuntu2004. Please use a reservation with platform Ubuntu Pro.",
+                + "compatible with the cluster OS ubuntu2404. Please use a reservation with platform Ubuntu Pro.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
@@ -852,7 +863,7 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
-            "ubuntu2004",
+            "ubuntu2204",
             [],  # Do not check Ondemand capacity type
         ),
         (
@@ -955,7 +966,7 @@ def test_placement_group_validator(
             True,
             "us-east-1a",
             CapacityType.ONDEMAND,
-            "ubuntu2004",
+            "ubuntu2204",
             [
                 "CapacityReservationId parameter cannot be used with Instances parameter.",
             ],

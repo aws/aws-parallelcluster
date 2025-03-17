@@ -6,5 +6,5 @@ test-suites:
       dimensions:
         - regions: ["ap-northeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2", "ubuntu2004"]
+          oss: ["alinux2", "ubuntu2204"]
           schedulers: ["slurm"]
