@@ -27,13 +27,17 @@ from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, random_alphanumeric
+
+from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, random_alphanumeric, get_quarantined_stacks, is_quarantined_stack, quarantine_stacks
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
+from constants import DO_NOT_DELETE_TAG_KEY, MAX_QUARANTINED_STACKS
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
+
+AD_STACK_PREFIX = 'integ-tests-MultiUserInfraStack'
 
 
 def get_infra_stack_outputs(stack_name):
@@ -117,7 +121,7 @@ def add_tag_to_stack(stack_name, key, value):
     stack = cfn.Stack(stack_name)
     add_tag = True
     for tag in stack.tags:
-        if tag.get("Key") == "DO-NOT-DELETE":
+        if tag.get("Key") == DO_NOT_DELETE_TAG_KEY:
             add_tag = False
             break
     if add_tag:
@@ -127,6 +131,7 @@ def add_tag_to_stack(stack_name, key, value):
             Tags=[
                 {"Key": key, "Value": value},
             ],
+            DisableRollback=True,
         )
 
 
@@ -189,7 +194,7 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
 
 def _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack: CfnVpcStack):
     directory_stack_name = generate_stack_name(
-        f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
+        f"{AD_STACK_PREFIX}{directory_type}", request.config.getoption("stackname_suffix")
     )
 
     if directory_type not in ("MicrosoftAD", "SimpleAD"):
@@ -203,7 +208,7 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
         stack_parameters = _get_stack_parameters(directory_type, vpc_stack, request.config.getoption("key_name"))
         tags = [{"Key": "parallelcluster:integ-tests-ad-stack", "Value": directory_type}]
         if request.config.getoption("retain_ad_stack"):
-            tags.append({"Key": "DO-NOT-DELETE", "Value": "Retained for integration testing"})
+            tags.append({"Key": DO_NOT_DELETE_TAG_KEY, "Value": "Retained for integration testing"})
 
         directory_stack = CfnStack(
             name=directory_stack_name,
@@ -212,12 +217,33 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, region,
             parameters=stack_parameters,
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
             tags=tags,
+            disable_rollback=True,
         )
-    cfn_stacks_factory.create_stack(directory_stack)
+    try:
+        cfn_stacks_factory.create_stack(directory_stack, stack_is_under_test=True)
+    except BaseException as e:
+        logging.error("Failed to create stack %s", directory_stack_name)
+        # We want to retain the stack in case of failure in order to debug it.
+        # We retain a limited number of stack to contain the costs.
+        n_quarantined_ad_stacks = len(get_quarantined_stacks(region, prefix=AD_STACK_PREFIX))
+        if n_quarantined_ad_stacks < MAX_QUARANTINED_STACKS:
+            logging.warn("Quarantining failed stack %s to debug failure (quarantined: %d, max: %d)",
+                         directory_stack_name, n_quarantined_ad_stacks, MAX_QUARANTINED_STACKS)
+            quarantine_stacks(region, stack_names=[directory_stack_name])
+        else:
+            logging.warn("Cannot quarantine failed stack %s for debugging because there are already %d quarantined (max: %d)",
+                         directory_stack_name, n_quarantined_ad_stacks, MAX_QUARANTINED_STACKS)
+        raise e
     logging.info("Creation of stack %s complete", directory_stack_name)
 
     return directory_stack
 
+def get_retained_ad_stacks_count():
+    cfn = boto3.client("cloudformation")
+    failed_stacks = cfn.list_stacks(StackStatusFilter=['CREATE_FAILED'])["StackSummaries"]
+    failed_ad_stacks = [stack for stack in failed_stacks if AD_STACK_PREFIX in stack.get('StackName')]
+    return len([stack for stack in failed_ad_stacks if stack.get("Tags") and
+                        any(tag.get("Key") == DO_NOT_DELETE_TAG_KEY for tag in stack.get("Tags"))])
 
 @retry(wait_fixed=seconds(20), stop_max_delay=seconds(700))
 def _check_ssm_success(ssm_client, command_id, instance_id):
@@ -243,10 +269,10 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
             directory_stack_name = created_directory_stacks.get(region, {}).get("directory")
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
-            stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
+            stack_prefix = f"{AD_STACK_PREFIX}{directory_type}"
             directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
 
-            if not directory_stack_name:
+            if not directory_stack_name or is_quarantined_stack(region, directory_stack_name):
                 directory_stack = _create_directory_stack(
                     cfn_stacks_factory,
                     request,
@@ -257,7 +283,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
                 directory_stack_name = directory_stack.name
                 created_directory_stacks[region]["directory"] = directory_stack_name
                 if request.config.getoption("retain_ad_stack"):
-                    add_tag_to_stack(vpc_stack.name, "DO-NOT-DELETE", "Retained for integration testing")
+                    add_tag_to_stack(vpc_stack.name, DO_NOT_DELETE_TAG_KEY, "Retained for integration testing")
         return directory_stack_name
 
     yield _directory_factory

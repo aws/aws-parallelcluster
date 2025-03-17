@@ -19,6 +19,15 @@ REPOSITORY_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."
 
 UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
 
+DO_NOT_DELETE_TAG_KEY = 'DO-NOT-DELETE'
+
+QUARANTINE_TAG_KEY = 'QUARANTINE'
+
+MAX_QUARANTINED_STACKS = 5
+
+QUARANTINE_TAGS = [{ "Key": DO_NOT_DELETE_TAG_KEY, "Value": "true" }, { "Key": QUARANTINE_TAG_KEY, "Value": "true" }]
+RETENTION_TAGS = [{ "Key": DO_NOT_DELETE_TAG_KEY, "Value": "true" }]
+
 
 class NodeType(Enum):
     """Categories of nodes."""

@@ -31,13 +31,14 @@ from utils import (
 class CfnStack:
     """Identify a CloudFormation stack."""
 
-    def __init__(self, name, region, template, parameters=None, capabilities=None, tags=None):
+    def __init__(self, name, region, template, parameters=None, capabilities=None, tags=None, disable_rollback=False):
         self.name = name
         self.region = region
         self.template = template
         self.parameters = parameters or []
         self.capabilities = capabilities or []
         self.tags = tags or []
+        self.disable_rollback=disable_rollback
         self.cfn_stack_id = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
@@ -175,6 +176,7 @@ class CfnStacksFactory:
                         Parameters=stack.parameters,
                         Capabilities=stack.capabilities,
                         Tags=stack.tags,
+                        DisableRollback=stack.disable_rollback,
                     )
                 else:
                     result = cfn_client.create_stack(
@@ -183,6 +185,7 @@ class CfnStacksFactory:
                         Parameters=stack.parameters,
                         Capabilities=stack.capabilities,
                         Tags=stack.tags,
+                        DisableRollback=stack.disable_rollback,
                     )
                 stack.cfn_stack_id = result["StackId"]
                 self.__created_stacks[id] = stack
