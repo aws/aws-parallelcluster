@@ -62,7 +62,7 @@ class MetadataTableManager:
         try:
             # Check if the table exists already
             describe_result = self.client.describe_table(TableName=self.table)
-            logging.info(f"Table exists: {describe_result}")
+            logging.debug(f"Table exists: {describe_result}")
             return True
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "ResourceNotFoundException":
@@ -76,7 +76,7 @@ class MetadataTableManager:
             KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
             BillingMode="PAY_PER_REQUEST",
         )
-        logging.info(f"Successfully created metadata table: {self.table}")
+        logging.debug(f"Successfully created metadata table: {self.table}")
         return True
 
     def publish_metadata(self, metadata: List[TestMetadata]):
@@ -127,16 +127,16 @@ class MetadataTableManager:
                 )
             except Exception as e:
                 logging.error(f"Failed to publish {datum} to metadata table with {e}")
-            logging.info(f"Successfully published {datum} to metadata table: {self.table}")
+            logging.debug(f"Successfully published {datum} to metadata table: {self.table}")
 
     def get_metadata(self, ids: List[str]) -> List[TestMetadata]:
         """Gets the metadata item from the table"""
         items = []
         for test_id in ids:
             response = self.client.get_item(Key={"id": {"S": test_id}}, TableName=self.table)
-            logging.info(f"Successfully got metadata item from metadata table: {self.table}")
+            logging.debug(f"Successfully got metadata item from metadata table: {self.table}")
             if "Item" in response:
-                logging.info(response["Item"])
+                logging.debug(response["Item"])
                 items.append(
                     TestMetadata(
                         id=response["Item"]["id"]["S"],
@@ -172,6 +172,6 @@ class MetadataTableManager:
                     )
                 )
             else:
-                logging.info("No metadata item found in the table")
+                logging.debug("No metadata item found in the table")
         logging.info(f"Successfully got items: {items} from metadata table: {self.table}")
         return items
