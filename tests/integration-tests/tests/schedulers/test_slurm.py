@@ -1437,6 +1437,8 @@ def _wait_for_node_reset(
             wait_fixed_secs=wait_fixed_secs,
             stop_max_delay_secs=stop_max_delay_secs,
         )
+        # Add delay to accommodate node replacement process (~45s between node down status and replacement)
+        time.sleep(45)
         logging.info("Assert static nodes are replaced")
         wait_for_compute_nodes_states(
             scheduler_commands,
