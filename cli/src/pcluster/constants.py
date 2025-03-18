@@ -49,6 +49,25 @@ NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES = ["p3", "p3dn", "p2", "g3", "g3s", "g2
 SLURM = "slurm"
 AWSBATCH = "awsbatch"
 
+
+#  Capacity Reservation Platform types we support.
+CR_PLATFORM_LINUX_UNIX = "Linux/UNIX"
+CR_PLATFORM_UBUNTU_PRO = "Ubuntu Pro"
+CR_PLATFORM_RHEL = "Red Hat Enterprise Linux"
+
+
+CAPACITY_RESERVATION_OS_MAP = {
+    "alinux2": CR_PLATFORM_LINUX_UNIX,
+    "alinux2023": CR_PLATFORM_LINUX_UNIX,
+    "ubuntu2004": CR_PLATFORM_UBUNTU_PRO,
+    "ubuntu2204": CR_PLATFORM_UBUNTU_PRO,
+    "ubuntu2404": CR_PLATFORM_UBUNTU_PRO,
+    "rhel8": CR_PLATFORM_RHEL,
+    "rocky8": CR_PLATFORM_RHEL,
+    "rhel9": CR_PLATFORM_RHEL,
+    "rocky9": CR_PLATFORM_RHEL,
+}
+
 OS_MAPPING = {
     "alinux2": {"user": "ec2-user"},
     "alinux2023": {"user": "ec2-user"},

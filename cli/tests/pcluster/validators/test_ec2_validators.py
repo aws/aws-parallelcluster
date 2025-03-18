@@ -708,62 +708,93 @@ def test_placement_group_validator(
         "is_flexible",
         "subnet_availability_zone",
         "capacity_type",
+        "os",
         "expected_messages",
     ),
     [
         (
-            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "InstancePlatform": "Linux/UNIX"}
+            ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             None,
+            "alinux2",
             [],
         ),
         # Wrong instance type
         (
-            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            CapacityReservationInfo(
+                {"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1a", "InstancePlatform": "Linux/UNIX"}
+            ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
+            "alinux2023",
             ["Capacity reservation .* must have the same instance type as c5.xlarge."],
         ),
         # Wrong availability zone
         (
-            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1b"}),
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1b", "InstancePlatform": "Linux/UNIX"}
+            ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.SPOT,
-            ["Capacity reservation .* must use the same availability zone as subnet"],
+            "ubuntu2404",
+            [
+                "Capacity reservation .* has platform Linux/UNIX, which is not compatible with "
+                + "the cluster OS ubuntu2404. Please use a reservation with platform Ubuntu Pro.",
+                "Capacity reservation .* must use the same availability zone as subnet",
+            ],
         ),
         # Both instance type and availability zone are wrong
         (
-            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
+            CapacityReservationInfo(
+                {"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b", "InstancePlatform": "Ubuntu Pro"}
+            ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
+            "ubuntu2204",
             [
                 "Capacity reservation .* must have the same instance type as c5.xlarge.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
         (
-            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
+            CapacityReservationInfo(
+                {
+                    "InstanceType": "m5.xlarge",
+                    "AvailabilityZone": "us-east-1b",
+                    "InstancePlatform": "Red Hat Enterprise Linux",
+                }
+            ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.SPOT,
-            ["Capacity reservation .* must use the same availability zone as subnet"],
+            "ubuntu2004",
+            [
+                "Capacity reservation .* has platform Red Hat Enterprise Linux, which is not "
+                + "compatible with the cluster OS ubuntu2004. Please use a reservation with platform Ubuntu Pro.",
+                "Capacity reservation .* must use the same availability zone as subnet",
+            ],
         ),
         # empty instance type, this should not happen because instance type is automatically retrieved when usinc cr-id
         (
-            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
+            CapacityReservationInfo(
+                {"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b", "InstancePlatform": "Linux/UNIX"}
+            ),
             None,
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
+            "alinux2",
             [
                 "Unexpected failure. InstanceType parameter cannot be empty when using CapacityReservationId",
                 "Capacity reservation .* must use the same availability zone as subnet",
@@ -771,11 +802,18 @@ def test_placement_group_validator(
         ),
         # empty instance type, this should not happen because instance type is automatically retrieved when usinc cr-id
         (
-            CapacityReservationInfo({"InstanceType": "m5.xlarge", "AvailabilityZone": "us-east-1b"}),
+            CapacityReservationInfo(
+                {
+                    "InstanceType": "m5.xlarge",
+                    "AvailabilityZone": "us-east-1b",
+                    "InstancePlatform": "Red Hat Enterprise Linux",
+                }
+            ),
             "",
             False,
             "us-east-1a",
             CapacityType.SPOT,
+            "rocky9",
             [
                 "Unexpected failure. InstanceType parameter cannot be empty when using CapacityReservationId",
                 "Capacity reservation .* must use the same availability zone as subnet",
@@ -783,11 +821,18 @@ def test_placement_group_validator(
         ),
         # wrong capacity type
         (
-            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            CapacityReservationInfo(
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "InstancePlatform": "Red Hat Enterprise Linux",
+                }
+            ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
+            "rocky8",
             [
                 "Capacity reservation cr-123 is not a Capacity Block reservation. "
                 "It cannot be used when specifying CapacityType: CAPACITY_BLOCK."
@@ -795,22 +840,34 @@ def test_placement_group_validator(
         ),
         (
             CapacityReservationInfo(
-                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "capacity-block"}
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "ReservationType": "capacity-block",
+                    "InstancePlatform": "Ubuntu Pro",
+                }
             ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
+            "ubuntu2004",
             [],  # Do not check Ondemand capacity type
         ),
         (
             CapacityReservationInfo(
-                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "ReservationType": "ondemand",
+                    "InstancePlatform": "Linux/UNIX",
+                }
             ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
+            "alinux2",
             [
                 "Capacity reservation cr-123 is not a Capacity Block reservation. "
                 "It cannot be used when specifying CapacityType: CAPACITY_BLOCK."
@@ -819,43 +876,88 @@ def test_placement_group_validator(
         # right capacity type
         (
             CapacityReservationInfo(
-                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "ReservationType": "ondemand",
+                    "InstancePlatform": "Linux/UNIX",
+                }
             ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
+            "alinux2023",
             [],
         ),
         (
             CapacityReservationInfo(
-                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "capacity-block"}
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "ReservationType": "capacity-block",
+                    "InstancePlatform": "Linux/UNIX",
+                }
             ),
             ["c5.xlarge"],
             False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
+            "alinux2",
             [],
+        ),
+        (
+            CapacityReservationInfo(
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "InstancePlatform": "SUSE Linux"}
+            ),
+            ["c5.xlarge"],
+            False,
+            "us-east-1a",
+            CapacityType.ONDEMAND,
+            "alinux2",
+            [
+                "Capacity reservation .* has platform SUSE Linux, which is not compatible"
+                + " with the cluster OS alinux2. Please use a reservation with platform Linux/UNIX."
+            ],
         ),
         # Flexible instance type, with a single instance and capacity_reservation_id
         (
-            CapacityReservationInfo({"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a"}),
+            CapacityReservationInfo(
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "InstancePlatform": "Linux/UNIX with HA",
+                }
+            ),
             ["c5.xlarge"],
             True,
             "us-east-1a",
             None,
-            ["CapacityReservationId parameter cannot be used with Instances parameter."],
+            "alinux2023",
+            [
+                "Capacity reservation .* has platform Linux/UNIX with HA, which is not compatible "
+                + "with the cluster OS alinux2023. Please use a reservation with platform Linux/UNIX.",
+                "CapacityReservationId parameter cannot be used with Instances parameter.",
+            ],
         ),
         # Flexible instance type with multiple instance types and capacity_reservation_id
         (
             CapacityReservationInfo(
-                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1a", "ReservationType": "ondemand"}
+                {
+                    "InstanceType": "c5.xlarge",
+                    "AvailabilityZone": "us-east-1a",
+                    "ReservationType": "ondemand",
+                    "InstancePlatform": "Ubuntu Pro",
+                }
             ),
             ["c5.xlarge", "m5.2xlarge"],
             True,
             "us-east-1a",
             CapacityType.ONDEMAND,
-            ["CapacityReservationId parameter cannot be used with Instances parameter."],
+            "ubuntu2004",
+            [
+                "CapacityReservationId parameter cannot be used with Instances parameter.",
+            ],
         ),
     ],
 )
@@ -866,6 +968,7 @@ def test_capacity_reservation_validator(
     subnet_availability_zone,
     is_flexible,
     capacity_type,
+    os,
     expected_messages,
 ):
     mock_aws_api(mocker)
@@ -877,6 +980,7 @@ def test_capacity_reservation_validator(
         is_flexible=is_flexible,
         subnet="subnet-123",
         capacity_type=capacity_type,
+        os=os,
     )
     assert_failure_messages(actual_failures, expected_messages)
 

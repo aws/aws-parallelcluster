@@ -571,6 +571,10 @@ class CapacityReservationInfo:
         """Return the instance type associated to the Capacity Reservation."""
         return self.capacity_reservation_data.get("InstanceType")
 
+    def instance_platform(self):
+        """Return the instance platform associated to the Capacity Reservation."""
+        return self.capacity_reservation_data.get("InstancePlatform")
+
     def availability_zone(self):
         """Return the availability zone associated to the Capacity Reservation."""
         return self.capacity_reservation_data.get("AvailabilityZone")

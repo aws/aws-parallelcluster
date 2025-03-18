@@ -3113,6 +3113,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                         is_flexible=compute_resource.is_flexible(),
                         subnet=queue.networking.subnet_ids[0],
                         capacity_type=queue.capacity_type,
+                        os=self.image.os,
                     )
                     self._register_validator(
                         CapacityReservationResourceGroupValidator,
