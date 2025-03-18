@@ -1229,8 +1229,8 @@ def _test_keep_or_replace_suspended_nodes(
     job_id = submit_initial_job(
         scheduler_commands,
         # Job running time should at least bigger than `_wait_for_node_reset` timeout
-        # plus `_assert_nodes_not_terminated` timeout
-        "sleep 700",
+        # plus `_assert_nodes_not_terminated` time
+        "sleep 560",
         partition,
         dynamic_instance_type,
         num_dynamic_nodes,
@@ -1465,10 +1465,10 @@ def _assert_node_addr_host_reset(addr_host_list, nodes):
         assert_that(addr_host_list).contains("{0} {0} {0}".format(nodename))
 
 
-def _assert_nodes_not_terminated(scheduler_commands, nodes, timeout=5):
-    logging.info("Waiting for cluster daemon action")
+def _assert_nodes_not_terminated(scheduler_commands, nodes, waiting_time=3):
+    logging.info("Assert the job still running for {} minutes on DRAINING dynamic nodes.".format(waiting_time))
     start_time = time.time()
-    while time.time() < start_time + 60 * (timeout):
+    while time.time() < start_time + 60 * (waiting_time):
         assert_that(set(nodes) <= set(scheduler_commands.get_compute_nodes())).is_true()
         time.sleep(20)
 
