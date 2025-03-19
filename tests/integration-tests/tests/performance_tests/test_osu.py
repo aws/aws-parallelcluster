@@ -19,7 +19,12 @@ from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.osu_common import run_individual_osu_benchmark
-from tests.common.utils import fetch_instance_slots, get_installed_parallelcluster_version, run_system_analyzer
+from tests.common.utils import (
+    fetch_instance_slots,
+    get_installed_parallelcluster_version,
+    run_system_analyzer,
+    write_file,
+)
 
 # We collected OSU benchmarks results for c5n.18xlarge only.
 OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge"]
@@ -61,6 +66,8 @@ def test_osu(
 
     benchmark_failures = []
 
+    output_dir = request.config.getoption("output_dir")
+
     # Run OSU benchmarks in efa-enabled queue.
     for mpi_version in mpi_variants:
         benchmark_failures.extend(
@@ -69,6 +76,7 @@ def test_osu(
                 remote_command_executor,
                 scheduler_commands,
                 test_datadir,
+                output_dir,
                 os,
                 instance,
                 slots_per_instance,
@@ -81,6 +89,7 @@ def test_osu(
                 remote_command_executor,
                 scheduler_commands,
                 test_datadir,
+                output_dir,
                 os,
                 instance,
                 num_instances=32,
@@ -108,6 +117,7 @@ def _test_osu_benchmarks_pt2pt(
     remote_command_executor,
     scheduler_commands,
     test_datadir,
+    output_dir,
     os,
     instance,
     slots_per_instance,
@@ -120,10 +130,11 @@ def _test_osu_benchmarks_pt2pt(
     accepted_number_of_failures = 4
 
     failed_benchmarks = []
+    benchmark_group = "pt2pt"
     for benchmark_name in ["osu_latency", "osu_bibw"]:
         _, output = run_individual_osu_benchmark(
             mpi_version,
-            "pt2pt",
+            benchmark_group,
             benchmark_name,
             partition,
             remote_command_executor,
@@ -132,7 +143,9 @@ def _test_osu_benchmarks_pt2pt(
             slots_per_instance,
             test_datadir,
         )
-        failures = _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(
+            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output
+        )
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
@@ -144,6 +157,7 @@ def _test_osu_benchmarks_collective(
     remote_command_executor,
     scheduler_commands,
     test_datadir,
+    output_dir,
     os,
     instance,
     num_instances,
@@ -154,10 +168,11 @@ def _test_osu_benchmarks_collective(
     accepted_number_of_failures = 3
 
     failed_benchmarks = []
+    benchmark_group = "collective"
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
         _, output = run_individual_osu_benchmark(
             mpi_version,
-            "collective",
+            benchmark_group,
             benchmark_name,
             partition,
             remote_command_executor,
@@ -167,7 +182,9 @@ def _test_osu_benchmarks_collective(
             test_datadir,
             timeout=24,
         )
-        failures = _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(
+            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output
+        )
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
@@ -213,12 +230,13 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
-def _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, benchmark_name, output):
+def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output):
     logging.info(output)
     # Check avg latency for all packet sizes
     failures = 0
     metric_data = []
     metric_namespace = "ParallelCluster/test_efa"
+    evaluation_output = ""
     for packet_size, value in re.findall(r"(\d+)\s+(\d+)\.", output):
         with open(
             str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
@@ -236,10 +254,16 @@ def _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, bench
 
                 is_failure = int(value) > tolerated_value
 
+            percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
+
+            outcome = "DEGRADATION" if percentage_diff > 0 else "IMPROVEMENT"
+
             message = (
-                f"{mpi_version} - {benchmark_name} - packet size {packet_size}: "
-                f"tolerated: {tolerated_value}, current: {value}"
+                f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "
+                f"tolerated: {tolerated_value}, current: {value}, percentage_diff: {percentage_diff}%"
             )
+
+            evaluation_output += f"\n{message}"
 
             dimensions = {
                 "PclusterVersion": get_installed_parallelcluster_version(),
@@ -263,6 +287,11 @@ def _check_osu_benchmarks_results(test_datadir, os, instance, mpi_version, bench
                 logging.error(message)
             else:
                 logging.info(message)
+    write_file(
+        dirname=f"{output_dir}/osu-results",
+        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}-evaluation.out",
+        content=evaluation_output,
+    )
     boto3.client("cloudwatch").put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
 
     return failures
