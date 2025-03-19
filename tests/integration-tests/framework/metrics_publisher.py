@@ -52,7 +52,7 @@ class MetricsPublisher:
     def publish_metrics_to_cloudwatch(self, namespace: str, metrics: List[Metric]):
         """Pushes a list of metrics to cloudwatch using a single namespace."""
         try:
-            logging.info(
+            logging.debug(
                 f"publishing metrics to cloudwatch {[metric.generate_metric_data_entry() for metric in metrics]}"
             )
             self.client.put_metric_data(
