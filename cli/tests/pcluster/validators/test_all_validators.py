@@ -398,6 +398,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(
                 capacity_reservation_id="cr-34567",
                 instance_types=["t3.large"],
+                os="alinux2",
                 is_flexible=True,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.ONDEMAND,
@@ -405,6 +406,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(
                 capacity_reservation_id="cr-12345",
                 instance_types=["t3.xlarge"],
+                os="alinux2",
                 is_flexible=True,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.CAPACITY_BLOCK,
@@ -412,6 +414,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(
                 capacity_reservation_id="cr-23456",
                 instance_types=["t3.xlarge"],
+                os="alinux2",
                 is_flexible=False,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.CAPACITY_BLOCK,

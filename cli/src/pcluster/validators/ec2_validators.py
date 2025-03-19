@@ -19,7 +19,11 @@ from pcluster.aws.aws_api import AWSApi, KeyPairInfo
 from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.common import CapacityType
-from pcluster.constants import NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES, UNSUPPORTED_OSES_FOR_MICRO_NANO
+from pcluster.constants import (
+    CAPACITY_RESERVATION_OS_MAP,
+    NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES,
+    UNSUPPORTED_OSES_FOR_MICRO_NANO,
+)
 from pcluster.utils import get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -331,9 +335,18 @@ class CapacityReservationValidator(Validator):
         is_flexible: bool,
         subnet: str,
         capacity_type: CapacityType,
+        os,
     ):
         if capacity_reservation_id:
             capacity_reservation = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])[0]
+            cr_platform = capacity_reservation.instance_platform()
+            if CAPACITY_RESERVATION_OS_MAP.get(os) != cr_platform:
+                self._add_failure(
+                    f"Capacity reservation {capacity_reservation_id} has platform {cr_platform},"
+                    f" which is not compatible with the cluster OS {os}. "
+                    f"Please use a reservation with platform {CAPACITY_RESERVATION_OS_MAP.get(os)}.",
+                    FailureLevel.ERROR,
+                )
 
             if not instance_types:
                 # If the instance type doesn't exist, this is an invalid config,
