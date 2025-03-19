@@ -432,8 +432,9 @@ test-suites:
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
       dimensions:
-        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
-          instances: [{{ common.instance("instance_type_1") }}]
+        - regions: ["us-east-2"]  # We used to test it with hpc5a.48xlarge, if that's the case, set it to use2-az2
+          # If want to test with hpc5a.48xlarge, set instance type to [{{ common.instance("instance_type_1") }}]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_4 }}]
           schedulers: [ "slurm" ]
     test_slurm.py::test_error_handling:
