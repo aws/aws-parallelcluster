@@ -529,3 +529,12 @@ def assert_no_file_handler_leak(init_compute_ip_to_num_files, remote_command_exe
             assert_that(current_compute_ip_to_num_files[compute_ip]).is_equal_to(
                 init_compute_ip_to_num_files[compute_ip]
             )
+
+
+def write_file(dirname, filename, content):
+    os.makedirs(dirname, exist_ok=True)
+    filepath = f"{dirname}/{filename}"
+    with open(filepath, "w") as f:
+        f.write(content)
+    logging.info(f"File written: {filepath}")
+    return filepath
