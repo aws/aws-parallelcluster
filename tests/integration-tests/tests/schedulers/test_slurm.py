@@ -257,6 +257,9 @@ def test_slurm_scaling(
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    # TOFIX We observe in 3.13.0 an increase in the bootstrap time for Rocky and RHEL.
+    # We must address it and restore the default wait time to 300s.
+    stop_max_delay_secs = 400 if (os.startswith("rocky") or os.startswith("rhel")) else 300
 
     _assert_cluster_initial_conditions(scheduler_commands, 20, 20, 4)
     _test_online_node_configured_correctly(
@@ -284,6 +287,7 @@ def test_slurm_scaling(
         num_static_nodes=2,
         num_dynamic_nodes=3,
         dynamic_instance_type=instance,
+        stop_max_delay_secs=stop_max_delay_secs,
     )
     _test_replace_down_nodes(
         remote_command_executor,
@@ -291,11 +295,11 @@ def test_slurm_scaling(
         test_datadir,
         cluster.cfn_name,
         region,
-        os,
         partition="ondemand1",
         num_static_nodes=2,
         num_dynamic_nodes=3,
         dynamic_instance_type=instance,
+        stop_max_delay_secs=stop_max_delay_secs,
     )
     _test_keep_or_replace_suspended_nodes(
         scheduler_commands,
@@ -305,6 +309,7 @@ def test_slurm_scaling(
         num_static_nodes=2,
         num_dynamic_nodes=3,
         dynamic_instance_type=instance,
+        stop_max_delay_secs=stop_max_delay_secs,
     )
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
@@ -1139,7 +1144,14 @@ def _test_partition_states(
 
 
 def _test_reset_terminated_nodes(
-    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+    stop_max_delay_secs,
 ):
     """
     Test that slurm nodes are reset if instances are terminated manually.
@@ -1162,7 +1174,7 @@ def _test_reset_terminated_nodes(
     # terminate all instances manually
     _terminate_nodes_manually(instance_ids, region)
     # Assert that cluster replaced static node and reset dynamic nodes
-    _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes)
+    _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes, stop_max_delay_secs=stop_max_delay_secs)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
 
 
@@ -1172,11 +1184,11 @@ def _test_replace_down_nodes(
     test_datadir,
     cluster_name,
     region,
-    os,
     partition,
     num_static_nodes,
     num_dynamic_nodes,
     dynamic_instance_type,
+    stop_max_delay_secs,
 ):
     """Test that slurm nodes are replaced if nodes are marked DOWN."""
     logging.info("Testing that nodes replaced when set to down state")
@@ -1196,15 +1208,19 @@ def _test_replace_down_nodes(
         remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_slurmd_job.sh"), args=[node])
     # set dynamic to down manually
     _set_nodes_to_down_manually(scheduler_commands, dynamic_nodes)
-    # TOFIX We observe in 3.13.0 an increase in the bootstrap time for Rocky and RHEL.
-    # We must address it and restore the default wait time to 300s.
-    stop_max_delay_secs = 360 if os.startswith("rocky") else 300
     _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes, stop_max_delay_secs=stop_max_delay_secs)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
 
 
 def _test_keep_or_replace_suspended_nodes(
-    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+    stop_max_delay_secs,
 ):
     """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
     logging.info(
@@ -1212,6 +1228,8 @@ def _test_keep_or_replace_suspended_nodes(
     )
     job_id = submit_initial_job(
         scheduler_commands,
+        # Job running time should at least bigger than `_wait_for_node_reset` timeout
+        # plus `_assert_nodes_not_terminated` time
         "sleep 550",
         partition,
         dynamic_instance_type,
@@ -1224,13 +1242,17 @@ def _test_keep_or_replace_suspended_nodes(
     # Set all nodes to drain, static should be in DRAINED and dynamic in DRAINING
     _set_nodes_to_suspend_state_manually(scheduler_commands, static_nodes + dynamic_nodes)
     # Static nodes in DRAINED are immediately replaced
-    _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
+    _wait_for_node_reset(
+        scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[], stop_max_delay_secs=stop_max_delay_secs
+    )
     # Assert dynamic nodes in DRAINING are not terminated during job run
     _assert_nodes_not_terminated(scheduler_commands, dynamic_nodes)
     # wait until the job is completed and check that the DRAINING dynamic nodes are then terminated
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
-    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
+    _wait_for_node_reset(
+        scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes, stop_max_delay_secs=stop_max_delay_secs
+    )
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
 
 
@@ -1415,6 +1437,8 @@ def _wait_for_node_reset(
             wait_fixed_secs=wait_fixed_secs,
             stop_max_delay_secs=stop_max_delay_secs,
         )
+        # Add delay to accommodate node replacement process (~45s between node down status and replacement)
+        time.sleep(45)
         logging.info("Assert static nodes are replaced")
         wait_for_compute_nodes_states(
             scheduler_commands,
@@ -1443,10 +1467,10 @@ def _assert_node_addr_host_reset(addr_host_list, nodes):
         assert_that(addr_host_list).contains("{0} {0} {0}".format(nodename))
 
 
-def _assert_nodes_not_terminated(scheduler_commands, nodes, timeout=5):
-    logging.info("Waiting for cluster daemon action")
+def _assert_nodes_not_terminated(scheduler_commands, nodes, waiting_time=2):
+    logging.info("Assert the job still running for {} minutes on DRAINING dynamic nodes.".format(waiting_time))
     start_time = time.time()
-    while time.time() < start_time + 60 * (timeout):
+    while time.time() < start_time + 60 * (waiting_time):
         assert_that(set(nodes) <= set(scheduler_commands.get_compute_nodes())).is_true()
         time.sleep(20)
 
