@@ -212,9 +212,9 @@ class KeyPairValidator(Validator):
         if key_name:
             try:
                 key_pair = KeyPairInfo(key_name)
-                if os == "ubuntu2204" and key_pair.key_type == "rsa":
+                if os in ["ubuntu2204", "ubuntu2404"] and key_pair.key_type == "rsa":
                     self._add_failure(
-                        "Ubuntu 22.04 does not support RSA keys. Please generate and use an ed25519 key",
+                        f"{os} does not support RSA keys. Please generate and use an ed25519 key",
                         FailureLevel.ERROR,
                     )
             except AWSClientError as e:

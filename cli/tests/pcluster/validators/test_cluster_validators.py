@@ -3509,6 +3509,7 @@ def test_multi_network_interfaces_instances_validator(
         ("ami-000000000000", "rhel8", None, None),
         ("ami-000000000000", "ubuntu22", None, None),
         ("ami-000000000000", "ubuntu20", None, None),
+        ("ami-000000000000", "ubuntu24", None, None),
         (
             None,
             "rocky8",
@@ -3522,6 +3523,7 @@ def test_multi_network_interfaces_instances_validator(
         (None, "rhel8", None, None),
         (None, "ubuntu22", None, None),
         (None, "ubuntu20", None, None),
+        (None, "ubuntu24", None, None),
     ],
 )
 def test_compute_ami_os_compatible_validator(mocker, custom_ami_id, os, expected_message, expected_failure_level):
