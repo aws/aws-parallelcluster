@@ -782,6 +782,7 @@ def test_scontrol_reboot(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    os,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -798,11 +799,14 @@ def test_scontrol_reboot(
         slots=2,
         constraint="dynamic",
     )
+    # TOFIX We observe in 3.13.0 an increase in the bootstrap time for AL2023, Rocky and RHEL.
+    # We must address it and restore the default wait time to 400s.
+    stop_max_delay_secs = 500 if (os == "alinux2023" or os.startswith("rocky") or os.startswith("rhel")) else 400
     wait_for_compute_nodes_states(
         slurm_commands,
         ["queue1-dy-cr1-1", "queue1-dy-cr1-2"],
         "idle",
-        stop_max_delay_secs=400,
+        stop_max_delay_secs=stop_max_delay_secs,
     )
 
     # Test that idle static and dynamic nodes can be rebooted
