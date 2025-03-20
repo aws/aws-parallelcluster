@@ -330,11 +330,11 @@ def pytest_collection_finish(session):
         region = [unmarshal_az_override(az) for az in region]
         # Use the first element of the list of regions, since there must be at least one
         reporting_region = get_reporting_region(region[0])
-        logging.info(f"Metadata reporting region {reporting_region}")
+        logging.debug(f"Metadata reporting region {reporting_region}")
         # Setup the metadata table in case it doesn't exist
         MetadataTableManager(reporting_region, METADATA_TABLE).create_metadata_table()
     except Exception as exc:
-        logging.info(f"There was a '{type(exc)}' error with '{exc}' when creating the table!")
+        logging.error(f"There was a '{type(exc)}' error with '{exc}' when creating the table!")
 
 
 def _log_collected_tests(session):
