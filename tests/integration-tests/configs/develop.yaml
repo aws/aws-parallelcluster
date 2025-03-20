@@ -748,7 +748,7 @@ test-suites:
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
-        - regions: ["usw2-az4"]  # do not move, unless instance type support is moved as well
+        - regions: ["use2-az3"]  # do not move, unless instance type support is moved as well
           schedulers: ["slurm"]
           oss: ["ubuntu2004"]
           instances: ["trn1.32xlarge"]
