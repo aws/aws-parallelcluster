@@ -35,7 +35,7 @@ SUPPORTED_OSES = [
     "rocky9",
 ]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
-UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "rhel8", "rocky8", "rhel9", "rocky9"]
+UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
 UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
 UNSUPPORTED_ARM_OSES_FOR_DCV = ["ubuntu2004"]
 UNSUPPORTED_OSES_FOR_LUSTRE = ["ubuntu2404"]
