@@ -213,6 +213,25 @@ class ImageBuilderCdkStack(Stack):
             ),
             description="UpdateOsAndReboot",
         )
+        CfnParameter(
+            self,
+            "CfnParamIsOfficialAmiBuild",
+            type="String",
+            default=(
+                json.loads(self.config.dev_settings.cookbook.extra_chef_attributes)
+                .get("cluster")
+                .get("is_official_ami_build")
+                if self.config.dev_settings
+                and self.config.dev_settings.cookbook
+                and self.config.dev_settings.cookbook.extra_chef_attributes
+                and json.loads(self.config.dev_settings.cookbook.extra_chef_attributes).get("cluster")
+                and json.loads(self.config.dev_settings.cookbook.extra_chef_attributes)
+                .get("cluster")
+                .get("is_official_ami_build")
+                else "false"
+            ),
+            description="IsOfficialAmiBuild",
+        )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
