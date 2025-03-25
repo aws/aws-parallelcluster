@@ -1,3 +1,8 @@
+{% if "rocky" in os or "rhel" in os %}
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 2040
+{% endif %}
 Image:
   Os: {{ os }}
 HeadNode:
