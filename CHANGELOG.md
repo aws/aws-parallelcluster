@@ -162,6 +162,7 @@ CHANGELOG
 - Add validator to prevent the use of Placement Groups with Capacity Blocks.
 
 **CHANGES**
+- Increase `HeadNodeBootstrapTimeout` by 5 minutes, making it 35 minutes in total.
 - CentOS 7 is no longer supported.
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
 - Upgrade munge to version 0.5.16 (from 0.5.15).
