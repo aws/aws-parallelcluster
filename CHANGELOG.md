@@ -10,7 +10,6 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add support for Ubuntu 24.04.
-- Add support for ap-southeast-5 region.
 - Disable unused services cups and wpa_supplicant from Official ParallelCluster AMIs to improve security.
 
 **CHANGES**
