@@ -8,11 +8,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ {{ LUSTRE_OS_X86_0 }}, {{ LUSTRE_OS_X86_2 }}]
-          schedulers: ["slurm"]
-        - regions: ["ap-northeast-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ LUSTRE_OS_X86_4 }}, {{ LUSTRE_OS_X86_6 }}]
+          oss: [ {{ LUSTRE_OS_X86_0 }}, {{ LUSTRE_OS_X86_2 }}, {{ LUSTRE_OS_X86_4 }}, {{ LUSTRE_OS_X86_6 }}]
           schedulers: ["slurm"]
   basic:
     test_essential_features.py::test_essential_features:
