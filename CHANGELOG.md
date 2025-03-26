@@ -11,7 +11,6 @@ CHANGELOG
 **ENHANCEMENTS**
 - Add support for Ubuntu 24.04.
   Notice that ParallelCluster official AMI for Ubuntu 24.04 does not support Lustre.
-- Add support for ap-southeast-5 region.
 - Disable unused services cups and wpa_supplicant from Official ParallelCluster AMIs to improve security.
 
 **CHANGES**

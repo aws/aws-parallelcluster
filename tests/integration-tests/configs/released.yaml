@@ -50,7 +50,7 @@ test-suites:
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
       dimensions:
-        - regions: ["ap-southeast-5"]
+        - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
