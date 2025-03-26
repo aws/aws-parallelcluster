@@ -952,9 +952,9 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
 @pytest.mark.parametrize(
     "config_file_name, expected_head_node_bootstrap_timeout",
     [
-        ("slurm.required.yaml", "1800"),
+        ("slurm.required.yaml", "2100"),
         ("slurm.full.yaml", "1201"),
-        ("awsbatch.simple.yaml", "1800"),
+        ("awsbatch.simple.yaml", "2100"),
         ("awsbatch.full.yaml", "1000"),
     ],
 )
