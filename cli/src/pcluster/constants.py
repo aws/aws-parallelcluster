@@ -221,7 +221,7 @@ PCLUSTER_S3_BUCKET_VERSION = "v1"
 NODEJS_MIN_VERSION = "10.13.0"
 NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
 
-NODE_BOOTSTRAP_TIMEOUT = 1800
+NODE_BOOTSTRAP_TIMEOUT = 2100
 
 # DirectoryService
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
@@ -259,7 +259,7 @@ class Feature(Enum):
 
 
 UNSUPPORTED_FEATURES_MAP = {
-    Feature.BATCH: ["ap-northeast-3", "ap-southeast-5", "ap-southeast-7", "us-iso"],
+    Feature.BATCH: ["ap-northeast-3", "ap-southeast-7", "us-iso"],
     Feature.DCV: ["us-iso"],
     Feature.FSX_LUSTRE: ["us-isob"],
     Feature.FILE_CACHE: ["us-iso"],
