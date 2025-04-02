@@ -53,7 +53,7 @@ SharedStorage:
       Encrypted: true
       PerformanceMode: maxIO
       ThroughputMode: provisioned
-      ProvisionedThroughput: 200
+      ProvisionedThroughput: 20
   {% for efs_fs_id in existing_efs_ids %}
   - MountDir: {{ existing_efs_mount_dirs[loop.index-1] }}
     Name: existing_efs{{ loop.index-1 }}
