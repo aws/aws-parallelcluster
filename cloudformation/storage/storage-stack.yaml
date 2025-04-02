@@ -204,7 +204,7 @@ Resources:
         DeploymentType: PERSISTENT_1
         ExportPath: !Ref FsxLustreExportPath
         ImportPath: !Ref FsxLustreImportPath
-        PerUnitStorageThroughput: 200
+        PerUnitStorageThroughput: 50
       SecurityGroupIds:
         - !Ref FsxLustreSecurityGroup
       StorageCapacity: 1200
@@ -437,7 +437,7 @@ Resources:
                   SubnetIds=[subnet_id],
                   SecurityGroupIds=[securitygroup_id],
                   LustreConfiguration={
-                    "PerUnitStorageThroughput": 1000,
+                    "PerUnitStorageThroughput": 125,
                     "DeploymentType": "CACHE_1",
                     "MetadataConfiguration": {"StorageCapacity": 2400},
                   },

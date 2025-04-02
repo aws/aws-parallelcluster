@@ -91,7 +91,7 @@ SharedStorage:
       Encrypted: true
       PerformanceMode: maxIO
       ThroughputMode: provisioned
-      ProvisionedThroughput: 200
+      ProvisionedThroughput: 20
       DeletionPolicy: {{ new_efs_deletion_policy }}
 {% endif %}
 {% if existing_efs_mount_dir %}
@@ -110,7 +110,7 @@ SharedStorage:
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir
       DeploymentType: PERSISTENT_1
-      PerUnitStorageThroughput: 200
+      PerUnitStorageThroughput: 50
       DeletionPolicy: {{ new_lustre_deletion_policy }}
 {% endif %}
 {% if fsx_lustre_mount_dir %}
