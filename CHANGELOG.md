@@ -14,6 +14,7 @@ CHANGELOG
 - Disable unused services cups and wpa_supplicant from Official ParallelCluster AMIs to improve security.
 
 **CHANGES**
+- Increase `HeadNodeBootstrapTimeout` by 5 minutes, making it 35 minutes in total.
 - Upgrade Slurm to version 24.05.7.
 - Upgrade NVIDIA driver to version 570.86.15 (from 550.127.08) for all OSs except AL2.
 - Upgrade CUDA Toolkit to version 12.8.0 (from 12.4.1) for all OSs except AL2.
@@ -162,7 +163,6 @@ CHANGELOG
 - Add validator to prevent the use of Placement Groups with Capacity Blocks.
 
 **CHANGES**
-- Increase `HeadNodeBootstrapTimeout` by 5 minutes, making it 35 minutes in total.
 - CentOS 7 is no longer supported.
 - Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
 - Upgrade munge to version 0.5.16 (from 0.5.15).
