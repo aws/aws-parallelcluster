@@ -49,4 +49,4 @@ SharedStorage:
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir
       DeploymentType: PERSISTENT_1
-      PerUnitStorageThroughput: 200
+      PerUnitStorageThroughput: 50

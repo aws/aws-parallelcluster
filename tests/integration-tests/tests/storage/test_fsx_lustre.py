@@ -55,7 +55,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         "data_compression_type",
     ),
     [
-        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024, None),
+        ("PERSISTENT_1", 50, "NEW_CHANGED", None, None, 1200, 1024, None),
         ("SCRATCH_1", None, "NEW", None, None, 1200, 1024, "LZ4"),
         ("SCRATCH_2", None, "NEW_CHANGED_DELETED", None, None, 1200, 1024, "LZ4"),
         ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512, "LZ4"),
@@ -529,7 +529,7 @@ def _create_fsx_lustre_volume_ids(num_existing_fsx_lustre, fsx_factory, import_p
             ImportPath=import_path,
             ExportPath=export_path,
             DeploymentType="PERSISTENT_1",
-            PerUnitStorageThroughput=200,
+            PerUnitStorageThroughput=50,
         ),
         FileSystemTypeVersion="2.15",
     )
