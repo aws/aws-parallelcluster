@@ -165,7 +165,7 @@ SharedStorage:
     StorageType: Efs
     EfsSettings: # New section
       ThroughputMode: provisioned
-      ProvisionedThroughput: 1024
+      ProvisionedThroughput: 20
 {% if "us-isob" not in region %}
   - MountDir: fsx
     Name: fsx

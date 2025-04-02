@@ -35,7 +35,7 @@ SharedStorage:
       StorageCapacity: 1200
       WeeklyMaintenanceStartTime: "1:00:00"
       DeploymentType: PERSISTENT_1
-      PerUnitStorageThroughput: 200
+      PerUnitStorageThroughput: 50
       AutomaticBackupRetentionDays: 1
       DailyAutomaticBackupStartTime: "{{ daily_automatic_backup_start_time }}"
       CopyTagsToBackups: True

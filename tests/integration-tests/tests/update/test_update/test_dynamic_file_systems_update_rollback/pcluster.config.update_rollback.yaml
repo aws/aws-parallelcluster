@@ -77,7 +77,7 @@ SharedStorage:
       Encrypted: true
       PerformanceMode: maxIO
       ThroughputMode: provisioned
-      ProvisionedThroughput: 200
+      ProvisionedThroughput: 20
   {% if new_lustre_mount_dir %}
   - MountDir: {{ new_lustre_mount_dir }}
     Name: {{ new_lustre_mount_dir }}
@@ -87,5 +87,5 @@ SharedStorage:
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir
       DeploymentType: PERSISTENT_1
-      PerUnitStorageThroughput: 200
+      PerUnitStorageThroughput: 50
   {% endif %}
