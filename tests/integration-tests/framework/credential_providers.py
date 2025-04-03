@@ -18,7 +18,7 @@ cli_credentials = {}
 
 def register_cli_credentials_for_region(region, iam_role):
     """Register a IAM role to be used for the CLI commands in a given region."""
-    global cli_credentials
+    global cli_credentials  # noqa: F824
     logging.info("Configuring CLI IAM role %s for region %s", iam_role, region)
     cli_credentials[region] = iam_role
 

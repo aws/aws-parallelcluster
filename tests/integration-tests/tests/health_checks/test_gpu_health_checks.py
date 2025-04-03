@@ -19,9 +19,10 @@ class NodeHealthStatus:
     latest_job: Union[int, None]
 
 
-@pytest.mark.usefixtures("instance", "os", "scheduler")
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_cluster_with_gpu_health_checks(
     region,
+    os,
     architecture,
     pcluster_config_reader,
     s3_bucket_factory,
@@ -81,6 +82,9 @@ def test_cluster_with_gpu_health_checks(
         non_gpu_instance = "c5.xlarge"
     else:
         non_gpu_instance = "m6g.xlarge"
+        if os == "alinux2":
+            pytest.skip("Skipping the test because DCGM is not installed on alinux2 + ARM")
+
     cluster_config = pcluster_config_reader(non_gpu_instance=non_gpu_instance)
     cluster = clusters_factory(cluster_config)
     assert_head_node_is_running(region, cluster)

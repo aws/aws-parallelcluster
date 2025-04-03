@@ -85,9 +85,7 @@ def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reas
         assert_that(node_info).contains(f"Reason={expected_reason}")
 
 
-# TOFIX We observe in 3.13.0 an increase in the bootstrap time for Rocky and RHEL.
-# We must address it and restore the default wait time to 5 minutes.
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def wait_for_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition=None):
     assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition)
 
