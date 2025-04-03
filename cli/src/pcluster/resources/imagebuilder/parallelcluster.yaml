@@ -329,7 +329,7 @@ phases:
           commands:
             - |
               set -v
-              /usr/local/sbin/ami_cleanup.sh
+              /usr/local/sbin/ami_cleanup.sh "${CfnParamIsOfficialAmiBuild}"
 
   - name: validate
     steps:

@@ -257,9 +257,7 @@ def test_slurm_scaling(
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    # TOFIX We observe in 3.13.0 an increase in the bootstrap time for Rocky and RHEL.
-    # We must address it and restore the default wait time to 300s.
-    stop_max_delay_secs = 400 if (os.startswith("rocky") or os.startswith("rhel")) else 300
+    stop_max_delay_secs = 300
 
     _assert_cluster_initial_conditions(scheduler_commands, 20, 20, 4)
     _test_online_node_configured_correctly(

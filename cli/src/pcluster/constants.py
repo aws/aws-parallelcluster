@@ -38,7 +38,7 @@ SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2",
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
 UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
 UNSUPPORTED_ARM_OSES_FOR_DCV = ["ubuntu2004"]
-UNSUPPORTED_OSES_FOR_LUSTRE = ["ubuntu2404"]
+UNSUPPORTED_OSES_FOR_LUSTRE = []
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
 DELETION_POLICIES = [DELETE_POLICY, RETAIN_POLICY]
@@ -167,8 +167,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.13.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.13.0",
+    "parallelcluster": "3.14.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.14.0",
     "chef": "18.4.12",
     "berkshelf": "8.0.7",
     "ami": "dev",
@@ -240,7 +240,7 @@ PCLUSTER_S3_BUCKET_VERSION = "v1"
 NODEJS_MIN_VERSION = "10.13.0"
 NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
 
-NODE_BOOTSTRAP_TIMEOUT = 1800
+NODE_BOOTSTRAP_TIMEOUT = 2100
 
 # DirectoryService
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}

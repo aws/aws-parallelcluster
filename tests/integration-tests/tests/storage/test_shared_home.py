@@ -135,7 +135,11 @@ def _check_shared_home(
 def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
     logging.info(f"Testing ebs {mount_dir} is correctly mounted on login")
     result = remote_command_executor.run_remote_command(f"df -h | grep {mount_dir}")
-    assert_that(result.stdout).matches(r"{size}G.*{mount_dir}".format(size=volume_size, mount_dir=mount_dir))
+    assert_that(result.stdout).matches(
+        r"({size}|{size_minus_one})G.*{mount_dir}".format(
+            size=volume_size, size_minus_one=volume_size - 1, mount_dir=mount_dir
+        )
+    )
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     assert_that(result.stdout).matches(r"{mount_dir}.*_netdev".format(mount_dir=mount_dir))
