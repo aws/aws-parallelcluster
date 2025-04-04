@@ -87,7 +87,7 @@ Resources:
                   SubnetIds=[subnet_id],
                   SecurityGroupIds=[securitygroup_id],
                   LustreConfiguration={
-                    "PerUnitStorageThroughput": 125,
+                    "PerUnitStorageThroughput": 1000,
                     "DeploymentType": "CACHE_1",
                     "MetadataConfiguration": {"StorageCapacity": 2400},
                   },
