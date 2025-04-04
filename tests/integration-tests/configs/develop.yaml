@@ -746,7 +746,7 @@ test-suites:
       dimensions:
         - regions: ["use2-az3"]  # do not move, unless instance type support is moved as well
           schedulers: ["slurm"]
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2404"]
           instances: ["trn1.32xlarge"]
   update:
     test_update.py::test_update_slurm:

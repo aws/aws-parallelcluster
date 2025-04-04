@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.14.0
+------
+
+**CHANGES**
+- Ubuntu 16.04 is no longer supported.
+
 3.13.0
 ------
 

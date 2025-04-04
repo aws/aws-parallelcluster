@@ -4,5 +4,5 @@ test-suites:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2", "alinux2023", "ubuntu2404", "ubuntu2204", "ubuntu2004", "rhel8", "rhel9", "rocky8", "rocky9"]
+          oss: ["alinux2", "alinux2023", "ubuntu2404", "ubuntu2204", "rhel8", "rhel9", "rocky8", "rocky9"]
           schedulers: ["slurm"]
