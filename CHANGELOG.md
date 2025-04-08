@@ -5,7 +5,8 @@ CHANGELOG
 ------
 
 **CHANGES**
-- Ubuntu 16.04 is no longer supported.
+- Ubuntu 20.04 is no longer supported.
+
 
 3.13.0
 ------

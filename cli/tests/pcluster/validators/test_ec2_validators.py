@@ -750,7 +750,7 @@ def test_placement_group_validator(
         # Wrong availability zone
         (
             CapacityReservationInfo(
-                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1b", "InstancePlatform": "Linux/UNIX"}
+                {"InstanceType": "c5.xlarge", "AvailabilityZone": "us-east-1b", "InstancePlatform": "Ubuntu Pro Linux"}
             ),
             ["c5.xlarge"],
             False,
@@ -758,8 +758,8 @@ def test_placement_group_validator(
             CapacityType.SPOT,
             "ubuntu2404",
             [
-                "Capacity reservation .* has platform Linux/UNIX, which is not compatible with "
-                + "the cluster OS ubuntu2404. Please use a reservation with platform Ubuntu Pro.",
+                "Capacity reservation .* has platform Ubuntu Pro Linux, which is not compatible with "
+                + "the cluster OS ubuntu2404. Please use a reservation with platform Linux/UNIX.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
@@ -793,7 +793,7 @@ def test_placement_group_validator(
             "ubuntu2404",
             [
                 "Capacity reservation .* has platform Red Hat Enterprise Linux, which is not "
-                + "compatible with the cluster OS ubuntu2404. Please use a reservation with platform Ubuntu Pro.",
+                + "compatible with the cluster OS ubuntu2404. Please use a reservation with platform Linux/UNIX.",
                 "Capacity reservation .* must use the same availability zone as subnet",
             ],
         ),
@@ -856,7 +856,7 @@ def test_placement_group_validator(
                     "InstanceType": "c5.xlarge",
                     "AvailabilityZone": "us-east-1a",
                     "ReservationType": "capacity-block",
-                    "InstancePlatform": "Ubuntu Pro",
+                    "InstancePlatform": "Linux/UNIX",
                 }
             ),
             ["c5.xlarge"],
