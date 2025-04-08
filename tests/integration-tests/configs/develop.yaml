@@ -256,7 +256,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS }}]
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
@@ -744,7 +744,7 @@ test-suites:
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
-        - regions: ["use2-az3"]  # do not move, unless instance type support is moved as well
+        - regions: [{{ trn1_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS }}]
           schedulers: ["slurm"]
           oss: ["ubuntu2404"]
           instances: ["trn1.32xlarge"]

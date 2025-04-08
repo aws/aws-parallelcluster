@@ -2,7 +2,7 @@ test-suites:
   performance_tests:
     test_starccm.py::test_starccm:
       dimensions:
-        - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_35_INSTANCES_6_HOURS }}]
           instances: ["c5n.18xlarge"]
           oss: ["alinux2", "alinux2023", "ubuntu2404", "ubuntu2204", "rhel8", "rhel9", "rocky8", "rocky9"]
           schedulers: ["slurm"]
