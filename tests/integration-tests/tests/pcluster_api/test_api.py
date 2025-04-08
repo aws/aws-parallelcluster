@@ -12,6 +12,7 @@
 
 
 import logging
+import time
 from pathlib import Path
 
 import boto3
@@ -239,6 +240,9 @@ def test_login_nodes(
     cluster = _test_create_cluster(cluster_operations_client, create_cluster, cluster_name, initial_config_file)
 
     _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
+
+    # wait for login nodes to come up
+    time.sleep(600)
     _test_describe_cluster(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
 
     _cloudformation_wait(region, cluster_name, "stack_create_complete")
@@ -485,6 +489,8 @@ def _test_describe_cluster(region, client, cluster_name, status):
     assert_that(response.cluster_name).is_equal_to(cluster_name)
     assert_that(response.cluster_status).is_equal_to(ClusterStatus(status))
     assert_that(response.cloud_formation_stack_status).is_equal_to(CloudFormationStackStatus(status))
+    if response.login_nodes:
+        assert_that(response.login_nodes).is_type_of(list)
 
 
 def _test_create_cluster(client, create_cluster, cluster_name, config):
