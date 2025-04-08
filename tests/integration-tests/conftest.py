@@ -580,7 +580,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, architecture):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, architecture):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -602,7 +602,8 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, architectur
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
         output_file_path = test_datadir / output_file if output_file else config_file_path
         default_values = _get_default_template_values(vpc_stack, request)
-        kwargs = inject_internal_storage_settings(**kwargs)
+        inject_internal_storage_settings(kwargs)
+        inject_placement_group_settings(vpc_stack, instance, kwargs)
         file_loader = FileSystemLoader(str(test_datadir))
         env = SandboxedEnvironment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
@@ -616,10 +617,14 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, architectur
     return _config_renderer
 
 
-def inject_internal_storage_settings(**kwargs):
+def inject_internal_storage_settings(kwargs):
     if not kwargs.get("shared_headnode_storage_type"):
         kwargs["shared_headnode_storage_type"] = "Efs"
-    return kwargs
+
+
+def inject_placement_group_settings(vpc_stack, instance, kwargs):
+    if vpc_stack.az_override:
+        kwargs["capacity_reservation_framework_placement_group"] = f"{instance}_placement_group_{vpc_stack.az_override}"
 
 
 def inject_additional_image_configs_settings(image_config, request):

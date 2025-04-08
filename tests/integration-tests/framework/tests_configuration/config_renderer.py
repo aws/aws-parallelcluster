@@ -11,11 +11,11 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import boto3
 import yaml
-from jinja2 import FileSystemLoader
+from jinja2 import FileSystemLoader, meta
 from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
@@ -207,7 +207,11 @@ def read_config_file(config_file, print_rendered=False, config=None, args=None, 
     """
     logging.info("Parsing config file: %s", config_file)
     rendered_config = _render_config_file(
-        config_file, **kwargs, **_get_os_parameters(config=config, args=args), **_get_instance_type_parameters()
+        config_file,
+        **kwargs,
+        **_get_os_parameters(config=config, args=args),
+        **_get_instance_type_parameters(),
+        **_check_or_create_capacity_reservations(config_file),
     )
     try:
         return yaml.safe_load(rendered_config)
@@ -243,3 +247,158 @@ def _render_config_file(config_file, **kwargs):
     except Exception as e:
         logging.error("Failed when rendering config file %s with error: %s", config_file, e)
         raise
+
+
+def _get_all_jinja_variables(config_file):
+    """Get all jinja variables from config file."""
+    config_dir = os.path.dirname(config_file)
+    config_name = os.path.basename(config_file)
+    file_loader = FileSystemLoader(config_dir)
+    env = SandboxedEnvironment(loader=file_loader)
+    template_source = env.loader.get_source(env, config_name)[0]
+    parsed_content = env.parse(template_source)
+    return meta.find_undeclared_variables(parsed_content)
+
+
+def _check_or_create_capacity_reservations(config_file):
+    """Check/Create capacity reservations for all the instances in the config file."""
+    variables = _get_all_jinja_variables(config_file)
+    az_for_capacity_reservation = {}
+    for var in variables:
+        if "CAPACITY_RESERVATION" in var:
+            logging.info("Checking capacity reservation for %s", var)
+            parts = var.split("_")
+            instance_type = f"{parts[0]}.{parts[1]}"
+            count = int(parts[4])
+            hours = int(parts[6])
+            end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
+            candidate_regions = ["us-east-1", "us-west-2", "eu-west-1"]
+            if _find_and_modify_existing_capacity_reservation(
+                az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var
+            ):
+                break
+            capacity_reservation_created = False
+            try:
+                for region in candidate_regions:
+                    ec2_client = boto3.client("ec2", region_name=region)
+                    capacity_reservation_created = _create_capacity_reservation(
+                        az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var
+                    )
+                    if capacity_reservation_created:
+                        break
+            except Exception:
+                az_for_capacity_reservation[var] = "use1-az6"
+            if not capacity_reservation_created:
+                # Assign arbitrary zone if no reservations can be made
+                az_for_capacity_reservation[var] = "use1-az6"
+    return az_for_capacity_reservation
+
+
+def _create_capacity_reservation(az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var):
+    capacity_reservation_created = False
+    for availability_zone in ec2_client.describe_availability_zones()["AvailabilityZones"]:
+        if availability_zone["ZoneType"] == "availability-zone":
+            try:
+                zone_id = availability_zone["ZoneId"]
+                placement_group_name = f"{instance_type}_placement_group_{zone_id}"
+                try:
+                    placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
+                        "PlacementGroups"
+                    ][0]["GroupArn"]
+                except Exception:
+                    placement_group_arn = ec2_client.create_placement_group(
+                        GroupName=placement_group_name, Strategy="cluster"
+                    )["PlacementGroup"]["GroupArn"]
+                ec2_client.create_capacity_reservation(
+                    InstanceType=instance_type,
+                    InstancePlatform="Linux/UNIX",
+                    AvailabilityZoneId=zone_id,
+                    InstanceCount=count,
+                    EndDateType="limited",
+                    EndDate=end_date,
+                    Tenancy="default",
+                    PlacementGroupArn=placement_group_arn,
+                )
+                logging.info("Capacity reservation for %s %s created in %s", count, instance_type, zone_id)
+                capacity_reservation_created = True
+                az_for_capacity_reservation[var] = zone_id
+                break
+            except Exception as e:
+                logging.info(
+                    "Capacity reservation for %s %s failed to create in %s",
+                    count,
+                    instance_type,
+                    zone_id,
+                )
+                logging.info(e)
+    return capacity_reservation_created
+
+
+def _find_and_modify_existing_capacity_reservation(  # noqa: C901
+    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var
+):
+    """Find existing capacity reservation. Modify the reservation if more capacity or time is needed."""
+    found_existing_capacity_reservation = False
+    for region in candidate_regions:
+        try:
+            ec2_client = boto3.client("ec2", region_name=region)
+            paginator = ec2_client.get_paginator("describe_capacity_reservations")
+            page_iterator = paginator.paginate(
+                Filters=[
+                    {"Name": "instance-type", "Values": [instance_type]},
+                    {"Name": "state", "Values": ["active", "pending"]},
+                ]
+            )
+            for page in page_iterator:
+                for capacity_reservation in page["CapacityReservations"]:
+                    if capacity_reservation["TotalInstanceCount"] >= count and (
+                        capacity_reservation["EndDateType"] == "unlimited" or capacity_reservation["EndDate"] > end_date
+                    ):
+                        az_for_capacity_reservation[var] = capacity_reservation["AvailabilityZoneId"]
+                        found_existing_capacity_reservation = True
+                        logging.info(
+                            "Found existing capacity reservation for %s %s in %s",
+                            count,
+                            instance_type,
+                            capacity_reservation["AvailabilityZoneId"],
+                        )
+                        break
+                    else:
+                        logging.info(
+                            "Found existing capacity reservation for %s %s in %s. "
+                            "Modifing the capacity reservation for more instances/time",
+                            count,
+                            instance_type,
+                            capacity_reservation["AvailabilityZoneId"],
+                        )
+                        try:
+                            if capacity_reservation["EndDateType"] == "unlimited":
+                                new_end_date = None
+                            else:
+                                new_end_date = (
+                                    end_date
+                                    if end_date > capacity_reservation["EndDate"]
+                                    else capacity_reservation["EndDate"]
+                                )
+                            ec2_client.modify_capacity_reservation(
+                                CapacityReservationId=capacity_reservation["CapacityReservationId"],
+                                EndDate=new_end_date,
+                                EndDateType=capacity_reservation["EndDateType"],
+                                InstanceCount=max(count, capacity_reservation["TotalInstanceCount"]),
+                            )
+                            az_for_capacity_reservation[var] = capacity_reservation["AvailabilityZoneId"]
+                            found_existing_capacity_reservation = True
+                            logging.info(
+                                "Modified capacity reservation for %s %s in %s",
+                                count,
+                                instance_type,
+                                capacity_reservation["AvailabilityZoneId"],
+                            )
+                            break
+                        except Exception as e:
+                            logging.info("Failed to modify capacity reservation %s", e)
+            if found_existing_capacity_reservation:
+                break
+        except Exception as e:
+            logging.info("Failed to find existing capacity reservation %s", e)
+    return found_existing_capacity_reservation

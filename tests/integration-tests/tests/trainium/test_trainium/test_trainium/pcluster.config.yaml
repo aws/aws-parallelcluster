@@ -29,7 +29,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
         PlacementGroup:
-          Enabled: false
+          Name: {{ capacity_reservation_framework_placement_group }}
       CustomActions:
         OnNodeConfigured:
           Script: s3://{{ bucket_name }}/neuron-installation.sh
