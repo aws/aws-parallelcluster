@@ -84,7 +84,7 @@ test-suites:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: [ "slurm" ]
-          oss: ["ubuntu2004", "alinux2", "alinux2023"]
+          oss: ["ubuntu2404", "alinux2", "alinux2023"]
         - regions: ["us-east-1"] # This region has to have first stage AMIs.
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           schedulers: ["slurm"]
@@ -95,7 +95,7 @@ test-suites:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
@@ -166,7 +166,7 @@ test-suites:
       dimensions:
         - regions: ["sa-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2404"]
           schedulers: ["slurm"]
     test_api.py::test_custom_image:
       dimensions:
@@ -217,14 +217,14 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   spot:
     test_spot.py::test_spot_default:
       dimensions:
         - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2404"]
           schedulers: ["slurm"]
   storage:
     test_fsx_lustre.py::test_fsx_lustre_dra:
@@ -288,4 +288,4 @@ test-suites:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]

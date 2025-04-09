@@ -26,7 +26,6 @@ SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
 SUPPORTED_OSES = [
     "alinux2",
     "alinux2023",
-    "ubuntu2004",
     "ubuntu2204",
     "ubuntu2404",
     "rhel8",
@@ -35,9 +34,9 @@ SUPPORTED_OSES = [
     "rocky9",
 ]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
-UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2004", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
+UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
 UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
-UNSUPPORTED_ARM_OSES_FOR_DCV = ["ubuntu2004"]
+UNSUPPORTED_ARM_OSES_FOR_DCV = []
 UNSUPPORTED_OSES_FOR_LUSTRE = []
 DELETE_POLICY = "Delete"
 RETAIN_POLICY = "Retain"
@@ -59,7 +58,6 @@ CR_PLATFORM_RHEL = "Red Hat Enterprise Linux"
 CAPACITY_RESERVATION_OS_MAP = {
     "alinux2": CR_PLATFORM_LINUX_UNIX,
     "alinux2023": CR_PLATFORM_LINUX_UNIX,
-    "ubuntu2004": CR_PLATFORM_UBUNTU_PRO,
     "ubuntu2204": CR_PLATFORM_UBUNTU_PRO,
     "ubuntu2404": CR_PLATFORM_UBUNTU_PRO,
     "rhel8": CR_PLATFORM_RHEL,
@@ -71,7 +69,6 @@ CAPACITY_RESERVATION_OS_MAP = {
 OS_MAPPING = {
     "alinux2": {"user": "ec2-user"},
     "alinux2023": {"user": "ec2-user"},
-    "ubuntu2004": {"user": "ubuntu"},
     "ubuntu2204": {"user": "ubuntu"},
     "ubuntu2404": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
@@ -83,7 +80,6 @@ OS_MAPPING = {
 OS_TO_IMAGE_NAME_PART_MAP = {
     "alinux2": "amzn2-hvm",
     "alinux2023": "amzn2023-hvm",
-    "ubuntu2004": "ubuntu-2004-lts-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",
     "ubuntu2404": "ubuntu-2404-lts-hvm",
     "rhel8": "rhel8-hvm",

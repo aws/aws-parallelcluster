@@ -37,10 +37,6 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
-    "ubuntu2004": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*",
-        "owners": ["099720109477"],
-    },
     "ubuntu2204": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-*-server-*",
         "owners": ["099720109477"],
@@ -63,7 +59,6 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
-    "ubuntu2004": {"name": "Deep Learning Base GPU AMI (Ubuntu 20.04)*", "owners": ["amazon"]},
     "ubuntu2404": {
         "name": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*-server-*",
         "owners": ["099720109477"],
@@ -89,7 +84,6 @@ PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "alinux2023": {"name": "amzn2023-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
-    "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2404": {"name": "ubuntu-2404-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "rhel8": {"name": "rhel8-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
@@ -102,7 +96,6 @@ FIRST_STAGE_AMI_OWNERS = ["self", "447714826191"]
 OS_TO_FIRST_STAGE_AMI_NAME_MAP = {
     "alinux2": {"name": "first-stage-aws-parallelcluster-*-amzn2-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "alinux2023": {"name": "first-stage-aws-parallelcluster-*-amzn2023-*", "owners": FIRST_STAGE_AMI_OWNERS},
-    "ubuntu2004": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2004-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2204": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2204-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2404": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2404-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "rhel8": {"name": "first-stage-aws-parallelcluster-*-rhel8-*", "owners": FIRST_STAGE_AMI_OWNERS},

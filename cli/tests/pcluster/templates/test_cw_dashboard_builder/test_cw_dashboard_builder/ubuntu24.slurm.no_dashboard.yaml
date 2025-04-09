@@ -1,5 +1,5 @@
 Image:
-  Os: ubuntu2004
+  Os: ubuntu2404
 HeadNode:
   InstanceType: t3.micro
   Networking:

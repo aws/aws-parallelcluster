@@ -71,7 +71,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGIONS }}
           instances: {{ NEW_INSTANCE_TYPES }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   configure:
     test_pcluster_configure.py::test_pcluster_configure:

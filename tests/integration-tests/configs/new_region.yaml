@@ -54,7 +54,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2404"]
           schedulers: ["slurm"]
   update:
     test_update.py::test_update_slurm:
@@ -108,7 +108,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2004"]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
     test_networking.py::test_public_network_topology:
       dimensions:
