@@ -276,7 +276,7 @@ def _check_or_create_capacity_reservations(config_file):
             if _find_and_modify_existing_capacity_reservation(
                 az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var
             ):
-                break
+                continue
             capacity_reservation_created = False
             try:
                 for region in candidate_regions:
