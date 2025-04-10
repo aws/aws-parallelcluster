@@ -15,6 +15,7 @@ CHANGELOG
 - Disable unused services cups and wpa_supplicant from Official ParallelCluster AMIs to improve security.
 
 **CHANGES**
+- Increase `HeadNodeBootstrapTimeout` by 5 minutes, making it 35 minutes in total.
 - Upgrade Slurm to version 24.05.7.
 - Upgrade NVIDIA driver to version 570.86.15 (from 550.127.08) for all OSs except AL2.
 - Upgrade CUDA Toolkit to version 12.8.0 (from 12.4.1) for all OSs except AL2.
