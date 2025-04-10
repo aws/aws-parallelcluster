@@ -72,7 +72,7 @@ test-suites:
   configure:
     test_pcluster_configure.py::test_pcluster_configure:
       dimensions:
-        - regions: ["ap-southeast-2"]
+        - regions: ["ap-southeast-5"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: [{{ OS_ARM_2 }}]
           schedulers: ["slurm"]
@@ -811,8 +811,8 @@ test-suites:
   proxy:
     test_proxy.py::test_proxy:
       dimensions:
-        - regions: ["eu-central-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: ["ap-southeast-5"] # c5 instance type is not available in ap-southeast-5
+          instances: ["m6i.xlarge"]
           oss: [{{ OS_X86_7 }}]
           schedulers: ["slurm"]
   pyxis:
