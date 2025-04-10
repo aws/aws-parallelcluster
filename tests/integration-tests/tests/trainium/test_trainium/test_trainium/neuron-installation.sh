@@ -53,8 +53,8 @@ EOF
   # Install Python venv and activate Python virtual environment to install Neuron pip packages.
   local OS_VERSION="$(grep "^VERSION_ID=" /etc/os-release | cut -d"=" -f 2 | xargs)"
   case ${OS_VERSION} in
-      20.04)
-        sudo apt-get install -y python3.8-venv g++
+      22.04 | 24.04)
+        sudo apt-get install -y python3-venv g++
         python3 -m venv /home/ubuntu/aws_neuron_venv_pytorch
         ;;
       18.04)
@@ -142,7 +142,7 @@ function main() {
   pip3 install pytest
 
   python3 -m pip config set global.extra-index-url "https://pip.repos.neuron.amazonaws.com"
-  PIPS='torch-neuronx==1.11.0.1.* neuronx-cc==2.* transformers'
+  PIPS='torch-neuronx neuronx-cc transformers'
   pip3 install ${PIPS}
 }
 
