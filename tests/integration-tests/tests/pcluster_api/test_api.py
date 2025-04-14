@@ -489,7 +489,7 @@ def _test_describe_cluster(region, client, cluster_name, status):
     assert_that(response.cluster_name).is_equal_to(cluster_name)
     assert_that(response.cluster_status).is_equal_to(ClusterStatus(status))
     assert_that(response.cloud_formation_stack_status).is_equal_to(CloudFormationStackStatus(status))
-    if response.login_nodes:
+    if hasattr(response, "login_nodes"):
         assert_that(response.login_nodes).is_type_of(list)
 
 
