@@ -65,6 +65,7 @@ TEST_DEFAULTS = {
     "available_amis_oss_arm": [],
     "createami_custom_node_url": None,
     "custom_awsbatchcli_url": None,
+    "pcluster_installer_path": None,
     "custom_ami": None,
     "pre_install": None,
     "post_install": None,
@@ -266,6 +267,11 @@ def _init_argparser():
         help="URL to a custom awsbatch cli package.",
         default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
         type=_is_url,
+    )
+    custom_group.add_argument(
+        "--pcluster-installer-path",
+        help="Path to ParallelCluster installer.",
+        default=TEST_DEFAULTS.get("pcluster_installer_path"),
     )
     custom_group.add_argument(
         "--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install")
@@ -650,6 +656,9 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 
     if args.custom_awsbatchcli_url:
         pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
+
+    if args.pcluster_installer_path:
+        pytest_args.extend(["--pcluster-installer-path", args.pcluster_installer_path])
 
     if args.pre_install:
         pytest_args.extend(["--pre-install", args.pre_install])
