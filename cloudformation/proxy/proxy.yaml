@@ -173,7 +173,7 @@ Resources:
               Service: !Sub ec2.${AWS::URLSuffix}
         Version: 2012-10-17
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
 
   ProxyClientNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -192,7 +192,7 @@ Resources:
               Service: !Sub ec2.${AWS::URLSuffix}
         Version: 2012-10-17
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
 
   Imdsv2LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
