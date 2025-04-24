@@ -415,7 +415,6 @@ def clusters_factory(request, region):
             )
         )
         request.node.user_properties.append(("cluster_stack_name", f"{cluster_name}"))
-        request.node.user_properties.append(("cw_log_group_name", f"{cluster_name}"))
         cluster = Cluster(
             name=cluster_name,
             config_file=cluster_config,
@@ -424,7 +423,7 @@ def clusters_factory(request, region):
             custom_cli_credentials=custom_cli_credentials,
         )
         if not request.config.getoption("cluster"):
-            cluster.creation_response = factory.create_cluster(cluster, **kwargs)
+            cluster.creation_response = factory.create_cluster(cluster, request, **kwargs)
         return cluster
 
     yield _cluster_factory
