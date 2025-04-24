@@ -227,6 +227,9 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
     else:
         item.user_properties.append(("metadata", jsonpickle.encode(test_metadata)))
         logging.info(f"Added the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
+    execution_count = getattr(item, "execution_count", 1)
+    if execution_count > 1:
+        test_metadata.id = f"{test_metadata.id}rerun{item.execution_count}"
     metadata_table_mgr.publish_metadata([test_metadata])
 
 
