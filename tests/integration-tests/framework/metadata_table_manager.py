@@ -30,7 +30,7 @@ class TestMetadata:
     """Metadata for a test"""
 
     name: str
-    id: str = uuid.uuid4().hex
+    id: str = uuid.uuid4().hex  # TODO: The value is initialized once. It is a problem only if tests run sequentially.
     region: str = ""
     os: str = ""
     feature: str = ""
