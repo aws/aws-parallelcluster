@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
 
+import boto3
 import jsonpickle
 import pluggy
 import pytest
@@ -212,6 +213,7 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
         )
         test_metadata.cluster_stack_name = get_user_prop(item, "cluster_stack_name")
         test_metadata.cw_log_group_name = get_user_prop(item, "cw_log_group_name")
+        test_metadata.cluster_creation_time = get_user_prop(item, "cluster_creation_time")
     if rep.when == "teardown":
         # Update the teardown test data
         test_metadata = jsonpickle.decode(get_user_prop(item, "metadata"))
@@ -221,6 +223,12 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
             start_time=get_user_prop(item, f"start_time_{rep.when}"),
             end_time=get_user_prop(item, f"end_time_{rep.when}"),
         )
+        max_launch_time, min_launch_time, average_launch_time = _collect_compute_node_launch_time(
+            test_metadata.cw_log_group_name, test_metadata.region
+        )
+        test_metadata.compute_max_launch_time = max_launch_time
+        test_metadata.compute_min_launch_time = min_launch_time
+        test_metadata.compute_average_launch_time = average_launch_time
     # This prop needs to be serialized before saving to the user_props
     if update_user_prop(item, "metadata", jsonpickle.encode(test_metadata)):
         logging.info(f"Updated the metadata during the {rep.when} phase: {get_user_prop(item, 'metadata')}")
@@ -231,6 +239,116 @@ def publish_test_metadata(item: pytest.Item, rep: pytest.TestReport):
     if execution_count > 1:
         test_metadata.id = f"{test_metadata.id}rerun{item.execution_count}"
     metadata_table_mgr.publish_metadata([test_metadata])
+
+
+def _collect_compute_node_launch_time(log_group_name, region):
+    # The compute node launch time is the period from
+    # head node launches the compute node to the end of the cloud-init log in compute node
+    if log_group_name is None:
+        return 0, 0, 0
+    logging.info("collect compute node launch time in %s", log_group_name)
+    cloudwatch_client = boto3.client("logs", region_name=region)
+    next_token = None
+    instance_launch_logs = []
+    last_cloudinit_event_time_by_instance = {}
+    head_node_id = None
+    while True:
+        if next_token:
+            response = cloudwatch_client.describe_log_streams(logGroupName=log_group_name, nextToken=next_token)
+        else:
+            response = cloudwatch_client.describe_log_streams(logGroupName=log_group_name)
+        for log_stream in response["logStreams"]:
+            # Example logstream name: ip-192-168-12-123.i-0b880471c42123123.clustermgtd
+            log_stream_name = log_stream["logStreamName"].split(".")
+            if "cloud-init" == log_stream_name[2]:
+                last_cloudinit_event_time_by_instance[log_stream_name[1]] = _get_last_event_timestamp(
+                    cloudwatch_client, log_group_name, log_stream
+                )
+            if log_stream_name[2] in ["clustermgtd", "slurm_resume"]:
+                head_node_id = log_stream_name[1]
+                _gather_instance_launch_logs(cloudwatch_client, instance_launch_logs, log_group_name, log_stream)
+        next_token = response.get("nextToken")
+        if next_token is None:
+            break
+    return _calculate_compute_launch_time(head_node_id, instance_launch_logs, last_cloudinit_event_time_by_instance)
+
+
+def _calculate_compute_launch_time(head_node_id, instance_launch_logs, last_cloudinit_event_time_by_instance):
+    max_launch_time = 0
+    min_launch_time = 0
+    total_launch_time = 0
+    instance_num = 0
+    for instance_id, last_event_time in last_cloudinit_event_time_by_instance.items():
+        if instance_id == head_node_id:
+            continue
+        first_event_time = _get_launch_time(instance_launch_logs, instance_id)
+        if first_event_time:
+            instance_num += 1
+            launch_time = last_event_time - first_event_time
+            total_launch_time += launch_time
+            max_launch_time = max(max_launch_time, launch_time)
+            if min_launch_time == 0:
+                min_launch_time = launch_time
+            else:
+                min_launch_time = min(min_launch_time, launch_time)
+    if instance_num > 0:
+        return max_launch_time, min_launch_time, total_launch_time / instance_num
+    else:
+        return 0, 0, 0
+
+
+def _get_log_stream_events(cloudwatch_client, log_group_name, log_stream):
+    events = []
+    event_next_token = None
+    while True:
+        if event_next_token:
+            response = cloudwatch_client.get_log_events(
+                logGroupName=log_group_name,
+                logStreamName=log_stream["logStreamName"],
+                nextToken=event_next_token,
+            )
+        else:
+            response = cloudwatch_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream["logStreamName"], startFromHead=True
+            )
+        # Process and write events
+        for event in response["events"]:
+            events.append(event)
+
+        # Check if there are more logs to fetch
+        if event_next_token == response["nextForwardToken"]:
+            break
+        else:
+            event_next_token = response["nextForwardToken"]
+    return events
+
+
+def _gather_instance_launch_logs(cloudwatch_client, instance_launch_logs, log_group_name, log_stream):
+    events = _get_log_stream_events(cloudwatch_client, log_group_name, log_stream)
+    for event in events:
+        if "Nodes are now configured with instance" in event["message"]:
+            instance_launch_logs.append(event)
+
+
+def _get_last_event_timestamp(cloudwatch_client, log_group_name, log_stream):
+    """
+    Get timestamp of the last event by iterating through the logs.
+
+    We avoid using lastEventTime from AWS API because the lastEventTime value updates on an eventual consistency basis.
+    It typically updates in less than an hour from ingestion, but in rare situations might take longer.
+    https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_LogStream.html
+    """
+    events = _get_log_stream_events(cloudwatch_client, log_group_name, log_stream)
+    timestamp = 0
+    for event in events:
+        timestamp = max(timestamp, event["timestamp"])
+    return timestamp
+
+
+def _get_launch_time(logs, instance_id):
+    for log in logs:
+        if instance_id in log["message"]:
+            return log["timestamp"]
 
 
 def get_reporting_region(region: str):

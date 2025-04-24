@@ -14,6 +14,7 @@ import json
 import logging
 import re
 import subprocess
+import time
 
 import boto3
 import yaml
@@ -463,7 +464,7 @@ class ClustersFactory:
         self.__created_clusters = {}
         self._delete_logs_on_success = delete_logs_on_success
 
-    def create_cluster(self, cluster, log_error=True, raise_on_error=True, **kwargs):
+    def create_cluster(self, cluster, request, log_error=True, raise_on_error=True, **kwargs):
         """
         Create a cluster with a given config.
         :param cluster: cluster to create.
@@ -479,6 +480,7 @@ class ClustersFactory:
         logging.info("Creating cluster {0} with config {1}".format(name, cluster.config_file))
         command, wait = self._build_command(cluster, kwargs)
         try:
+            start_time = time.time()
             result = run_pcluster_command(
                 command,
                 timeout=7200,
@@ -500,6 +502,8 @@ class ClustersFactory:
                         raise ClusterCreationError(error, stack_events=events, cluster_details=response)
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
+                    end_time = time.time()
+                    request.node.user_properties.append(("cluster_creation_time", end_time - start_time))
                     request.node.user_properties.append(
                         ("cw_log_group_name", cluster.cfn_resources["CloudWatchLogGroup"])
                     )

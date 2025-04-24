@@ -42,6 +42,10 @@ class TestMetadata:
     cookbook_commit: str = ""
     node_commit: str = ""
     cluster_stack_name: str = ""
+    cluster_creation_time: float = 0
+    compute_max_launch_time: float = 0
+    compute_min_launch_time: float = 0
+    compute_average_launch_time: float = 0
     cw_log_group_name: str = ""
     global_build_number: int = 0
 
@@ -119,6 +123,18 @@ class MetadataTableManager:
                         "cookbook_commit": {"S": datum.cookbook_commit if datum.cookbook_commit else "None"},
                         "node_commit": {"S": datum.node_commit if datum.node_commit else "None"},
                         "cluster_stack_name": {"S": datum.cluster_stack_name if datum.cluster_stack_name else "None"},
+                        "cluster_creation_time": {
+                            "N": str(datum.cluster_creation_time) if datum.cluster_creation_time else "0"
+                        },
+                        "compute_max_launch_time": {
+                            "N": str(datum.compute_max_launch_time) if datum.compute_max_launch_time else "0"
+                        },
+                        "compute_min_launch_time": {
+                            "N": str(datum.compute_min_launch_time) if datum.compute_min_launch_time else "0"
+                        },
+                        "compute_average_launch_time": {
+                            "N": str(datum.compute_average_launch_time) if datum.compute_average_launch_time else "0"
+                        },
                         "cw_log_group_name": {"S": datum.cw_log_group_name if datum.cw_log_group_name else "None"},
                         "global_build_number": {
                             "N": str(datum.global_build_number) if datum.global_build_number else "0"
