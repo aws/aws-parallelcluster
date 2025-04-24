@@ -500,6 +500,9 @@ class ClustersFactory:
                         raise ClusterCreationError(error, stack_events=events, cluster_details=response)
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
+                    request.node.user_properties.append(
+                        ("cw_log_group_name", cluster.cfn_resources["CloudWatchLogGroup"])
+                    )
                     cluster.mark_as_created()
             else:
                 if raise_on_error and result.returncode:
