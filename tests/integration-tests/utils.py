@@ -28,6 +28,7 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
+from constants import QUARANTINE_TAG_KEY, DO_NOT_DELETE_TAG_KEY, QUARANTINE_TAGS
 
 DEFAULT_PARTITION = "aws"
 PARTITION_MAP = {
@@ -908,3 +909,44 @@ def find_stack_by_tag(tag, region, stack_prefix):
             logging.info(f"Found stack: {name} (created on {creation_date})")
             return name
     return None
+
+def get_quarantined_stacks(region, prefix=None):
+    quarantined_stacks = []
+    cfn_client = boto3.client("cloudformation", region_name=region)
+
+    for stack in cfn_client.describe_stacks().get("Stacks", []):
+        stack_name = stack.get("StackName")
+        if not stack_name:
+            continue
+        if prefix and not stack_name.startswith(prefix):
+            continue
+        if any(tag.get("Key") == QUARANTINE_TAG_KEY for tag in stack.get("Tags", [])):
+            quarantined_stacks.append(stack_name)
+    return quarantined_stacks
+
+def is_quarantined_stack(region, stack_name):
+    return stack_name in get_quarantined_stacks(region)
+
+def quarantine_stacks(region, stack_names):
+    for stack_name in stack_names:
+        add_tags_to_stack(region, stack_name, QUARANTINE_TAGS)
+
+def add_tags_to_stack(region, stack_name, tags):
+    cfn = boto3.resource("cloudformation", region_name=region)
+    stack = cfn.Stack(stack_name)
+
+    stack.update(
+        UsePreviousTemplate=True,
+        Parameters=get_unchanged_stack_parameters(stack),
+        Capabilities=stack.capabilities,
+        DisableRollback=True,
+        Tags=tags,
+    )
+
+def get_unchanged_stack_parameters(stack):
+    return [
+        {
+            'ParameterKey': current_parameter.get('ParameterKey'),
+            'UsePreviousValue': True,
+        } for current_parameter in stack.parameters
+    ]
