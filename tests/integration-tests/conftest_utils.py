@@ -250,7 +250,7 @@ def _collect_compute_node_launch_time(log_group_name, region):
     cloudwatch_client = boto3.client("logs", region_name=region)
     next_token = None
     instance_launch_logs = []
-    last_cloudinit_event_time_by_instance = {}
+    launch_finish_time_by_instance = {}
     head_node_id = None
     while True:
         if next_token:
@@ -260,31 +260,29 @@ def _collect_compute_node_launch_time(log_group_name, region):
         for log_stream in response["logStreams"]:
             # Example logstream name: ip-192-168-12-123.i-0b880471c42123123.clustermgtd
             log_stream_name = log_stream["logStreamName"].split(".")
-            if "cloud-init" == log_stream_name[2]:
-                last_cloudinit_event_time_by_instance[log_stream_name[1]] = _get_last_event_timestamp(
-                    cloudwatch_client, log_group_name, log_stream
-                )
+            if "slurmd" == log_stream_name[2]:
+                launch_finish_time_by_instance[log_stream_name[1]] = log_stream["firstEventTimestamp"]
             if log_stream_name[2] in ["clustermgtd", "slurm_resume"]:
                 head_node_id = log_stream_name[1]
                 _gather_instance_launch_logs(cloudwatch_client, instance_launch_logs, log_group_name, log_stream)
         next_token = response.get("nextToken")
         if next_token is None:
             break
-    return _calculate_compute_launch_time(head_node_id, instance_launch_logs, last_cloudinit_event_time_by_instance)
+    return _calculate_compute_launch_time(head_node_id, instance_launch_logs, launch_finish_time_by_instance)
 
 
-def _calculate_compute_launch_time(head_node_id, instance_launch_logs, last_cloudinit_event_time_by_instance):
+def _calculate_compute_launch_time(head_node_id, instance_launch_logs, launch_finish_time_by_instance):
     max_launch_time = 0
     min_launch_time = 0
     total_launch_time = 0
     instance_num = 0
-    for instance_id, last_event_time in last_cloudinit_event_time_by_instance.items():
+    for instance_id, launch_finish_time in launch_finish_time_by_instance.items():
         if instance_id == head_node_id:
             continue
-        first_event_time = _get_launch_time(instance_launch_logs, instance_id)
-        if first_event_time:
+        launch_start_time = _get_launch_time(instance_launch_logs, instance_id)
+        if launch_start_time:
             instance_num += 1
-            launch_time = last_event_time - first_event_time
+            launch_time = launch_finish_time - launch_start_time
             total_launch_time += launch_time
             max_launch_time = max(max_launch_time, launch_time)
             if min_launch_time == 0:
@@ -328,21 +326,6 @@ def _gather_instance_launch_logs(cloudwatch_client, instance_launch_logs, log_gr
     for event in events:
         if "Nodes are now configured with instance" in event["message"]:
             instance_launch_logs.append(event)
-
-
-def _get_last_event_timestamp(cloudwatch_client, log_group_name, log_stream):
-    """
-    Get timestamp of the last event by iterating through the logs.
-
-    We avoid using lastEventTime from AWS API because the lastEventTime value updates on an eventual consistency basis.
-    It typically updates in less than an hour from ingestion, but in rare situations might take longer.
-    https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_LogStream.html
-    """
-    events = _get_log_stream_events(cloudwatch_client, log_group_name, log_stream)
-    timestamp = 0
-    for event in events:
-        timestamp = max(timestamp, event["timestamp"])
-    return timestamp
 
 
 def _get_launch_time(logs, instance_id):
