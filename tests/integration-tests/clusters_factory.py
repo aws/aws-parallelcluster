@@ -505,7 +505,7 @@ class ClustersFactory:
                     end_time = time.time()
                     request.node.user_properties.append(("cluster_creation_time", end_time - start_time))
                     request.node.user_properties.append(
-                        ("cw_log_group_name", cluster.cfn_resources["CloudWatchLogGroup"])
+                        ("cw_log_group_name", cluster.cfn_resources.get("CloudWatchLogGroup"))
                     )
                     cluster.mark_as_created()
             else:
