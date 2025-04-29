@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
+import re
 from datetime import date, datetime, timedelta, timezone
 
 import boto3
@@ -206,12 +207,14 @@ def read_config_file(config_file, print_rendered=False, config=None, args=None, 
     :return: a dict containig the parsed config file
     """
     logging.info("Parsing config file: %s", config_file)
+    os_parameters = _get_os_parameters(config=config, args=args)
+    instance_type_parameters = _get_instance_type_parameters()
     rendered_config = _render_config_file(
         config_file,
         **kwargs,
-        **_get_os_parameters(config=config, args=args),
-        **_get_instance_type_parameters(),
-        **_check_or_create_capacity_reservations(config_file),
+        **os_parameters,
+        **instance_type_parameters,
+        **_check_or_create_capacity_reservations(config_file, os_parameters, instance_type_parameters),
     )
     try:
         return yaml.safe_load(rendered_config)
@@ -260,21 +263,21 @@ def _get_all_jinja_variables(config_file):
     return meta.find_undeclared_variables(parsed_content)
 
 
-def _check_or_create_capacity_reservations(config_file):
+def _check_or_create_capacity_reservations(config_file, os_parameters, instance_type_parameters):
     """Check/Create capacity reservations for all the instances in the config file."""
     variables = _get_all_jinja_variables(config_file)
     az_for_capacity_reservation = {}
     for var in variables:
         if "CAPACITY_RESERVATION" in var:
             logging.info("Checking capacity reservation for %s", var)
-            parts = var.split("_")
-            instance_type = f"{parts[0]}.{parts[1]}"
-            count = int(parts[4])
-            hours = int(parts[6])
+            count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(var)
+            instance_type, os_platform = _resolve_instance_type_and_os(
+                instance_type, instance_type_parameters, os, os_parameters
+            )
             end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
             candidate_regions = ["us-east-1", "us-west-2", "eu-west-1"]
             if _find_and_modify_existing_capacity_reservation(
-                az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var
+                az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
             ):
                 continue
             capacity_reservation_created = False
@@ -282,7 +285,14 @@ def _check_or_create_capacity_reservations(config_file):
                 for region in candidate_regions:
                     ec2_client = boto3.client("ec2", region_name=region)
                     capacity_reservation_created = _create_capacity_reservation(
-                        az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var
+                        az_for_capacity_reservation,
+                        count,
+                        ec2_client,
+                        end_date,
+                        instance_type,
+                        var,
+                        os_platform,
+                        enable_placement_group,
                     )
                     if capacity_reservation_created:
                         break
@@ -294,32 +304,71 @@ def _check_or_create_capacity_reservations(config_file):
     return az_for_capacity_reservation
 
 
-def _create_capacity_reservation(az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var):
+def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, os_parameters):
+    if "INSTANCE_TYPE" in instance_type:
+        instance_type_size = instance_type.split("_")[-1]
+        instance_type = (
+            instance_type_parameters.get(instance_type[: -len(instance_type_size) - 1]) + "." + instance_type_size
+        )
+    else:
+        instance_type = instance_type.replace("_", ".")
+    os_platform = "Linux/UNIX"
+    if os is not None:
+        if "OS" in os:
+            os = os_parameters.get(os)
+        if "rhel" in os.lower():
+            os_platform = "Red Hat Enterprise Linux"
+    return instance_type, os_platform
+
+
+def _parse_capacity_reservation_variable(var):
+    # Example variable:
+    # With rotating instance type and os:
+    # {{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_OS_X86_1 }}
+    # With hardcode instance type and os:
+    # {{ trn1_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_UBUNTU2404 }}
+    pattern = re.compile("(.*)_CAPACITY_RESERVATION_(.*)_INSTANCES_(.*)_HOURS_?(.*PG)?_?(.*)?")
+    match = pattern.match(var)
+    instance_type = match.group(1)
+    count = int(match.group(2))
+    hours = int(match.group(3))
+    enable_placement_group = match.group(4) in ["YESPG", None]
+    os = match.group(5) or "alinux2023"
+    return count, enable_placement_group, hours, instance_type, os
+
+
+def _create_capacity_reservation(
+    az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var, os_platform, enable_placement_group
+):
     capacity_reservation_created = False
     for availability_zone in ec2_client.describe_availability_zones()["AvailabilityZones"]:
         if availability_zone["ZoneType"] == "availability-zone":
             try:
                 zone_id = availability_zone["ZoneId"]
-                placement_group_name = f"{instance_type}_placement_group_{zone_id}"
-                try:
-                    placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
-                        "PlacementGroups"
-                    ][0]["GroupArn"]
-                except Exception:
-                    placement_group_arn = ec2_client.create_placement_group(
-                        GroupName=placement_group_name, Strategy="cluster"
-                    )["PlacementGroup"]["GroupArn"]
-                ec2_client.create_capacity_reservation(
-                    InstanceType=instance_type,
-                    InstancePlatform="Linux/UNIX",
-                    AvailabilityZoneId=zone_id,
-                    InstanceCount=count,
-                    EndDateType="limited",
-                    EndDate=end_date,
-                    Tenancy="default",
-                    PlacementGroupArn=placement_group_arn,
+                reservation_args = {
+                    "InstanceType": instance_type,
+                    "InstancePlatform": os_platform,
+                    "AvailabilityZoneId": zone_id,
+                    "InstanceCount": count,
+                    "EndDateType": "limited",
+                    "EndDate": end_date,
+                    "Tenancy": "default",
+                }
+                if enable_placement_group:
+                    placement_group_name = f"{instance_type}_placement_group_{zone_id}"
+                    try:
+                        placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
+                            "PlacementGroups"
+                        ][0]["GroupArn"]
+                    except Exception:
+                        placement_group_arn = ec2_client.create_placement_group(
+                            GroupName=placement_group_name, Strategy="cluster"
+                        )["PlacementGroup"]["GroupArn"]
+                    reservation_args["PlacementGroupArn"] = placement_group_arn
+                ec2_client.create_capacity_reservation(**reservation_args)
+                logging.info(
+                    "Capacity reservation for %s %s on %s created in %s", count, instance_type, os_platform, zone_id
                 )
-                logging.info("Capacity reservation for %s %s created in %s", count, instance_type, zone_id)
                 capacity_reservation_created = True
                 az_for_capacity_reservation[var] = zone_id
                 break
@@ -335,7 +384,7 @@ def _create_capacity_reservation(az_for_capacity_reservation, count, ec2_client,
 
 
 def _find_and_modify_existing_capacity_reservation(  # noqa: C901
-    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var
+    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
 ):
     """Find existing capacity reservation. Modify the reservation if more capacity or time is needed."""
     found_existing_capacity_reservation = False
@@ -347,6 +396,7 @@ def _find_and_modify_existing_capacity_reservation(  # noqa: C901
                 Filters=[
                     {"Name": "instance-type", "Values": [instance_type]},
                     {"Name": "state", "Values": ["active", "pending"]},
+                    {"Name": "instance-platform", "Values": [os_platform]},
                 ]
             )
             for page in page_iterator:

@@ -13,7 +13,7 @@ test-suites:
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
-        - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_AZ }}]
+        - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_OS_X86_1 }}]
           instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
           oss: [{{ OS_X86_1 }}]
           schedulers: ["slurm"]
@@ -256,7 +256,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_X86_0 }}]
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
@@ -279,7 +279,7 @@ test-suites:
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
-        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_AZ }}]
+        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_OS_X86_5 }}]
           instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}.xlarge]
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
@@ -744,7 +744,7 @@ test-suites:
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
-        - regions: [{{ trn1_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS }}]
+        - regions: [{{ trn1_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_UBUNTU2404 }}]
           schedulers: ["slurm"]
           oss: ["ubuntu2404"]
           instances: ["trn1.32xlarge"]
