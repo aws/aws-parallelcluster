@@ -574,7 +574,7 @@ test-suites:
           schedulers: {{ SCHEDULERS }}
     test_update.py::test_login_nodes_update:
       dimensions:
-        - regions: ["us-east-2"]
+        - regions: {{ REGIONS }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
