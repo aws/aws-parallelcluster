@@ -260,7 +260,7 @@ class Feature(Enum):
 
 UNSUPPORTED_FEATURES_MAP = {
     Feature.BATCH: ["ap-northeast-3", "ap-southeast-5", "ap-southeast-7", "us-iso"],
-    Feature.FSX_LUSTRE: ["us-isob"],
+    Feature.FSX_LUSTRE: [],
     Feature.FILE_CACHE: ["us-iso"],
     Feature.FSX_ONTAP: ["us-iso"],
     Feature.FSX_OPENZFS: ["us-iso"],

@@ -840,7 +840,7 @@ def is_dcv_supported(region: str):
 
 
 def is_fsx_lustre_supported(region: str):
-    return "us-isob" not in region
+    return True
 
 
 def is_fsx_ontap_supported(region: str):
@@ -856,7 +856,7 @@ def is_filecache_supported(region: str):
 
 
 def is_fsx_lustre_deployment_type_supported(region: str, deployment_type: str):
-    return False if "us-iso-" in region and deployment_type in ["SCRATCH_1", "PERSISTENT_2"] else True
+    return False if "us-iso" in region and deployment_type in ["SCRATCH_1", "PERSISTENT_2"] else True
 
 
 def is_directory_supported(region: str, directory_type: str):
