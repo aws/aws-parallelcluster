@@ -188,7 +188,7 @@ test-suites:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
         - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
+          instances: [ "g4dn.xlarge" ]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
   iam:
