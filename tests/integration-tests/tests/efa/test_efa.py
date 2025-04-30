@@ -26,7 +26,6 @@ FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
 FABTESTS_GDRCOPY_TESTS = ["runt"]
 
 
-@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_efa(
     os,
     region,
