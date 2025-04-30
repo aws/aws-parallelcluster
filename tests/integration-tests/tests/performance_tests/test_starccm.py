@@ -58,10 +58,7 @@ def calculate_observed_value(result, remote_command_executor, scheduler_commands
     return observed_value
 
 
-@pytest.mark.parametrize(
-    "number_of_nodes",
-    [[8, 16, 32]],
-)
+@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_starccm(
     vpc_stack,
     instance,
@@ -70,11 +67,11 @@ def test_starccm(
     scheduler,
     pcluster_config_reader,
     clusters_factory,
-    number_of_nodes,
     test_datadir,
     scheduler_commands_factory,
     s3_bucket_factory,
 ):
+    number_of_nodes = [8, 16, 32]
     # Create S3 bucket for custom actions scripts
     bucket_name = s3_bucket_factory()
     s3 = boto3.client("s3")

@@ -75,6 +75,13 @@ def _get_os_parameters(config=None, args=None):
     for index in range(len(no_rhel_oss)):
         result[f"NO_RHEL_OS_X86_{index}"] = no_rhel_oss_x86[(today_number + index) % len(no_rhel_oss_x86)]
         result[f"NO_RHEL_OS_ARM_{index}"] = no_rhel_oss_arm[(today_number + index) % len(no_rhel_oss_arm)]
+
+    no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
+    no_rocky_oss_x86 = list(set(no_rocky_oss) & set(available_amis_oss_x86))
+    no_rocky_oss_arm = list(set(no_rocky_oss) & set(available_amis_oss_arm))
+    for index in range(len(no_rocky_oss)):
+        result[f"NO_ROCKY_OS_X86_{index}"] = no_rocky_oss_x86[(today_number + index) % len(no_rocky_oss_x86)]
+        result[f"NO_ROCKY_OS_ARM_{index}"] = no_rocky_oss_arm[(today_number + index) % len(no_rocky_oss_arm)]
     return result
 
 
@@ -389,6 +396,9 @@ def _find_and_modify_existing_capacity_reservation(  # noqa: C901
     """Find existing capacity reservation. Modify the reservation if more capacity or time is needed."""
     found_existing_capacity_reservation = False
     for region in candidate_regions:
+        logging.info(
+            "Checking existing capacity reservations for %s %s on %s in %s", count, instance_type, os_platform, region
+        )
         try:
             ec2_client = boto3.client("ec2", region_name=region)
             paginator = ec2_client.get_paginator("describe_capacity_reservations")

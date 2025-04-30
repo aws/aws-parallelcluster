@@ -822,3 +822,28 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
+  performance_tests:
+    test_osu.py::test_osu:
+      dimensions:
+        - regions: [ {{ c5n_18xlarge_CAPACITY_RESERVATION_35_INSTANCES_2_HOURS_YESPG_NO_ROCKY_OS_X86_0 }} ]
+          instances: [ "c5n.18xlarge" ]
+          oss: [{{ NO_ROCKY_OS_X86_0 }}] # ParallelCluster does not release official Rocky images. Skip the test.
+          schedulers: [ "slurm" ]
+    test_starccm.py::test_starccm:
+      dimensions:
+        - regions: [ {{ c5n_18xlarge_CAPACITY_RESERVATION_35_INSTANCES_2_HOURS_YESPG_NO_ROCKY_OS_X86_0 }} ]
+          instances: [ "c5n.18xlarge" ]
+          oss: [{{ NO_ROCKY_OS_X86_0 }}] # ParallelCluster does not release official Rocky images. Skip the test.
+          schedulers: [ "slurm" ]
+    test_openfoam.py::test_openfoam:
+      dimensions:
+        - regions: [ {{ c5n_18xlarge_CAPACITY_RESERVATION_35_INSTANCES_2_HOURS_YESPG_NO_ROCKY_OS_X86_0 }} ]
+          instances: [ "c5n.18xlarge" ]
+          oss: [{{ NO_ROCKY_OS_X86_0 }}] # ParallelCluster does not release official Rocky images. Skip the test.
+          schedulers: [ "slurm" ]
+    test_startup_time.py::test_startup_time:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          oss: [{{ OS_X86_0 }}]
+          schedulers: [ "slurm" ]
+          instances: [ "t3.micro" ] #This is a placeholder, we do not use this instance in the test

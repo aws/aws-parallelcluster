@@ -51,10 +51,7 @@ def run_openfoam_test(remote_command_executor, test_datadir, number_of_nodes):
     return observed_value
 
 
-@pytest.mark.parametrize(
-    "number_of_nodes",
-    [[8, 16, 32]],
-)
+@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_openfoam(
     vpc_stack,
     instance,
@@ -63,9 +60,11 @@ def test_openfoam(
     scheduler,
     pcluster_config_reader,
     clusters_factory,
-    number_of_nodes,
     test_datadir,
 ):
+    if os not in ["alinux2", "ubuntu2404"]:
+        pytest.skip(f"OpenFOAM is not supported on {os}")
+    number_of_nodes = [8, 16, 32]
     cluster_config = pcluster_config_reader(number_of_nodes=max(number_of_nodes))
     cluster = clusters_factory(cluster_config)
     logging.info("Cluster Created")
