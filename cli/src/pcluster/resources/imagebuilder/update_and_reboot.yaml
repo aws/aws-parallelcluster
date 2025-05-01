@@ -69,7 +69,7 @@ phases:
                set -v
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-               if [ `echo "${!OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
+               if [ `echo "${!OS}" | grep -E '^(alinux|rhel|rocky)'` ]; then
                  PLATFORM='RHEL'
                elif [ `echo "${!OS}" | grep -E '^ubuntu'` ]; then
                  PLATFORM='DEBIAN'
@@ -85,7 +85,7 @@ phases:
             - |
               set -v
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
-              if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu|rhel|rocky)'` ]; then
+              if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|ubuntu|rhel|rocky)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
                 exit {{ FailExitCode }}
               fi
