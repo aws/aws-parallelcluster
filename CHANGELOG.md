@@ -8,7 +8,7 @@ CHANGELOG
 - Ubuntu 20.04 is no longer supported.
 
 **BUG FIXES**
-Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
+- Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 
 3.13.0
 ------

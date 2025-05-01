@@ -537,6 +537,10 @@ def _populate_allowed_src_or_dst(rule, ip_ranges, allowed_security_groups):
     if rule.get("IpRanges"):
         ip_ranges.extend(rule.get("IpRanges"))
         # Ip Ranges have to be checked later. Return False because the rule allowance is not determined.
+    if rule.get("Ipv4Ranges"):
+        # Currently the describe_security_groups API response syntax contains "IpRanges".
+        # This check is added for future compatibility if API changes to use "Ipv4Ranges"
+        ip_ranges.extend(rule.get("Ipv4Ranges"))
     if rule.get("UserIdGroupPairs"):
         allowed_security_groups.update(
             {user_id_group_pair.get("GroupId") for user_id_group_pair in rule.get("UserIdGroupPairs")}
