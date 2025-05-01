@@ -1313,18 +1313,14 @@ def test_queue_name_validator(name, expected_message):
                 {
                     "IpProtocol": "-1",
                     "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
-                    "UserIdGroupPairs": [
-                        {"UserId": "123456789012", "GroupId": "sg-12345678"}
-                    ],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}],
                 }
             ],
             [
                 {
                     "IpProtocol": "-1",
                     "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
-                    "UserIdGroupPairs": [
-                        {"UserId": "123456789012", "GroupId": "sg-12345678"}
-                    ],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}],
                 }
             ],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
@@ -1338,18 +1334,14 @@ def test_queue_name_validator(name, expected_message):
                 {
                     "IpProtocol": "-1",
                     "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
-                    "UserIdGroupPairs": [
-                        {"UserId": "123456789012", "GroupId": "sg-99999999"}
-                    ],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
                 }
             ],
             [
                 {
                     "IpProtocol": "-1",
                     "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
-                    "UserIdGroupPairs": [
-                        {"UserId": "123456789012", "GroupId": "sg-99999999"}
-                    ],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
                 }
             ],
             {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
@@ -1363,18 +1355,14 @@ def test_queue_name_validator(name, expected_message):
                 {
                     "IpProtocol": "-1",
                     "IpRanges": [{"CidrIp": "10.0.0.0/16"}],
-                    "UserIdGroupPairs": [
-                        {"UserId": "123456789012", "GroupId": "sg-99999999"}
-                    ],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
                 }
             ],
             [
                 {
                     "IpProtocol": "-1",
                     "IpRanges": [{"CidrIp": "10.0.0.0/16"}],
-                    "UserIdGroupPairs": [
-                        {"UserId": "123456789012", "GroupId": "sg-99999999"}
-                    ],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
                 }
             ],
             {frozenset({"sg-12345678"})},
