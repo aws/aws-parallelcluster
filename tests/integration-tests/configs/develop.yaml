@@ -352,15 +352,15 @@ test-suites:
         # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["rhel8"]
+          oss: [{{ DCV_OS_ARM_3 }}]
           schedulers: ["slurm"]
         - regions: ["cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu2204"]
+          oss: [{{ DCV_OS_X86_3 }}]
           schedulers: ["slurm"]
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: [{{ DCV_OS_X86_4 }}]
           schedulers: ["slurm"]
     test_multi_cidr.py::test_multi_cidr:
       dimensions:
@@ -787,7 +787,7 @@ test-suites:
       dimensions:
         - regions: [{{ OS_X86_6 }}]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "rhel8" ]
+          oss: [{{ LUSTRE_OS_X86_6 }}]
           schedulers: [ "slurm" ]
     test_update.py::test_multi_az_create_and_update:
       dimensions:
