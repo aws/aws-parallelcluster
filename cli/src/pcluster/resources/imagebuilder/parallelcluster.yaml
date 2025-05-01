@@ -129,7 +129,7 @@ phases:
                set -v
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-               if [ `echo "${!OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
+               if [ `echo "${!OS}" | grep -E '^(alinux|rhel|rocky)'` ]; then
                  PLATFORM='RHEL'
                elif [ `echo "${!OS}" | grep -E '^ubuntu'` ]; then
                  PLATFORM='DEBIAN'
@@ -167,7 +167,7 @@ phases:
               set -v
               if [ ${CfnParamUpdateOsAndReboot} == false ]; then
                 RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
-                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu|rhel|rocky)'` ]; then
+                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|ubuntu|rhel|rocky)'` ]; then
                   echo "This component does not support '${!RELEASE}'. Failing build."
                   exit {{ FailExitCode }}
                 fi
@@ -251,12 +251,6 @@ phases:
                 fi
                 yum -y update krb5-libs
                 yum -y groupinstall development && sudo yum -y install curl wget jq
-              
-
-                if [[ ${!OS} =~ ^centos ]]; then
-                  /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
-                  grub2-mkconfig -o /boot/grub2/grub.cfg
-                fi
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ "${CfnParamUpdateOsAndReboot}" == "false" ]]; then
                   # disable apt-daily.timer to avoid dpkg lock
