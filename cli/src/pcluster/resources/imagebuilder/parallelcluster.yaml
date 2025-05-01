@@ -184,6 +184,54 @@ phases:
                 fi
               fi
 
+      - name: CreatingJsonFile
+        action: CreateFile
+        inputs:
+          - path: /etc/parallelcluster/image_dna.json
+            content: |
+              ${CfnParamChefDnaJson}
+            overwrite: true
+
+      - name: DisableKernelUpdate
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              DISABLE_KERNEL_UPDATE=$(cat /etc/parallelcluster/image_dna.json | jq -r '.cluster.disable_kernel_update.enabled')
+              echo "${!DISABLE_KERNEL_UPDATE}"
+
+      - name: PinKernelVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+
+              if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
+                if [[ ${!PLATFORM} == RHEL ]]; then
+                  yum install -y yum-plugin-versionlock
+                  # listing all the packages because wildcard does not work as expected
+                  yum versionlock kernel kernel-core kernel-modules
+
+                  if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
+                    yum versionlock kernel-abi-whitelists
+                  else
+                    yum versionlock kernel-abi-stablelists
+                  fi
+
+                  if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
+                    yum versionlock rocky-release rocky-repos
+                  elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
+                    yum versionlock redhat-release
+                  fi
+                  echo "Kernel version locked"
+                fi
+              fi
+
       # Install prerequisite OS packages
       - name: InstallPrerequisite
         action: ExecuteBash
@@ -284,14 +332,6 @@ phases:
               cookbook_path ['/etc/chef/cookbooks']
             overwrite: true
 
-      - name: CreatingJsonFile
-        action: CreateFile
-        inputs:
-          - path: /etc/parallelcluster/image_dna.json
-            content: |
-              ${CfnParamChefDnaJson}
-            overwrite: true
-
       - name: InstallPClusterPackages
         action: ExecuteBash
         inputs:
@@ -309,6 +349,34 @@ phases:
             content: |
               {{ build.PClusterCookbookVersionName.outputs.stdout }}
             overwrite: true
+
+      - name: RemoveKernelPin
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+
+              # Remove kernel version lock
+              if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
+                yum versionlock delete kernel kernel-core kernel-modules
+
+                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
+                  yum versionlock delete kernel-abi-whitelists
+                else
+                  yum versionlock delete kernel-abi-stablelists
+                fi
+
+                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
+                  yum versionlock delete rocky-release
+                elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
+                  yum versionlock delete redhat-release
+                fi
+                echo "Kernel version unlocked"
+              fi
 
       - name: KeepSSM
         action: ExecuteBash
