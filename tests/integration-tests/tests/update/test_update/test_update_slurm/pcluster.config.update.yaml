@@ -166,14 +166,12 @@ SharedStorage:
     EfsSettings: # New section
       ThroughputMode: provisioned
       ProvisionedThroughput: 20
-{% if "us-isob" not in region %}
   - MountDir: fsx
     Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 2400
       WeeklyMaintenanceStartTime: "3:02:30" # New parameter
-{% endif %}
 Monitoring:
   DetailedMonitoring: false
   Logs:
