@@ -1306,6 +1306,69 @@ def test_queue_name_validator(name, expected_message):
             r"allows inbound TCP traffic through ports \[111, 2049, 20001, 20002, 20003\]. Missing ports: "
             r"\[2049, 20001, 20002, 20003\]",
         ),
+        (  # working case: The rule has both IpRanges and UserIdGroupPairs. Wrong ip permissions. But SG matches.
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {
+                    "IpProtocol": "-1",
+                    "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}],
+                }
+            ],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}],
+                }
+            ],
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
+        (  # not-working case：The rule has both IpRanges and UserIdGroupPairs. Both don't match.
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {
+                    "IpProtocol": "-1",
+                    "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
+                }
+            ],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "IpRanges": [{"CidrIp": "10.1.1.0/25"}],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
+                }
+            ],
+            {frozenset({"sg-12345678"}), frozenset({"sg-12345678", "sg-23456789"})},
+            ["eni-09b9460295ddd4e5f"],
+            r"allows inbound and outbound TCP traffic through ports \[988\]",
+        ),
+        (  # working case：IpRanges covers the subnet, but UserIdGroupPairs do not match
+            "LUSTRE",
+            "vpc-06e4ab6c6cEXAMPLE",
+            [
+                {
+                    "IpProtocol": "-1",
+                    "IpRanges": [{"CidrIp": "10.0.0.0/16"}],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
+                }
+            ],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "IpRanges": [{"CidrIp": "10.0.0.0/16"}],
+                    "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-99999999"}],
+                }
+            ],
+            {frozenset({"sg-12345678"})},
+            ["eni-09b9460295ddd4e5f"],
+            None,
+        ),
     ],
 )
 def test_fsx_network_validator(
