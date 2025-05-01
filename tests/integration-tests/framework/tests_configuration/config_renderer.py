@@ -22,6 +22,7 @@ from utils import InstanceTypesData
 
 from pcluster.constants import (
     SUPPORTED_OSES,
+    SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
@@ -56,6 +57,17 @@ def _get_os_parameters(config=None, args=None):
         ]
         result[f"DCV_OS_ARM_{index}"] = dcv_available_amis_oss_arm[
             (today_number + index) % len(dcv_available_amis_oss_arm)
+        ]
+
+    batch_supported_oses = SUPPORTED_OSES_FOR_SCHEDULER["awsbatch"]
+    batch_available_amis_oss_x86 = list(set(batch_supported_oses) & set(available_amis_oss_x86))
+    batch_available_amis_oss_arm = list(set(batch_supported_oses) & set(available_amis_oss_arm))
+    for index in range(len(batch_supported_oses)):
+        result[f"BATCH_OS_X86_{index}"] = batch_available_amis_oss_x86[
+            (today_number + index) % len(batch_available_amis_oss_x86)
+        ]
+        result[f"BATCH_OS_ARM_{index}"] = batch_available_amis_oss_arm[
+            (today_number + index) % len(batch_available_amis_oss_arm)
         ]
 
     lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
