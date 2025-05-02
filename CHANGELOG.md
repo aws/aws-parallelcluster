@@ -6,6 +6,8 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Slurm to version 24.05.8.
+- Support DCV for US Isolated Regions.
+- Support FSX for Lustre and Ontap in US Isolated region.
 
 3.13.0
 ------
