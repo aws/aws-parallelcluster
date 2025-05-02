@@ -15,7 +15,7 @@ Scheduling:
       Networking:
         PlacementGroup:
           Enabled: true
-          Name: c5n_capacity_reservation
+          Name: {{ capacity_reservation_framework_placement_group }}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
