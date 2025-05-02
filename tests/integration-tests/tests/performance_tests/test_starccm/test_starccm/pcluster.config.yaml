@@ -39,7 +39,7 @@ Scheduling:
           - {{ private_subnet_id }}
         PlacementGroup:
           Enabled: true
-          {% if instance == "c5n.18xlarge" %}Name: c5n_capacity_reservation{% endif %}
+          {% if instance == "c5n.18xlarge" %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
