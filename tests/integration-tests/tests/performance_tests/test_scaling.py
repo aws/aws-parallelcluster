@@ -311,6 +311,9 @@ def _scale_up_and_down(
         target_cluster_size=scaling_target,
     )
 
+    test_job = {"command": "srun sleep 5", "nodes": scaling_target}
+    scheduler_commands.submit_command_and_assert_job_succeeded(test_job)
+
     get_bootstrap_errors(remote_command_executor, cluster.name, request.config.getoption("output_dir"), region)
 
     # Extract scale up duration and timestamp from the monitoring metrics collected above
