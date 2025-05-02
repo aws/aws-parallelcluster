@@ -40,61 +40,42 @@ def _get_os_parameters(config=None, args=None):
     available_amis_oss_arm = _get_available_amis_oss("arm", config=config, args=args)
     result = {"AVAILABLE_AMIS_OSS_X86": available_amis_oss_x86, "AVAILABLE_AMIS_OSS_ARM": available_amis_oss_arm}
     today_number = (date.today() - date(2020, 1, 1)).days
-    for index in range(len(SUPPORTED_OSES)):
-        result[f"OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
-        result[f"OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
+
+    _propagate_os_jinja_variables("", result, today_number, SUPPORTED_OSES)
 
     # DCV doesn't support AL2023. Therefore, the following logic makes sure the DCV jinja parameter is not AL2023
     dcv_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV]
     dcv_supported_arm_oses = [
         os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV
     ]
-    dcv_available_amis_oss_x86 = list(set(dcv_supported_oses) & set(available_amis_oss_x86))
-    dcv_available_amis_oss_arm = list(set(dcv_supported_arm_oses) & set(available_amis_oss_arm))
-    for index in range(len(dcv_supported_oses)):
-        result[f"DCV_OS_X86_{index}"] = dcv_available_amis_oss_x86[
-            (today_number + index) % len(dcv_available_amis_oss_x86)
-        ]
-        result[f"DCV_OS_ARM_{index}"] = dcv_available_amis_oss_arm[
-            (today_number + index) % len(dcv_available_amis_oss_arm)
-        ]
+    _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
 
     batch_supported_oses = SUPPORTED_OSES_FOR_SCHEDULER["awsbatch"]
-    batch_available_amis_oss_x86 = list(set(batch_supported_oses) & set(available_amis_oss_x86))
-    batch_available_amis_oss_arm = list(set(batch_supported_oses) & set(available_amis_oss_arm))
-    for index in range(len(batch_supported_oses)):
-        result[f"BATCH_OS_X86_{index}"] = batch_available_amis_oss_x86[
-            (today_number + index) % len(batch_available_amis_oss_x86)
-        ]
-        result[f"BATCH_OS_ARM_{index}"] = batch_available_amis_oss_arm[
-            (today_number + index) % len(batch_available_amis_oss_arm)
-        ]
+    _propagate_os_jinja_variables("BATCH_", result, today_number, batch_supported_oses)
 
     lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
-    lustre_available_amis_oss_x86 = list(set(lustre_supported_oses) & set(available_amis_oss_x86))
-    lustre_available_amis_oss_arm = list(set(lustre_supported_oses) & set(available_amis_oss_arm))
-    for index in range(len(dcv_supported_oses)):
-        result[f"LUSTRE_OS_X86_{index}"] = lustre_available_amis_oss_x86[
-            (today_number + index) % len(lustre_available_amis_oss_x86)
-        ]
-        result[f"LUSTRE_OS_ARM_{index}"] = lustre_available_amis_oss_arm[
-            (today_number + index) % len(lustre_available_amis_oss_arm)
-        ]
+    _propagate_os_jinja_variables("LUSTRE_", result, today_number, lustre_supported_oses)
 
     no_rhel_oss = [os for os in SUPPORTED_OSES if "rhel" not in os]
-    no_rhel_oss_x86 = list(set(no_rhel_oss) & set(available_amis_oss_x86))
-    no_rhel_oss_arm = list(set(no_rhel_oss) & set(available_amis_oss_arm))
-    for index in range(len(no_rhel_oss)):
-        result[f"NO_RHEL_OS_X86_{index}"] = no_rhel_oss_x86[(today_number + index) % len(no_rhel_oss_x86)]
-        result[f"NO_RHEL_OS_ARM_{index}"] = no_rhel_oss_arm[(today_number + index) % len(no_rhel_oss_arm)]
+    _propagate_os_jinja_variables("NO_RHEL_", result, today_number, no_rhel_oss)
 
     no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
-    no_rocky_oss_x86 = list(set(no_rocky_oss) & set(available_amis_oss_x86))
-    no_rocky_oss_arm = list(set(no_rocky_oss) & set(available_amis_oss_arm))
-    for index in range(len(no_rocky_oss)):
-        result[f"NO_ROCKY_OS_X86_{index}"] = no_rocky_oss_x86[(today_number + index) % len(no_rocky_oss_x86)]
-        result[f"NO_ROCKY_OS_ARM_{index}"] = no_rocky_oss_arm[(today_number + index) % len(no_rocky_oss_arm)]
+    _propagate_os_jinja_variables("NO_ROCKY_", result, today_number, no_rocky_oss)
     return result
+
+
+def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_oses, supported_arm_oses=None):
+    available_amis_oss_x86 = result["AVAILABLE_AMIS_OSS_X86"]
+    available_amis_oss_arm = result["AVAILABLE_AMIS_OSS_ARM"]
+    if supported_arm_oses is None:
+        supported_arm_oses = supported_x86_oses
+    # The OS list is the intersection of supported OSes and available AMIs.
+    # If the intersection is empty, fallback to supported OS to prevent the framework from failing of div by 0
+    available_amis_oss_x86 = list(set(supported_x86_oses) & set(available_amis_oss_x86)) or supported_x86_oses
+    available_amis_oss_arm = list(set(supported_arm_oses) & set(available_amis_oss_arm)) or supported_arm_oses
+    for index in range(len(supported_x86_oses)):
+        result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
+        result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
 
 
 def _get_instance_type_parameters():  # noqa: C901
