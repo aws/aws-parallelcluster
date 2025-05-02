@@ -581,7 +581,7 @@ class TestAsyncUtils(unittest.TestCase):
         (Feature.BATCH, "us-isoWHATEVER", False),
         (Feature.FSX_LUSTRE, "us-isob-east-1", True),
         (Feature.FSX_LUSTRE, "us-isobWHATEVER", True),
-        (Feature.FSX_ONTAP, "us-iso-east-1", False),
+        (Feature.FSX_ONTAP, "us-iso-east-1", True),
         (Feature.FSX_ONTAP, "us-iso-west-1", False),
         (Feature.FSX_ONTAP, "us-isob-east-1", True),
         (Feature.FSX_ONTAP, "us-isoWHATEVER", True),
