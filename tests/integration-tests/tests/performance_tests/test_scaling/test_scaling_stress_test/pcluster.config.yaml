@@ -21,8 +21,10 @@ Scheduling:
           Instances:
             - InstanceType: {{ instance }}
             - InstanceType: t3.large
-            - InstanceType: t3.small
-            - InstanceType: t3.micro
+            - InstanceType: c5.large
+            - InstanceType: c6i.large
+            - InstanceType: m5.large
+            - InstanceType: m6i.large
           MaxCount: {{ max_cluster_size }}
       Networking:
         SubnetIds:
