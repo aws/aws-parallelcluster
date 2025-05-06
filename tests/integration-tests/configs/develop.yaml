@@ -264,7 +264,7 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: [{{ NO_RHEL_OS_X86_1 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
-        - regions: ["use1-az4"]  # There is no reservation for this instance, but it has higher availability in this AZ
+        - regions: [{{ c6gn_16xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_ARM_0 }}]
           instances: ["c6gn.16xlarge"]
           oss: [{{ OS_ARM_0 }}]
           schedulers: ["slurm"]
@@ -428,8 +428,7 @@ test-suites:
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
       dimensions:
-        - regions: ["us-east-2"]  # We used to test it with hpc5a.48xlarge, if that's the case, set it to use2-az2
-          # If want to test with hpc5a.48xlarge, set instance type to [{{ common.instance("instance_type_1") }}]
+        - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_4 }}]
           schedulers: [ "slurm" ]
