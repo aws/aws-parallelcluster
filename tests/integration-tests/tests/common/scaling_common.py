@@ -57,13 +57,9 @@ def retry_if_scaling_target_not_reached(
 ):
     # Return True if we should retry, which is when the target cluster size
     # (either EC2 or scheduler compute nodes) is not reached yet
-    if target_cluster_size == 0:
-        statistics = min
-    else:
-        statistics = max
     return (
-        (use_ec2_limit and statistics(ec2_capacity_time_series) != target_cluster_size)
-        or (use_compute_nodes_limit and statistics(compute_nodes_time_series) != target_cluster_size)
+        (use_ec2_limit and ec2_capacity_time_series[-1] != target_cluster_size)
+        or (use_compute_nodes_limit and compute_nodes_time_series[-1] != target_cluster_size)
         or (use_ec2_limit and max(ec2_capacity_time_series) == 0)
         or (use_compute_nodes_limit and max(compute_nodes_time_series) == 0)
     )
