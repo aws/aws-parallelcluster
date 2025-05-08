@@ -264,7 +264,7 @@ class CWDashboardConstruct(Construct):
     def _add_custom_pcluster_metric_filter(
         self, metric_name, filter_pattern, custom_namespace, metric_value, metric_unit=None
     ):
-        """Adding custom metric filter from named tuple."""
+        """Add custom metric filter from named tuple."""
         metric_filter = logs.CfnMetricFilter(
             scope=self.stack_scope,
             id=metric_name + " Filter",
