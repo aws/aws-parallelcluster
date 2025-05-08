@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.13.1
+------
+
+**CHANGES**
+- Upgrade Slurm to version 24.05.8.
+
 3.13.0
 ------
 
