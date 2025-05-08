@@ -10,6 +10,12 @@ CHANGELOG
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 
+3.13.1
+------
+
+**CHANGES**
+- Upgrade Slurm to version 24.05.8.
+
 3.13.0
 ------
 
