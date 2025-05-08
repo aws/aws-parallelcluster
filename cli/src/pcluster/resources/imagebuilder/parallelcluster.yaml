@@ -192,7 +192,7 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-
+              KERNEL_VERSION=$(uname -a)
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum install -y yum-plugin-versionlock
                 # listing all the packages because wildcard does not work as expected
@@ -209,8 +209,10 @@ phases:
                 elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
                   yum versionlock redhat-release
                 fi
-                echo "Kernel version locked"
+              else
+                apt-mark hold linux-aws* linux-base* linux-headers* linux-image* 
               fi
+              echo "Kernel version is ${!KERNEL_VERSION}"     
 
       # Install prerequisite OS packages
       - name: InstallPrerequisite
@@ -340,7 +342,7 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-
+              BEFORE_KERNEL_VERSION='{{ build.PinKernelVersion.output.stdout }}'
               # Remove kernel version lock
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum versionlock delete kernel kernel-core kernel-modules
@@ -352,12 +354,17 @@ phases:
                 fi
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
-                  yum versionlock delete rocky-release
+                  yum versionlock delete rocky-release rocky-repos
                 elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
                   yum versionlock delete redhat-release
                 fi
-                echo "Kernel version unlocked"
+              else
+                apt-mark unhold linux-aws* linux-base* linux-headers* linux-image* 
               fi
+              if [[ "$(uname -a)" != ${!BEFORE_KERNEL_VERSION} ]] ; then
+                echo "Kernel was upgraded from ${!BEFORE_KERNEL_VERSION} to $(uname -a)"
+              fi
+              echo "Kernel version unlocked"
 
       - name: KeepSSM
         action: ExecuteBash
