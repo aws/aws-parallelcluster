@@ -56,6 +56,290 @@ phases:
 
               echo ${OS}
 
+      # Get input base AMI Architecture
+      - name: OperatingSystemArchitecture
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              ARCH=$(uname -m)
+              case ${ARCH} in
+                'x86_64')
+                  echo 'x86_64'
+                  ;;
+                'aarch64')
+                  echo 'arm64'
+                  ;;
+                *)
+                  echo "The '${ARCH}' architecture is not supported. Failing build." && exit 1
+                  ;;
+              esac
+
+      # Get platform name
+      - name: PlatformName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ test.OperatingSystemName.outputs.stdout }}'
+
+              if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
+                PLATFORM='RHEL'
+              elif [ `echo "${OS}" | grep -E '^ubuntu'` ]; then
+                PLATFORM='DEBIAN'
+              fi
+
+              echo ${PLATFORM}
+
+      ### conditions ###
+      - name: IntelMPISupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              [[ {{ test.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]] && echo "true" || echo "false"
+
+      - name: FabricManagerSupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              [[ {{ test.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "false" || echo "true"
+
+      - name: LustreSupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              ARCHITECTURE='{{ test.OperatingSystemArchitecture.outputs.stdout }}'
+              OS='{{ test.OperatingSystemName.outputs.stdout }}'
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+                echo "true"
+              else
+                echo "false"
+              fi
+
+      ### versions ###
+      - name: MungeVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(jq '.default.cluster.munge.munge_version' {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: NvidiaDriverVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(jq '.default.cluster.nvidia.driver_version' {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: CudaVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(jq '.default.cluster.nvidia.cuda.version' {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: CudaSamplesDir
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              cuda_ver="{{ test.CudaVersion.outputs.stdout }}"
+              if [ ${cuda_ver} \> '11.4' ]; then
+                PATTERN=$(jq '.default.cluster.nvidia.cuda_samples_version' {{ CookbookDefaultFile }})
+                VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+                echo cuda-samples-${VERSION}
+              else
+                echo cuda-${cuda_ver}
+              fi
+
+      ### utils ###
+      - name: PatchInSpecProfiles
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              sed -Ei "s#path: cookbooks/aws-parallelcluster#path: /etc/chef/cookbooks/aws-parallelcluster#g" /etc/chef/cookbooks/aws-parallelcluster-*/test/inspec.yml
+              echo "InSpec profiles patched"
+
+      - name: NvidiaEnabled
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              NVIDIA_ENABLED=$(cat /etc/parallelcluster/image_dna.json | jq -r '.cluster.nvidia.enabled')
+              echo "${NVIDIA_ENABLED}"
+
+      - name: HasGPU
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              HAS_GPU=$(lspci | grep -o "NVIDIA") || HAS_GPU="false"
+              echo "${HAS_GPU}"
+
+      - name: Munge
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "check munge installed"
+              munge --version | grep {{ test.MungeVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "Check munge version failed" && exit 1
+              echo "Munge test passed"
+
+      - name: EFAIntelMPI
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              PLATFORM='{{ test.PlatformName.outputs.stdout }}'
+
+              if [ {{ test.IntelMPISupported.outputs.stdout }} == true ]; then
+                echo "Checking efa packages installed..."
+                if [ ${PLATFORM} == RHEL ]; then
+                  rpm -qa | grep libfabric && rpm -qa | grep efa-
+                  [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
+
+                  echo "Checking Intel MPI 20xx installed and module available..."
+                  unset MODULEPATH
+                  source /etc/profile.d/modules.sh
+                  (module avail intelmpi)2>&1 | grep "/opt/intel/mpi/20.*/modulefiles"
+                  [[ $? -ne 0 ]] && echo "Check Intel MPI failed" && exit 1
+                else
+                  dpkg -l | grep libfabric && modinfo efa | grep efa && [ -d /opt/amazon/efa ]
+                  [[ $? -ne 0 ]] && echo "Check efa deb failed" && exit 1
+                fi
+              fi
+              echo "EFA test passed"
+
+      - name: NvidiaCudaFabricManager
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              PLATFORM='{{ test.PlatformName.outputs.stdout }}'
+
+              if [[ {{ test.NvidiaEnabled.outputs.stdout }} == 'no' ]]; then
+                echo "Nvidia recipe not enabled, skipping." && exit 0
+              fi
+              if [ {{ test.HasGPU.outputs.stdout }} == "false" ]; then
+                echo "No GPU detected, skipping." && exit 0
+              fi
+
+              driver_ver="{{ test.NvidiaDriverVersion.outputs.stdout }}"
+              export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin"
+
+              echo "Testing Nvidia driver version"
+              driver_output=$(nvidia-smi | grep -E -o "Driver Version: [0-9.]+")
+              [[ "${driver_output}" != "Driver Version: ${driver_ver}" ]] && "ERROR Installed version ${driver_output} but expected ${driver_ver}" && exit 1
+              echo "Correctly installed Nvidia ${driver_output}"
+
+              if [ {{ test.FabricManagerSupported.outputs.stdout }} == "true" ]; then
+                echo "Testing Nvidia Fabric Manager version"
+                nvidia_driver_version=$(modinfo -F version nvidia)
+                if [ "${PLATFORM}" == "RHEL" ]; then
+                  yum list installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                  yum versionlock list | grep "nvidia-fabric.*manager" || exit 1
+                else
+                  apt list --installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                  apt-mark showhold | grep "nvidia-fabric.*manager" || exit 1
+                fi
+                echo "Fabric Manager match Nvidia driver and version is locked"
+              fi
+
+              echo "Testing CUDA installation with nvcc"
+              cuda_ver="{{ test.CudaVersion.outputs.stdout }}"
+              export PATH=/usr/local/cuda-${cuda_ver}/bin:${PATH}
+              export LD_LIBRARY_PATH=/usr/local/cuda-${cuda_ver}/lib64:${LD_LIBRARY_PATH}
+              cuda_output=$(nvcc -V | grep -E -o "release [0-9]+.[0-9]+")
+              [[ "${cuda_output}" != "release ${cuda_ver}" ]] && echo "ERROR Installed version ${cuda_output} but expected ${cuda_ver}" && exit 1
+              echo "Correctly installed CUDA ${cuda_output}"
+
+              echo "Testing CUDA with deviceQuery..."
+              if [ {{ test.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
+                /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
+                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+              else
+                 cd /usr/local/{{ test.CudaSamplesDir.outputs.stdout }}//Samples/1_Utilities/deviceQuery
+                 if [ {{ test.OperatingSystemName.outputs.stdout }} == 'alinux2' ]; then
+                   make
+                   /usr/local/{{ test.CudaSamplesDir.outputs.stdout }}/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
+                 else
+                   mkdir build && cd build
+                   cmake .. \
+                    -DCMAKE_CUDA_ARCHITECTURES="75;80;86" \
+                    -DCMAKE_CUDA_COMPILER=/usr/local/cuda-${cuda_ver}/bin/nvcc \
+                    -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-${cuda_ver} \
+                    -DCMAKE_PREFIX_PATH=/usr/local/cuda-cuda-${cuda_ver} \
+                     ${CMAKE_ARGS}
+                   make
+                   ./deviceQuery | grep -o "Result = PASS"
+                 fi
+                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+              fi
+              echo "CUDA deviceQuery test passed"
+
+      - name: FSxLustre
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS='{{ test.OperatingSystemName.outputs.stdout }}'
+
+              [[ $? -ne 0 ]] && echo "Check for Lustre client failed" && exit 1
+              echo "FSx Lustre test passed"
+
+      - name: Python
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "Checking python3 installed..."
+              which python3
+              [[ $? -ne 0 ]] && echo "Python3 is not installed" && exit 1
+              echo "Python test passed"
+
+      - name: DPKG
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              PLATFORM='{{ test.PlatformName.outputs.stdout }}'
+              if [ ${PLATFORM} != DEBIAN ]; then
+                echo "Checking dpkg is not installed on non-debian OS..."
+                if command -v dpkg &> /dev/null; then
+                  echo "ERROR: dpkg found on non-Debian system" && exit 1
+                fi
+                echo "dpkg test passed"
+              fi
+
       ### versions ###
       - name: PythonVersion
         action: ExecuteBash
@@ -119,7 +403,7 @@ phases:
               set -vx
               echo "Performing InSpec tests for AwsBatch on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster-awsbatch
-              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for AwsBatch failed" && exit 1
               echo "InSpec tests for AwsBatch passed"
 
@@ -131,7 +415,7 @@ phases:
               set -vx
               echo "Performing InSpec tests for platform on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster-platform
-              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for platform failed" && exit 1
               echo "InSpec tests for platform passed"
 
@@ -143,7 +427,7 @@ phases:
               set -vx
               echo "Performing InSpec tests for environment on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster-environment
-              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for environment failed" && exit 1
               echo "InSpec tests for environment passed"
 
@@ -155,7 +439,7 @@ phases:
               set -vx
               echo "Performing InSpec tests for compute fleet on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster-computefleet
-              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for compute fleet failed" && exit 1
               echo "InSpec tests for compute fleet passed"
 
@@ -167,7 +451,7 @@ phases:
               set -vx
               echo "Performing InSpec tests for shared cookbook on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster-shared
-              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for shared cookbook failed" && exit 1
               echo "InSpec tests for shared cookbook passed"
 
@@ -179,6 +463,6 @@ phases:
               set -vx
               echo "Performing InSpec tests for slurm on the AMI..."
               cd /etc/chef/cookbooks/aws-parallelcluster-slurm
-              inspec exec test --profiles-path . --controls /tag:testami/ --no-distinct-exit
+              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
               [[ $? -ne 0 ]] && echo "InSpec tests for slurm failed" && exit 1
               echo "InSpec tests for slurm passed"
