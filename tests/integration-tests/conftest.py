@@ -139,6 +139,7 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
+    parser.addoption("--pcluster-installer-path", help="Path to ParallelCluster installer")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
     parser.addoption("--pre-install", help="url to pre install script")

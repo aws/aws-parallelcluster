@@ -12,6 +12,7 @@
 import datetime
 import json
 import logging
+import os as os_lib
 import re
 import tarfile
 import tempfile
@@ -31,6 +32,7 @@ from utils import (
     check_status,
     get_cluster_nodes_instance_ids,
     instance_stream_name,
+    run_command,
 )
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
@@ -38,10 +40,31 @@ from tests.common.utils import get_installed_parallelcluster_version, retrieve_l
 
 
 @pytest.mark.usefixtures("instance")
+@pytest.mark.parametrize("use_pcluster_installer", [True, False])
 def test_slurm_cli_commands(
-    request, scheduler, region, os, pcluster_config_reader, clusters_factory, s3_bucket_factory
+    request,
+    scheduler,
+    region,
+    os,
+    pcluster_config_reader,
+    clusters_factory,
+    s3_bucket_factory,
+    monkeypatch,
+    use_pcluster_installer,
 ):
     """Test pcluster cli commands are working."""
+    if use_pcluster_installer:
+        installer_path = request.config.getoption("pcluster_installer_path")
+        if installer_path:
+            if "ERROR" in installer_path:
+                pytest.fail(f"Installer path is not valid: {installer_path}")
+            monkeypatch.setenv("PATH", installer_path + ":" + os_lib.environ["PATH"])
+            logging.info("Using installer: %s", run_command("which pcluster"))
+        else:
+            pytest.skip("Skipping test with installer because installer_path is not provided.")
+    else:
+        logging.info("Using pcluster python package: %s", run_command("which pcluster"))
+
     # Use long scale down idle time so we know nodes are terminated by pcluster stop
     cluster_config = pcluster_config_reader(scaledown_idletime=60)
 
