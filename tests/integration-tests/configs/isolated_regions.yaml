@@ -140,6 +140,20 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+  dcv:
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        # DCV on GPU enabled instance
+        - regions: {{ REGIONS }}
+          instances: ["g4dn.2xlarge"]
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+    test_dcv.py::test_dcv_with_remote_access:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -417,6 +431,12 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+    test_efs.py::test_efs_access_point:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_raid.py::test_raid_fault_tolerance_mode:
       dimensions:
         - regions: {{ REGIONS }}
@@ -576,6 +596,13 @@ test-suites:
           schedulers: {{ SCHEDULERS }}
   proxy:
     test_proxy.py::test_proxy:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
+  pyxis:
+    test_pyxis.py::test_pyxis:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ INSTANCES }}
