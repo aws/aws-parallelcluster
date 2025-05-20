@@ -10,8 +10,7 @@ constants:
 phases:
   - name: test
     steps:
-      ### basic ###
-      - name: OperatingSystemRelease
+      - name: OSRelease
         action: ExecuteBash
         inputs:
           commands:
@@ -25,14 +24,13 @@ phases:
                 echo "The file '${FILE}' does not exist. Failing build." && exit 1
               fi
 
-      # Get uniformed OS name
-      - name: OperatingSystemName
+      - name: OSName
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              RELEASE='{{ test.OperatingSystemRelease.outputs.stdout }}'
+              RELEASE='{{ test.OSRelease.outputs.stdout }}'
 
               if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
@@ -58,8 +56,7 @@ phases:
 
               echo ${OS}
 
-      # Get input base AMI Architecture
-      - name: OperatingSystemArchitecture
+      - name: OSArchitecture
         action: ExecuteBash
         inputs:
           commands:
@@ -78,14 +75,13 @@ phases:
                   ;;
               esac
 
-      # Get platform name
       - name: PlatformName
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              OS='{{ test.OperatingSystemName.outputs.stdout }}'
+              OS='{{ test.OSName.outputs.stdout }}'
 
               if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
                 PLATFORM='RHEL'
@@ -95,14 +91,13 @@ phases:
 
               echo ${PLATFORM}
 
-      ### conditions ###
       - name: IntelMPISupported
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              [[ {{ test.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]] && echo "true" || echo "false"
+              [[ {{ test.OSArchitecture.outputs.stdout }} != 'arm64' ]] && echo "true" || echo "false"
 
       - name: FabricManagerSupported
         action: ExecuteBash
@@ -110,7 +105,7 @@ phases:
           commands:
             - |
               set -v
-              [[ {{ test.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]] && echo "false" || echo "true"
+              [[ {{ test.OSArchitecture.outputs.stdout }} == 'arm64' ]] && echo "false" || echo "true"
 
       - name: LustreSupported
         action: ExecuteBash
@@ -118,8 +113,8 @@ phases:
           commands:
             - |
               set -v
-              ARCHITECTURE='{{ test.OperatingSystemArchitecture.outputs.stdout }}'
-              OS='{{ test.OperatingSystemName.outputs.stdout }}'
+              ARCHITECTURE='{{ test.OSArchitecture.outputs.stdout }}'
+              OS='{{ test.OSName.outputs.stdout }}'
               if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
@@ -137,7 +132,7 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
-      - name: NvidiaDriverVersion
+      - name: NvidiaVersion
         action: ExecuteBash
         inputs:
           commands:
@@ -172,7 +167,6 @@ phases:
                 echo cuda-${cuda_ver}
               fi
 
-      ### utils ###
       - name: PatchInSpecProfiles
         action: ExecuteBash
         inputs:
@@ -252,7 +246,7 @@ phases:
                 echo "No GPU detected, skipping." && exit 0
               fi
 
-              driver_ver="{{ test.NvidiaDriverVersion.outputs.stdout }}"
+              driver_ver="{{ test.NvidiaVersion.outputs.stdout }}"
               export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin"
 
               echo "Testing Nvidia driver version"
@@ -282,16 +276,16 @@ phases:
               echo "Correctly installed CUDA ${cuda_output}"
 
               echo "Testing CUDA with deviceQuery..."
-              if [ {{ test.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
+              if [ {{ test.OSArchitecture.outputs.stdout }} != 'arm64' ]; then
                 /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               else
                  cd /usr/local/{{ test.CudaSamplesDir.outputs.stdout }}//Samples/1_Utilities/deviceQuery
-                 if [ {{ test.OperatingSystemName.outputs.stdout }} == 'alinux2' ]; then
+                 if [ {{ test.OSName.outputs.stdout }} == 'alinux2' ]; then
                    make
                    /usr/local/{{ test.CudaSamplesDir.outputs.stdout }}/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
                  else
-                   if [ {{ test.OperatingSystemName.outputs.stdout }} == 'ubuntu2004' ]; then
+                   if [ {{ test.OSName.outputs.stdout }} == 'ubuntu2004' ]; then
                      MINI_CMAKE_VER_REQ=$(sed -n 's/cmake_minimum_required(\(VERSION \)\?\([0-9.]*\)).*/\2/p' CMakeLists.txt)
                      COOKBOOK_ENV=$(jq '.default.cluster.cookbook_virtualenv_path' {{ CookbookDefaultFile }})
                      COOKBOOK_ENV_PATH=$(echo ${COOKBOOK_ENV} | tr -d '\n' | cut -d = -f 2 | xargs)
@@ -321,13 +315,13 @@ phases:
               fi
               echo "CUDA deviceQuery test passed"
 
-      - name: FSxLustre
+      - name: Lustre
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -vx
-              OS='{{ test.OperatingSystemName.outputs.stdout }}'
+              OS='{{ test.OSName.outputs.stdout }}'
 
               [[ $? -ne 0 ]] && echo "Check for Lustre client failed" && exit 1
               echo "FSx Lustre test passed"
@@ -358,7 +352,6 @@ phases:
                 echo "dpkg test passed"
               fi
 
-      ### versions ###
       - name: PythonVersion
         action: ExecuteBash
         inputs:
@@ -369,7 +362,6 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
-      ### utils ###
       - name: NvSwitches
         action: ExecuteBash
         inputs:
@@ -412,75 +404,23 @@ phases:
               [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
               echo "CloudWatch test passed"
 
-
-      - name: InSpecTestsForAwsBatch
+      - name: InSpecTests
         action: ExecuteBash
+        loop:
+          name: TestName
+          forEach:
+            - aws-parallelcluster-awsbatch
+            - aws-parallelcluster-platform
+            - aws-parallelcluster-environment
+            - aws-parallelcluster-computefleet
+            - aws-parallelcluster-shared
+            - aws-parallelcluster-slurm
         inputs:
           commands:
             - |
               set -vx
-              echo "Performing InSpec tests for AwsBatch on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster-awsbatch
+              echo "Performing InSpec tests on the AMI: {{ loop.value }}..."
+              cd /etc/chef/cookbooks/{{ loop.value }}
               inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec tests for AwsBatch failed" && exit 1
-              echo "InSpec tests for AwsBatch passed"
-
-      - name: InSpecTestsForPlatform
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              echo "Performing InSpec tests for platform on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster-platform
-              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec tests for platform failed" && exit 1
-              echo "InSpec tests for platform passed"
-
-      - name: InSpecTestsForEnvironment
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              echo "Performing InSpec tests for environment on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster-environment
-              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec tests for environment failed" && exit 1
-              echo "InSpec tests for environment passed"
-
-      - name: InSpecTestsForComputeFleet
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              echo "Performing InSpec tests for compute fleet on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster-computefleet
-              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec tests for compute fleet failed" && exit 1
-              echo "InSpec tests for compute fleet passed"
-
-      - name: InSpecTestsForShared
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              echo "Performing InSpec tests for shared cookbook on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster-shared
-              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec tests for shared cookbook failed" && exit 1
-              echo "InSpec tests for shared cookbook passed"
-
-      - name: InSpecTestsForSlurm
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              echo "Performing InSpec tests for slurm on the AMI..."
-              cd /etc/chef/cookbooks/aws-parallelcluster-slurm
-              inspec exec test --profiles-path . --controls /tag:install/ /tag:testami/ --no-distinct-exit
-              [[ $? -ne 0 ]] && echo "InSpec tests for slurm failed" && exit 1
-              echo "InSpec tests for slurm passed"
+              [[ $? -ne 0 ]] && echo "InSpec tests failed: {{ loop.value }}" && exit 1
+              echo "InSpec tests passed: {{ loop.value }}"
