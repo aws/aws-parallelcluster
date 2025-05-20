@@ -410,7 +410,7 @@ test-suites:
           schedulers: ["awsbatch"]
     test_awsbatch.py::test_awsbatch_defaults:
       dimensions:
-        - regions: ["ap-northeast-1"]
+        - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
