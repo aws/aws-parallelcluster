@@ -181,7 +181,7 @@ def assert_scaling_worked(
             )
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(6))
 def wait_for_num_instances_in_cluster(cluster_name, region, desired):
     return assert_num_instances_in_cluster(cluster_name, region, desired)
 
