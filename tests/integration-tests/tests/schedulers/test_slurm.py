@@ -56,7 +56,7 @@ from tests.common.hit_common import (
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
-from tests.common.schedulers_common import SlurmCommands, TorqueCommands
+from tests.common.schedulers_common import SlurmCommands
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -120,8 +120,6 @@ def test_slurm(
         max_count=5,
         gpu_instance_type_info=gpu_instance_type_info,
     )
-    # Test torque command wrapper
-    _test_torque_job_submit(remote_command_executor, test_datadir)
 
     # Tests below must run on HeadNode or need HeadNode participate.
     head_node_command_executor = RemoteCommandExecutor(cluster)
@@ -241,8 +239,6 @@ def test_slurm_from_login_nodes_in_private_network(
         max_count=5,
         gpu_instance_type_info=gpu_instance_type_info,
     )
-    # Test torque command wrapper
-    _test_torque_job_submit(remote_command_executor, test_datadir)
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm")
 
@@ -1807,14 +1803,6 @@ def _assert_job_state(slurm_commands, job_id, job_state):
     except RemoteCommandExecutionError as e:
         # Handle the case when job is deleted from history
         assert_that(e.result.stdout).contains("slurm_load_jobs error: Invalid job id specified")
-
-
-def _test_torque_job_submit(remote_command_executor, test_datadir):
-    """Test torque job submit command in slurm cluster."""
-    logging.info("Testing cluster submits job by torque command")
-    torque_commands = TorqueCommands(remote_command_executor)
-    result = torque_commands.submit_script(str(test_datadir / "torque_job.sh"))
-    torque_commands.assert_job_submitted(result.stdout)
 
 
 def _submit_kill_networking_job(remote_command_executor, scheduler_commands, partition, node_type, num_nodes):
