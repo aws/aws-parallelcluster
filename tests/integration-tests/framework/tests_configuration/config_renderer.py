@@ -275,7 +275,7 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 instance_type, instance_type_parameters, os, os_parameters
             )
             end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
-            candidate_regions = ["us-east-1", "us-west-2", "eu-west-1"]
+            candidate_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1"]
             if _find_and_modify_existing_capacity_reservation(
                 az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
             ):
