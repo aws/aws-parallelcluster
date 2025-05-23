@@ -39,14 +39,17 @@ class S3Client(Boto3Client):
                 error_code=client_error.response["Error"]["Code"],
             )
 
-    def head_bucket(self, bucket_name):
+    def head_bucket(self, bucket_name, expected_bucket_owner=None):
         """Retrieve metadata for a bucket without returning the object itself."""
         try:
-            return self._client.head_bucket(Bucket=bucket_name)
+            if expected_bucket_owner:
+                return self._client.head_bucket(Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner)
+            else:
+                return self._client.head_bucket(Bucket=bucket_name)
         except ClientError as client_error:
             raise AWSClientError(
                 function_name="head_bucket",
-                message=_process_s3_bucket_error(client_error, bucket_name),
+                message=_process_s3_bucket_error(client_error, bucket_name, expected_bucket_owner),
                 error_code=client_error.response["Error"]["Code"],
             )
 
@@ -148,6 +151,11 @@ def _process_s3_bucket_error(client_error, bucket_name, expected_bucket_owner=No
     elif expected_bucket_owner and error_code == "403" and error_message == "Forbidden" and object_name:
         message = (
             f"Failed when accessing object '{object_name}' from bucket '{bucket_name}'. This can be due to "
+            f"bucket owner not matching the expected one '{expected_bucket_owner}'"
+        )
+    elif expected_bucket_owner and error_code == "403" and error_message == "Forbidden":
+        message = (
+            f"Failed in accessing bucket '{bucket_name}'. This can be due to "
             f"bucket owner not matching the expected one '{expected_bucket_owner}'"
         )
     elif object_name and error_code == "404" and error_message == "Not Found":
