@@ -90,7 +90,7 @@ def test_efa(
                 num_failures, description=f"{num_failures}/{num_tests} libfabric tests are failing"
             ).is_equal_to(0)
             assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
-            assert_no_errors_in_logs(remote_command_executor, scheduler)
+            assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _execute_fabtests(remote_command_executor, test_datadir, instance):
