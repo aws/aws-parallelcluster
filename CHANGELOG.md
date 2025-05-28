@@ -20,7 +20,6 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix a bug in the installation of ARM Performance Library that was causing the build image fail in isolated environments.
-- Fix a bug that was causing compute node self‑termination to hang on Ubuntu 24.04 nodes.
 
 3.13.0
 ------
