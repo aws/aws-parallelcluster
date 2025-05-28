@@ -16,10 +16,10 @@ CHANGELOG
 - Upgrade amazon-efs-utils to version 2.3.1 (from v2.1.0) for non-Amazon Linux AMI's.
 - Support DCV in us-isob-east-1 and us-iso-east-1.
 - Support FSX for Lustre and Ontap in us-isob-east-1 and us-iso-east-1.
+- Ensure kernel consistency throughout ParallelCluster image build by pinning at the beginning and unpinning at completion.
 
 **BUG FIXES**
 - Fix a bug in the installation of ARM Performance Library that was causing the build image fail in isolated environments.
-- Fix a bug that was causing compute node self‑termination to hang on Ubuntu 24.04 nodes.
 
 3.13.0
 ------

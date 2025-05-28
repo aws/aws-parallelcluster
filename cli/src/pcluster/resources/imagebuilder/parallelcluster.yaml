@@ -131,7 +131,7 @@ phases:
                set -v
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-               if [ `echo "${!OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
+               if [ `echo "${!OS}" | grep -E '^(alinux|rhel|rocky)'` ]; then
                  PLATFORM='RHEL'
                elif [ `echo "${!OS}" | grep -E '^ubuntu'` ]; then
                  PLATFORM='DEBIAN'
@@ -169,7 +169,7 @@ phases:
               set -v
               if [ ${CfnParamUpdateOsAndReboot} == false ]; then
                 RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
-                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu|rhel|rocky)'` ]; then
+                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|ubuntu|rhel|rocky)'` ]; then
                   echo "This component does not support '${!RELEASE}'. Failing build."
                   exit {{ FailExitCode }}
                 fi
@@ -183,6 +183,36 @@ phases:
                   fi
                 fi
               fi
+
+      - name: PinKernelVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              KERNEL_VERSION=$(uname -a)
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                yum install -y yum-plugin-versionlock
+                # listing all the packages because wildcard does not work as expected
+                yum versionlock kernel kernel-core kernel-modules
+
+                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
+                  yum versionlock kernel-abi-whitelists
+                else
+                  yum versionlock kernel-abi-stablelists
+                fi
+
+                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
+                  yum versionlock rocky-release rocky-repos
+                elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
+                  yum versionlock redhat-release
+                fi
+              else
+                apt-mark hold linux-aws* linux-base* linux-headers* linux-image* 
+              fi
+              echo "Kernel version is ${!KERNEL_VERSION}"     
 
       # Install prerequisite OS packages
       - name: InstallPrerequisite
@@ -204,12 +234,10 @@ phases:
                   fi
                 fi
                 yum -y update krb5-libs
-                yum -y groupinstall development && sudo yum -y install curl wget jq
-              
-
-                if [[ ${!OS} =~ ^centos ]]; then
-                  /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
-                  grub2-mkconfig -o /boot/grub2/grub.cfg
+                yum -y groupinstall development && sudo yum -y install wget jq
+                if [[ ${!OS} != alinux2023 ]]; then
+                  # Do not install curl on al2023 since curl-minimal-8.5.0-1.amzn2023* is already shipped and conflicts.
+                  yum -y install curl
                 fi
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ "${CfnParamUpdateOsAndReboot}" == "false" ]]; then
@@ -309,6 +337,34 @@ phases:
             content: |
               {{ build.PClusterCookbookVersionName.outputs.stdout }}
             overwrite: true
+
+      - name: RemoveKernelPin
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              # Remove kernel version lock
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                yum versionlock delete kernel kernel-core kernel-modules
+
+                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
+                  yum versionlock delete kernel-abi-whitelists
+                else
+                  yum versionlock delete kernel-abi-stablelists
+                fi
+
+                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
+                  yum versionlock delete rocky-release rocky-repos
+                elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
+                  yum versionlock delete redhat-release
+                fi
+              else
+                apt-mark unhold linux-aws* linux-base* linux-headers* linux-image* 
+              fi
+              echo "Kernel version unlocked"
 
       - name: KeepSSM
         action: ExecuteBash
