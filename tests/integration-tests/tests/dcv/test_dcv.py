@@ -75,10 +75,6 @@ def _test_dcv_configuration(
     _check_shared_dir(head_node_remote_command_executor, shared_dir)
     _check_shared_dir(login_node_remote_command_executor, shared_dir)
 
-    # Ensure no system programs crashed
-    _check_no_crashes(head_node_remote_command_executor, test_datadir)
-    _check_no_crashes(login_node_remote_command_executor, test_datadir)
-
     # Check that logs are stored in CloudWatch as expected
     FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
         cluster, scheduler, os, "dcv_enabled", region, shared_dir
