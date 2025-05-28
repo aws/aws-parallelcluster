@@ -234,7 +234,11 @@ phases:
                   fi
                 fi
                 yum -y update krb5-libs
-                yum -y groupinstall development && sudo yum -y install curl wget jq
+                yum -y groupinstall development && sudo yum -y install wget jq
+                if [[ ${!OS} != alinux2023 ]]; then
+                  # Do not install curl on al2023 since curl-minimal-8.5.0-1.amzn2023* is already shipped and conflicts.
+                  yum -y install curl
+                fi
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 if [[ "${CfnParamUpdateOsAndReboot}" == "false" ]]; then
                   # disable apt-daily.timer to avoid dpkg lock
