@@ -277,7 +277,7 @@ phases:
                     yum install -y ./${!PACKAGE}.rpm
                   fi
                 else
-                  yum -y install kernel-devel
+                  yum -y install kernel-devel-$(uname -r)
                 fi
 
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
