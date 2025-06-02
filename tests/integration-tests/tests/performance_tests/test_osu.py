@@ -256,7 +256,7 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
 
             percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
 
-            outcome = "DEGRADATION" if percentage_diff > 0 else "IMPROVEMENT"
+            outcome = "DEGRADATION" if is_failure else "IMPROVEMENT"
 
             message = (
                 f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "
