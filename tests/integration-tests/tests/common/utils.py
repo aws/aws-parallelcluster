@@ -502,6 +502,11 @@ def get_compute_ip_to_num_files(remote_command_executor, slurm_commands):
     instance_ip_to_num_files = {}
     for node_name in compute_node_names:
         compute_node_instance_ip = slurm_commands.get_node_addr(node_name)
+        install_cmd = (
+            f"ssh -q {compute_node_instance_ip} 'sudo yum install -y lsof "
+            "|| sudo apt-get update && sudo apt-get install -y lsof'"
+        )
+        remote_command_executor.run_remote_command(install_cmd, raise_on_error=False)
         lsof_cmd = f"ssh -q {compute_node_instance_ip} 'sudo lsof -p $(pgrep computemgtd) | wc -l'"
         num_files = remote_command_executor.run_remote_command(lsof_cmd).stdout
         instance_ip_to_num_files[compute_node_instance_ip] = num_files
