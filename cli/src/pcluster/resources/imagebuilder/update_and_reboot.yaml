@@ -279,6 +279,7 @@ phases:
                     yum install -y ./${!PACKAGE}.rpm
                   fi
                 else
+                  yum -y install kernel-headers-$(uname -r)
                   yum -y install kernel-devel-$(uname -r)
                 fi
 
