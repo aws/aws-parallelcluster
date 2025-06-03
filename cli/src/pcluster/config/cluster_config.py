@@ -813,10 +813,11 @@ class _QueueNetworking(_BaseNetworking, SubnetsMixin):
 class SlurmQueueNetworking(_QueueNetworking):
     """Represent the networking configuration for the slurm Queue."""
 
-    def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, **kwargs):
+    def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, enable_single_availability_zone: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.placement_group = placement_group or PlacementGroup(implied=True)
         self.proxy = proxy
+        self.enable_single_availability_zone = enable_single_availability_zone
 
 
 class AwsBatchQueueNetworking(_QueueNetworking):
@@ -2572,6 +2573,8 @@ class AllocationStrategy(Enum):
     LOWEST_PRICE = "lowest-price"
     CAPACITY_OPTIMIZED = "capacity-optimized"
     PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
+    PRIORITIZED = "prioritized"
+    CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
 
 
 class SlurmQueue(_CommonQueue):

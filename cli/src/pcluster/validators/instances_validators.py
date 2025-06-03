@@ -221,17 +221,18 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
     """Confirm Allocation Strategy matches with the Capacity Type."""
 
     def _validate(self, compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum, **kwargs):
-        """On-demand Capacity type only supports "lowest-price" allocation strategy."""
+        """On-demand Capacity type only supports "lowest-price" and "prioritized" allocation strategy."""
         if (
             capacity_type == cluster_config.CapacityType.ONDEMAND
             and allocation_strategy
             and allocation_strategy != cluster_config.AllocationStrategy.LOWEST_PRICE
+            and allocation_strategy != cluster_config.AllocationStrategy.PRIORITIZED
         ):
             alloc_strategy_msg = allocation_strategy.value if allocation_strategy else "not set"
             self._add_failure(
                 f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType but the Allocation "
                 f"Strategy specified is {alloc_strategy_msg}. OnDemand CapacityType can only use '"
-                f"{cluster_config.AllocationStrategy.LOWEST_PRICE.value}' allocation strategy.",
+                f"{cluster_config.AllocationStrategy.LOWEST_PRICE.value}' or '{cluster_config.AllocationStrategy.PRIORITIZED.value}' allocation strategy.",
                 FailureLevel.ERROR,
             )
         if capacity_type == cluster_config.CapacityType.CAPACITY_BLOCK and allocation_strategy:
@@ -239,6 +240,14 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
                 f"Compute Resource {compute_resource_name} is using a CAPACITY_BLOCK CapacityType but the "
                 f"Allocation Strategy specified is {allocation_strategy.value}. "
                 "When using CAPACITY_BLOCK CapacityType, allocation strategy should not be set.",
+                FailureLevel.ERROR,
+            )
+        if capacity_type == cluster_config.CapacityType.SPOT and allocation_strategy == cluster_config.AllocationStrategy.PRIORITIZED:
+            self._add_failure(
+                f"Compute Resource {compute_resource_name} is using a SPOT CapacityType but the "
+                f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType should use "
+                f"'{cluster_config.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED.value}' instead of '{cluster_config.AllocationStrategy.PRIORITIZED.value}' "
+                f"allocation strategy.",
                 FailureLevel.ERROR,
             )
 
