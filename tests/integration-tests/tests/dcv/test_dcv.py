@@ -18,7 +18,14 @@ import requests
 from assertpy import assert_that
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from utils import add_keys_to_known_hosts, check_node_security_group, get_username_for_os, remove_keys_from_known_hosts
+from utils import (
+    add_keys_to_known_hosts,
+    check_node_security_group,
+    get_cidr_from_ip,
+    get_local_ip,
+    get_username_for_os,
+    remove_keys_from_known_hosts,
+)
 
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
 
@@ -27,17 +34,32 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 
 def test_dcv_configuration(region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
+    host_ip = get_local_ip()
+    dcv_allowed_ips = get_cidr_from_ip(host_ip) if host_ip else "0.0.0.0/0"
     _test_dcv_configuration(
-        8443, "0.0.0.0/0", region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
+        8443, dcv_allowed_ips, region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
     )
 
 
-@pytest.mark.parametrize("dcv_port, access_from", [(8443, "0.0.0.0/0"), (5678, "192.168.1.1/32")])
+@pytest.mark.parametrize("dcv_port, access_from", [(8443, "PLACEHOLDER_TEST_HOST_CIDR"), (5678, "192.168.1.1/32")])
 def test_dcv_with_remote_access(
     dcv_port, access_from, region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
 ):
+    if access_from == "PLACEHOLDER_TEST_HOST_CIDR":
+        host_ip = get_local_ip()
+        dcv_allowed_ips = get_cidr_from_ip(host_ip) if host_ip else "0.0.0.0/0"
+    else:
+        dcv_allowed_ips = access_from
     _test_dcv_configuration(
-        dcv_port, access_from, region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
+        dcv_port,
+        dcv_allowed_ips,
+        region,
+        instance,
+        os,
+        scheduler,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
     )
 
 
