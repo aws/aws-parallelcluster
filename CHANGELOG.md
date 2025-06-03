@@ -20,6 +20,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix a bug in the installation of ARM Performance Library that was causing the build image fail in isolated environments.
+- Fix a bug that was preventing the script 'update_directory_service_password.sh' from updating the AD password.
 
 3.13.0
 ------
