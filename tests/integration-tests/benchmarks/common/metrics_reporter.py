@@ -29,7 +29,7 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     metrics_pub = MetricsPublisher(region)
     compute_nodes_time_series = []
     ec2_nodes_time_series = []
-    timestamps = [datetime.datetime.utcnow()]
+    timestamps = [datetime.datetime.now(datetime.timezone.utc)]
 
     @retry(
         # Retry until EC2 and Scheduler capacities scale down to 0
@@ -61,7 +61,7 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
             ):
                 ec2_nodes_time_series.append(ec2_instances_count)
                 compute_nodes_time_series.append(compute_nodes)
-                timestamps.append(datetime.datetime.utcnow())
+                timestamps.append(datetime.datetime.now(datetime.timezone.utc))
         except Exception as e:
             logging.warning("Failed while watching nodes allocation with exception: %s", e)
             raise
@@ -72,7 +72,7 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
         # ignoring this error in order to perform assertions on the collected data.
         pass
 
-    end_time = datetime.datetime.utcnow()
+    end_time = datetime.datetime.now(datetime.timezone.utc)
     logging.info(
         "Monitoring completed: compute_nodes_time_series [ %s ], timestamps [ %s ]",
         " ".join(map(str, compute_nodes_time_series)),

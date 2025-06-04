@@ -52,7 +52,7 @@ def test_scheduler_performance(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
-    start_time = datetime.datetime.utcnow()
+    start_time = datetime.datetime.now(datetime.timezone.utc)
     _submit_jobs(benchmark_params, scheduler_commands, cluster, scheduler_commands_factory)
     compute_nodes_time_series, timestamps, end_time = publish_compute_nodes_metric(
         scheduler_commands,
