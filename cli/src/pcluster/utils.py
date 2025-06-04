@@ -199,7 +199,7 @@ def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc) -> datetime
     if isinstance(time_in, int):
         if time_in > 1e12:
             time_in /= 1000
-        time_ = datetime.datetime.utcfromtimestamp(time_in)
+        time_ = datetime.datetime.fromtimestamp(time_in, tz=datetime.timezone.utc)
         time_ = time_.replace(tzinfo=datetime.timezone.utc)
     elif isinstance(time_in, str):
         time_ = dateutil.parser.parse(time_in)
