@@ -6,7 +6,7 @@ import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
 from tests.common.utils import assert_no_file_handler_leak, get_compute_ip_to_num_files
-from tests.performance_tests.common import _log_output_performance_difference
+from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
 
 # timeout in seconds
 STARCCM_INSTALLATION_TIMEOUT = 1800
@@ -125,7 +125,9 @@ def test_starccm(
     )
 
     # Check results and log performance degradation
-    for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
+    result = list(zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]))
+    push_result_to_dynamodb("StarCCM", result, instance, os)
+    for node, observed_value in result:
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
         _log_output_performance_difference(node, performance_degradation, observed_value, baseline_value)
 
