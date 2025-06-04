@@ -99,35 +99,30 @@ def test_starccm(
 
     # Copy additional files in advanced to avoid conflict when running 8 and 16 nodes tests in parallel
     remote_command_executor._copy_additional_files([str(test_datadir / "starccm.slurm.sh")])
-    # Run 8 and 16 node tests in parallel
-    result_8 = remote_command_executor.run_remote_command(
-        f'sbatch --ntasks={number_of_nodes[0] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
-    )
-    logging.info(f"Submitting StarCCM+ job with {number_of_nodes[0]} nodes")
-    result_16 = remote_command_executor.run_remote_command(
-        f'sbatch --ntasks={number_of_nodes[1] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
-    )
-    logging.info(f"Submitting StarCCM+ job with {number_of_nodes[1]} nodes")
-    observed_value_8 = calculate_observed_value(
-        result_8, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[0]
-    )
-    observed_value_16 = calculate_observed_value(
-        result_16, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[1]
-    )
 
-    # Run 32 node test
-    result_32 = remote_command_executor.run_remote_command(
-        f'sbatch --ntasks={number_of_nodes[2] * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
-    )
-    logging.info(f"Submitting StarCCM+ job with {number_of_nodes[2]} nodes")
-    observed_value_32 = calculate_observed_value(
-        result_32, remote_command_executor, scheduler_commands, test_datadir, number_of_nodes[2]
-    )
+    max_node_num = max(number_of_nodes)
+    final_result = []
+    for num_of_nodes in number_of_nodes:
+        parallelism = int(max_node_num / num_of_nodes)
+        result = []
+        logging.info(f"Submitting StarCCM+ job with {num_of_nodes} nodes")
+        run_command = f'sbatch --ntasks={num_of_nodes * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
+        multiple_runs = []
+        # Run at least twice up to whatever parallelism allows to maximize usage of available nodes
+        number_of_runs = max(parallelism, 2)
+        for _ in range(number_of_runs):
+            multiple_runs.append(remote_command_executor.run_remote_command(run_command))
+        for run in multiple_runs:
+            result.append(
+                calculate_observed_value(run, remote_command_executor, scheduler_commands, test_datadir, num_of_nodes)
+            )
+        final_result.append((num_of_nodes, sum(result) / len(result)))  # Use average to reduce noise of each runs.
+        logging.info(f"Finished StarCCM+ job with {num_of_nodes} nodes")
+
+    push_result_to_dynamodb("StarCCM", final_result, instance, os)
 
     # Check results and log performance degradation
-    result = list(zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]))
-    push_result_to_dynamodb("StarCCM", result, instance, os)
-    for node, observed_value in result:
+    for node, observed_value in final_result:
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
         _log_output_performance_difference(node, performance_degradation, observed_value, baseline_value)
 
