@@ -48,8 +48,8 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     # FIXME: unpin once Lustre client is available for RHEL8.9
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
-    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rhel8": {"name": "RHEL-8.10*", "owners": RHEL_OWNERS},
+    "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
@@ -502,6 +502,11 @@ def get_compute_ip_to_num_files(remote_command_executor, slurm_commands):
     instance_ip_to_num_files = {}
     for node_name in compute_node_names:
         compute_node_instance_ip = slurm_commands.get_node_addr(node_name)
+        install_cmd = (
+            f"ssh -q {compute_node_instance_ip} 'sudo yum install -y lsof "
+            "|| sudo apt-get update && sudo apt-get install -y lsof'"
+        )
+        remote_command_executor.run_remote_command(install_cmd, raise_on_error=False)
         lsof_cmd = f"ssh -q {compute_node_instance_ip} 'sudo lsof -p $(pgrep computemgtd) | wc -l'"
         num_files = remote_command_executor.run_remote_command(lsof_cmd).stdout
         instance_ip_to_num_files[compute_node_instance_ip] = num_files

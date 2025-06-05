@@ -25,6 +25,7 @@ from tests.common.utils import (
     run_system_analyzer,
     write_file,
 )
+from tests.performance_tests.common import push_result_to_dynamodb
 
 # We collected OSU benchmarks results for c5n.18xlarge only.
 OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge"]
@@ -237,7 +238,9 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
     metric_data = []
     metric_namespace = "ParallelCluster/test_efa"
     evaluation_output = ""
-    for packet_size, value in re.findall(r"(\d+)\s+(\d+)\.", output):
+    result = re.findall(r"(\d+)\s+(\d+)\.", output)
+    push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os)
+    for packet_size, value in result:
         with open(
             str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
             encoding="utf-8",
@@ -256,7 +259,7 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
 
             percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
 
-            outcome = "DEGRADATION" if percentage_diff > 0 else "IMPROVEMENT"
+            outcome = "DEGRADATION" if is_failure else "IMPROVEMENT"
 
             message = (
                 f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "

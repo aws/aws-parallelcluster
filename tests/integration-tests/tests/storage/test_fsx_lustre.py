@@ -325,7 +325,7 @@ def test_multiple_fsx(
     partition = utils.get_arn_partition(region)
     num_new_fsx_lustre = 1
     num_existing_fsx_ontap_volumes = (
-        2 if partition in ["aws", "aws-us-gov"] else 0
+        2 if partition in ["aws", "aws-us-gov", "us-iso"] and utils.is_fsx_ontap_supported(region) else 0
     )  # China and Isolated do not have Ontap
     num_existing_fsx_open_zfs_volumes = (
         2 if partition in ["aws"] else 0

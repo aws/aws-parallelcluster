@@ -7,4 +7,5 @@
 #  limitations under the License.
 
 METADATA_TABLE = "ParallelCluster-IntegTest-Metadata"
+PERFORMANCE_METADATA_TABLE = "ParallelCluster-PerformanceTest-Metadata"
 METADATA_DEFAULT_REGION = "us-east-1"

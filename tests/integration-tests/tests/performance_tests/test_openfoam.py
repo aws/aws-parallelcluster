@@ -4,7 +4,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
-from tests.performance_tests.common import _log_output_performance_difference
+from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
 
 # timeout in seconds
 OPENFOAM_INSTALLATION_TIMEOUT = 300
@@ -91,8 +91,10 @@ def test_openfoam(
         observed_value_8 = future_8.result()
         observed_value_16 = future_16.result()
 
+    result = list(zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]))
+    push_result_to_dynamodb("OpenFOAM", result, instance, os)
     # Check results and log performance degradation
-    for node, observed_value in zip(number_of_nodes, [observed_value_8, observed_value_16, observed_value_32]):
+    for node, observed_value in result:
         baseline_value = BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS[os][node]
         _log_output_performance_difference(node, performance_degradation, observed_value, baseline_value)
 

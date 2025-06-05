@@ -48,6 +48,7 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         "InsufficientInstanceCapacity",
         "Insufficient capacity",
         "Failed to launch instances due to limited EC2 capacity",
+        "Our system will be working on provisioning additional capacity",
     ]
 
     patterns_to_ignore = []
