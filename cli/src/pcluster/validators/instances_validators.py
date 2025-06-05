@@ -245,9 +245,8 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
         if capacity_type == cluster_config.CapacityType.SPOT and allocation_strategy == cluster_config.AllocationStrategy.PRIORITIZED:
             self._add_failure(
                 f"Compute Resource {compute_resource_name} is using a SPOT CapacityType but the "
-                f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType should use "
-                f"'{cluster_config.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED.value}' instead of '{cluster_config.AllocationStrategy.PRIORITIZED.value}' "
-                f"allocation strategy.",
+                f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType cannot use "
+                f"'{cluster_config.AllocationStrategy.PRIORITIZED.value}' allocation strategy.",
                 FailureLevel.ERROR,
             )
 
