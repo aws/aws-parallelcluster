@@ -13,7 +13,7 @@ from unittest.mock import PropertyMock, call
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.config.common import CapacityType
+from pcluster.config.common import CapacityType, AllocationStrategy
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
@@ -224,6 +224,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     single_instance_type_subnet_validator = mocker.patch(
         networking_validators + ".SingleInstanceTypeSubnetValidator._validate", return_value=[]
     )
+    enable_single_availability_zone_validator = mocker.patch(
+        networking_validators + ".EnableSingleAvailabilityZoneValidator._validate", return_value=[]
+    )
 
     fsx_validators = validators_path + ".fsx_validators"
     fsx_s3_validator = mocker.patch(fsx_validators + ".FsxS3Validator._validate", return_value=[])
@@ -334,6 +337,12 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         any_order=True,
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-12345678", "subnet-23456789", "subnet-12345678"])])
+    enable_single_availability_zone_validator.assert_has_calls(
+        [
+            call(allocation_strategy=AllocationStrategy.LOWEST_PRICE, enable_single_availability_zone=False)
+        ],
+        any_order=True,
+    )
     single_instance_type_subnet_validator.assert_has_calls(
         [
             call(queue_name="queue1", subnet_ids=["subnet-23456789"]),

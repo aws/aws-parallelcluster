@@ -29,7 +29,7 @@ from pcluster.config.common import (
     BaseDevSettings,
     BaseTag,
     CapacityType,
-    DefaultUserHomeType,
+    DefaultUserHomeType, AllocationStrategy,
 )
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import (
@@ -190,6 +190,7 @@ from pcluster.validators.networking_validators import (
     SecurityGroupsValidator,
     SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
+    EnableSingleAvailabilityZoneValidator
 )
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
@@ -2636,6 +2637,14 @@ class SlurmQueue(_CommonQueue):
             max_length=MAX_COMPUTE_RESOURCES_PER_QUEUE,
             resource_name="ComputeResources per Queue",
         )
+        if any(
+                isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
+        ):
+            self._register_validator(
+                EnableSingleAvailabilityZoneValidator,
+                allocation_strategy=self.allocation_strategy,
+                enable_single_availability_zone=self.networking.enable_single_availability_zone,
+            )
         self._register_validator(
             QueueSubnetsValidator,
             queue_name=self.name,
@@ -3182,6 +3191,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)
+                    self._register_validator(
+                        EnableSingleAvailabilityZoneValidator,
+                        allocation_strategy=queue.allocation_strategy,
+                        enable_single_availability_zone=queue.networking.enable_single_availability_zone,
+                    )
                 self._register_validator(
                     ComputeResourceTagsValidator,
                     queue_name=queue.name,
