@@ -27,6 +27,7 @@ from pcluster.validators.s3_validators import UrlValidator
 
 LOGGER = logging.getLogger(__name__)
 
+
 class AllocationStrategy(Enum):
     """Define supported allocation strategies."""
 
@@ -35,6 +36,7 @@ class AllocationStrategy(Enum):
     PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
     PRIORITIZED = "prioritized"
     CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
+
 
 class CapacityType(Enum):
     """Enum to identify the type compute supported by the queues."""
