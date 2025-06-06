@@ -22,9 +22,11 @@ from pcluster.validators.networking_validators import (
     SecurityGroupsValidator,
     SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
+    EnableSingleAvailabilityZoneValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
+from pcluster.config.common import AllocationStrategy
 
 
 def test_ec2_security_group_validator(mocker):
@@ -64,6 +66,75 @@ def test_ec2_subnet_id_validator(mocker):
     actual_failures = SubnetsValidator().execute(["subnet-12345678", "subnet-23456789"])
     assert_failure_messages(actual_failures, None)
 
+@pytest.mark.parametrize(
+    "allocation_strategy, enable_single_availability_zone, failure_message",
+    [
+        (
+                AllocationStrategy.LOWEST_PRICE,
+                False,
+                None
+        ),
+        (
+                AllocationStrategy.LOWEST_PRICE,
+                True,
+                f"Enable_single_availability_zone is specified as "
+                f"'True' while allocation_strategy is specified as "
+                f"'lowest-price'. Enable_single_availability_zone should only be used with "
+                f"prioritized or capacity-optimized-prioritized Allocation Strategy."
+        ),
+        (
+                AllocationStrategy.CAPACITY_OPTIMIZED,
+                False,
+                None
+        ),
+        (
+                AllocationStrategy.CAPACITY_OPTIMIZED,
+                True,
+                f"Enable_single_availability_zone is specified as "
+                f"'True' while allocation_strategy is specified as "
+                f"'capacity-optimized'. Enable_single_availability_zone should only be used with "
+                f"prioritized or capacity-optimized-prioritized Allocation Strategy."
+        ),
+        (
+                AllocationStrategy.PRICE_CAPACITY_OPTIMIZED,
+                False,
+                None
+        ),
+        (
+                AllocationStrategy.PRICE_CAPACITY_OPTIMIZED,
+                True,
+                f"Enable_single_availability_zone is specified as "
+                f"'True' while allocation_strategy is specified as "
+                f"'price-capacity-optimized'. Enable_single_availability_zone should only be used with "
+                f"prioritized or capacity-optimized-prioritized Allocation Strategy."
+        ),
+        (
+                AllocationStrategy.PRIORITIZED,
+                False,
+                None
+        ),
+        (
+                AllocationStrategy.PRIORITIZED,
+                True,
+                None
+        ),
+        (
+                AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+                False,
+                None
+        ),
+        (
+                AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+                True,
+                None
+        ),
+    ]
+)
+def test_enable_single_availability_zone_validator(allocation_strategy, enable_single_availability_zone, failure_message):
+    actual_failures = EnableSingleAvailabilityZoneValidator().execute(
+        allocation_strategy, enable_single_availability_zone
+    )
+    assert_failure_messages(actual_failures, failure_message)
 
 @pytest.mark.parametrize(
     "queue_name, queue_subnets, subnet_id_az_mapping, failure_message",
