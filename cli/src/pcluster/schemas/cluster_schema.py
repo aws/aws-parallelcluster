@@ -24,7 +24,6 @@ from marshmallow import ValidationError, fields, post_load, pre_dump, validate, 
 from pcluster.config.cluster_config import (
     AdditionalPackages,
     Alarms,
-    AllocationStrategy,
     AmiSearchFilters,
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
@@ -95,7 +94,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Timeouts,
 )
-from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType
+from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType, AllocationStrategy
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
