@@ -200,12 +200,6 @@ phases:
                   # listing all the packages because wildcard does not work as expected
                   yum versionlock kernel kernel-core kernel-modules
 
-                  if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                    yum versionlock kernel-abi-whitelists
-                  else
-                    yum versionlock kernel-abi-stablelists
-                  fi
-
                   if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                     yum versionlock rocky-release rocky-repos
                   elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
@@ -300,12 +294,6 @@ phases:
               # Remove kernel version lock
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
                 yum versionlock delete kernel kernel-core kernel-modules
-
-                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                  yum versionlock delete kernel-abi-whitelists
-                else
-                  yum versionlock delete kernel-abi-stablelists
-                fi
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release
