@@ -29,7 +29,7 @@ from pcluster.config.common import (
     BaseDevSettings,
     BaseTag,
     CapacityType,
-    DefaultUserHomeType, AllocationStrategy,
+    DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import (
@@ -2564,6 +2564,16 @@ class _CommonQueue(BaseQueue):
                 compute_resource_name=compute_resource.name,
                 queue_name=self.name,
             )
+
+
+# class AllocationStrategy(Enum):
+#     """Define supported allocation strategies."""
+#
+#     LOWEST_PRICE = "lowest-price"
+#     CAPACITY_OPTIMIZED = "capacity-optimized"
+#     PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
+#     PRIORITIZED = "prioritized"
+#     CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
 
 
 class SlurmQueue(_CommonQueue):
