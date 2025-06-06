@@ -5,14 +5,13 @@ import boto3
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
-from tests.common.utils import assert_no_file_handler_leak, get_compute_ip_to_num_files
+from tests.common.utils import assert_no_file_handler_leak, fetch_instance_slots, get_compute_ip_to_num_files
 from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
 
 # timeout in seconds
 STARCCM_INSTALLATION_TIMEOUT = 1800
 STARCCM_JOB_TIMEOUT = 600
 STARCCM_LICENCE_SECRET = "starccm-license-secret"
-TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "alinux2023": {8: 62.414, 16: 31.998, 32: 20.422},  # v3.10.0
     "alinux2": {8: 64.475, 16: 33.173, 32: 17.899},  # v3.1.3
@@ -106,7 +105,8 @@ def test_starccm(
         parallelism = int(max_node_num / num_of_nodes)
         result = []
         logging.info(f"Submitting StarCCM+ job with {num_of_nodes} nodes")
-        run_command = f'sbatch --ntasks={num_of_nodes * TASK_VCPUS} starccm.slurm.sh "{podkey}" "{licpath}"'
+        instance_slots = fetch_instance_slots(region, instance, multithreading_disabled=True)
+        run_command = f'sbatch --ntasks={num_of_nodes * instance_slots} starccm.slurm.sh "{podkey}" "{licpath}"'
         multiple_runs = []
         # Run at least twice up to whatever parallelism allows to maximize usage of available nodes
         number_of_runs = max(parallelism, 2)
