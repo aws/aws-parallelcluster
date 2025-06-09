@@ -907,3 +907,37 @@ def find_stack_by_tag(tag, region, stack_prefix):
             logging.info(f"Found stack: {name} (created on {creation_date})")
             return name
     return None
+
+
+def get_local_ip():
+    """
+    Attempts to retrieve the local IP address of the machine.
+
+    This function uses the socket library to get the hostname and then resolve
+    it to an IP address. This typically returns the primary local IP address
+    of the machine.
+
+    Returns:
+        str: The local IP address if successfully retrieved.
+        None: If the IP address could not be determined.
+    """
+    try:
+        hostname = socket.gethostname()
+        return socket.gethostbyname(hostname)
+    except Exception as e:
+        logging.error(f"Cannot determine local IP: {e}")
+        return None
+
+
+def get_cidr_from_ip(ip):
+    """
+    Converts an IP address to CIDR notation with /32 suffix.
+
+    Args:
+        ip (str): The IP address to convert.
+
+    Returns:
+        str: IP address in CIDR notation (e.g., "192.168.1.1/32") if IP is provided,
+             otherwise returns None
+    """
+    return f"{ip}/32" if ip else None

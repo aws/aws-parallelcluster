@@ -26,6 +26,7 @@ Scheduling:
   Scheduler: slurm
   SlurmQueues:
     - Name: q1
+      JobExclusiveAllocation: true
       ComputeResources:
         - Name: c5n-18xl-efa
           InstanceType: {{ instance }}
