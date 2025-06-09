@@ -339,7 +339,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-12345678", "subnet-23456789", "subnet-12345678"])])
     enable_single_availability_zone_validator.assert_has_calls(
         [
-            call(allocation_strategy=AllocationStrategy.LOWEST_PRICE, enable_single_availability_zone=False)
+            call(allocation_strategy=AllocationStrategy.LOWEST_PRICE, enable_single_availability_zone=None)
         ],
         any_order=True,
     )
