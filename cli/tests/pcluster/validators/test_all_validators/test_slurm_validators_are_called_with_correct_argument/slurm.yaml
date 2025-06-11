@@ -39,9 +39,11 @@ Scheduling:
         - Name: compute_resource2
           InstanceType: c4.2xlarge
     - Name: queue2
+      AllocationStrategy: "prioritized"
       Networking:
         SubnetIds:
           - subnet-23456789
+        EnableSingleAvailabilityZone: true
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.4xlarge
@@ -68,6 +70,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - subnet-23456789
+        EnableSingleAvailabilityZone: false
       ComputeResources:
         - Name: compute_resource1
           Instances:
