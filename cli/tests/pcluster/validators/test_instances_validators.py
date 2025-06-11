@@ -622,8 +622,11 @@ def test_instances_networking_validator(
             CapacityType.SPOT,
             AllocationStrategy.PRIORITIZED,
             "Compute Resource TestComputeResource is using a SPOT CapacityType but the "
-            "Allocation Strategy specified is prioritized. SPOT CapacityType cannot use "
-            "'prioritized' allocation strategy.",
+            "Allocation Strategy specified is prioritized. SPOT CapacityType can only use "
+            "'lowest-price', "
+            "'capacity-optimized', "
+            "'price-capacity-optimized' "
+            "or 'capacity-optimized-prioritized' allocation strategy.",
         ),
         # Capacity Block type supports does not support any allocation strategy
         (

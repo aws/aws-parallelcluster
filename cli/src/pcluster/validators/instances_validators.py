@@ -249,8 +249,11 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
         ):
             self._add_failure(
                 f"Compute Resource {compute_resource_name} is using a SPOT CapacityType but the "
-                f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType cannot use "
-                f"'{common.AllocationStrategy.PRIORITIZED.value}' allocation strategy.",
+                f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType can only use "
+                f"'{common.AllocationStrategy.LOWEST_PRICE.value}', "
+                f"'{common.AllocationStrategy.CAPACITY_OPTIMIZED.value}', "
+                f"'{common.AllocationStrategy.PRICE_CAPACITY_OPTIMIZED.value}' "
+                f"or '{common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED.value}' allocation strategy.",
                 FailureLevel.ERROR,
             )
 
