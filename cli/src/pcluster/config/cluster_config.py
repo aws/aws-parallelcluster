@@ -2446,9 +2446,13 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
             self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
         )
         if capacity_reservation_id:
-            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
-            if capacity_reservations:
-                instance_type = capacity_reservations[0].instance_type()
+            try:
+                capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
+                if capacity_reservations:
+                    instance_type = capacity_reservations[0].instance_type()
+            except AWSClientError:
+                # In case the CR has expired and we are unable to retrieve the instance type
+                instance_type = None
         return instance_type
 
 
