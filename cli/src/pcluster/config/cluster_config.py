@@ -3188,11 +3188,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                     ]
                     for validator in flexible_instance_types_validators:
                         self._register_validator(validator, **validator_args)
-                    self._register_validator(
-                        EnableSingleAvailabilityZoneValidator,
-                        allocation_strategy=queue.allocation_strategy,
-                        enable_single_availability_zone=queue.networking.enable_single_availability_zone,
-                    )
                 self._register_validator(
                     ComputeResourceTagsValidator,
                     queue_name=queue.name,
