@@ -10,7 +10,6 @@ from tests.performance_tests.common import _log_output_performance_difference, p
 OPENFOAM_INSTALLATION_TIMEOUT = 300
 OPENFOAM_JOB_TIMEOUT = 5400  # Takes long time because during the first time, it's not only execute the job but also
 # builds and installs many things
-TASK_VCPUS = 36  # vCPUs are cut in a half because multithreading is disabled
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "alinux2023": {8: 754, 16: 366, 32: 182},  # v3.10.0
     "alinux2": {8: 754, 16: 366, 32: 182},  # v3.1.3

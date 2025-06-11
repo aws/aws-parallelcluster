@@ -12,6 +12,7 @@ Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
     - Name: efa-enabled
+      JobExclusiveAllocation: true
       Networking:
         PlacementGroup:
           Enabled: true
