@@ -25,11 +25,12 @@ from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.config.common import (
     AdditionalIamPolicy,
+    AllocationStrategy,
     BaseDeploymentSettings,
     BaseDevSettings,
     BaseTag,
     CapacityType,
-    DefaultUserHomeType, AllocationStrategy,
+    DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import (
@@ -185,12 +186,12 @@ from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKe
 from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
+    EnableSingleAvailabilityZoneValidator,
     MultiAzPlacementGroupValidator,
     QueueSubnetsValidator,
     SecurityGroupsValidator,
     SingleInstanceTypeSubnetValidator,
     SubnetsValidator,
-    EnableSingleAvailabilityZoneValidator
 )
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
@@ -814,7 +815,13 @@ class _QueueNetworking(_BaseNetworking, SubnetsMixin):
 class SlurmQueueNetworking(_QueueNetworking):
     """Represent the networking configuration for the slurm Queue."""
 
-    def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, enable_single_availability_zone: bool = None, **kwargs):
+    def __init__(
+        self,
+        placement_group: PlacementGroup = None,
+        proxy: Proxy = None,
+        enable_single_availability_zone: bool = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.placement_group = placement_group or PlacementGroup(implied=True)
         self.proxy = proxy
@@ -2638,7 +2645,7 @@ class SlurmQueue(_CommonQueue):
             resource_name="ComputeResources per Queue",
         )
         if any(
-                isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
+            isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
         ):
             self._register_validator(
                 EnableSingleAvailabilityZoneValidator,

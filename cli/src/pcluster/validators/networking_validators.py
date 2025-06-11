@@ -8,14 +8,14 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from enum import Enum
 from collections import Counter
+from enum import Enum
 from typing import List, Union
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.validators.common import FailureLevel, Validator
 from pcluster.config import common
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class SecurityGroupsValidator(Validator):
@@ -65,6 +65,7 @@ class SubnetsValidator(Validator):
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
+
 class EnableSingleAvailabilityZoneValidator(Validator):
     """
     Single Availability Zone validator.
@@ -72,15 +73,21 @@ class EnableSingleAvailabilityZoneValidator(Validator):
     Check that enable_single_availability_zone should be used with prioritized
     or capacity-optimized-prioritized Allocation Strategy
     """
+
     def _validate(self, allocation_strategy: Enum, enable_single_availability_zone: bool):
-        if enable_single_availability_zone == True:
-            if (allocation_strategy != common.AllocationStrategy.PRIORITIZED and
-                    allocation_strategy != common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED):
-                self._add_failure(f"Enable_single_availability_zone is specified as "
-                                  f"'{enable_single_availability_zone}' while allocation_strategy is specified as "
-                                  f"'{allocation_strategy.value}'. Enable_single_availability_zone should only be used with "
-                                  f"prioritized or capacity-optimized-prioritized Allocation Strategy.",
-                                  FailureLevel.ERROR)
+        if enable_single_availability_zone:
+            if (
+                allocation_strategy != common.AllocationStrategy.PRIORITIZED
+                and allocation_strategy != common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED
+            ):
+                self._add_failure(
+                    "Enable_single_availability_zone is specified as "
+                    f"'{enable_single_availability_zone}' while allocation_strategy is specified as "
+                    f"'{allocation_strategy.value}'. Enable_single_availability_zone should only be used with "
+                    "prioritized or capacity-optimized-prioritized Allocation Strategy.",
+                    FailureLevel.ERROR,
+                )
+
 
 class QueueSubnetsValidator(Validator):
     """

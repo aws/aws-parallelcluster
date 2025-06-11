@@ -230,9 +230,10 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
         ):
             alloc_strategy_msg = allocation_strategy.value if allocation_strategy else "not set"
             self._add_failure(
-                f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType but the Allocation "
-                f"Strategy specified is {alloc_strategy_msg}. OnDemand CapacityType can only use '"
-                f"{common.AllocationStrategy.LOWEST_PRICE.value}' or '{common.AllocationStrategy.PRIORITIZED.value}' allocation strategy.",
+                f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType but "
+                f"the Allocation Strategy specified is {alloc_strategy_msg}. OnDemand CapacityType can only use '"
+                f"{common.AllocationStrategy.LOWEST_PRICE.value}' or '{common.AllocationStrategy.PRIORITIZED.value}' "
+                "allocation strategy.",
                 FailureLevel.ERROR,
             )
         if capacity_type == cluster_config.CapacityType.CAPACITY_BLOCK and allocation_strategy:
@@ -242,7 +243,10 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
                 "When using CAPACITY_BLOCK CapacityType, allocation strategy should not be set.",
                 FailureLevel.ERROR,
             )
-        if capacity_type == cluster_config.CapacityType.SPOT and allocation_strategy == common.AllocationStrategy.PRIORITIZED:
+        if (
+            capacity_type == cluster_config.CapacityType.SPOT
+            and allocation_strategy == common.AllocationStrategy.PRIORITIZED
+        ):
             self._add_failure(
                 f"Compute Resource {compute_resource_name} is using a SPOT CapacityType but the "
                 f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType cannot use "

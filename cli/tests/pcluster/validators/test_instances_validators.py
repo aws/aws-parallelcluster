@@ -603,11 +603,11 @@ def test_instances_networking_validator(
             "OnDemand CapacityType can only use 'lowest-price' or 'prioritized' allocation strategy.",
         ),
         (
-                CapacityType.ONDEMAND,
-                AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
-                f"Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation "
-                f"Strategy specified is capacity-optimized-prioritized. "
-                f"OnDemand CapacityType can only use 'lowest-price' or 'prioritized' allocation strategy.",
+            CapacityType.ONDEMAND,
+            AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+            "Compute Resource TestComputeResource is using an OnDemand CapacityType but the Allocation "
+            "Strategy specified is capacity-optimized-prioritized. "
+            "OnDemand CapacityType can only use 'lowest-price' or 'prioritized' allocation strategy.",
         ),
         (CapacityType.ONDEMAND, AllocationStrategy.PRIORITIZED, ""),
         (CapacityType.ONDEMAND, AllocationStrategy.LOWEST_PRICE, ""),
@@ -619,11 +619,11 @@ def test_instances_networking_validator(
         (CapacityType.SPOT, AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED, ""),
         (CapacityType.SPOT, None, ""),
         (
-                CapacityType.SPOT,
-                AllocationStrategy.PRIORITIZED,
-                f"Compute Resource TestComputeResource is using a SPOT CapacityType but the "
-                f"Allocation Strategy specified is prioritized. SPOT CapacityType cannot use "
-                f"'prioritized' allocation strategy.",
+            CapacityType.SPOT,
+            AllocationStrategy.PRIORITIZED,
+            "Compute Resource TestComputeResource is using a SPOT CapacityType but the "
+            "Allocation Strategy specified is prioritized. SPOT CapacityType cannot use "
+            "'prioritized' allocation strategy.",
         ),
         # Capacity Block type supports does not support any allocation strategy
         (
@@ -631,7 +631,7 @@ def test_instances_networking_validator(
             AllocationStrategy.CAPACITY_OPTIMIZED,
             "Compute Resource TestComputeResource is using a CAPACITY_BLOCK CapacityType but the Allocation "
             "Strategy specified is capacity-optimized. When using CAPACITY_BLOCK CapacityType, "
-            "allocation strategy should not be set."
+            "allocation strategy should not be set.",
         ),
         (
             CapacityType.CAPACITY_BLOCK,
@@ -658,7 +658,8 @@ def test_instances_networking_validator(
             CapacityType.CAPACITY_BLOCK,
             AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
             "Compute Resource TestComputeResource is using a CAPACITY_BLOCK CapacityType but the Allocation Strategy "
-            "specified is capacity-optimized-prioritized. When using CAPACITY_BLOCK CapacityType, allocation strategy should not be set.",
+            "specified is capacity-optimized-prioritized. When using CAPACITY_BLOCK CapacityType, "
+            "allocation strategy should not be set.",
         ),
         (CapacityType.CAPACITY_BLOCK, None, ""),
     ],

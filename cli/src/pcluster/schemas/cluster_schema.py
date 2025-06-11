@@ -94,7 +94,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Timeouts,
 )
-from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType, AllocationStrategy
+from pcluster.config.common import AllocationStrategy, BaseTag, CapacityType, DefaultUserHomeType
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,

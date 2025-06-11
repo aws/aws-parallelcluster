@@ -13,7 +13,7 @@ from unittest.mock import PropertyMock, call
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.config.common import CapacityType, AllocationStrategy
+from pcluster.config.common import AllocationStrategy, CapacityType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
@@ -338,9 +338,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     )
     subnets_validator.assert_has_calls([call(subnet_ids=["subnet-12345678", "subnet-23456789", "subnet-12345678"])])
     enable_single_availability_zone_validator.assert_has_calls(
-        [
-            call(allocation_strategy=AllocationStrategy.LOWEST_PRICE, enable_single_availability_zone=None)
-        ],
+        [call(allocation_strategy=AllocationStrategy.LOWEST_PRICE, enable_single_availability_zone=None)],
         any_order=True,
     )
     single_instance_type_subnet_validator.assert_has_calls(
