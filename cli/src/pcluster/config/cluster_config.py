@@ -2574,16 +2574,6 @@ class _CommonQueue(BaseQueue):
             )
 
 
-# class AllocationStrategy(Enum):
-#     """Define supported allocation strategies."""
-#
-#     LOWEST_PRICE = "lowest-price"
-#     CAPACITY_OPTIMIZED = "capacity-optimized"
-#     PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
-#     PRIORITIZED = "prioritized"
-#     CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
-
-
 class SlurmQueue(_CommonQueue):
     """Represents a Slurm Queue that has Compute Resources with both Single and Multiple Instance Types."""
 
