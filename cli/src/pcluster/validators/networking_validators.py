@@ -75,18 +75,18 @@ class EnableSingleAvailabilityZoneValidator(Validator):
     """
 
     def _validate(self, allocation_strategy: Enum, enable_single_availability_zone: bool):
-        if enable_single_availability_zone:
-            if (
-                allocation_strategy != common.AllocationStrategy.PRIORITIZED
-                and allocation_strategy != common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED
-            ):
-                self._add_failure(
-                    "Enable_single_availability_zone is specified as "
-                    f"'{enable_single_availability_zone}' while allocation_strategy is specified as "
-                    f"'{allocation_strategy.value}'. Enable_single_availability_zone should only be used with "
-                    "prioritized or capacity-optimized-prioritized Allocation Strategy.",
-                    FailureLevel.ERROR,
-                )
+        prioritized_allocation_strategies = (
+            common.AllocationStrategy.PRIORITIZED,
+            common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+        )
+        if enable_single_availability_zone in prioritized_allocation_strategies:
+            self._add_failure(
+                "Enable_single_availability_zone is specified as "
+                f"'{enable_single_availability_zone}' while allocation_strategy is specified as "
+                f"'{allocation_strategy.value}'. Enable_single_availability_zone should only be used with "
+                "prioritized or capacity-optimized-prioritized Allocation Strategy.",
+                FailureLevel.ERROR,
+            )
 
 
 class QueueSubnetsValidator(Validator):
