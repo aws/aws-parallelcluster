@@ -79,7 +79,7 @@ class EnableSingleAvailabilityZoneValidator(Validator):
             common.AllocationStrategy.PRIORITIZED,
             common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
         )
-        if enable_single_availability_zone in prioritized_allocation_strategies:
+        if enable_single_availability_zone == True and allocation_strategy not in prioritized_allocation_strategies:
             self._add_failure(
                 "Enable_single_availability_zone is specified as "
                 f"'{enable_single_availability_zone}' while allocation_strategy is specified as "
