@@ -9,6 +9,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
+- Fix build image failures on Rocky 9 non-lastest versions.
 
 3.13.1
 ------
