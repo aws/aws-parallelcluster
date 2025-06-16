@@ -6,6 +6,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix a bug that update-cluster, update-compute-fleet may fail when compute resources use an expired Capacity Reservation.
+- Fix build image failures on Rocky 9 non-lastest versions.
 
 3.13.1
 ------
