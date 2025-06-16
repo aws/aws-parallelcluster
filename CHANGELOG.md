@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.13.2
+------
+
+**BUG FIXES**
+- Fix a bug that update-cluster, update-compute-fleet may fail when compute resources use an expired Capacity Reservation.
+
 3.13.1
 ------
 
