@@ -9,6 +9,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
+- Fix a bug that update-cluster, update-compute-fleet may fail when compute resources use an expired Capacity Reservation.
 
 3.13.1
 ------
