@@ -206,21 +206,14 @@ phases:
                 fi
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
-                  if [[ ${!OS} == "rocky8" ]] ; then
-                    REPOSITORY="BaseOS"
-                  else
-                    REPOSITORY="AppStream"
-                  fi
                   for PACKAGE in ${!PACKAGE_LIST}
                   do
-                    # try to install kernel source for a specific release version
                     yum install -y ${!PACKAGE}
                     if [ $? -ne 0 ]; then
-                      yum install -y wget
-                      # Previous releases are moved into a vault area once a new minor release version is available for at least a week.
-                      # https://wiki.rockylinux.org/rocky/repo/#notes-on-devel
-                      wget https://dl.rockylinux.org/vault/rocky/${!RELEASE_VERSION}/${!REPOSITORY}/$(uname -m)/os/Packages/k/${!PACKAGE}.rpm
-                      yum install -y ./${!PACKAGE}.rpm
+                      # Enable vault repository
+                      sed -i 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=http://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
+                      sed -i 's|^#baseurl=https://dl.rockylinux.org/$contentdir|baseurl=https://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
+                      yum install -y ${!PACKAGE}
                     fi
                   done
                 else
