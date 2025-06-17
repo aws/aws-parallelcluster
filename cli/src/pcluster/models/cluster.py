@@ -500,6 +500,8 @@ class Cluster:
         except ConfigValidationError as e:
             raise e
         except Exception as e:
+            if "Invalid type for parameter InstanceTypes[0], value: None, type: <class 'NoneType'>" in e.__str__():
+                raise ConfigValidationError(f"Invalid cluster configuration: Capacity reservation does not exist.")
             raise ConfigValidationError(f"Invalid cluster configuration: {e}")
 
         return config, validation_failures
