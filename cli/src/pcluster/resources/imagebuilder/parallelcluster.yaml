@@ -184,7 +184,7 @@ phases:
                 fi
               fi
 
-      - name: PinKernelVersion
+      - name: PinVersion
         action: ExecuteBash
         inputs:
           commands:
@@ -193,16 +193,41 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               KERNEL_VERSION=$(uname -a)
+              RELEASE_VERSION='{{ build.OperatingSystemVersion.outputs.stdout }}'
               if [[ ${!PLATFORM} == RHEL ]]; then
+                if [[ ${!OS} == rhel9 ]] || [[ ${!OS} == rocky9 ]]; then
+                  if [[ ! -f /etc/yum/vars/releasever ]]; then
+                    echo "yes" > /opt/parallelcluster/pin_releasesever
+                    echo ${!RELEASE_VERSION} > /etc/yum/vars/releasever
+                    yum clean all
+                  fi
+                fi
+                PACKAGE_LIST="kernel-headers-$(uname -r) kernel-devel-$(uname -r)"
+                if [[ ${!OS} != "rocky8" ]] && [[ ${!OS} != "rhel8" ]]; then
+                  PACKAGE_LIST+=" kernel-devel-matched-$(uname -r)"
+                fi
+
+                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
+                  for PACKAGE in ${!PACKAGE_LIST}
+                  do
+                    yum install -y ${!PACKAGE}
+                    if [ $? -ne 0 ]; then
+                      # Enable vault repository
+                      sed -i 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=http://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
+                      sed -i 's|^#baseurl=https://dl.rockylinux.org/$contentdir|baseurl=https://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
+                      yum install -y ${!PACKAGE}
+                    fi
+                  done
+                else
+                  for PACKAGE in ${!PACKAGE_LIST}
+                  do
+                    yum -y install ${!PACKAGE}
+                  done
+                fi
+
                 yum install -y yum-plugin-versionlock
                 # listing all the packages because wildcard does not work as expected
                 yum versionlock kernel kernel-core kernel-modules
-
-                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                  yum versionlock kernel-abi-whitelists
-                else
-                  yum versionlock kernel-abi-stablelists
-                fi
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock rocky-release rocky-repos
@@ -210,9 +235,24 @@ phases:
                   yum versionlock redhat-release
                 fi
               else
+                apt-get -y install linux-headers-$(uname -r)
                 apt-mark hold linux-aws* linux-base* linux-headers* linux-image* 
               fi
-              echo "Kernel version is ${!KERNEL_VERSION}"     
+              echo "Kernel version is ${!KERNEL_VERSION}"
+
+      - name: DisableNouveau
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="(.*)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                grub2-mkconfig -o /boot/grub2/grub.cfg
+              elif [[ ${!PLATFORM} == DEBIAN ]]; then
+                update-grub
+              fi
 
       # Install prerequisite OS packages
       - name: InstallPrerequisite
@@ -223,16 +263,8 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-              VERSION='{{ build.OperatingSystemVersion.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
-                if [[ ${!OS} == rhel9 ]] || [[ ${!OS} == rocky9 ]]; then
-                  if [[ ! -f /etc/yum/vars/releasever ]]; then
-                    echo "yes" > /opt/parallelcluster/pin_releasesever
-                    echo ${!VERSION} > /etc/yum/vars/releasever
-                    yum clean all
-                  fi
-                fi
                 yum -y update krb5-libs
                 yum -y groupinstall development && sudo yum -y install wget jq
                 if [[ ${!OS} != alinux2023 ]]; then
@@ -251,6 +283,13 @@ phases:
                 apt-get -y update
                 apt-get -y install build-essential curl wget jq
               fi
+
+      - name: RebootStep
+        action: Reboot
+        onFailure: Abort
+        maxAttempts: 2
+        inputs:
+          delaySeconds: 10
 
       # Install Cinc
       - name: InstallCinc
@@ -349,12 +388,6 @@ phases:
               # Remove kernel version lock
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum versionlock delete kernel kernel-core kernel-modules
-
-                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                  yum versionlock delete kernel-abi-whitelists
-                else
-                  yum versionlock delete kernel-abi-stablelists
-                fi
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release rocky-repos
