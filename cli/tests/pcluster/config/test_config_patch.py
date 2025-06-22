@@ -12,12 +12,17 @@ import os
 import shutil
 
 import pytest
+import yaml
 from assertpy import assert_that
+from botocore.exceptions import ClientError
+from marshmallow import ValidationError
 
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.models.common import parse_config
+from pcluster.schemas.cluster_schema import ClusterSchema, SlurmQueueSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.test_utils import dummy_cluster
@@ -254,6 +259,90 @@ def test_single_param_change(
             change_path, param_key, src_param_value, dst_param_value, change_update_policy, is_list=False
         )
     _check_patch(src_conf.source_config, dst_conf.source_config, [expected_change], change_update_policy)
+
+
+@pytest.mark.parametrize(
+    "cr_id, instance_type, cr_exists, error_type, error_message",
+    [
+        pytest.param(
+            "cr-12324398",
+            None,
+            False,
+            None,
+            None
+        ),
+        pytest.param(
+            None,
+            None,
+            False,
+            ValidationError,
+            "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId."
+        ),
+        pytest.param(
+            None,
+            "c5.xlarge",
+            False,
+            None,
+            None
+        ),
+        pytest.param(
+            "cr-12324398",
+            "c5.xlarge",
+            False,
+            None,
+            None
+        )
+    ],
+)
+
+
+def test_capacity_reservation_patch(
+        mocker,
+        test_datadir,
+        pcluster_config_reader,
+        cr_id,
+        instance_type,
+        cr_exists,
+        error_type,
+        error_message
+):
+    mock_aws_api(mocker)
+
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        side_effect=AWSClientError(
+            function_name= "describe_capacity_reservations",
+            message="Error accessing capacity reservations"
+        )
+    )
+
+    src_dict = {}
+
+    if cr_id:
+        src_dict["compute_resource_capacity_reservation"] = cr_id
+    if instance_type:
+        src_dict["compute_instance_type"] = instance_type
+
+    src_config_file = pcluster_config_reader(**src_dict)
+
+
+    try:
+        _load_config(src_config_file)
+        if error_type:
+            pytest.fail(f"Expected {error_type.__name__} was not raised")
+    except Exception as e:
+        # Check that we got the expected error type
+        if not error_type:
+            pytest.fail(f"The following unexpected error was raised: {e}")
+        else:
+            assert isinstance(e, error_type)
+            assert error_message in str(e)
+
+
+
+
+
+
 
 
 def _load_config(config_file):
