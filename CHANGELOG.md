@@ -10,11 +10,14 @@ CHANGELOG
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 
-3.13.1
+3.13.2
 ------
 
 **BUG FIXES**
-- Fix build image failures occurring on non-latest versions of Rocky Linux 9.
+- Fix a bug which may cause `update-cluster` and `update-compute-fleet` to fail when compute resources reference an expired Capacity Reservation
+  that is no longer accessible via EC2 APIs.
+- Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version.
+  See https://github.com/aws/aws-parallelcluster/issues/6874.
 
 3.13.1
 ------
