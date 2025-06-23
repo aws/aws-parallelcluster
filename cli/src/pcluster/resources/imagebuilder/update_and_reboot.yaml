@@ -99,20 +99,6 @@ phases:
                 fi
               fi
 
-      - name: DisableNouveau
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-              /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="(.*)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
-              if [[ ${!PLATFORM} == RHEL ]]; then
-                grub2-mkconfig -o /boot/grub2/grub.cfg
-              elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                update-grub
-              fi
-
       - name: DisableUnattendedUpgrades
         action: ExecuteBash
         inputs:
@@ -131,20 +117,6 @@ phases:
                 # update package index
                 DEBIAN_FRONTEND=noninteractive apt-get -y update
               fi
-
-      - name: InstallEfiBootManager
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-              ARCH=$(uname -m)
-              if [[ `echo ${!ARCH}` == 'aarch64' ]] && [[ ${!PLATFORM} == DEBIAN ]]; then
-                # temporary workaround to solve https://bugs.launchpad.net/ubuntu/+source/grub2-signed/+bug/1936857
-                apt-get -y install efibootmgr
-              fi
-
       - name: InstallPrerequisites
         action: ExecuteBash
         inputs:
@@ -202,12 +174,6 @@ phases:
                   # listing all the packages because wildcard does not work as expected
                   yum versionlock kernel kernel-core kernel-modules
 
-                  if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                    yum versionlock kernel-abi-whitelists
-                  else
-                    yum versionlock kernel-abi-stablelists
-                  fi
-
                   if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                     yum versionlock rocky-release rocky-repos
                   elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
@@ -252,42 +218,6 @@ phases:
         maxAttempts: 2
         inputs:
           delaySeconds: 10
-      - name: InstallAdditionalKernelPackages
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-              DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
-
-              if [[ ${!PLATFORM} == RHEL ]]; then
-                # Install kernel-devel during OS update, so that headers are aligned with new kernel.
-                # The same is done for Debian through `apt-get -y install linux-aws`
-                if [[ ${!OS} == "rocky8" ]] ; then
-                  PACKAGE="kernel-devel-$(uname -r)"
-                  RELEASE_VERSION=$(source /etc/os-release && echo ${!VERSION_ID})
-
-                  # try to install kernel source for a specific release version
-                  yum install -y ${!PACKAGE} --releasever ${!RELEASE_VERSION}
-                  if [ $? -ne 0 ]; then
-                    yum install -y wget
-                    # Previous releases are moved into a vault area once a new minor release version is available for at least a week.
-                    # https://wiki.rockylinux.org/rocky/repo/#notes-on-devel
-                    wget https://dl.rockylinux.org/vault/rocky/${!RELEASE_VERSION}/BaseOS/$(uname -m)/os/Packages/k/${!PACKAGE}.rpm
-                    yum install -y ./${!PACKAGE}.rpm
-                  fi
-                else
-                  yum -y install kernel-headers-$(uname -r)
-                  yum -y install kernel-devel-$(uname -r)
-                fi
-
-              elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                if [[ ${!DISABLE_KERNEL_UPDATE} != true ]]; then
-                   apt-get -y install linux-aws linux-headers-aws linux-image-aws
-                fi
-              fi
 
       - name: RemoveKernelPin
         action: ExecuteBash
@@ -302,12 +232,6 @@ phases:
               # Remove kernel version lock
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
                 yum versionlock delete kernel kernel-core kernel-modules
-
-                if [[ ${!OS} == "alinux2" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                  yum versionlock delete kernel-abi-whitelists
-                else
-                  yum versionlock delete kernel-abi-stablelists
-                fi
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release
