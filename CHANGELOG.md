@@ -20,12 +20,6 @@ CHANGELOG
 3.13.1
 ------
 
-**BUG FIXES**
-- Fix build image failures occurring on non-latest versions of Rocky Linux 9.
-
-3.13.1
-------
-
 **CHANGES**
 - Upgrade Slurm to version 24.05.8.
 - Upgrade EFA installer to 1.41.0 (from 1.38.1).
