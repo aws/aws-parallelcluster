@@ -10,11 +10,11 @@ CHANGELOG
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 
-3.13.1
+3.13.2
 ------
 
 **BUG FIXES**
-- Fix build image failures occurring on non-latest versions of Rocky Linux 9.
+- Fix `build-image` failure on Rocky 9, occurring when the parent image is not the latest version. https://github.com/aws/aws-parallelcluster/issues/6874
 
 3.13.1
 ------
