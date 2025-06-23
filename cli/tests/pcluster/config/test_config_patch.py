@@ -12,17 +12,14 @@ import os
 import shutil
 
 import pytest
-import yaml
 from assertpy import assert_that
-from botocore.exceptions import ClientError
 from marshmallow import ValidationError
 
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.models.common import parse_config
-from pcluster.schemas.cluster_schema import ClusterSchema, SlurmQueueSchema
+from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.test_utils import dummy_cluster
@@ -262,33 +259,33 @@ def test_single_param_change(
 
 
 @pytest.mark.parametrize(
-    "cr_id, instance_type, cr_exists, error_type, error_message",
+    "cr_id, instance_type, error_type, error_message",
     [
+        # Capacity reservation does not exist and Instance type is not set. Should result in no error.
         pytest.param(
             "cr-12324398",
             None,
-            False,
             None,
             None
         ),
+        # No capacity reservation nor instance type is inputted. This results in a validation error.
         pytest.param(
             None,
             None,
-            False,
             ValidationError,
             "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId."
         ),
+        # No capacity reservation is inputted, but instance type is inputted. This results in no error.
         pytest.param(
             None,
             "c5.xlarge",
-            False,
             None,
             None
         ),
+        # Capacity reservation does not exist. Results in no error.
         pytest.param(
             "cr-12324398",
             "c5.xlarge",
-            False,
             None,
             None
         )
@@ -298,16 +295,30 @@ def test_single_param_change(
 
 def test_capacity_reservation_patch(
         mocker,
-        test_datadir,
         pcluster_config_reader,
         cr_id,
         instance_type,
-        cr_exists,
         error_type,
         error_message
 ):
+    """
+    This test checks that when loading a configuration, describe_capacity_reservations is not called. This ensures that
+    when the old configuration is loaded during an update, it does not matter whether the capacity reservation
+    is accessible.
+    The existence of the capacity reservation should only be checked during the validation phase. This should happen
+    the `_validate_and_parse_config` function.
+
+    :param cr_id: Capacity reservation id for a compute resource. If no capacity reservation is inputted, this is None
+    :param instance_type: InstanceType for a compute resource. If not instance type is inputted, this can be None.
+    :param error_type: The expected type of error tto be thrown.
+    :param error_message: The expected error message
+    """
     mock_aws_api(mocker)
 
+
+    # Mock describe_capacity_reservations to return an error. We can make it always return
+    # an error even if the capacity reservation exists because it should not affect
+    # whether _load_config is successful
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
         side_effect=AWSClientError(
@@ -331,19 +342,11 @@ def test_capacity_reservation_patch(
         if error_type:
             pytest.fail(f"Expected {error_type.__name__} was not raised")
     except Exception as e:
-        # Check that we got the expected error type
         if not error_type:
             pytest.fail(f"The following unexpected error was raised: {e}")
         else:
             assert isinstance(e, error_type)
             assert error_message in str(e)
-
-
-
-
-
-
-
 
 def _load_config(config_file):
     return ClusterSchema(cluster_name="clustername").load(load_yaml_dict(config_file))
