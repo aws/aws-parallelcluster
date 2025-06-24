@@ -293,7 +293,7 @@ def test_single_param_change(
 )
 
 
-def test_capacity_reservation_patch(
+def test_load_config_for_capacity_reservation(
         mocker,
         pcluster_config_reader,
         cr_id,
@@ -302,7 +302,7 @@ def test_capacity_reservation_patch(
         error_message
 ):
     """
-    This test checks that when loading a configuration, describe_capacity_reservations is not called. This ensures that
+    This test checks that when loading a configuration, describe_capacity_reservations does not cause a failure. This ensures that
     when the old configuration is loaded during an update, it does not matter whether the capacity reservation
     is accessible.
     The existence of the capacity reservation should only be checked during the validation phase. This should happen
@@ -319,7 +319,7 @@ def test_capacity_reservation_patch(
     # Mock describe_capacity_reservations to return an error. We can make it always return
     # an error even if the capacity reservation exists because it should not affect
     # whether _load_config is successful
-    mocker.patch(
+    mock_describe_capacity_reservations = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
         side_effect=AWSClientError(
             function_name= "describe_capacity_reservations",
@@ -339,6 +339,9 @@ def test_capacity_reservation_patch(
 
     try:
         _load_config(src_config_file)
+        # describe_capacity_reservation is called once in `SlurmClusterConfig`
+        # but this does not cause an error because it just logs a warning.
+        mock_describe_capacity_reservations.assert_called_once()
         if error_type:
             pytest.fail(f"Expected {error_type.__name__} was not raised")
     except Exception as e:

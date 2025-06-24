@@ -10,13 +10,20 @@ import itertools
 import pytest
 from assertpy import assert_that
 
-from pcluster.api.models import DescribeClusterResponseContent, UpdateClusterResponseContent
+from cli.tests.pcluster.test_utils import dummy_cluster
+from pcluster.api.controllers.common import get_validator_suppressors
+from pcluster.api.models import DescribeClusterResponseContent, UpdateClusterResponseContent, ClusterStatus
+from pcluster.aws.common import AWSClientError
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import load_cfn_templates_from_config
 from tests.utils import wire_translate
+
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
+from pcluster.models.cluster import Cluster
+from pcluster.models.cluster_resources import ClusterStack
 
 
 class TestUpdateClusterCommand:
@@ -239,6 +246,86 @@ class TestUpdateClusterCommand:
         with pytest.raises(APIOperationException) as exc_info:
             self.run_update_cluster(test_datadir)
         assert_that(exc_info.value.data.get("message")).matches("Node.js is required")
+
+    def test_validate_update_request(self, mocker):
+        """
+        Tests that instance type attribute of the old configuration is never retrieved during an update.
+        """
+        new_configuration = """
+        Image:
+          Os: alinux2
+        HeadNode:
+          InstanceType: t3.micro
+          Networking:
+            SubnetId: subnet-08a5068070f6bc23d
+        Scheduling:
+          Scheduler: slurm
+          SlurmQueues:
+          - Name: queue
+            ComputeResources:
+            - Name: queue1
+              InstanceType: c5.xlarge
+            Networking:
+              SubnetIds:
+              - subnet-0f621591d5d0da380
+        """
+
+        old_configuration = """
+        Image:
+          Os: alinux2
+        HeadNode:
+          InstanceType: t3.micro
+          Networking:
+            SubnetId: subnet-08a5068070f6bc23d
+        Scheduling:
+          Scheduler: slurm
+          SlurmQueues:
+          - Name: queue
+            ComputeResources:
+            - Name: queue1
+              CapacityReservationTarget:
+                CapacityReservationId: cr-1111111111
+            Networking:
+              SubnetIds:
+              - subnet-0f621591d5d0da380
+        """
+
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([{"InstanceId": "i-123456789"}], None),
+            expected_params=[
+                {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": ["WHATEVER-CLUSTER-NAME"]},
+                {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": ["HeadNode"]},
+            ],
+        )
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+            side_effect=AWSClientError(
+                function_name= "describe_capacity_reservations",
+                message="Error accessing capacity reservations"
+            )
+        )
+
+
+        cluster = Cluster(
+            "cluster",
+            stack=ClusterStack(
+                {
+                    "StackName": "cluster",
+                    "CreationTime": "2021-06-04 10:23:20.199000+00:00",
+                    "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                    "Tags": [{"Key": PCLUSTER_VERSION_TAG, "Value": "3.13.0"}],
+                }
+            ),
+            config=old_configuration,
+        )
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+
+        # If describe_capacity_reservations is called, validate_update_request will fail.
+        cluster.validate_update_request(new_configuration, get_validator_suppressors(["ALL"]), force=True)
 
     def test_nodejs_wrong_version_error(self, mocker, test_datadir):
         """Test expected message is printed out if nodejs is wrong version."""
