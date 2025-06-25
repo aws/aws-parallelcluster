@@ -10,20 +10,19 @@ import itertools
 import pytest
 from assertpy import assert_that
 
-from cli.tests.pcluster.test_utils import dummy_cluster
 from pcluster.api.controllers.common import get_validator_suppressors
-from pcluster.api.models import DescribeClusterResponseContent, UpdateClusterResponseContent, ClusterStatus
+from pcluster.api.models import ClusterStatus, DescribeClusterResponseContent, UpdateClusterResponseContent
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
+from pcluster.config.cluster_config import SlurmComputeResource
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
+from pcluster.models.cluster import Cluster
+from pcluster.models.cluster_resources import ClusterStack
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import load_cfn_templates_from_config
 from tests.utils import wire_translate
-
-from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
-from pcluster.models.cluster import Cluster
-from pcluster.models.cluster_resources import ClusterStack
 
 
 class TestUpdateClusterCommand:
@@ -302,11 +301,10 @@ class TestUpdateClusterCommand:
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
             side_effect=AWSClientError(
-                function_name= "describe_capacity_reservations",
-                message="Error accessing capacity reservations"
-            )
+                function_name="describe_capacity_reservations", message="Error accessing capacity reservations"
+            ),
         )
-
+        mock_instance_type_attribute = mocker.patch.object(SlurmComputeResource, "instance_type")
 
         cluster = Cluster(
             "cluster",
@@ -324,8 +322,9 @@ class TestUpdateClusterCommand:
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
 
-        # If describe_capacity_reservations is called, validate_update_request will fail.
+        # If the instance type attribute is called for the old config, it will result in a failure
         cluster.validate_update_request(new_configuration, get_validator_suppressors(["ALL"]), force=True)
+        mock_instance_type_attribute.assert_not_called()
 
     def test_nodejs_wrong_version_error(self, mocker, test_datadir):
         """Test expected message is printed out if nodejs is wrong version."""

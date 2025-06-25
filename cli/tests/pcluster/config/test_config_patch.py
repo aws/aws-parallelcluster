@@ -262,49 +262,27 @@ def test_single_param_change(
     "cr_id, instance_type, error_type, error_message",
     [
         # Capacity reservation does not exist and Instance type is not set. Should result in no error.
-        pytest.param(
-            "cr-12324398",
-            None,
-            None,
-            None
-        ),
+        pytest.param("cr-12324398", None, None, None),
         # No capacity reservation nor instance type is inputted. This results in a validation error.
         pytest.param(
             None,
             None,
             ValidationError,
-            "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId."
+            "A Compute Resource needs to specify Instances, InstanceType or CapacityReservationId.",
         ),
         # No capacity reservation is inputted, but instance type is inputted. This results in no error.
-        pytest.param(
-            None,
-            "c5.xlarge",
-            None,
-            None
-        ),
+        pytest.param(None, "c5.xlarge", None, None),
         # Capacity reservation does not exist. Results in no error.
-        pytest.param(
-            "cr-12324398",
-            "c5.xlarge",
-            None,
-            None
-        )
+        pytest.param("cr-12324398", "c5.xlarge", None, None),
     ],
 )
-
-
 def test_load_config_for_capacity_reservation(
-        mocker,
-        pcluster_config_reader,
-        cr_id,
-        instance_type,
-        error_type,
-        error_message
+    mocker, pcluster_config_reader, cr_id, instance_type, error_type, error_message
 ):
     """
-    This test checks that when loading a configuration, describe_capacity_reservations does not cause a failure. This ensures that
-    when the old configuration is loaded during an update, it does not matter whether the capacity reservation
-    is accessible.
+    This test checks that when loading a configuration, describe_capacity_reservations does not cause a failure.
+    This ensures that when the old configuration is loaded during an update, it does not matter whether the
+    capacity reservation is accessible.
     The existence of the capacity reservation should only be checked during the validation phase. This should happen
     the `_validate_and_parse_config` function.
 
@@ -315,16 +293,14 @@ def test_load_config_for_capacity_reservation(
     """
     mock_aws_api(mocker)
 
-
     # Mock describe_capacity_reservations to return an error. We can make it always return
     # an error even if the capacity reservation exists because it should not affect
     # whether _load_config is successful
     mock_describe_capacity_reservations = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
         side_effect=AWSClientError(
-            function_name= "describe_capacity_reservations",
-            message="Error accessing capacity reservations"
-        )
+            function_name="describe_capacity_reservations", message="Error accessing capacity reservations"
+        ),
     )
 
     src_dict = {}
@@ -335,7 +311,6 @@ def test_load_config_for_capacity_reservation(
         src_dict["compute_instance_type"] = instance_type
 
     src_config_file = pcluster_config_reader(**src_dict)
-
 
     try:
         _load_config(src_config_file)
@@ -350,6 +325,7 @@ def test_load_config_for_capacity_reservation(
         else:
             assert isinstance(e, error_type)
             assert error_message in str(e)
+
 
 def _load_config(config_file):
     return ClusterSchema(cluster_name="clustername").load(load_yaml_dict(config_file))
