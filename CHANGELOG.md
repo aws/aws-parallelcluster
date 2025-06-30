@@ -5,8 +5,10 @@ CHANGELOG
 ------
 
 **BUG FIXES**
-- Fix a bug that update-cluster, update-compute-fleet may fail when compute resources use an expired Capacity Reservation.
-- Fix build image failures occurring on non-latest versions of Rocky Linux 9.
+- Fix a bug which may cause `update-cluster` and `update-compute-fleet` to fail when compute resources reference an expired Capacity Reservation
+  that is no longer accessible via EC2 APIs.
+- Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version.
+  See https://github.com/aws/aws-parallelcluster/issues/6874.
 
 3.13.1
 ------
