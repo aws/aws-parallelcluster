@@ -1,0 +1,55 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  SharedStorageType: {{ shared_headnode_storage_type }}
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: sa-east-1-pcluster
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      CapacityType: ONDEMAND
+      AllocationStrategy: prioritized
+      Iam:
+        S3Access:
+          - BucketName: sa-east-1-pcluster
+      ComputeResources:
+        - Name: queue1-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
+          - {{ public_subnet_ids[1] }}
+        EnableSingleAvailabilityZone: true
+    - Name: queue2
+      CapacityType: SPOT
+      AllocationStrategy: capacity-optimized-prioritized
+      Iam:
+        S3Access:
+          - BucketName: sa-east-1-pcluster
+      ComputeResources:
+        - Name: queue2-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
+          - {{ public_subnet_ids[1] }}
+        EnableSingleAvailabilityZone: true
+DevSettings:
+  AmiSearchFilters:
+    Owner: "447714826191"
+  NodePackage: s3://sa-east-1-pcluster/parallelcluster/3.14.0/node/aws-parallelcluster-node-3.14.0.tgz
+  Cookbook:
+    ChefCookbook: s3://sa-east-1-pcluster/parallelcluster/3.14.0/cookbooks/aws-parallelcluster-cookbook-3.14.0.tgz

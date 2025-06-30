@@ -31,6 +31,7 @@ from utils import (
 
 from tests.common.assertions import (
     assert_lambda_vpc_settings_are_correct,
+    assert_msg_in_log,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     wait_for_num_instances_in_cluster,
@@ -238,3 +239,23 @@ def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_com
         slurm_commands.assert_job_succeeded(job_id)
     logging.info("Checking cluster has two nodes after running MPI jobs")  # 1 static node + 1 dynamic node
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(2)
+
+
+@pytest.mark.usefixtures("instance")
+def test_cluster_with_subnet_prioritization(
+    region, os, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
+    # Create cluster with subnet prioritization
+    init_config_file = pcluster_config_reader(config_file="pcluster.config.yaml")
+    cluster = clusters_factory(init_config_file)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    scheduler_commands.submit_command("sleep 60", nodes=10)
+    wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=11)
+
+    slurm_resume_log = "/var/log/parallelcluster/slurm_resume.log"
+    public_subnets = vpc_stack.get_all_public_subnets()
+    assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[0]}', 'Priority': 0.0")
+    assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[1]}', 'Priority': 1.0")
