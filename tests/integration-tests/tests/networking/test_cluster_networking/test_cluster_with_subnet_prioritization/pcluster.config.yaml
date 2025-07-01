@@ -23,7 +23,7 @@ Scheduling:
         - Name: queue1-i1
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 1
+          MinCount: 0
           MaxCount: 10
       Networking:
         SubnetIds:
@@ -40,7 +40,7 @@ Scheduling:
         - Name: queue2-i1
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 1
+          MinCount: 0
           MaxCount: 10
       Networking:
         SubnetIds:
