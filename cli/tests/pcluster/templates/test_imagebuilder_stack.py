@@ -2203,6 +2203,63 @@ def test_imagebuilder_lambda_execution_role(
                 {"ComponentArn": {"Ref": "ParallelClusterTestComponent"}},
             ],
         ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "installation": {"nvidia_software": {"enabled": True}, "lustre_client": {"enabled": True}},
+                        "imds": {"imds_support": "v2.0"},
+                        "subnet_id": "subnet-0292c5356eadc531f",
+                        "iam": {
+                            "instance_role": "arn:aws:iam::123456789012:role/pcluster",
+                            "instance_profile": "arn:aws:iam::123456789012:instance-profile/pcluster",
+                            "cleanup_lambda_role": "arn:aws:iam::123456789012:role/pcluster",
+                            "additional_iam_policies": [{"policy": "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"}]
+                        },
+                        "instance_type": "c5.xlarge",
+                        "security_group_ids": ["sg-b0bbeacc", "sg-0fc70b22048995b07"],
+                        "components": [
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0",
+                            },
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:"
+                                "aws:component/amazon-cloudwatch-agent-linux/1.0.0",
+                            },
+                        ],
+                        "update_os_packages": {"enabled": True},
+                    },
+                    "dev_settings": {
+                        "cookbook": {
+                            "chef_cookbook": "https://tests/aws-parallelcluster-cookbook-3.0.tgz",
+                            "extra_chef_attributes": '{"cluster": {"test_cluster_attribute": "test_cluster_attribute_values"}}',
+                        },
+                        "node_package": "https://tests/aws-parallelcluster-node-3.0.tgz",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            [
+                {"ComponentArn": {"Ref": "UpdateOSComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
+            ],
+        ),
     ],
 )
 def test_imagebuilder_components(mocker, resource, response, expected_components):
@@ -2222,6 +2279,17 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
     assert_that(generated_template.get("Resources").get("ImageRecipe").get("Properties").get("Components")).is_equal_to(
         expected_components
     )
+    # Check size Limits of ImageBuilder Components
+    imagebuilder_resources = generated_template.get("Resources")
+    for component_name, component_content in imagebuilder_resources.items():
+        if (
+            imagebuilder_resources.get(component_name)
+            and imagebuilder_resources.get(component_name).get("Type") == "AWS::ImageBuilder::Component"
+        ):
+            print("Component {} has size {}".format(component_name, len(str(imagebuilder_resources.get(component_name).get("Properties").get("Data")))))
+            assert_that(
+                len(str(imagebuilder_resources.get(component_name).get("Properties").get("Data")))
+            ).is_less_than(16000)
 
 
 @pytest.mark.parametrize(

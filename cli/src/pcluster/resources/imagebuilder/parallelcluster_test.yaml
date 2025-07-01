@@ -31,7 +31,6 @@ phases:
             - |
               set -v
               RELEASE='{{ test.OSRelease.outputs.stdout }}'
-
               if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
               elif [ `echo "${RELEASE}" | grep -w '^amzn\.2023'` ]; then
@@ -53,7 +52,6 @@ phases:
               else
                 echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
               fi
-
               echo ${OS}
 
       - name: OSArchitecture
@@ -82,13 +80,11 @@ phases:
             - |
               set -v
               OS='{{ test.OSName.outputs.stdout }}'
-
               if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
                 PLATFORM='RHEL'
               elif [ `echo "${OS}" | grep -E '^ubuntu'` ]; then
                 PLATFORM='DEBIAN'
               fi
-
               echo ${PLATFORM}
 
       - name: IntelMPISupported
@@ -212,13 +208,11 @@ phases:
             - |
               set -vx
               PLATFORM='{{ test.PlatformName.outputs.stdout }}'
-
               if [ {{ test.IntelMPISupported.outputs.stdout }} == true ]; then
                 echo "Checking efa packages installed..."
                 if [ ${PLATFORM} == RHEL ]; then
                   rpm -qa | grep libfabric && rpm -qa | grep efa-
                   [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
-
                   echo "Checking Intel MPI 20xx installed and module available..."
                   unset MODULEPATH
                   source /etc/profile.d/modules.sh
@@ -238,22 +232,18 @@ phases:
             - |
               set -vx
               PLATFORM='{{ test.PlatformName.outputs.stdout }}'
-
               if [[ {{ test.NvidiaEnabled.outputs.stdout }} == 'no' ]]; then
                 echo "Nvidia recipe not enabled, skipping." && exit 0
               fi
               if [ {{ test.HasGPU.outputs.stdout }} == "false" ]; then
                 echo "No GPU detected, skipping." && exit 0
               fi
-
               driver_ver="{{ test.NvidiaVersion.outputs.stdout }}"
               export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin"
-
               echo "Testing Nvidia driver version"
               driver_output=$(nvidia-smi | grep -E -o "Driver Version: [0-9.]+")
               [[ "${driver_output}" != "Driver Version: ${driver_ver}" ]] && "ERROR Installed version ${driver_output} but expected ${driver_ver}" && exit 1
               echo "Correctly installed Nvidia ${driver_output}"
-
               if [ {{ test.FabricManagerSupported.outputs.stdout }} == "true" ]; then
                 echo "Testing Nvidia Fabric Manager version"
                 nvidia_driver_version=$(modinfo -F version nvidia)
@@ -266,7 +256,6 @@ phases:
                 fi
                 echo "Fabric Manager match Nvidia driver and version is locked"
               fi
-
               echo "Testing CUDA installation with nvcc"
               cuda_ver="{{ test.CudaVersion.outputs.stdout }}"
               export PATH=/usr/local/cuda-${cuda_ver}/bin:${PATH}
@@ -274,7 +263,6 @@ phases:
               cuda_output=$(nvcc -V | grep -E -o "release [0-9]+.[0-9]+")
               [[ "${cuda_output}" != "release ${cuda_ver}" ]] && echo "ERROR Installed version ${cuda_output} but expected ${cuda_ver}" && exit 1
               echo "Correctly installed CUDA ${cuda_output}"
-
               echo "Testing CUDA with deviceQuery..."
               if [ {{ test.OSArchitecture.outputs.stdout }} != 'arm64' ]; then
                 /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
@@ -322,7 +310,6 @@ phases:
             - |
               set -vx
               OS='{{ test.OSName.outputs.stdout }}'
-
               [[ $? -ne 0 ]] && echo "Check for Lustre client failed" && exit 1
               echo "FSx Lustre test passed"
 
