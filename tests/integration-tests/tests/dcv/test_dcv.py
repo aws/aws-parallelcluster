@@ -12,10 +12,12 @@
 import logging
 import os as operating_system
 import re
+import subprocess
 
 import pytest
 import requests
 from assertpy import assert_that
+
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from utils import (
@@ -165,7 +167,14 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
 
     # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
     host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
+    logging.info(f"Add ip address {node_ip} to known hosts file {host_keys_file}")
+
+    result = subprocess.check_output("cat {0}".format(host_keys_file), shell=True)
+    logging.info(f"Original content of known hosts file {host_keys_file}: {result}")
+
     add_keys_to_known_hosts(node_ip, host_keys_file)
+    result = subprocess.check_output("cat {0}".format(host_keys_file), shell=True)
+    logging.info(f"New content of known hosts file {host_keys_file}: {result}")
 
     dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
 
