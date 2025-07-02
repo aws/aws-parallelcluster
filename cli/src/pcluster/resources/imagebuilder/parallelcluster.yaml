@@ -42,8 +42,8 @@ phases:
           commands:
             - |
               set -v
-              COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${CfnParamCookbookVersion}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz"
-              [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL="${CfnParamChefCookbook}"
+              COOKBOOK_URL="${CfnParamChefCookbook}"
+              [ -n "${COOKBOOK_URL}" ] && COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${CfnParamCookbookVersion}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz"
               echo "${!COOKBOOK_URL}"
 
       # Get Cinc Url
