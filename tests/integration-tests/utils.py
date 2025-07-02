@@ -545,7 +545,7 @@ def get_username_for_os(os):
 
 def add_keys_to_known_hosts(hostname, host_keys_file):
     """Add ssh key for a host to a known_hosts file."""
-    os.system("ssh-keyscan -t rsa {0} >> {1}".format(hostname, host_keys_file))
+    os.system("ssh-keyscan -t ed25519 {0} >> {1}".format(hostname, host_keys_file))
 
 
 def remove_keys_from_known_hosts(hostname, host_keys_file, env):
