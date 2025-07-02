@@ -17,7 +17,6 @@ import subprocess
 import pytest
 import requests
 from assertpy import assert_that
-
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from utils import (
