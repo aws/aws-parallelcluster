@@ -1809,7 +1809,7 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
         (False, "alinux2", "t3.micro", None, None, None),  # doesn't fail because DCV is disabled
         (True, "alinux2", "m6g.xlarge", None, None, None),
         (True, "rhel8", "m6g.xlarge", None, None, None),
-        (True, "alinux2023", "m6g.xlarge", None, None, "Please double check the os configuration"),
+        (True, "alinux2023", "m6g.xlarge", None, None, None),
     ],
 )
 def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expected_message):
