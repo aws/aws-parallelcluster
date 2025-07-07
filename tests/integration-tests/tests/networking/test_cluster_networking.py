@@ -256,7 +256,13 @@ def test_cluster_with_subnet_prioritization(
     scheduler_commands.submit_command("sleep 60", nodes=5)
     wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=5)
 
+    # Check that the CreateFleet request contains priorities for each subnet
+    slurm_resume_log = "/var/log/parallelcluster/slurm_resume.log"
     public_subnets = vpc_stack.get_all_public_subnets()
+    assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[0]}', 'Priority': 0.0")
+    assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[1]}', 'Priority': 1.0")
+
+    # Check that all instances are launched in the subnet with the highest priority
     subnet_ids = get_compute_nodes_subnet_ids(cluster.cfn_name, region)
     for subnet_id in subnet_ids:
         assert_that(subnet_id).is_equal_to(public_subnets[0])
