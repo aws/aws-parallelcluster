@@ -13,7 +13,7 @@ from unittest.mock import PropertyMock, call
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.config.common import AllocationStrategy, CapacityType
+from pcluster.config.common import CapacityType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
 from pcluster.validators import (

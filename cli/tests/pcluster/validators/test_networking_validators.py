@@ -14,7 +14,6 @@ from collections import defaultdict
 import pytest
 
 from pcluster.aws.common import AWSClientError
-from pcluster.config.common import AllocationStrategy
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
     LambdaFunctionsVpcConfigValidator,
