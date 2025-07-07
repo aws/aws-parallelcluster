@@ -19,14 +19,7 @@ function vendor_cookbook
 {
   mkdir /tmp/cookbooks
   cd /tmp/cookbooks
-  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz
-  HOME_BAK="${!HOME}"
-  export HOME="/tmp"
-  for d in /tmp/cookbooks/*; do
-    cd "$d" || continue
-    LANG=en_US.UTF-8 /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete
-  done;
-  export HOME="${!HOME_BAK}"
+  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1
 }
 
 function wait_for_private_ip_assignment

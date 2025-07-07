@@ -77,14 +77,7 @@ function vendor_cookbook
 {
   mkdir /tmp/cookbooks
   cd /tmp/cookbooks
-  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz
-  HOME_BAK="${!HOME}"
-  export HOME="/tmp"
-  for d in `ls /tmp/cookbooks`; do
-    cd /tmp/cookbooks/$d
-    LANG=en_US.UTF-8 /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'
-  done;
-  export HOME="${!HOME_BAK}"
+  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1
 }
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
@@ -117,7 +110,6 @@ fi
 export parallelcluster_version=aws-parallelcluster-${ParallelClusterVersion}
 export cookbook_version=${CookbookVersion}
 export chef_version=${ChefVersion}
-export berkshelf_version=${BerkshelfVersion}
 if [ -f /opt/parallelcluster/.bootstrapped ]; then
   installed_version=$(cat /opt/parallelcluster/.bootstrapped)
   if [ "${!cookbook_version}" != "${!installed_version}" ]; then
