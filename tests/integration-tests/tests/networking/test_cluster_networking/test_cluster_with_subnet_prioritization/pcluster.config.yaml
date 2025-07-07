@@ -29,7 +29,6 @@ Scheduling:
         SubnetIds:
           - {{ public_subnet_ids[0] }}
           - {{ public_subnet_ids[1] }}
-        EnableSingleAvailabilityZone: true
     - Name: queue2
       CapacityType: SPOT
       AllocationStrategy: capacity-optimized-prioritized
@@ -46,7 +45,6 @@ Scheduling:
         SubnetIds:
           - {{ public_subnet_ids[0] }}
           - {{ public_subnet_ids[1] }}
-        EnableSingleAvailabilityZone: true
 DevSettings:
   AmiSearchFilters:
     Owner: "447714826191"
