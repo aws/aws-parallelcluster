@@ -1335,6 +1335,21 @@ class HeadNodeMemorySizeValidator(Validator):
                 FailureLevel.ERROR,
             )
 
+class HeadNodeSharedStorageEncryptedValidator(Validator):
+    """
+    Head Node Shared Storage Encrypted Validator.
+
+    Verify Head Node Shared Storage Encryption can only be used with Efs Shared Storage Type.
+    """
+
+    def _validate(self, shared_storage_type: str, encrypted: bool):
+        if encrypted and shared_storage_type != "Efs":
+            self._add_failure(
+                f"HeadNode is using SharedStorageSetting/Encrypted = true "
+                f"but the SharedStorageType specified is {shared_storage_type}. "
+                f"SharedStorageSetting/Encrypted = true can only be used SharedStorageType specified as Efs.",
+                FailureLevel.ERROR,
+            )
 
 class SharedEbsPerformanceBottleNeckValidator(Validator):
     """Warn potential performance bottleneck of using Shared EBS."""

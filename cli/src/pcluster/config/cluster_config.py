@@ -93,6 +93,7 @@ from pcluster.validators.cluster_validators import (
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HeadNodeMemorySizeValidator,
+    HeadNodeSharedStorageEncryptedValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
@@ -852,6 +853,14 @@ class LoginNodesSsh(_BaseSsh):
         self.allowed_ips = Resource.init_param(allowed_ips)
 
 
+class SharedStorageSettings(Resource):
+    """Represent the shared storage settings."""
+
+    def __init__(self, encrypted: bool = False):
+        super().__init__()
+        self.encrypted = encrypted
+
+
 class Dcv(Resource):
     """Represent the DCV configuration."""
 
@@ -1435,6 +1444,7 @@ class HeadNode(Resource):
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
         shared_storage_type: str = None,
+        shared_storage_settings: SharedStorageSettings = None,
         dcv: Dcv = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1453,6 +1463,7 @@ class HeadNode(Resource):
             shared_storage_type,
             default="Ebs",
         )
+        self.shared_storage_settings = shared_storage_settings
         self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
@@ -1462,6 +1473,8 @@ class HeadNode(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        if self.shared_storage_settings:
+            self._register_validator(HeadNodeSharedStorageEncryptedValidator, shared_storage_type=self.shared_storage_type, encrypted=self.shared_storage_settings.encrypted)
 
     @property
     def architecture(self) -> str:
