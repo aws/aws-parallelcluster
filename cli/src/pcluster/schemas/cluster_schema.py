@@ -751,7 +751,6 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
         PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.MANAGED_PLACEMENT_GROUP}
     )
     proxy = fields.Nested(QueueProxySchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
-    enable_single_availability_zone = fields.Bool(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):

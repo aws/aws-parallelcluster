@@ -186,7 +186,6 @@ from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKe
 from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
-    EnableSingleAvailabilityZoneValidator,
     MultiAzPlacementGroupValidator,
     QueueSubnetsValidator,
     SecurityGroupsValidator,
@@ -815,17 +814,10 @@ class _QueueNetworking(_BaseNetworking, SubnetsMixin):
 class SlurmQueueNetworking(_QueueNetworking):
     """Represent the networking configuration for the slurm Queue."""
 
-    def __init__(
-        self,
-        placement_group: PlacementGroup = None,
-        proxy: Proxy = None,
-        enable_single_availability_zone: bool = None,
-        **kwargs,
-    ):
+    def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, **kwargs):
         super().__init__(**kwargs)
         self.placement_group = placement_group or PlacementGroup(implied=True)
         self.proxy = proxy
-        self.enable_single_availability_zone = enable_single_availability_zone
 
 
 class AwsBatchQueueNetworking(_QueueNetworking):
@@ -2634,14 +2626,6 @@ class SlurmQueue(_CommonQueue):
             max_length=MAX_COMPUTE_RESOURCES_PER_QUEUE,
             resource_name="ComputeResources per Queue",
         )
-        if any(
-            isinstance(compute_resource, SlurmFlexibleComputeResource) for compute_resource in self.compute_resources
-        ):
-            self._register_validator(
-                EnableSingleAvailabilityZoneValidator,
-                allocation_strategy=self.allocation_strategy,
-                enable_single_availability_zone=self.networking.enable_single_availability_zone,
-            )
         self._register_validator(
             QueueSubnetsValidator,
             queue_name=self.name,

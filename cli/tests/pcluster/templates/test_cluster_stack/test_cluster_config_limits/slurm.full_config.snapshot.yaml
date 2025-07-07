@@ -219,7 +219,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -298,7 +297,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -377,7 +375,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -456,7 +453,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -535,7 +531,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -614,7 +609,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -693,7 +687,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -772,7 +765,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -851,7 +843,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -930,7 +921,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1009,7 +999,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1088,7 +1077,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1167,7 +1155,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1246,7 +1233,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1325,7 +1311,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1404,7 +1389,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1483,7 +1467,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1562,7 +1545,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1641,7 +1623,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1720,7 +1701,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1799,7 +1779,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1878,7 +1857,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -1957,7 +1935,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -2036,7 +2013,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -2115,7 +2091,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: null
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: null
         Id: null
@@ -2183,7 +2158,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2252,7 +2226,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2321,7 +2294,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2390,7 +2362,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2459,7 +2430,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2528,7 +2498,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2597,7 +2566,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2666,7 +2634,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2735,7 +2702,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2804,7 +2770,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2873,7 +2838,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -2942,7 +2906,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3011,7 +2974,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3080,7 +3042,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3149,7 +3110,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3218,7 +3178,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3287,7 +3246,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3356,7 +3314,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3425,7 +3382,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3494,7 +3450,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3563,7 +3518,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3632,7 +3586,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3701,7 +3654,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3770,7 +3722,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String
@@ -3839,7 +3790,6 @@ Scheduling:
     Networking:
       AdditionalSecurityGroups: null
       AssignPublicIp: true
-      EnableSingleAvailabilityZone: null
       PlacementGroup:
         Enabled: true
         Id: String

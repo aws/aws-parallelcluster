@@ -43,7 +43,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - subnet-23456789
-        EnableSingleAvailabilityZone: true
       ComputeResources:
         - Name: compute_resource1
           InstanceType: c5.4xlarge
@@ -70,7 +69,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - subnet-23456789
-        EnableSingleAvailabilityZone: false
       ComputeResources:
         - Name: compute_resource1
           Instances:
