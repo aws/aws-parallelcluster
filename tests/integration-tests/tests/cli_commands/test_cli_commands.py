@@ -97,7 +97,7 @@ def test_slurm_cli_commands(
     _test_pcluster_compute_fleet(cluster, expected_num_nodes=2)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _test_create_cluster(clusters_factory, cluster_config, request):

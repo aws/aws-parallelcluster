@@ -356,5 +356,5 @@ def _test_disable_hyperthreading(
         default_threads_per_core=default_threads_per_core,
     )
 
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
     run_system_analyzer(cluster, scheduler_commands_factory, request)
