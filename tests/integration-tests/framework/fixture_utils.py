@@ -126,7 +126,7 @@ class SharedFixture:
                 return
 
         timeout = time.time() + 4 * 60 * 60  # 4 hours from now
-        while data.counter > 1:
+        while min(data.counter, len(data.currently_using_processes)) > 1:
             logging.info(
                 "Waiting for all processes to release shared fixture %s, currently in use by %d processes (%s)",
                 self.name,

@@ -239,7 +239,7 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
     metric_namespace = "ParallelCluster/test_efa"
     evaluation_output = ""
     result = re.findall(r"(\d+)\s+(\d+)\.", output)
-    push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os)
+    push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version)
     for packet_size, value in result:
         with open(
             str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
