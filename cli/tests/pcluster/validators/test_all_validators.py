@@ -198,6 +198,9 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     number_of_storage_validator = mocker.patch(
         cluster_validators + ".NumberOfStorageValidator._validate", return_value=[]
     )
+    shared_storage_efs_settings_validator = mocker.patch(
+        cluster_validators + ".SharedStorageEfsSettingsValidator._validate", return_value=[]
+    )
     deletion_policy_validator = mocker.patch(cluster_validators + ".DeletionPolicyValidator._validate", return_value=[])
     root_volume_encryption_consistency_validator = mocker.patch(
         cluster_validators + ".RootVolumeEncryptionConsistencyValidator._validate", return_value=[]
@@ -389,6 +392,12 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(storage_type="new EFS", max_number=1, storage_count=1),
             call(storage_type="new FSx", max_number=1, storage_count=1),
             call(storage_type="new RAID", max_number=1, storage_count=0),
+        ],
+        any_order=True,
+    )
+    shared_storage_efs_settings_validator.assert_has_calls(
+        [
+            call(shared_storage_type="Ebs", shared_storage_efs_settings=None)
         ],
         any_order=True,
     )

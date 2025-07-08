@@ -71,6 +71,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerDisableSudoAccessForDefaultUserValidator,
     SchedulerOsValidator,
     SharedFileCacheNotHomeValidator,
+    SharedStorageEfsSettingsValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
@@ -2072,6 +2073,41 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
         queues=queues,
     )
     expected_message = "make sure.*cluster nodes are reachable" if expect_warning else None
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "shared_storage_type, shared_storage_efs_settings, expected_message",
+    [
+        (
+                "Efs",
+                {
+                    "encrypted": True
+                },
+                None,
+        ),
+        (
+                "Efs",
+                None,
+                None,
+        ),
+        (
+                "Ebs",
+                {
+                    "encrypted": True
+                },
+                "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
+                "SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
+        ),
+        (
+                "Ebs",
+                None,
+                None,
+        ),
+    ],
+)
+def test_shared_storage_efs_settings_validator(shared_storage_type, shared_storage_efs_settings, expected_message):
+    actual_failures = SharedStorageEfsSettingsValidator().execute(shared_storage_type, shared_storage_efs_settings)
     assert_failure_messages(actual_failures, expected_message)
 
 

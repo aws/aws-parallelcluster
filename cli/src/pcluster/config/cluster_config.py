@@ -93,7 +93,7 @@ from pcluster.validators.cluster_validators import (
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HeadNodeMemorySizeValidator,
-    SharedStorageEfsSettingsEncryptedValidator,
+    SharedStorageEfsSettingsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
@@ -1473,7 +1473,7 @@ class HeadNode(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._register_validator(SharedStorageEfsSettingsEncryptedValidator, shared_storage_type=self.shared_storage_type, shared_storage_efs_settings=self.shared_storage_settings)
+        self._register_validator(SharedStorageEfsSettingsValidator, shared_storage_type=self.shared_storage_type, shared_storage_efs_settings=self.shared_storage_settings)
 
     @property
     def architecture(self) -> str:
