@@ -365,18 +365,16 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
         raise
 
 
-def get_compute_nodes_subnet_ids(stack_name, region, instance_types=None, queue_name=None):
+def get_compute_nodes_subnet_ids(stack_name, region, instance_types=None, node_type=None, queue_name=None):
     """Return a list of cluster Instances Subnet Ids."""
     try:
         instances = describe_cluster_instances(
             stack_name,
             region,
-            filter_by_node_type="Compute",
+            filter_by_node_type=node_type,
             filter_by_instance_types=instance_types,
             filter_by_queue_name=queue_name,
         )
-        logging.info("Instance Information: ")
-        logging.info(instances)
         return [instance["SubnetId"] for instance in instances]
     except Exception as e:
         logging.error("Failed retrieving instance ids with exception: %s", e)

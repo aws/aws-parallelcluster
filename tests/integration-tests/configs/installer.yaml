@@ -1,10 +1,10 @@
 {%- import 'common.jinja2' as common with context -%}
 ---
 test-suites:
-  networking:
-    test_cluster_networking.py::test_cluster_with_subnet_prioritization:
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
-        - regions: [ "sa-east-1" ]
-          instances: [ "t3.large" ]
-          oss: [ "alinux2" ]
+        - regions: [ "ap-northeast-2" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "ubuntu2404" ]
           schedulers: [ "slurm" ]

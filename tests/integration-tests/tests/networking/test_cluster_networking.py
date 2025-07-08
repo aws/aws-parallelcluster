@@ -13,7 +13,7 @@ import logging
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from cfn_stacks_factory import CfnStack
 from constants import OSU_BENCHMARK_VERSION, UNSUPPORTED_OSES_FOR_DCV
 from fabric import Connection
@@ -36,6 +36,7 @@ from tests.common.assertions import (
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     wait_for_num_instances_in_cluster,
+    wait_for_num_instances_in_queue,
 )
 from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
@@ -252,17 +253,21 @@ def test_cluster_with_subnet_prioritization(
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    public_subnets = vpc_stack.get_all_public_subnets()
+    queues = ["queue1", "queue2"]
+    logging.info(f"Public subnets: {public_subnets}")
+    # Check that all instances are launched in the subnet with the highest priority
+    with soft_assertions():
+        for queue in queues:
+            scheduler_commands.submit_command("sleep 60", nodes=5, partition=queue)
+            wait_for_num_instances_in_queue(cluster.cfn_name, cluster.region, desired=5, queue=queue)
 
-    scheduler_commands.submit_command("sleep 60", nodes=5)
-    wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=5)
+            subnet_ids = get_compute_nodes_subnet_ids(cluster.cfn_name, region, node_type="Compute", queue_name=queue)
+            logging.info(f"Subnets: {subnet_ids}")
+            for subnet_id in subnet_ids:
+                assert_that(subnet_id).is_equal_to(public_subnets[0])
 
     # Check that the CreateFleet request contains priorities for each subnet
     slurm_resume_log = "/var/log/parallelcluster/slurm_resume.log"
-    public_subnets = vpc_stack.get_all_public_subnets()
     assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[0]}', 'Priority': 0.0")
     assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[1]}', 'Priority': 1.0")
-
-    # Check that all instances are launched in the subnet with the highest priority
-    subnet_ids = get_compute_nodes_subnet_ids(cluster.cfn_name, region)
-    for subnet_id in subnet_ids:
-        assert_that(subnet_id).is_equal_to(public_subnets[0])
