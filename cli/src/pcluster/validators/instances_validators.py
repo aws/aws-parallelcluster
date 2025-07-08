@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Callable, Dict
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config import cluster_config, common
+from pcluster.config import cluster_config
 from pcluster.constants import MIN_MEMORY_ABSOLUTE_DIFFERENCE, MIN_MEMORY_PRECENTAGE_DIFFERENCE
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -225,14 +225,14 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
         if (
             capacity_type == cluster_config.CapacityType.ONDEMAND
             and allocation_strategy
-            and allocation_strategy != common.AllocationStrategy.LOWEST_PRICE
-            and allocation_strategy != common.AllocationStrategy.PRIORITIZED
+            and allocation_strategy != cluster_config.AllocationStrategy.LOWEST_PRICE
+            and allocation_strategy != cluster_config.AllocationStrategy.PRIORITIZED
         ):
             alloc_strategy_msg = allocation_strategy.value if allocation_strategy else "not set"
             self._add_failure(
                 f"Compute Resource {compute_resource_name} is using an OnDemand CapacityType but "
                 f"the Allocation Strategy specified is {alloc_strategy_msg}. OnDemand CapacityType can only use '"
-                f"{common.AllocationStrategy.LOWEST_PRICE.value}' or '{common.AllocationStrategy.PRIORITIZED.value}' "
+                f"{cluster_config.AllocationStrategy.LOWEST_PRICE.value}' or '{cluster_config.AllocationStrategy.PRIORITIZED.value}' "
                 "allocation strategy.",
                 FailureLevel.ERROR,
             )
@@ -245,15 +245,15 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
             )
         if (
             capacity_type == cluster_config.CapacityType.SPOT
-            and allocation_strategy == common.AllocationStrategy.PRIORITIZED
+            and allocation_strategy == cluster_config.AllocationStrategy.PRIORITIZED
         ):
             self._add_failure(
                 f"Compute Resource {compute_resource_name} is using a SPOT CapacityType but the "
                 f"Allocation Strategy specified is {allocation_strategy.value}. SPOT CapacityType can only use "
-                f"'{common.AllocationStrategy.LOWEST_PRICE.value}', "
-                f"'{common.AllocationStrategy.CAPACITY_OPTIMIZED.value}', "
-                f"'{common.AllocationStrategy.PRICE_CAPACITY_OPTIMIZED.value}' "
-                f"or '{common.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED.value}' allocation strategy.",
+                f"'{cluster_config.AllocationStrategy.LOWEST_PRICE.value}', "
+                f"'{cluster_config.AllocationStrategy.CAPACITY_OPTIMIZED.value}', "
+                f"'{cluster_config.AllocationStrategy.PRICE_CAPACITY_OPTIMIZED.value}' "
+                f"or '{cluster_config.AllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED.value}' allocation strategy.",
                 FailureLevel.ERROR,
             )
 

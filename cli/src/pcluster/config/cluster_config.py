@@ -25,7 +25,6 @@ from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.config.common import (
     AdditionalIamPolicy,
-    AllocationStrategy,
     BaseDeploymentSettings,
     BaseDevSettings,
     BaseTag,
@@ -2564,6 +2563,16 @@ class _CommonQueue(BaseQueue):
                 compute_resource_name=compute_resource.name,
                 queue_name=self.name,
             )
+
+
+class AllocationStrategy(Enum):
+    """Define supported allocation strategies."""
+
+    LOWEST_PRICE = "lowest-price"
+    CAPACITY_OPTIMIZED = "capacity-optimized"
+    PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
+    PRIORITIZED = "prioritized"
+    CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
 
 
 class SlurmQueue(_CommonQueue):

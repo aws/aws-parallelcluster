@@ -14,8 +14,7 @@ from typing import Dict, List
 import pytest
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config.cluster_config import CapacityType
-from pcluster.config.common import AllocationStrategy
+from pcluster.config.cluster_config import AllocationStrategy, CapacityType
 from pcluster.validators.instances_validators import (
     InstancesAcceleratorsValidator,
     InstancesAllocationStrategyValidator,
