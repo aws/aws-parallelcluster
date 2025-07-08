@@ -2385,9 +2385,8 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
 
     def __init__(self, instance_type=None, **kwargs):
         super().__init__(**kwargs)
-        _instance_type = instance_type if instance_type else self._instance_type_from_capacity_reservation()
-        self.instance_type = Resource.init_param(_instance_type)
         self.__instance_type_info = None
+        self._instance_type = Resource.init_param(instance_type)
 
     def is_flexible(self):
         """Return False because the ComputeResource can not contain multiple instance types."""
@@ -2397,6 +2396,14 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def instance_types(self) -> List[str]:
         """List of instance types under this compute resource."""
         return [self.instance_type]
+
+    @property
+    # Do not invoke in update path
+    def instance_type(self):
+        """Instance type of this compute resource."""
+        if not self._instance_type:
+            self._instance_type = Resource.init_param(self._instance_type_from_capacity_reservation())
+        return self._instance_type
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)

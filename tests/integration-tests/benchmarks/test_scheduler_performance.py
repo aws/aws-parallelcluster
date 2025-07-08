@@ -76,7 +76,7 @@ def test_scheduler_performance(
     assert_that(max(compute_nodes_time_series)).is_equal_to(benchmark_params["scaling_target"])
     assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
     _assert_jobs_completed(remote_command_executor, benchmark_params["jobs_to_submit"])
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _submit_jobs(benchmark_params, scheduler_commands, cluster, scheduler_commands_factory):

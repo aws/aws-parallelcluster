@@ -125,7 +125,7 @@ def test_slurm(
 
     # Tests below must run on HeadNode or need HeadNode participate.
     head_node_command_executor = RemoteCommandExecutor(cluster)
-    assert_no_errors_in_logs(head_node_command_executor, "slurm")
+    assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
     # Test compute node bootstrap timeout
     clustermgtd_conf_path = retrieve_clustermgtd_conf_path(head_node_command_executor)
     _test_compute_node_bootstrap_timeout(
@@ -244,7 +244,7 @@ def test_slurm_from_login_nodes_in_private_network(
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
     head_node_command_executor = RemoteCommandExecutor(cluster)
-    assert_no_errors_in_logs(head_node_command_executor, "slurm")
+    assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -309,7 +309,7 @@ def test_slurm_scaling(
         dynamic_instance_type=instance,
         stop_max_delay_secs=stop_max_delay_secs,
     )
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -426,7 +426,7 @@ def test_error_handling(
         num_static_nodes=1,
     )
     # Next test will introduce error in logs, assert no error now
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
     _test_clustermgtd_down_logic(
         remote_command_executor,
         scheduler_commands,
@@ -1047,7 +1047,7 @@ def test_slurm_overrides(
         )
         assert_msg_in_log(remote_command_executor, slurm_resume_log, f"Found {api} parameters override")
 
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _assert_cluster_initial_conditions(

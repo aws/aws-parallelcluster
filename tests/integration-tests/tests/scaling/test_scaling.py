@@ -281,7 +281,7 @@ def _test_multiple_jobs(cluster, remote_command_executor, test_datadir, region, 
     )
 
     logging.info("Verifying no error in logs")
-    assert_no_errors_in_logs(remote_command_executor, "slurm")
+    assert_no_errors_in_logs(remote_command_executor, "slurm", skip_ice=True)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")

@@ -117,29 +117,37 @@ def _get_instance_type_parameters():  # noqa: C901
             for page in paginator.paginate(LocationType="availability-zone"):
                 for instance_type in page["InstanceTypeOfferings"]:
                     # Check if instance type ends with '.xlarge'
-                    if instance_type["InstanceType"].endswith(".xlarge") and not any(
-                        instance_type["InstanceType"].startswith(prefix) for prefix in excluded_instance_type_prefixes
+                    if instance_type["InstanceType"].endswith(".xlarge") and _is_current_instance_type_generation(
+                        excluded_instance_type_prefixes, instance_type
                     ):
                         xlarge_instances.append(instance_type["InstanceType"])
-                        if instance_type_availability_zones.get(instance_type["InstanceType"]):
-                            instance_type_availability_zones[instance_type["InstanceType"]].append(
-                                instance_type["Location"]
-                            )
-                        else:
-                            instance_type_availability_zones[instance_type["InstanceType"]] = [
-                                instance_type["Location"]
-                            ]
+                    if instance_type_availability_zones.get(instance_type["InstanceType"]):
+                        instance_type_availability_zones[instance_type["InstanceType"]].append(
+                            instance_type["Location"]
+                        )
+                    else:
+                        instance_type_availability_zones[instance_type["InstanceType"]] = [instance_type["Location"]]
 
             xlarge_instances = list(set(xlarge_instances))  # Remove redundancy.
             gpu_instances = []
             paginator = ec2_client.get_paginator("describe_instance_types")
             for page in paginator.paginate(InstanceTypes=xlarge_instances):
                 for instance_type in page["InstanceTypes"]:
-                    if instance_type.get("GpuInfo"):
-                        if (
-                            instance_type.get("GpuInfo").get("Gpus")
-                            and instance_type.get("GpuInfo").get("Gpus")[0].get("Manufacturer") == "NVIDIA"
-                        ):
+                    if _is_nvidia_gpu_instance_type(instance_type):
+                        gpu_instances.append(instance_type["InstanceType"])
+
+            for page in paginator.paginate():
+                for instance_type in page["InstanceTypes"]:
+                    if (
+                        _is_nvidia_gpu_instance_type(instance_type)
+                        and instance_type.get("GpuInfo").get("Gpus")[0].get("Count") >= 4
+                        and _is_current_instance_type_generation(excluded_instance_type_prefixes, instance_type)
+                    ):
+                        # Find instance types with 4 or more GPUs. Number of GPUs can change test behavior.
+                        # For example, it takes longer for DCGM health check to diagnose multiple GPUs.
+                        instance_size = instance_type["InstanceType"].split(".")[1][: -len("xlarge")]
+                        if instance_size and int(instance_size) < 20:
+                            # Avoid using very expensive instance types
                             gpu_instances.append(instance_type["InstanceType"])
 
             xlarge_instances.sort()
@@ -154,7 +162,7 @@ def _get_instance_type_parameters():  # noqa: C901
                 )
             for index in range(len(gpu_instances)):
                 instance_type = gpu_instances[(today_number + index) % len(gpu_instances)]
-                result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = instance_type[: -len(".xlarge")]
+                result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = instance_type
                 availability_zones = instance_type_availability_zones[instance_type]
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}_AZ"] = (
                     availability_zones[0] if len(availability_zones) <= 2 else region
@@ -165,9 +173,21 @@ def _get_instance_type_parameters():  # noqa: C901
                 result[f"{region_jinja}_INSTANCE_TYPE_{index}"] = "c5"
                 result[f"{region_jinja}_INSTANCE_TYPE_{index}_AZ"] = region
             for index in range(10):
-                result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = "g4dn"
+                result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = "g4dn.xlarge"
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}_AZ"] = region
     return result
+
+
+def _is_nvidia_gpu_instance_type(instance_type):
+    return (
+        instance_type.get("GpuInfo")
+        and instance_type.get("GpuInfo").get("Gpus")
+        and instance_type.get("GpuInfo").get("Gpus")[0].get("Manufacturer") == "NVIDIA"
+    )
+
+
+def _is_current_instance_type_generation(excluded_instance_type_prefixes, instance_type):
+    return not any(instance_type["InstanceType"].startswith(prefix) for prefix in excluded_instance_type_prefixes)
 
 
 def _get_available_amis_oss(architecture, args=None, config=None):
@@ -306,10 +326,16 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
 
 def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, os_parameters):
     if "INSTANCE_TYPE" in instance_type:
+        # The value of the Jinja INSTANCE_TYPE variable can contain a size or not, e.g. trn1.32xlarge vs trn1.
+        # When Jinja name is like INSTANCE_TYPE_0_xlarge, the value doesn't contain size
+        # When Jinja name is like INSTANCE_TYPE_0, the value contains size.
+        # In other words, the size should appear once either in name or value. The code below handles this logic.
         instance_type_size = instance_type.split("_")[-1]
-        instance_type = (
-            instance_type_parameters.get(instance_type[: -len(instance_type_size) - 1]) + "." + instance_type_size
-        )
+        instance_type_family = instance_type_parameters.get(instance_type[: -len(instance_type_size) - 1])
+        if instance_type_family:
+            instance_type = instance_type_family + "." + instance_type_size
+        else:
+            instance_type = instance_type_parameters.get(instance_type)
     else:
         instance_type = instance_type.replace("_", ".")
     os_platform = "Linux/UNIX"

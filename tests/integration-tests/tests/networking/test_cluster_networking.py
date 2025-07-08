@@ -173,7 +173,7 @@ def test_cluster_in_no_internet_subnet(
     _run_prolog_epilog_jobs(remote_command_executor, slurm_commands)
     _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
     check_pcluster_list_cluster_log_streams(cluster, os)
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
     logging.info("Checking compute node is scaled down after scaledown idle time")
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
 

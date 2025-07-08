@@ -302,7 +302,7 @@ def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factor
     if scheduler == "awsbatch":
         _test_batch_access(remote_command_executor, region)
 
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _test_s3_access(remote_command_executor, region):

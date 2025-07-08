@@ -72,4 +72,4 @@ def test_scaling_performance(
     )
     assert_that(max(compute_nodes_time_series)).is_equal_to(benchmark_params["scaling_target"])
     assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)

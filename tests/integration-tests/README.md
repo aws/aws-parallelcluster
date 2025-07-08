@@ -38,13 +38,14 @@ that lists all the available options:
 python -m test_runner --help
 usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--use-default-iam-credentials] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [--global-build-number GLOBAL_BUILD_NUMBER] [-c TESTS_CONFIG] [-i [INSTANCES ...]]
                       [-o [OSS ...]] [-s [SCHEDULERS ...]] [-r [REGIONS ...]] [-f FEATURES [FEATURES ...]] [--show-output] [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL]
-                      [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--available-amis-oss-x86 [AVAILABLE_AMIS_OSS_X86 ...]]
-                      [--available-amis-oss-arm [AVAILABLE_AMIS_OSS_ARM ...]] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--scaling-test-config SCALING_TEST_CONFIG]
-                      [--cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN] [--resource-bucket RESOURCE_BUCKET] [--lambda-layer-source LAMBDA_LAYER_SOURCE] [--api-definition-s3-uri API_DEFINITION_S3_URI] [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI]
-                      [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run] [--iam-user-role-stack-name IAM_USER_ROLE_STACK_NAME] [--directory-stack-name DIRECTORY_STACK_NAME]
-                      [--slurm-database-stack-name SLURM_DATABASE_STACK_NAME] [--slurm-dbd-stack-name SLURM_DBD_STACK_NAME] [--munge-key-secret-arn MUNGE_KEY_SECRET_ARN] [--external-shared-storage-stack-name EXTERNAL_SHARED_STORAGE_STACK_NAME] [--bucket-name BUCKET_NAME]
-                      [--custom-security-groups-stack-name CUSTOM_SECURITY_GROUPS_STACK_NAME] [--force-run-instances] [--force-elastic-ip] [--retain-ad-stack] [--proxy-stack PROXY_STACK] [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL]
+                      [--pcluster-installer-path PCLUSTER_INSTALLER_PATH] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL] [--instance-types-data INSTANCE_TYPES_DATA] [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF]
+                      [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--available-amis-oss-x86 [AVAILABLE_AMIS_OSS_X86 ...]] [--available-amis-oss-arm [AVAILABLE_AMIS_OSS_ARM ...]] [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME]
+                      [--scaling-test-config SCALING_TEST_CONFIG] [--cluster-custom-resource-service-token CLUSTER_CUSTOM_RESOURCE_SERVICE_TOKEN] [--resource-bucket RESOURCE_BUCKET] [--lambda-layer-source LAMBDA_LAYER_SOURCE] [--api-definition-s3-uri API_DEFINITION_S3_URI]
+                      [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI] [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
+                      [--iam-user-role-stack-name IAM_USER_ROLE_STACK_NAME] [--directory-stack-name DIRECTORY_STACK_NAME] [--slurm-database-stack-name SLURM_DATABASE_STACK_NAME] [--slurm-dbd-stack-name SLURM_DBD_STACK_NAME] [--munge-key-secret-arn MUNGE_KEY_SECRET_ARN]
+                      [--external-shared-storage-stack-name EXTERNAL_SHARED_STORAGE_STACK_NAME] [--bucket-name BUCKET_NAME] [--custom-security-groups-stack-name CUSTOM_SECURITY_GROUPS_STACK_NAME] [--force-run-instances] [--force-elastic-ip] [--retain-ad-stack] [--proxy-stack PROXY_STACK]
+                      [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK]
 
 Run integration tests suite.
 
@@ -52,7 +53,7 @@ options:
   -h, --help            show this help message and exit
   --key-name KEY_NAME   Key to use for EC2 instances (default: None)
   --key-path KEY_PATH   Path to the key to use for SSH connections (default: None)
-  -n PARALLELISM, --parallelism PARALLELISM
+  -n, --parallelism PARALLELISM
                         Tests parallelism for every region. (default: None)
   --sequential          Run tests in a single process. When not specified tests will spawn a process for each region under test. (default: False)
   --credential CREDENTIAL
@@ -67,18 +68,16 @@ options:
                         The build number passed from the testing pipelines (default: 0)
 
 Test dimensions:
-  -c TESTS_CONFIG, --tests-config TESTS_CONFIG
-                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-
-                        parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
-  -i [INSTANCES ...], --instances [INSTANCES ...]
+  -c, --tests-config TESTS_CONFIG
+                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
+  -i, --instances [INSTANCES ...]
                         AWS instances under test. Ignored when tests-config is used. (default: [])
-  -o [OSS ...], --oss [OSS ...]
-                        OSs under test. Ignored when tests-config is used. (default: [])
-  -s [SCHEDULERS ...], --schedulers [SCHEDULERS ...]
+  -o, --oss [OSS ...]   OSs under test. Ignored when tests-config is used. (default: [])
+  -s, --schedulers [SCHEDULERS ...]
                         Schedulers under test. Ignored when tests-config is used. (default: [])
-  -r [REGIONS ...], --regions [REGIONS ...]
+  -r, --regions [REGIONS ...]
                         AWS regions where tests are executed. Ignored when tests-config is used. (default: [])
-  -f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]
+  -f, --features FEATURES [FEATURES ...]
                         Run only tests for the listed features. Prepending the not keyword to the feature name causes the feature to be excluded. (default: )
 
 Test reports:
@@ -105,6 +104,8 @@ Custom packages and templates:
                         URL to a custom node package for the createami command. (default: None)
   --custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL
                         URL to a custom awsbatch cli package. (default: None)
+  --pcluster-installer-path PCLUSTER_INSTALLER_PATH
+                        Path to ParallelCluster installer. (default: None)
   --pre-install PRE_INSTALL
                         URL to a pre install script (default: None)
   --post-install POST_INSTALL
@@ -312,6 +313,54 @@ the test will be executed in
 * `eu-west-1` using the AZ with ZoneId `euw1-az1` (ZoneId is consistent across accounts)
 * `eu-central-1` using a random AZ available in the region
 
+#### OS Rotation
+The framework includes automatic OS rotation to ensure that all supported operating systems are tested regularly:
+
+- The framework calculates a rotation index daily, and assign values to the jinja variables upon test running
+- Tests can be constrained to specific available AMIs using the `--available-amis-oss-x86` and `--available-amis-oss-arm` parameters
+- It can be customized to filter OS choices based on feature compatibility (e.g., DCV, Lustre, Batch scheduler support)
+
+Use Jinja variables in test configs with the pattern:
+```
+      dimensions:
+        - oss: [ {{ OS_X86_3 }} ]
+```
+
+#### Instance Type Rotation
+
+Similar to OS rotation, the framework also rotates instance types for dynamic testing:
+
+- Instance types are automatically discovered and rotated for major regions (us-east-1, us-west-2, eu-west-1)
+- Excludes legacy instance types (m1, m2, t1, etc.) for better test reliability
+
+Use Jinja variables in test configs with the pattern:
+```
+      dimensions:
+        - instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
+```
+
+#### Capacity Reservation Management
+
+The framework includes automatic capacity reservation management for tests that require specific instance types with guaranteed capacity. This feature:
+
+- Automatically detects capacity reservation requirements in test configuration files using Jinja variables
+- Creates or modifies existing EC2 capacity reservations as needed
+- Supports placement groups and time-limited reservations
+- Falls back to default availability zones if reservations cannot be created
+
+Use Jinja variables in test configs with the pattern:
+```
+      dimensions:
+        - regions: [{{ INSTANCE_TYPE_CAPACITY_RESERVATION_COUNT_INSTANCES_HOURS_HOURS_[YESPG|NOPG]_[OS] }}]
+```
+
+Example:
+```
+      # Reserve 2 c5.xlarge instances for 2 hours with placement group
+      dimensions:
+        - regions: []{{ c5_xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2023 }}]
+```
+
 #### Using CLI options
 
 The following options can be used to control the parametrization of test cases:
@@ -389,6 +438,13 @@ By specifying the option `--reports cw`, the results of the tests run will be pu
 metrics. You can use the options `--cw-region` (default `us-east-1`) and `--cw-namespace`
 (default `ParallelCluster/IntegrationTests`) to specify what region and what metric namespace
 you want to use for the published metrics.
+
+### Test Metadata Management
+
+The framework automatically manages test metadata using DynamoDB tables for tracking test execution and results across regions. This system:
+
+- Creates metadata tables automatically in the appropriate reporting region
+- Tracks test execution metadata for analysis and reporting
 
 ### Parallelize Tests Execution
 The following options can be used to control tests parallelism:
