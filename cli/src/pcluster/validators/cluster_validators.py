@@ -1335,19 +1335,19 @@ class HeadNodeMemorySizeValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-class HeadNodeSharedStorageEncryptedValidator(Validator):
+class SharedStorageEfsSettingsEncryptedValidator(Validator):
     """
-    Head Node Shared Storage Encrypted Validator.
+    HeadNode SharedStorageEfsSettings Validator.
 
-    Verify Head Node Shared Storage Encryption can only be used with Efs Shared Storage Type.
+    Verify HeadNode SharedStorageEfsSettings can only be used with Efs SharedStorageType.
     """
 
-    def _validate(self, shared_storage_type: str, encrypted: bool):
-        if encrypted and shared_storage_type != "Efs":
+    def _validate(self, shared_storage_type: str, shared_storage_efs_settings):
+        if shared_storage_efs_settings and shared_storage_type != "Efs":
             self._add_failure(
-                f"HeadNode is using SharedStorageSetting/Encrypted = true "
-                f"but the SharedStorageType specified is {shared_storage_type}. "
-                f"SharedStorageSetting/Encrypted = true can only be used SharedStorageType specified as Efs.",
+                f"SharedStorageEfsSettings is specified "
+                f"but the SharedStorageType is set to {shared_storage_type}. "
+                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
                 FailureLevel.ERROR,
             )
 
