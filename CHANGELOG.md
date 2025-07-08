@@ -6,6 +6,7 @@ CHANGELOG
 
 **CHANGES**
 - Ubuntu 20.04 is no longer supported.
+- Support DCV on AL2023
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
