@@ -335,3 +335,8 @@ IAM_POLICY_REGEX = "^arn:.*:policy/"
 PCLUSTER_BUCKET_PROTECTED_FOLDER = "parallelcluster"
 PCLUSTER_BUCKET_PROTECTED_PREFIX = f"{PCLUSTER_BUCKET_PROTECTED_FOLDER}/"
 PCLUSTER_BUCKET_REQUIRED_BOOTSTRAP_FEATURES = ["basic", "export-logs"]
+
+PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX = "PClusterBuildImageCleanupRole"
+# Tag key & expected revision (increment when policy widens)
+CLEANUP_ROLE_REVISION_TAG_KEY = "parallelcluster:cleanup-role-revision"
+PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION = 1
