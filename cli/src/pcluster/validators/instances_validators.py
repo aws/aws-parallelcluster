@@ -222,11 +222,14 @@ class InstancesAllocationStrategyValidator(Validator, _FlexibleInstanceTypesVali
 
     def _validate(self, compute_resource_name: str, capacity_type: Enum, allocation_strategy: Enum, **kwargs):
         """On-demand Capacity type only supports "lowest-price" and "prioritized" allocation strategy."""
+        valid_on_demand_allocation_strategy = {
+            cluster_config.AllocationStrategy.LOWEST_PRICE,
+            cluster_config.AllocationStrategy.PRIORITIZED,
+        }
         if (
             capacity_type == cluster_config.CapacityType.ONDEMAND
             and allocation_strategy
-            and allocation_strategy != cluster_config.AllocationStrategy.LOWEST_PRICE
-            and allocation_strategy != cluster_config.AllocationStrategy.PRIORITIZED
+            and allocation_strategy not in valid_on_demand_allocation_strategy
         ):
             alloc_strategy_msg = allocation_strategy.value if allocation_strategy else "not set"
             self._add_failure(
