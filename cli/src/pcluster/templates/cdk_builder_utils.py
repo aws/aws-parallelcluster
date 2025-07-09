@@ -94,7 +94,6 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue, LoginNodesPool], 
         "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
-        "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
     }
 
 
@@ -1088,7 +1087,7 @@ class PclusterLambdaConstruct(Construct):
             handler=f"{handler_func}.handler",
             memory_size=128,
             role=execution_role,
-            runtime="python3.9",
+            runtime="python3.12",
             timeout=timeout,
             vpc_config=(
                 awslambda.CfnFunction.VpcConfigProperty(
