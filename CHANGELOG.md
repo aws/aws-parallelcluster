@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 - Ubuntu 20.04 is no longer supported.
 - Support DCV on Amazon Linux 2023.
+- Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
 
 **BUG FIXES**
