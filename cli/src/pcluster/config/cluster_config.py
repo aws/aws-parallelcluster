@@ -2577,6 +2577,8 @@ class AllocationStrategy(Enum):
     LOWEST_PRICE = "lowest-price"
     CAPACITY_OPTIMIZED = "capacity-optimized"
     PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
+    PRIORITIZED = "prioritized"
+    CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
 
 
 class SlurmQueue(_CommonQueue):
