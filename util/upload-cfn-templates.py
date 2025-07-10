@@ -13,10 +13,10 @@
 import os
 import sys
 from glob import glob
+from importlib.metadata import version
 
 import argparse
 import boto3
-import pkg_resources
 from botocore.exceptions import ClientError
 
 
@@ -221,7 +221,7 @@ if __name__ == "__main__":
         ]
 
     if not args.version:
-        args.version = pkg_resources.get_distribution("aws-parallelcluster").version
+        args.version = version("aws-parallelcluster")
 
     if args.regions == "all":
         args.regions = get_all_aws_regions(main_region)

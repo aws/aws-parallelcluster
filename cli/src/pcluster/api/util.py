@@ -17,7 +17,7 @@ import shutil
 import subprocess  # nosec B404
 
 import six
-from pkg_resources import packaging
+from packaging import version as packaging_version
 
 from pcluster.api import typing_utils
 from pcluster.constants import NODEJS_INCOMPATIBLE_VERSION_RANGE, NODEJS_MIN_VERSION
@@ -221,9 +221,9 @@ def _assert_node_version():
         LOGGER.critical(message)
         raise Exception(message)
 
-    node_version = packaging.version.parse(node_version_string)
+    node_version = packaging_version.parse(node_version_string)
 
-    if node_version < packaging.version.parse(NODEJS_MIN_VERSION):
+    if node_version < packaging_version.parse(NODEJS_MIN_VERSION):
         message = (
             f"AWS CDK library used by ParallelCluster requires Node.js version >= {NODEJS_MIN_VERSION},"
             " see installation instructions here: https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html"
@@ -231,9 +231,9 @@ def _assert_node_version():
         LOGGER.critical(message)
         raise Exception(message)
     if (
-        packaging.version.parse(NODEJS_INCOMPATIBLE_VERSION_RANGE[0])
+        packaging_version.parse(NODEJS_INCOMPATIBLE_VERSION_RANGE[0])
         <= node_version
-        <= packaging.version.parse(NODEJS_INCOMPATIBLE_VERSION_RANGE[1])
+        <= packaging_version.parse(NODEJS_INCOMPATIBLE_VERSION_RANGE[1])
     ):
         message = (
             f"AWS CDK library used by ParallelCluster requires Node.js to not be in the range"
