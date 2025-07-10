@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from boto3.dynamodb.conditions import Attr
-from pkg_resources import packaging
+from packaging import version as packaging_version
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
@@ -146,7 +146,7 @@ class ComputeFleetStatusManager(metaclass=ABCMeta):
     @staticmethod
     def get_manager(cluster_name, version):
         """Return compute fleet status manager based on version and plugin."""
-        if packaging.version.parse(version) < packaging.version.parse("3.2.0a0"):
+        if packaging_version.parse(version) < packaging_version.parse("3.2.0a0"):
             return PlainTextComputeFleetStatusManager(cluster_name)
         else:
             return JsonComputeFleetStatusManager(cluster_name)

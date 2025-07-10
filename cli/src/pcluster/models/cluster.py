@@ -20,9 +20,9 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from enum import Enum
+from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from typing import List, Optional, Set, Tuple
 
-import pkg_resources
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
@@ -586,7 +586,7 @@ class Cluster:
         LOGGER.info("Uploading cluster artifacts to S3...")
         self._check_bucket_existence()
         try:
-            resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
+            resources = str(files(__package__).parent / "resources" / "custom_resources")
             self.bucket.upload_resources(
                 resource_dir=resources, custom_artifacts_name=PCLUSTER_S3_ARTIFACTS_DICT.get("custom_artifacts_name")
             )
