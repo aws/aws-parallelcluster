@@ -2088,6 +2088,13 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
         ),
         (
                 "Efs",
+                {
+                    "encrypted": False
+                },
+                None,
+        ),
+        (
+                "Efs",
                 None,
                 None,
         ),
@@ -2095,6 +2102,14 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
                 "Ebs",
                 {
                     "encrypted": True
+                },
+                "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
+                "SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
+        ),
+        (
+                "Ebs",
+                {
+                    "encrypted": False
                 },
                 "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
                 "SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
