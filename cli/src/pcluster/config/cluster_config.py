@@ -1463,7 +1463,7 @@ class HeadNode(Resource):
             shared_storage_type,
             default="Ebs",
         )
-        self.shared_storage_settings = shared_storage_efs_settings
+        self.shared_storage_efs_settings = shared_storage_efs_settings
         self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
@@ -1473,7 +1473,7 @@ class HeadNode(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._register_validator(SharedStorageEfsSettingsValidator, shared_storage_type=self.shared_storage_type, shared_storage_efs_settings=self.shared_storage_settings)
+        self._register_validator(SharedStorageEfsSettingsValidator, shared_storage_type=self.shared_storage_type, shared_storage_efs_settings=self.shared_storage_efs_settings)
 
     @property
     def architecture(self) -> str:

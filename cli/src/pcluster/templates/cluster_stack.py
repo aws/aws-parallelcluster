@@ -267,7 +267,7 @@ class ClusterCdkStack:
         # mounted.  We need to create the additional mount points first.
         if self.config.head_node.shared_storage_type.lower() == SharedStorageType.EFS.value:
             try:
-                encrypted = self.config.head_node.shared_storage_settings.encrypted
+                encrypted = self.config.head_node.shared_storage_efs_settings.encrypted
             except AttributeError:
                 encrypted = False
             internal_efs_storage_shared = SharedEfs(
