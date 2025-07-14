@@ -257,13 +257,12 @@ def test_cluster_with_subnet_prioritization(
     queues = ["queue1", "queue2"]
     logging.info(f"Public subnets: {public_subnets}")
     # Check that all instances are launched in the subnet with the highest priority
-    with soft_assertions():
-        for queue in queues:
-            scheduler_commands.submit_command("sleep 60", nodes=5, partition=queue)
-            wait_for_num_instances_in_queue(cluster.cfn_name, cluster.region, desired=5, queue=queue)
+    for queue in queues:
+        scheduler_commands.submit_command("sleep 60", nodes=5, partition=queue)
+        wait_for_num_instances_in_queue(cluster.cfn_name, cluster.region, desired=5, queue=queue)
 
-            subnet_ids = get_compute_nodes_subnet_ids(cluster.cfn_name, region, node_type="Compute", queue_name=queue)
-            logging.info(f"Subnets: {subnet_ids}")
+        subnet_ids = get_compute_nodes_subnet_ids(cluster.cfn_name, region, node_type="Compute", queue_name=queue)
+        with soft_assertions():
             for subnet_id in subnet_ids:
                 assert_that(subnet_id).is_equal_to(public_subnets[0])
 
