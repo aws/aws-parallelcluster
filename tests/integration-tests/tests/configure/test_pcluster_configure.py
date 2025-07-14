@@ -21,14 +21,17 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnVpcStack
 from conftest import inject_additional_config_settings
 from conftest_networking import CIDR_FOR_CUSTOM_SUBNETS
-from utils import get_instance_info
+from utils import get_free_tier_instance_types, get_instance_info, or_regex
 
 PROMPTS = {
     "region": lambda region: {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
     "key_pair": lambda key_name: {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
     "scheduler": lambda scheduler: {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
     "os": lambda os: {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
-    "head_instance_type": lambda instance: {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
+    "head_instance_type": lambda free_tier_instance_types, instance: {
+        "prompt": rf"Head node instance type \[({or_regex(free_tier_instance_types)})\]: ",
+        "response": instance,
+    },
     "no_of_queues": lambda n: {"prompt": rf"Number of queues \[{n}\]: ", "response": f"{n}", "skip_for_batch": True},
     "queue_name": lambda queue, name: {"prompt": rf"Name of queue {queue} \[queue{queue}\]: ", "response": name},
     "no_of_compute_resources": lambda queue_name, queue, n: {
@@ -36,8 +39,9 @@ PROMPTS = {
         "response": f"{n}",
         "skip_for_batch": True,
     },
-    "compute_instance_type": lambda resource, queue_name, instance: {
-        "prompt": rf"Compute instance type for compute resource {resource} in {queue_name} \[t.\.micro\]: ",
+    "compute_instance_type": lambda free_tier_instance_types, resource, queue_name, instance: {
+        "prompt": rf"Compute instance type for compute resource {resource} in {queue_name} "
+        + rf"\[({or_regex(free_tier_instance_types)})\]: ",
         "response": instance,
         "skip_for_batch": True,
     },
@@ -161,7 +165,12 @@ def test_efa_and_placement_group(
         PROMPTS["no_of_queues"](1),
         PROMPTS["queue_name"](queue=1, name="myqueue"),
         PROMPTS["no_of_compute_resources"](queue_name="myqueue", queue=1, n=1),
-        PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
+        PROMPTS["compute_instance_type"](
+            free_tier_instance_types=get_free_tier_instance_types(region),
+            resource=1,
+            queue_name="myqueue",
+            instance=instance,
+        ),
         PROMPTS["enable_efa"](efa_response),
         prompt_max_size(scheduler=scheduler),
     ]
@@ -237,7 +246,10 @@ def standard_first_stage_prompts(region, key_name, scheduler, os, instance):
         PROMPTS["key_pair"](key_name),
         PROMPTS["scheduler"](scheduler),
         PROMPTS["os"](os),
-        PROMPTS["head_instance_type"](instance),
+        PROMPTS["head_instance_type"](
+            free_tier_instance_types=get_free_tier_instance_types(region),
+            instance=instance,
+        ),
     ]
 
 
@@ -246,7 +258,12 @@ def standard_queue_prompts(scheduler, instance, region, size=""):
         PROMPTS["no_of_queues"](1),
         PROMPTS["queue_name"](queue=1, name="myqueue"),
         PROMPTS["no_of_compute_resources"](queue_name="myqueue", queue=1, n=1),
-        PROMPTS["compute_instance_type"](resource=1, queue_name="myqueue", instance=instance),
+        PROMPTS["compute_instance_type"](
+            free_tier_instance_types=get_free_tier_instance_types(region),
+            resource=1,
+            queue_name="myqueue",
+            instance=instance,
+        ),
     ]
 
     is_efa_supported = False
