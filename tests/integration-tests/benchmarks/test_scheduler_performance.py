@@ -52,7 +52,7 @@ def test_scheduler_performance(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
-    start_time = datetime.datetime.utcnow()
+    start_time = datetime.datetime.now(datetime.timezone.utc)
     _submit_jobs(benchmark_params, scheduler_commands, cluster, scheduler_commands_factory)
     compute_nodes_time_series, timestamps, end_time = publish_compute_nodes_metric(
         scheduler_commands,
@@ -76,7 +76,7 @@ def test_scheduler_performance(
     assert_that(max(compute_nodes_time_series)).is_equal_to(benchmark_params["scaling_target"])
     assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
     _assert_jobs_completed(remote_command_executor, benchmark_params["jobs_to_submit"])
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
 def _submit_jobs(benchmark_params, scheduler_commands, cluster, scheduler_commands_factory):

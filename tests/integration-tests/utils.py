@@ -365,6 +365,22 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
         raise
 
 
+def get_compute_nodes_subnet_ids(stack_name, region, instance_types=None, node_type=None, queue_name=None):
+    """Return a list of cluster Instances Subnet Ids."""
+    try:
+        instances = describe_cluster_instances(
+            stack_name,
+            region,
+            filter_by_node_type=node_type,
+            filter_by_instance_types=instance_types,
+            filter_by_queue_name=queue_name,
+        )
+        return [instance["SubnetId"] for instance in instances]
+    except Exception as e:
+        logging.error("Failed retrieving instance ids with exception: %s", e)
+        raise
+
+
 def get_compute_nodes_instance_ips(stack_name, region):
     """Return a list of compute Instances Ip's."""
     try:
@@ -545,7 +561,7 @@ def get_username_for_os(os):
 
 def add_keys_to_known_hosts(hostname, host_keys_file):
     """Add ssh key for a host to a known_hosts file."""
-    os.system("ssh-keyscan -t rsa {0} >> {1}".format(hostname, host_keys_file))
+    os.system("ssh-keyscan -t ed25519 {0} >> {1}".format(hostname, host_keys_file))
 
 
 def remove_keys_from_known_hosts(hostname, host_keys_file, env):

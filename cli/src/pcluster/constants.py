@@ -35,7 +35,7 @@ SUPPORTED_OSES = [
 ]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
-UNSUPPORTED_OSES_FOR_DCV = ["alinux2023"]
+UNSUPPORTED_OSES_FOR_DCV = []
 UNSUPPORTED_ARM_OSES_FOR_DCV = []
 UNSUPPORTED_OSES_FOR_LUSTRE = []
 DELETE_POLICY = "Delete"
@@ -165,7 +165,6 @@ COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.14.0",
     "cookbook": "aws-parallelcluster-cookbook-3.14.0",
     "chef": "18.4.12",
-    "berkshelf": "8.0.7",
     "ami": "dev",
 }
 

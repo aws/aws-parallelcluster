@@ -13,7 +13,7 @@ import logging
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from cfn_stacks_factory import CfnStack
 from constants import OSU_BENCHMARK_VERSION, UNSUPPORTED_OSES_FOR_DCV
 from fabric import Connection
@@ -24,6 +24,7 @@ from utils import (
     check_pcluster_list_cluster_log_streams,
     generate_stack_name,
     get_compute_nodes_instance_ids,
+    get_compute_nodes_subnet_ids,
     get_username_for_os,
     is_dcv_supported,
     render_jinja_template,
@@ -31,9 +32,11 @@ from utils import (
 
 from tests.common.assertions import (
     assert_lambda_vpc_settings_are_correct,
+    assert_msg_in_log,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     wait_for_num_instances_in_cluster,
+    wait_for_num_instances_in_queue,
 )
 from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import SlurmCommands
@@ -170,7 +173,7 @@ def test_cluster_in_no_internet_subnet(
     _run_prolog_epilog_jobs(remote_command_executor, slurm_commands)
     _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
     check_pcluster_list_cluster_log_streams(cluster, os)
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
     logging.info("Checking compute node is scaled down after scaledown idle time")
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
 
@@ -238,3 +241,33 @@ def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_com
         slurm_commands.assert_job_succeeded(job_id)
     logging.info("Checking cluster has two nodes after running MPI jobs")  # 1 static node + 1 dynamic node
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(2)
+
+
+@pytest.mark.usefixtures("instance")
+def test_cluster_with_subnet_prioritization(
+    region, os, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
+    # Create cluster with subnet prioritization
+    init_config_file = pcluster_config_reader(config_file="pcluster.config.yaml")
+    cluster = clusters_factory(init_config_file)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    public_subnets = vpc_stack.get_all_public_subnets()
+    queues = ["queue1", "queue2"]
+    logging.info(f"Public subnets: {public_subnets}")
+    # Check that all instances are launched in the subnet with the highest priority
+    with soft_assertions():
+        for queue in queues:
+            scheduler_commands.submit_command("sleep 60", nodes=5, partition=queue)
+            wait_for_num_instances_in_queue(cluster.cfn_name, cluster.region, desired=5, queue=queue)
+
+            subnet_ids = get_compute_nodes_subnet_ids(cluster.cfn_name, region, node_type="Compute", queue_name=queue)
+            logging.info(f"Subnets: {subnet_ids}")
+            for subnet_id in subnet_ids:
+                assert_that(subnet_id).is_equal_to(public_subnets[0])
+
+    # Check that the CreateFleet request contains priorities for each subnet
+    slurm_resume_log = "/var/log/parallelcluster/slurm_resume.log"
+    assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[0]}', 'Priority': 0.0")
+    assert_msg_in_log(remote_command_executor, slurm_resume_log, f"'SubnetId': '{public_subnets[1]}', 'Priority': 1.0")

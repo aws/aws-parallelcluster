@@ -31,7 +31,7 @@ from pcluster.utils import (
 
 DEFAULT_AWS_REGION_NAME = "us-east-1"
 LOGGER = logging.getLogger(__name__)
-TIMESTAMP = "-{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
+TIMESTAMP = "-{:%Y%m%d%H%M%S}".format(datetime.datetime.now(datetime.timezone.utc))
 HEAD_NODE_SUBNET_IPS = 250
 
 if sys.version_info >= (3, 4):

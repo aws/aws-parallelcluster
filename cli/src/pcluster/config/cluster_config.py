@@ -16,9 +16,8 @@ import logging
 from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum
+from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from typing import Dict, List, Union
-
-import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
@@ -2205,7 +2204,7 @@ class AwsBatchClusterConfig(BaseClusterConfig):
     @property
     def scheduler_resources(self):
         """Return scheduler specific resources."""
-        return pkg_resources.resource_filename(__name__, "../resources/batch")
+        return str(files(__package__).parent / "resources" / "batch")
 
 
 class _BaseSlurmComputeResource(BaseComputeResource):
@@ -2591,6 +2590,8 @@ class AllocationStrategy(Enum):
     LOWEST_PRICE = "lowest-price"
     CAPACITY_OPTIMIZED = "capacity-optimized"
     PRICE_CAPACITY_OPTIMIZED = "price-capacity-optimized"
+    PRIORITIZED = "prioritized"
+    CAPACITY_OPTIMIZED_PRIORITIZED = "capacity-optimized-prioritized"
 
 
 class SlurmQueue(_CommonQueue):
