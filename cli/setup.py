@@ -29,6 +29,7 @@ REQUIRES = [
     "PyYAML>=5.3.1,!=5.4",
     "jinja2~=3.0",
     "marshmallow~=3.10",
+    "packaging~=25.0",
     "aws-cdk.core~=" + CDK_VERSION,
     "aws-cdk.aws-batch~=" + CDK_VERSION,
     "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,

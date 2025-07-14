@@ -23,15 +23,13 @@
 import hashlib
 import os
 from datetime import datetime
+from importlib.metadata import version
 
 import argparse
 import boto3
-import pkg_resources
 from botocore.exceptions import ClientError
 
-_COOKBOOKS_DIR = "parallelcluster/{version}/cookbooks".format(
-    version=pkg_resources.get_distribution("aws-parallelcluster").version
-)
+_COOKBOOKS_DIR = "parallelcluster/{version}/cookbooks".format(version=version("aws-parallelcluster"))
 _BACKUP_DIR = "{0}/backup".format(_COOKBOOKS_DIR)
 _bck_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 _bck_error_array = set()
