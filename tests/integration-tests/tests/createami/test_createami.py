@@ -132,7 +132,7 @@ def test_build_image(
         # Test Deep Learning AMIs
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
-    elif "rhel" in os or "rocky" in os or "ubuntu" in os:
+    elif "rhel" in os or "ubuntu" in os or os == "rocky8":
         # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
         try:
             base_ami = retrieve_latest_ami(region, os, ami_type="first_stage", architecture=architecture)
@@ -141,12 +141,14 @@ def test_build_image(
             logging.info("First stage AMI not available, using official AMI instead.")
             base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
             update_os_packages = True
-            if os in ["ubuntu2204", "rhel9", "rocky9"]:
+            if os in ["ubuntu2204", "rhel9"]:
                 enable_lustre_client = False
     else:
         # Test vanilla AMIs.
         base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-    if os in ["alinux2", "alinux2023"]:
+        if os in ["rocky9"]:
+            enable_lustre_client = False
+    if os in ["alinux2", "alinux2023", "rocky9"]:
         update_os_packages = True
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
