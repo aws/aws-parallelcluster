@@ -267,7 +267,7 @@ class ImageBuilderCdkStack(Stack):
 
         self._add_imagebuilder_resources(build_tags_map, ami_tags, instance_profile_name, resource_dependency_list)
 
-        lambda_cleanup, permission, _, lambda_log = self._add_lambda_cleanup(build_tags_list)
+        lambda_cleanup, permission, lambda_log = self._add_lambda_cleanup(build_tags_list)
         resource_dependency_list.extend([lambda_cleanup, permission, lambda_log])
 
         resource_dependency_list.extend(self._add_sns_topic_and_subscription(lambda_cleanup, build_tags_list))
@@ -520,7 +520,7 @@ class ImageBuilderCdkStack(Stack):
         lambda_cleanup.add_depends_on(lambda_log)
 
         # No stack-local execution role created; return None placeholder
-        return lambda_cleanup, permission, None, lambda_log
+        return lambda_cleanup, permission, lambda_log
 
     def _add_sns_topic_and_subscription(self, lambda_cleanup, build_tags):
         # SNSTopic

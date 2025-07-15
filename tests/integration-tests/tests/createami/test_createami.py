@@ -30,6 +30,7 @@ from troposphere import Template, iam
 from utils import generate_stack_name, get_arn_partition, get_gpu_count
 
 from tests.common.assertions import (
+    _assert_build_image_stack_deleted,
     assert_head_node_is_running,
     assert_instance_has_desired_imds_v2_setting,
     assert_instance_has_desired_tags,
@@ -114,6 +115,7 @@ def test_build_image(
     In the cluster config there is DisableValidateAndTest:False to enable kitchen tests in the validate phase.
     The created AMI is also used for a cluster.
     Also check that the build instance has the desired ImdsSupport setting (v2.0, so IMDSv2 is required).
+    Also check that the build-image stack can be fully self deleted.
     """
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
 
@@ -184,6 +186,7 @@ def test_build_image(
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
     )
+    _assert_build_image_stack_deleted(image.image_id, region, 600, 30)
 
 
 def _test_cluster_creation(image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory):

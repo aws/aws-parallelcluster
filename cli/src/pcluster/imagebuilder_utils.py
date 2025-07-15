@@ -13,11 +13,10 @@ import logging
 import os
 from hashlib import sha256
 
-import boto3
 import yaml
-from botocore.exceptions import ClientError
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import (
     CLEANUP_ROLE_REVISION_TAG_KEY,
     IAM_ROLE_PATH,
@@ -87,7 +86,7 @@ def get_cleanup_role_name(account_id: str) -> str:
     return f"{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX}-{_hash(account_id)}"
 
 
-def _expected_inline_policy(account_id: str):
+def _expected_inline_policy(account_id: str, partition: str):
     """Return the inline policy document (JSON-serialised string)."""
     return json.dumps(
         {
@@ -95,58 +94,58 @@ def _expected_inline_policy(account_id: str):
             "Statement": [
                 {
                     "Action": ["iam:DetachRolePolicy", "iam:DeleteRole", "iam:DeleteRolePolicy"],
-                    "Resource": f"arn:aws:iam::{account_id}:role/parallelcluster/*",
+                    "Resource": f"arn:{partition}:iam::{account_id}:role/parallelcluster/*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": ["iam:DeleteInstanceProfile", "iam:RemoveRoleFromInstanceProfile"],
-                    "Resource": f"arn:aws:iam::{account_id}:instance-profile/parallelcluster/*",
+                    "Resource": f"arn:{partition}:iam::{account_id}:instance-profile/parallelcluster/*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": "imagebuilder:DeleteInfrastructureConfiguration",
-                    "Resource": f"arn:aws:imagebuilder:*:{account_id}:infrastructure-configuration/"
+                    "Resource": f"arn:{partition}:imagebuilder:*:{account_id}:infrastructure-configuration/"
                     f"parallelclusterimage-*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": ["imagebuilder:DeleteComponent"],
-                    "Resource": [f"arn:aws:imagebuilder:*:{account_id}:component/parallelclusterimage-*/*"],
+                    "Resource": [f"arn:{partition}:imagebuilder:*:{account_id}:component/parallelclusterimage-*/*"],
                     "Effect": "Allow",
                 },
                 {
                     "Action": "imagebuilder:DeleteImageRecipe",
-                    "Resource": f"arn:aws:imagebuilder:*:{account_id}:image-recipe/parallelclusterimage-*/*",
+                    "Resource": f"arn:{partition}:imagebuilder:*:{account_id}:image-recipe/parallelclusterimage-*/*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": "imagebuilder:DeleteDistributionConfiguration",
-                    "Resource": f"arn:aws:imagebuilder:*:{account_id}:distribution-configuration/"
+                    "Resource": f"arn:{partition}:imagebuilder:*:{account_id}:distribution-configuration/"
                     f"parallelclusterimage-*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": ["imagebuilder:DeleteImage", "imagebuilder:GetImage", "imagebuilder:CancelImageCreation"],
-                    "Resource": f"arn:aws:imagebuilder:*:{account_id}:image/parallelclusterimage-*/*",
+                    "Resource": f"arn:{partition}:imagebuilder:*:{account_id}:image/parallelclusterimage-*/*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": "cloudformation:DeleteStack",
-                    "Resource": f"arn:aws:cloudformation:*:{account_id}:stack/*/*",
+                    "Resource": f"arn:{partition}:cloudformation:*:{account_id}:stack/*/*",
                     "Effect": "Allow",
                 },
                 # The below two permissions are required for the DeleteStackFunction Lambda to tag the
                 # created AMI with 'parallelcluster:build_status' and 'parallelcluster:parent_image' tags
-                {"Action": "ec2:CreateTags", "Resource": "arn:aws:ec2:*::image/*", "Effect": "Allow"},
+                {"Action": "ec2:CreateTags", "Resource": f"arn:{partition}:ec2:*::image/*", "Effect": "Allow"},
                 {"Action": "tag:TagResources", "Resource": "*", "Effect": "Allow"},
                 {
                     "Action": ["lambda:DeleteFunction", "lambda:RemovePermission"],
-                    "Resource": f"arn:aws:lambda:*:{account_id}:function:ParallelClusterImage-*",
+                    "Resource": f"arn:{partition}:lambda:*:{account_id}:function:ParallelClusterImage-*",
                     "Effect": "Allow",
                 },
                 {
                     "Action": "logs:DeleteLogGroup",
-                    "Resource": f"arn:aws:logs:*:{account_id}:log-group:/aws/lambda/ParallelClusterImage-*:*",
+                    "Resource": f"arn:{partition}:logs:*:{account_id}:log-group:/aws/lambda/ParallelClusterImage-*:*",
                     "Effect": "Allow",
                 },
                 {
@@ -156,7 +155,7 @@ def _expected_inline_policy(account_id: str):
                         "SNS:GetSubscriptionAttributes",
                         "SNS:Unsubscribe",
                     ],
-                    "Resource": f"arn:aws:sns:*:{account_id}:ParallelClusterImage-*",
+                    "Resource": f"arn:{partition}:sns:*:{account_id}:ParallelClusterImage-*",
                     "Effect": "Allow",
                 },
             ],
@@ -164,79 +163,85 @@ def _expected_inline_policy(account_id: str):
     )
 
 
-def ensure_cleanup_role(account_id: str, partition: str = "aws") -> str:
-    """Ensure the global cleanup role exists and its tag is at the expected revision. Return the role ARN."""
-    iam = boto3.client("iam")
+def ensure_cleanup_role(account_id: str, partition: str = "aws", attach_vpc_access_policy: bool = False):
+    """
+    Ensure the global (account-wide) cleanup role exists and is at the expected revision.
+
+    The function follows a safe order:
+      1. If the role does not exist, create it without the revision tag.
+      2. If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
+      3. Attach the AWS-managed Lambda basic policy.
+      4. Update/write the inline policy (least-privilege cleanup policy).
+      5. Only after the inline policy succeeds, set or bump the revision tag.
+
+    This way, if step 2 or 3 fails (e.g., lack of iam:PutRolePolicy permission) the tag
+    stays at an older revision and future invocations will keep retrying.
+    """
+    iam = AWSApi.instance().iam
     role_name = get_cleanup_role_name(account_id)
     role_arn = f"arn:{partition}:iam::{account_id}:role{IAM_ROLE_PATH}{role_name}"
 
+    # Assume-role trust policy
+    assume_doc = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "lambda.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:{partition}:lambda:*:{account_id}:function:ParallelClusterImage-*"
+                    }
+                },
+            }
+        ],
+    }
+
+    # Check whether the role already exists
     try:
-        response = iam.get_role(RoleName=role_name)
-        tags = {t["Key"]: t["Value"] for t in response["Role"].get("Tags", [])}
-        current_rev = int(tags.get(CLEANUP_ROLE_REVISION_TAG_KEY, 0))
-    except iam.exceptions.NoSuchEntityException:
-        response = None
-        current_rev = 0
-
-    # (Re-)create or update policy when revision mismatches
-    if current_rev < PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION:
-        try:
-            if response is None:
-                logging.info("Creating global cleanup role %s", role_name)
-                iam.create_role(
-                    RoleName=role_name,
-                    Path=IAM_ROLE_PATH,
-                    AssumeRolePolicyDocument=json.dumps(
-                        {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Principal": {"Service": "lambda.amazonaws.com"},
-                                    "Action": "sts:AssumeRole",
-                                    "Condition": {
-                                        "ArnLike": {
-                                            "aws:SourceArn": f"arn:{partition}:lambda:*:{account_id}:function:"
-                                            f"ParallelClusterImage-*"
-                                        }
-                                    },
-                                }
-                            ],
-                        }
-                    ),
-                    Description="AWS ParallelCluster build-image cleanup Lambda execution role",
-                    Tags=[
-                        {
-                            "Key": CLEANUP_ROLE_REVISION_TAG_KEY,
-                            "Value": str(PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION),
-                        }
-                    ],
-                )
-            else:
-                # Bump / add revision tag
-                iam.tag_role(
-                    RoleName=role_name,
-                    Tags=[
-                        {
-                            "Key": CLEANUP_ROLE_REVISION_TAG_KEY,
-                            "Value": str(PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION),
-                        }
-                    ],
-                )
-
-            # (Re)attach managed Lambda basic policy
-            iam.attach_role_policy(
+        resp = iam.get_role(role_name=role_name)
+        tags = {t["Key"]: t["Value"] for t in resp["Role"].get("Tags", [])}
+        current_revision = int(tags.get(CLEANUP_ROLE_REVISION_TAG_KEY, 0))
+    except AWSClientError as e:
+        if e.error_code == "NoSuchEntity":
+            logging.info("Creating global cleanup role %s", role_name)
+            iam.create_role(
                 RoleName=role_name,
-                PolicyArn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                Path=IAM_ROLE_PATH,
+                AssumeRolePolicyDocument=json.dumps(assume_doc),
+                Description="AWS ParallelCluster build-image cleanup Lambda execution role",
             )
-            # Update inline policy
-            iam.put_role_policy(
-                RoleName=role_name,
-                PolicyName="ParallelClusterCleanupInline",
-                PolicyDocument=_expected_inline_policy(account_id),
-            )
-        except ClientError as e:
-            logging.error("Failed ensuring cleanup role: %s", e)
-            raise
+            current_revision = 0
+        else:
+            raise e
+    # (re)attach AWSLambdaVPCAccessExecutionRole
+    if attach_vpc_access_policy:
+        iam.attach_role_policy(
+            role_name, f"arn:{partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+        )
+
+    if current_revision < PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION:
+        # (re)attach AWSLambdaBasicExecutionRole
+        cleanup_role_basic_managed_policy = f"arn:{partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        iam.attach_role_policy(role_name, cleanup_role_basic_managed_policy)
+
+        # Put (or overwrite) inline policy
+        iam.put_role_policy(
+            role_name=role_name,
+            policy_name="ParallelClusterCleanupInline",
+            policy_document=_expected_inline_policy(account_id, partition),
+        )
+
+        # Set/update revision tag after policy write succeeds
+        iam.tag_role(
+            role_name=role_name,
+            tags=[
+                {
+                    "Key": CLEANUP_ROLE_REVISION_TAG_KEY,
+                    "Value": str(PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION),
+                }
+            ],
+        )
 
     return role_arn

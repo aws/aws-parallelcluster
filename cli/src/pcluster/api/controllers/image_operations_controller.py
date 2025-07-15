@@ -11,7 +11,6 @@ import logging
 import os as os_lib
 
 import yaml
-from botocore.exceptions import ClientError
 
 from pcluster.api.controllers.common import (
     assert_supported_operation,
@@ -111,15 +110,19 @@ def build_image(
 
     raw_cfg_str = build_image_request_content["imageConfiguration"]
     cfg_dict = yaml.safe_load(raw_cfg_str) or {}
+    # If CleanupLambdaRole exists in the config, skip ensure_cleanup_role
     has_custom_cleanup_role = cfg_dict.get("Build", {}).get("Iam", {}).get("CleanupLambdaRole")
+    # If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
+    has_lambda_functions_vpc_config = cfg_dict.get("DeploymentSettings", {}).get("LambdaFunctionsVpcConfig")
 
     if not has_custom_cleanup_role:
         try:
             account_id = AWSApi.instance().sts.get_account_id()
-            ensure_cleanup_role(account_id, get_partition())
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            if error_code in ("AccessDenied", "AccessDeniedException", "UnauthorizedOperation"):
+            ensure_cleanup_role(
+                account_id, get_partition(), attach_vpc_access_policy=True if has_lambda_functions_vpc_config else False
+            )
+        except AWSClientError as e:
+            if e.error_code in ("AccessDenied", "AccessDeniedException", "UnauthorizedOperation"):
                 raise BadRequestException(
                     "Current principal lacks permissions to create or update the ParallelCluster build-image "
                     "cleanup IAM role. "
