@@ -793,7 +793,7 @@ class HeadNodeSshSchema(BaseSshSchema):
         return HeadNodeSsh(**data)
 
 class SharedStorageEfsSettingsSchema(BaseSchema):
-    """Represent the schema of SharedStorageSettings."""
+    """Represent the schema of SharedStorageEfsSettings for the HeadNode."""
 
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 

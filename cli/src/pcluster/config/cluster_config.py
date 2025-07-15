@@ -853,7 +853,7 @@ class LoginNodesSsh(_BaseSsh):
 
 
 class SharedStorageEfsSettings(Resource):
-    """Represent the shared storage settings."""
+    """Represent the settings of Efs shared storage used by HeadNode."""
 
     def __init__(self, encrypted: bool = False):
         super().__init__()
