@@ -1,0 +1,38 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  SharedStorageType: {{ shared_headnode_storage_type }}
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      CapacityType: ONDEMAND
+      AllocationStrategy: prioritized
+      ComputeResources:
+        - Name: queue1-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
+          - {{ public_subnet_ids[1] }}
+    - Name: queue2
+      CapacityType: SPOT
+      AllocationStrategy: capacity-optimized-prioritized
+      ComputeResources:
+        - Name: queue2-i1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 0
+          MaxCount: 10
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_ids[0] }}
+          - {{ public_subnet_ids[1] }}

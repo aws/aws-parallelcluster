@@ -13,7 +13,7 @@ import json
 import os
 import re
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import pytest
@@ -970,7 +970,7 @@ def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_nod
     )
     assert_that(
         generated_template["Resources"]
-        .get("HeadNodeWaitCondition" + datetime.utcnow().strftime("%Y%m%d%H%M%S"))
+        .get("HeadNodeWaitCondition" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"))
         .get("Properties")
         .get("Timeout")
     ).is_equal_to(expected_head_node_bootstrap_timeout)
