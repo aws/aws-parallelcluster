@@ -10,6 +10,7 @@
 # limitations under the License.
 import datetime
 import json
+import os
 from urllib.error import URLError
 
 import pytest
@@ -179,7 +180,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "no"},
                     "lustre": {"enabled": "yes"},
-                    "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "region": "us-east-1",
                     "slurm_patches_s3_archive": "",
                 }
             },
@@ -211,7 +212,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "lustre": {"enabled": "no"},
                     "nvidia": {"enabled": "yes"},
-                    "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "region": "us-east-1",
                     "slurm_patches_s3_archive": "",
                 }
             },
@@ -244,7 +245,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "yes"},
                     "lustre": {"enabled": "yes"},
-                    "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "region": "us-east-1",
                     "slurm_patches_s3_archive": "",
                 },
                 "nfs": "true",
@@ -276,7 +277,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "true",
                     "nvidia": {"enabled": "yes"},
                     "lustre": {"enabled": "yes"},
-                    "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "region": "us-east-1",
                     "slurm_patches_s3_archive": "",
                 },
                 "nfs": "true",
@@ -311,7 +312,7 @@ def test_imagebuilder_url_validator(
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "no"},
                     "lustre": {"enabled": "yes"},
-                    "region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "region": "us-east-1",
                     "slurm_patches_s3_archive": "s3://example-s3-bucket/example-archive.tgz",
                 }
             },
@@ -319,6 +320,7 @@ def test_imagebuilder_url_validator(
     ],
 )
 def test_imagebuilder_extra_chef_attributes(resource, dna_json):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     config = imagebuilder_factory(resource).get("imagebuilder")
     chef_attributes = ImageBuilderExtraChefAttributes(config).dump_json()
     assert_that(json.loads(chef_attributes)).is_equal_to(dna_json)
