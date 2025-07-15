@@ -247,9 +247,7 @@ class TestUpdateClusterCommand:
         assert_that(exc_info.value.data.get("message")).matches("Node.js is required")
 
     def test_validate_update_request(self, mocker):
-        """
-        Tests that instance type attribute of the old configuration is never retrieved during an update.
-        """
+        """Tests that instance type attribute of the old configuration is never retrieved during an update."""
         new_configuration = """
         Image:
           Os: alinux2
