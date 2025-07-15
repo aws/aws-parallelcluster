@@ -281,6 +281,7 @@ def test_load_config_for_capacity_reservation(
 ):
     """
     This test checks that when loading a configuration, describe_capacity_reservations does not cause a failure.
+
     This ensures that when the old configuration is loaded during an update, it does not matter whether the
     capacity reservation is accessible.
     The existence of the capacity reservation should only be checked during the validation phase. This should happen
