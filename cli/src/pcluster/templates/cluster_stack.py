@@ -53,10 +53,9 @@ from pcluster.config.cluster_config import (
     SharedEbs,
     SharedEfs,
     SharedFsxLustre,
-    SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.config.common import DefaultUserHomeType
+from pcluster.config.common import DefaultUserHomeType, SharedStorageType
 from pcluster.constants import (
     ALL_PORTS_RANGE,
     CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
