@@ -93,7 +93,9 @@ def test_fsx_lustre_configuration_options(
         bucket_name = s3_bucket_factory()
         bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
         bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
-    weekly_maintenance_start_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=60)).strftime("%u:%H:%M")
+    weekly_maintenance_start_time = (
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=60)
+    ).strftime("%u:%H:%M")
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         mount_dir=mount_dir,
@@ -247,7 +249,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, sch
 
     """
     mount_dir = "/fsx_mount_dir"
-    daily_automatic_backup_start_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    daily_automatic_backup_start_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
     logging.info(f"daily_automatic_backup_start_time: {daily_automatic_backup_start_time}")
     cluster_config = pcluster_config_reader(
         mount_dir=mount_dir, daily_automatic_backup_start_time=daily_automatic_backup_start_time.strftime("%H:%M")
@@ -670,7 +672,7 @@ def monitor_automatic_backup_creation(fsx_fs_id, region, backup_start_time):
 def sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time):
     """Wait for the automatic backup of the given file system to start."""
     logging.info(f"Sleeping until time when {fsx_fs_id}'s backup creation should start at {backup_start_time}")
-    remaining_time = (backup_start_time - datetime.datetime.utcnow()).total_seconds()
+    remaining_time = (backup_start_time - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
     if remaining_time > 0:
         time.sleep(remaining_time)
 

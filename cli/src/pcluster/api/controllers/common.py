@@ -17,7 +17,7 @@ import os
 from typing import List, Optional, Set, Union
 
 import boto3
-from pkg_resources import packaging
+from packaging import version as packaging_version
 
 from pcluster.api.errors import (
     BadRequestException,
@@ -110,12 +110,12 @@ def check_cluster_version(cluster: Cluster, exact_match: bool = False) -> bool:
         return False
 
     if exact_match:
-        return packaging.version.parse(cluster.stack.version) == packaging.version.parse(get_installed_version())
+        return packaging_version.parse(cluster.stack.version) == packaging_version.parse(get_installed_version())
     else:
         return (
-            packaging.version.parse(packaging.version.parse(get_installed_version()).base_version)
-            >= packaging.version.parse(cluster.stack.version)
-            >= packaging.version.parse("3.0.0a0")
+            packaging_version.parse(packaging_version.parse(get_installed_version()).base_version)
+            >= packaging_version.parse(cluster.stack.version)
+            >= packaging_version.parse("3.0.0a0")
         )
 
 

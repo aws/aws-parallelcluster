@@ -39,6 +39,7 @@ Scheduling:
         - Name: compute_resource2
           InstanceType: c4.2xlarge
     - Name: queue2
+      AllocationStrategy: "prioritized"
       Networking:
         SubnetIds:
           - subnet-23456789

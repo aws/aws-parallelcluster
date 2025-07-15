@@ -18,7 +18,7 @@ import collections.abc
 #
 import json
 from collections import defaultdict, namedtuple
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Union
 
 from aws_cdk import aws_cloudformation as cfn
@@ -128,7 +128,7 @@ class ClusterCdkStack:
         self._launch_template_builder = CdkLaunchTemplateBuilder()
         self.config = cluster_config
         self.bucket = bucket
-        self.timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        self.timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         if self.config.is_cw_logging_enabled:
             if log_group_name:
                 # pcluster update keep the log group,
@@ -136,7 +136,7 @@ class ClusterCdkStack:
                 self.log_group_name = log_group_name
             else:
                 # pcluster create create a log group with timestamp suffix
-                timestamp = f"{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+                timestamp = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
                 self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack.stack_name}-{timestamp}"
 
         self.shared_storage_infos = {storage_type: [] for storage_type in SharedStorageType}

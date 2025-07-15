@@ -31,28 +31,17 @@ phases:
             - |
               set -v
               RELEASE='{{ test.OSRelease.outputs.stdout }}'
-
-              if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
-                OS='alinux2'
-              elif [ `echo "${RELEASE}" | grep -w '^amzn\.2023'` ]; then
-                OS='alinux2023'
-              elif [ `echo "${RELEASE}" | grep '^ubuntu\.22'` ]; then
-                OS='ubuntu2204'
-              elif [ `echo "${RELEASE}" | grep '^ubuntu\.24'` ]; then
-                OS='ubuntu2404'
-              elif [ `echo "${RELEASE}" | grep '^rhel\.8'` ]; then
-                OS='rhel8'
-              elif [ `echo "${RELEASE}" | grep '^rocky\.8'` ]; then
-                OS='rocky8'
-              elif [ `echo "${RELEASE}" | grep '^rhel\.9'` ]; then
-                OS='rhel9'
-              elif [ `echo "${RELEASE}" | grep '^rocky\.9'` ]; then
-                OS='rocky9'
-              else
-                echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
-              fi
-
-              echo ${OS}
+              case $RELEASE in
+                amzn.2) echo alinux2;;
+                amzn.2023) echo alinux2023;;
+                ubuntu.22*) echo ubuntu2204;;
+                ubuntu.24*) echo ubuntu2404;;
+                rhel.8*) echo rhel8;;
+                rocky.8*) echo rocky8;;
+                rhel.9*) echo rhel9;;
+                rocky.9*) echo rocky9;;
+                *) echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1;;
+              esac
 
       - name: OSArchitecture
         action: ExecuteBash
@@ -62,15 +51,9 @@ phases:
               set -v
               ARCH=$(uname -m)
               case ${ARCH} in
-                'x86_64')
-                  echo 'x86_64'
-                  ;;
-                'aarch64')
-                  echo 'arm64'
-                  ;;
-                *)
-                  echo "The '${ARCH}' architecture is not supported. Failing build." && exit 1
-                  ;;
+                x86_64) echo x86_64;;
+                aarch64) echo arm64;;
+                *) echo "The '${ARCH}' architecture is not supported. Failing build." && exit 1;;
               esac
 
       - name: PlatformName
@@ -79,15 +62,10 @@ phases:
           commands:
             - |
               set -v
-              OS='{{ test.OSName.outputs.stdout }}'
-
-              if [ `echo "${OS}" | grep -E '^(alinux|centos|rhel|rocky)'` ]; then
-                PLATFORM='RHEL'
-              elif [ `echo "${OS}" | grep -E '^ubuntu'` ]; then
-                PLATFORM='DEBIAN'
-              fi
-
-              echo ${PLATFORM}
+              case '{{ test.OSName.outputs.stdout }}' in
+                alinux*|centos*|rhel*|rocky*) echo RHEL;;
+                ubuntu*) echo DEBIAN;;
+              esac
 
       - name: IntelMPISupported
         action: ExecuteBash

@@ -340,7 +340,7 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
 
     def _set_default(self, config: ImageBuilderConfig):
         dev_settings = config.dev_settings
-        self.region = "{{ build.AWSRegion.outputs.stdout }}"
+        self.region = get_region()
         self.nvidia = {"enabled": "yes"} if config.build.installation.nvidia_software.enabled else {"enabled": "no"}
         self.lustre = {"enabled": "yes"} if config.build.installation.lustre_client.enabled else {"enabled": "no"}
         self.is_official_ami_build = "false"

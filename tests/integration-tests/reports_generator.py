@@ -38,9 +38,9 @@ def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_st
     if start_timestamp is not None:
         timestamp = datetime.datetime.fromtimestamp(start_timestamp)
     elif timestamp_day_start:
-        timestamp = datetime.datetime.combine(datetime.datetime.utcnow(), datetime.time())
+        timestamp = datetime.datetime.combine(datetime.datetime.now(datetime.timezone.utc), datetime.time())
     else:
-        timestamp = datetime.datetime.utcnow()
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
     for category, dictionary in report.items():
         if category == "all":
             _put_metrics(metric_pub, namespace, dictionary, [], timestamp)

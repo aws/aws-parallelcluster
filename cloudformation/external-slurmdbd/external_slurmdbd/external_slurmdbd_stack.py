@@ -1,6 +1,6 @@
 import json
+from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 
-import pkg_resources
 from aws_cdk import Aws, CfnOutput, CfnParameter, Fn, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
@@ -13,7 +13,7 @@ from constructs import Construct
 
 def get_user_data_content(user_data_path: str):
     """Retrieve user data content."""
-    user_data_file_path = pkg_resources.resource_filename(__name__, user_data_path)
+    user_data_file_path = str(files(__package__) / user_data_path)
     with open(user_data_file_path, "r", encoding="utf-8") as user_data_file:
         user_data_content = user_data_file.read()
     return user_data_content
