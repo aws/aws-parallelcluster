@@ -340,6 +340,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_1 }}]
           schedulers: ["slurm"]
+    test_cluster_networking.py::test_cluster_with_subnet_prioritization:
+      dimensions:
+        - regions: [ "us-east-2" ]
+          instances: [ "t3.large" ]
+          oss: [{{ OS_X86_1 }}]
+          schedulers: [ "slurm" ]
     test_networking.py::test_public_network_topology:
       dimensions:
         - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
