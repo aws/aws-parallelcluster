@@ -12,6 +12,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
+- Fix a bug that caused build-image CloudFormation stacks fail to delete after images are successfully built.
 
 3.13.2
 ------
