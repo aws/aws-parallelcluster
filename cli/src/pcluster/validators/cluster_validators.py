@@ -20,7 +20,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config.common import CapacityType
+from pcluster.config.common import CapacityType, SharedStorageType
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DELETE_POLICY,
@@ -1343,12 +1343,12 @@ class SharedStorageEfsSettingsValidator(Validator):
     Verify HeadNode SharedStorageEfsSettings can only be used with Efs SharedStorageType.
     """
 
-    def _validate(self, shared_storage_type: str, shared_storage_efs_settings):
-        if shared_storage_efs_settings and shared_storage_type != "Efs":
+    def _validate(self, shared_storage_type: SharedStorageType, shared_storage_efs_settings):
+        if shared_storage_efs_settings and shared_storage_type != SharedStorageType.EFS:
             self._add_failure(
                 "SharedStorageEfsSettings is specified "
-                f"but the SharedStorageType is set to {shared_storage_type}. "
-                "SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
+                f"but the SharedStorageType is set to {shared_storage_type.value}. "
+                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as {SharedStorageType.EFS.value}.",
                 FailureLevel.ERROR,
             )
 

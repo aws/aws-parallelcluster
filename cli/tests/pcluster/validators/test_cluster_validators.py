@@ -31,7 +31,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
-from pcluster.config.common import CapacityType
+from pcluster.config.common import CapacityType, SharedStorageType
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -2080,42 +2080,42 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
     "shared_storage_type, shared_storage_efs_settings, expected_message",
     [
         (
-                "Efs",
+                SharedStorageType.EFS,
                 {
                     "encrypted": True
                 },
                 None,
         ),
         (
-                "Efs",
+                SharedStorageType.EFS,
                 {
                     "encrypted": False
                 },
                 None,
         ),
         (
-                "Efs",
+                SharedStorageType.EFS,
                 None,
                 None,
         ),
         (
-                "Ebs",
+                SharedStorageType.EBS,
                 {
                     "encrypted": True
                 },
-                "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
-                "SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
+                f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
+                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as {SharedStorageType.EFS.value}.",
         ),
         (
-                "Ebs",
+                SharedStorageType.EBS,
                 {
                     "encrypted": False
                 },
-                "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
-                "SharedStorageEfsSettings can only be used when SharedStorageType is specified as Efs.",
+                f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
+                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as {SharedStorageType.EFS.value}.",
         ),
         (
-                "Ebs",
+                SharedStorageType.EBS,
                 None,
                 None,
         ),
