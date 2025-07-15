@@ -2080,36 +2080,36 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
     "shared_storage_type, shared_storage_efs_settings, expected_message",
     [
         (
-            SharedStorageType.EFS,
+            "Efs",
             {"encrypted": True},
             None,
         ),
         (
-            SharedStorageType.EFS,
+            "Efs",
             {"encrypted": False},
             None,
         ),
         (
-            SharedStorageType.EFS,
+            "Efs",
             None,
             None,
         ),
         (
-            SharedStorageType.EBS,
+            "Ebs",
             {"encrypted": True},
-            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
+            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
             "SharedStorageEfsSettings can only be used when SharedStorageType "
             f"is specified as {SharedStorageType.EFS.value}.",
         ),
         (
-            SharedStorageType.EBS,
+            "Ebs",
             {"encrypted": False},
-            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
+            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
             "SharedStorageEfsSettings can only be used when SharedStorageType "
             f"is specified as {SharedStorageType.EFS.value}.",
         ),
         (
-            SharedStorageType.EBS,
+            "Ebs",
             None,
             None,
         ),

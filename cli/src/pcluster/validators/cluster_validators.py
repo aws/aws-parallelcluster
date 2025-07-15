@@ -1343,11 +1343,11 @@ class SharedStorageEfsSettingsValidator(Validator):
     Verify HeadNode SharedStorageEfsSettings can only be used with Efs SharedStorageType.
     """
 
-    def _validate(self, shared_storage_type: SharedStorageType, shared_storage_efs_settings):
-        if shared_storage_efs_settings and shared_storage_type != SharedStorageType.EFS:
+    def _validate(self, shared_storage_type: str, shared_storage_efs_settings):
+        if shared_storage_efs_settings and shared_storage_type.lower() != SharedStorageType.EFS.value:
             self._add_failure(
                 "SharedStorageEfsSettings is specified "
-                f"but the SharedStorageType is set to {shared_storage_type.value}. "
+                f"but the SharedStorageType is set to {shared_storage_type}. "
                 "SharedStorageEfsSettings can only be used when SharedStorageType "
                 f"is specified as {SharedStorageType.EFS.value}.",
                 FailureLevel.ERROR,
