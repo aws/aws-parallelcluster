@@ -72,6 +72,8 @@ HeadNode:
       DeleteOnTermination: true
     EphemeralVolume:
       MountDir: /test
+  SharedStorageEfsSettings:
+    Encrypted: false
   SharedStorageType: Efs  # Ebs
   Dcv:
     Enabled: true

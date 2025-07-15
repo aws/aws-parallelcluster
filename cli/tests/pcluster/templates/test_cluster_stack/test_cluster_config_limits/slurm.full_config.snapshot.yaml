@@ -70,6 +70,8 @@ HeadNode:
       HttpProxyAddress: https://proxy-address:port
     SecurityGroups: null
     SubnetId: subnet-12345678
+  SharedStorageEfsSettings:
+    Encrypted: false
   SharedStorageType: Efs
   Ssh:
     AllowedIps: 1.2.3.4/32
