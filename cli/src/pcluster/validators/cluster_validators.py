@@ -676,7 +676,7 @@ class ExistingFsxNetworkingValidator(Validator):
                         self._add_failure(
                             f"The current security group settings on file storage '{file_storage_id}' does not"
                             " satisfy mounting requirement. The file storage must be associated to a security group"
-                            f" that allows {direction } {protocol.upper()} traffic through ports {ports}. "
+                            f" that allows {direction} {protocol.upper()} traffic through ports {ports}. "
                             f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
                         )
@@ -1348,7 +1348,8 @@ class SharedStorageEfsSettingsValidator(Validator):
             self._add_failure(
                 "SharedStorageEfsSettings is specified "
                 f"but the SharedStorageType is set to {shared_storage_type.value}. "
-                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as {SharedStorageType.EFS.value}.",
+                "SharedStorageEfsSettings can only be used when SharedStorageType "
+                f"is specified as {SharedStorageType.EFS.value}.",
                 FailureLevel.ERROR,
             )
 

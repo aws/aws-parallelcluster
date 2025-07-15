@@ -270,7 +270,10 @@ class ClusterCdkStack:
             except AttributeError:
                 encrypted = False
             internal_efs_storage_shared = SharedEfs(
-                mount_dir="/opt/parallelcluster/init_shared", name="internal_pcluster_shared", throughput_mode="elastic", encrypted=encrypted
+                mount_dir="/opt/parallelcluster/init_shared",
+                name="internal_pcluster_shared",
+                throughput_mode="elastic",
+                encrypted=encrypted,
             )
             self._add_shared_storage(internal_efs_storage_shared)
 

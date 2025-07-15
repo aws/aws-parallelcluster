@@ -28,11 +28,12 @@ from pcluster.config.common import (
     BaseDevSettings,
     BaseTag,
     CapacityType,
-    DefaultUserHomeType, SharedStorageType,
+    DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import (
     Resource,
+    SharedStorageType,
 )
 from pcluster.constants import (
     CIDR_ALL_IPS,
@@ -92,7 +93,6 @@ from pcluster.validators.cluster_validators import (
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HeadNodeMemorySizeValidator,
-    SharedStorageEfsSettingsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
@@ -115,6 +115,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerValidator,
     SharedEbsPerformanceBottleNeckValidator,
     SharedFileCacheNotHomeValidator,
+    SharedStorageEfsSettingsValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
@@ -1463,7 +1464,11 @@ class HeadNode(Resource):
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._register_validator(SharedStorageEfsSettingsValidator, shared_storage_type=self.shared_storage_type, shared_storage_efs_settings=self.shared_storage_efs_settings)
+        self._register_validator(
+            SharedStorageEfsSettingsValidator,
+            shared_storage_type=self.shared_storage_type,
+            shared_storage_efs_settings=self.shared_storage_efs_settings,
+        )
 
     @property
     def architecture(self) -> str:

@@ -792,6 +792,7 @@ class HeadNodeSshSchema(BaseSshSchema):
         """Generate resource."""
         return HeadNodeSsh(**data)
 
+
 class SharedStorageEfsSettingsSchema(BaseSchema):
     """Represent the schema of SharedStorageEfsSettings for the HeadNode."""
 
@@ -801,6 +802,7 @@ class SharedStorageEfsSettingsSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return SharedStorageEfsSettings(**data)
+
 
 class DcvSchema(BaseSchema):
     """Represent the schema of DCV."""
@@ -1373,7 +1375,9 @@ class HeadNodeSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
         validate=validate.OneOf(["Ebs", "Efs"]),
     )
-    shared_storage_efs_settings = fields.Nested(SharedStorageEfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    shared_storage_efs_settings = fields.Nested(
+        SharedStorageEfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     iam = fields.Nested(HeadNodeIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})

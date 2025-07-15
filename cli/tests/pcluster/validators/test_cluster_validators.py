@@ -2080,44 +2080,38 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
     "shared_storage_type, shared_storage_efs_settings, expected_message",
     [
         (
-                SharedStorageType.EFS,
-                {
-                    "encrypted": True
-                },
-                None,
+            SharedStorageType.EFS,
+            {"encrypted": True},
+            None,
         ),
         (
-                SharedStorageType.EFS,
-                {
-                    "encrypted": False
-                },
-                None,
+            SharedStorageType.EFS,
+            {"encrypted": False},
+            None,
         ),
         (
-                SharedStorageType.EFS,
-                None,
-                None,
+            SharedStorageType.EFS,
+            None,
+            None,
         ),
         (
-                SharedStorageType.EBS,
-                {
-                    "encrypted": True
-                },
-                f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
-                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as {SharedStorageType.EFS.value}.",
+            SharedStorageType.EBS,
+            {"encrypted": True},
+            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
+            "SharedStorageEfsSettings can only be used when SharedStorageType "
+            f"is specified as {SharedStorageType.EFS.value}.",
         ),
         (
-                SharedStorageType.EBS,
-                {
-                    "encrypted": False
-                },
-                f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
-                f"SharedStorageEfsSettings can only be used when SharedStorageType is specified as {SharedStorageType.EFS.value}.",
+            SharedStorageType.EBS,
+            {"encrypted": False},
+            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to {SharedStorageType.EBS.value}. "
+            "SharedStorageEfsSettings can only be used when SharedStorageType "
+            f"is specified as {SharedStorageType.EFS.value}.",
         ),
         (
-                SharedStorageType.EBS,
-                None,
-                None,
+            SharedStorageType.EBS,
+            None,
+            None,
         ),
     ],
 )

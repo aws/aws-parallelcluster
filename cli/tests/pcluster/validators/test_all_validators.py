@@ -396,9 +396,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         any_order=True,
     )
     shared_storage_efs_settings_validator.assert_has_calls(
-        [
-            call(shared_storage_type="Ebs", shared_storage_efs_settings=None)
-        ],
+        [call(shared_storage_type="Ebs", shared_storage_efs_settings=None)],
         any_order=True,
     )
     # capacity reservation validators
