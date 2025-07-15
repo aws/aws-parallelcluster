@@ -119,7 +119,7 @@ def build_image(
         try:
             account_id = AWSApi.instance().sts.get_account_id()
             ensure_cleanup_role(
-                account_id, get_partition(), attach_vpc_access_policy=True if has_lambda_functions_vpc_config else False
+                account_id, get_partition(), attach_vpc_access_policy=bool(has_lambda_functions_vpc_config)
             )
         except AWSClientError as e:
             if e.error_code in ("AccessDenied", "AccessDeniedException", "UnauthorizedOperation"):

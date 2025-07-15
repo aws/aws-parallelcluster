@@ -531,6 +531,7 @@ class TestBuildImage:
     def test_build_image_success(
         self, client, mocker, suppress_validators, suppressed_validation_errors, rollback_on_failure
     ):
+        mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocked_call = mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.create",
             return_value=suppressed_validation_errors,
@@ -602,6 +603,7 @@ class TestBuildImage:
         ],
     )
     def test_dryrun(self, client, mocker, validation_errors, error_code, expected_response):
+        mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         if validation_errors:
             mocker.patch(
                 "pcluster.models.imagebuilder.ImageBuilder.validate_create_request", side_effect=validation_errors
@@ -634,6 +636,7 @@ class TestBuildImage:
         ],
     )
     def test_that_errors_are_converted(self, client, mocker, error, error_code):
+        mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", side_effect=error)
         expected_error = {"message": "test error"}
 
@@ -652,6 +655,7 @@ class TestBuildImage:
             assert_that(response.get_json()).is_equal_to(expected_error)
 
     def test_parse_config_error(self, client, mocker):
+        mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", return_value=False)
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
         mocker.patch("marshmallow.Schema.load", side_effect=ValidationError(message={"Error": "error"}))
