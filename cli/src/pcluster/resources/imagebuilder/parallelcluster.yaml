@@ -13,171 +13,62 @@ constants:
 phases:
   - name: build
     steps:
-
-      # Get AWS Region
-      - name: AWSRegion
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo ${AWS::Region}
-
-      # Get Cookbook name
-      - name: PClusterCookbookVersionName
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo "aws-parallelcluster-cookbook-${CfnParamCookbookVersion}"
-
-      # Get Cookbook Url
-      - name: CookbookUrl
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${CfnParamCookbookVersion}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz"
-              [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL="${CfnParamChefCookbook}"
-              echo "${!COOKBOOK_URL}"
-
-      # Get Cinc Url
-      - name: CincUrl
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install-1.3.0.sh"
-              [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
-              echo "${!CINC_URL}"
-
-      # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
-      - name: OperatingSystemRelease
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              FILE=/etc/os-release
-              if [ -e ${!FILE} ]; then
-                . ${!FILE}
-                echo "${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
-              else
-                echo "The file '${!FILE}' does not exist. Failing build."
-                exit {{ FailExitCode }}
-              fi
-
-      # Get uniformed OS name
+      # Get operating system name for variable chaining
       - name: OperatingSystemName
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
-
-              if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
-                OS='alinux2'
-              elif [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
-                OS='alinux2023'
-              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.22'` ]; then
-                OS='ubuntu2204'
-              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.24'` ]; then
-                OS='ubuntu2404'
-              elif [ `echo "${!RELEASE}" | grep '^rhel\.8'` ]; then
-                OS='rhel8'
-              elif [ `echo "${!RELEASE}" | grep '^rocky\.8'` ]; then
-                OS='rocky8'
-              elif [ `echo "${!RELEASE}" | grep '^rhel\.9'` ]; then
-                OS='rhel9'
-              elif [ `echo "${!RELEASE}" | grep '^rocky\.9'` ]; then
-                OS='rocky9'
-              else
-                echo "Operating System '${!RELEASE}' is not supported. Failing build."
-                exit {{ FailExitCode }}
-              fi
-
-              echo ${!OS}
-
-      - name: OperatingSystemVersion
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              FILE=/etc/os-release
-              if [ -e ${!FILE} ]; then
-                . ${!FILE}
-                echo "${!VERSION_ID}"
-              else
-                echo "The file '${!FILE}' does not exist. Failing build."
-                exit {{ FailExitCode }}
-              fi
-
-      # Get platform name
-      - name: PlatformName
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-               set -v
-               OS='{{ build.OperatingSystemName.outputs.stdout }}'
-
-               if [ `echo "${!OS}" | grep -E '^(alinux|rhel|rocky)'` ]; then
-                 PLATFORM='RHEL'
-               elif [ `echo "${!OS}" | grep -E '^ubuntu'` ]; then
-                 PLATFORM='DEBIAN'
-               fi
-
-               echo ${!PLATFORM}
-
-      # Get input base AMI Architecture
-      - name: OperatingSystemArchitecture
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              ARCH=$(uname -m)
-              case ${!ARCH} in
-                'x86_64')
-                  echo 'x86_64'
-                  ;;
-                'aarch64')
-                  echo 'arm64'
-                  ;;
-                *)
-                  echo "The '${!ARCH}' architecture is not supported. Failing build."
-                  exit {{ FailExitCode }}
-                  ;;
+              . /etc/os-release
+              RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
+              case "$RELEASE" in
+                amzn.2) echo 'alinux2' ;;
+                amzn.2023) echo 'alinux2023' ;;
+                ubuntu.22*) echo 'ubuntu2204' ;;
+                ubuntu.24*) echo 'ubuntu2404' ;;
+                rhel.8*) echo 'rhel8' ;;
+                rocky.8*) echo 'rocky8' ;;
+                rhel.9*) echo 'rhel9' ;;
+                rocky.9*) echo 'rocky9' ;;
+                *) echo "Unsupported OS: $RELEASE" && exit {{ FailExitCode }} ;;
               esac
 
-      # Check if input base AMI has supported OS
-      - name: IsOperatingSystemSupported
+      # Initialize system information and URLs
+      - name: SystemInfo
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              if [ ${CfnParamUpdateOsAndReboot} == false ]; then
-                RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
-                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|ubuntu|rhel|rocky)'` ]; then
-                  echo "This component does not support '${!RELEASE}'. Failing build."
-                  exit {{ FailExitCode }}
-                fi
-
-                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu2204, RHEL8, Rocky8, RHEL9 and Rocky9
-                ARCH=$(uname -m)
-                if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|amzn\.2023|ubuntu\.20\.04|ubuntu\.22\.04|ubuntu\.24\.04|rhel\.8|rocky\.8|rhel\.9|rocky\.9)'` ]; then
-                    echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
-                    exit {{ FailExitCode }}
-                  fi
-                fi
-              fi
+              # Get OS info
+              . /etc/os-release
+              # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
+              RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
+              
+              # Use OS name from previous step
+              OS="{{ build.OperatingSystemName.outputs.stdout }}"
+              
+              # Set platform
+              [[ $OS =~ ^(alinux|rhel|rocky) ]] && PLATFORM='RHEL' || PLATFORM='DEBIAN'
+              
+              # Set URLs
+              COOKBOOK_NAME="aws-parallelcluster-cookbook-${CfnParamCookbookVersion}"
+              COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${CfnParamCookbookVersion}/cookbooks/${!COOKBOOK_NAME}.tgz"
+              [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL="${CfnParamChefCookbook}"
+              
+              CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install-1.3.0.sh"
+              [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
+              
+              # Output all variables to persistent location
+              mkdir -p /opt/parallelcluster
+              echo "OS=$OS" > /opt/parallelcluster/system_info
+              echo "PLATFORM=$PLATFORM" >> /opt/parallelcluster/system_info
+              echo "RELEASE=$RELEASE" >> /opt/parallelcluster/system_info
+              echo "VERSION_ID=$VERSION_ID" >> /opt/parallelcluster/system_info
+              echo "COOKBOOK_URL=$COOKBOOK_URL" >> /opt/parallelcluster/system_info
+              echo "CINC_URL=$CINC_URL" >> /opt/parallelcluster/system_info
+              echo "COOKBOOK_NAME=$COOKBOOK_NAME" >> /opt/parallelcluster/system_info
 
       - name: PinVersion
         action: ExecuteBash
@@ -185,33 +76,28 @@ phases:
           commands:
             - |
               set -v
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-              KERNEL_VERSION=$(uname -a)
-              RELEASE_VERSION='{{ build.OperatingSystemVersion.outputs.stdout }}'
-              if [[ ${!PLATFORM} == RHEL ]]; then
-                if [[ ${!OS} == rhel9 ]] || [[ ${!OS} == rocky9 ]]; then
-                  if [[ ! -f /etc/yum/vars/releasever ]]; then
-                    echo "yes" > /opt/parallelcluster/pin_releasesever
-                    echo ${!RELEASE_VERSION} > /etc/yum/vars/releasever
-                    yum clean all
-                  fi
-                fi
-                PACKAGE_LIST="kernel-headers-$(uname -r) kernel-devel-$(uname -r)"
-                if [[ ${!OS} != "rocky8" ]] && [[ ${!OS} != "rhel8" ]]; then
-                  PACKAGE_LIST+=" kernel-devel-matched-$(uname -r)"
-                fi
+              . /opt/parallelcluster/system_info
 
-                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
+              # Pin kernel versions and install packages
+              if [[ $PLATFORM == RHEL ]]; then
+                [[ $OS =~ (rhel9|rocky9) && ! -f /etc/yum/vars/releasever ]] && {
+                  echo "yes" > /opt/parallelcluster/pin_releasesever
+                  echo $VERSION_ID > /etc/yum/vars/releasever
+                  yum clean all
+                }
+                
+                PACKAGE_LIST="kernel-headers-$(uname -r) kernel-devel-$(uname -r)"
+                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" kernel-devel-matched-$(uname -r)"
+                
+                if [[ $OS =~ rocky ]]; then
                   for PACKAGE in ${!PACKAGE_LIST}
                   do
-                    yum install -y ${!PACKAGE}
-                    if [ $? -ne 0 ]; then
+                    yum -y install ${!PACKAGE} || {
                       # Enable vault repository
                       sed -i 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=http://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
                       sed -i 's|^#baseurl=https://dl.rockylinux.org/$contentdir|baseurl=https://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
                       yum install -y ${!PACKAGE}
-                    fi
+                    }
                   done
                 else
                   for PACKAGE in ${!PACKAGE_LIST}
@@ -223,25 +109,24 @@ phases:
                 yum install -y yum-plugin-versionlock
                 # listing all the packages because wildcard does not work as expected
                 yum versionlock kernel kernel-core kernel-modules
-
-                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
-                  yum versionlock rocky-release rocky-repos
-                elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
-                  yum versionlock redhat-release
-                fi
+                [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
+                [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
                 apt-get -y install linux-headers-$(uname -r)
                 apt-mark hold linux-aws* linux-base* linux-headers* linux-image* 
               fi
-              echo "Kernel version is ${!KERNEL_VERSION}"
+              echo "Kernel version is $(uname -a)"
 
-      - name: DisableNouveau
+      # Configure system and install prerequisites
+      - name: ConfigureSystem
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              . /opt/parallelcluster/system_info
+              
+              # Disable Nouveau driver
               /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="(.*)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
               if [[ ${!PLATFORM} == RHEL ]]; then
                 grub2-mkconfig -o /boot/grub2/grub.cfg
@@ -249,35 +134,23 @@ phases:
                 update-grub
               fi
 
-      # Install prerequisite OS packages
-      - name: InstallPrerequisite
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-
-              if [[ ${!PLATFORM} == RHEL ]]; then
-                yum -y update krb5-libs
+              # Install prerequisites
+              if [[ $PLATFORM == RHEL ]]; then
                 yum -y groupinstall development && sudo yum -y install wget jq
-                if [[ ${!OS} != alinux2023 ]]; then
-                  # Do not install curl on al2023 since curl-minimal-8.5.0-1.amzn2023* is already shipped and conflicts.
-                  yum -y install curl
-                fi
-              elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                if [[ "${CfnParamUpdateOsAndReboot}" == "false" ]]; then
+                # Do not install curl on al2023 since curl-minimal-8.5.0-1.amzn2023* is already shipped and conflicts.
+                [[ $OS != alinux2023 ]] && yum -y install curl
+              else
+                [[ "${CfnParamUpdateOsAndReboot}" == "false" ]] && {
                   # disable apt-daily.timer to avoid dpkg lock
                   flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
                   # disable unattended upgrades
                   sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
-                fi
-                apt-cache search build-essential
+                }
                 apt-get clean
                 apt-get -y update
                 apt-get -y install build-essential curl wget jq
               fi
+              exit 0
 
       - name: RebootStep
         action: Reboot
@@ -286,15 +159,16 @@ phases:
         inputs:
           delaySeconds: 10
 
-      # Install Cinc
-      - name: InstallCinc
+      # Install Cinc and setup cookbooks
+      - name: InstallCincAndCookbooks
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-
+              . /opt/parallelcluster/system_info
+              
+              # Update CA certificates and install Cinc
               if [[ ${!PLATFORM} == RHEL ]]; then
                 CA_CERTS_FILE=/etc/ssl/certs/ca-bundle.crt
                 yum -y upgrade ca-certificates
@@ -302,38 +176,27 @@ phases:
                 CA_CERTS_FILE=/etc/ssl/certs/ca-certificates.crt
                 apt-get -y --only-upgrade install ca-certificates
               fi
-
-              curl --retry 3 -L {{ build.CincUrl.outputs.stdout }} | bash -s -- -v {{ ChefVersion }}
-
-              if [[ -e ${!CA_CERTS_FILE} ]]; then
+              
+              curl --retry 3 -L $CINC_URL | bash -s -- -v {{ ChefVersion }}
+              
+              [[ -e $CA_CERTS_FILE ]] && {
                 mkdir -p /opt/cinc/embedded/ssl/certs
                 ln -sf ${!CA_CERTS_FILE} /opt/cinc/embedded/ssl/certs/cacert.pem
-              fi
-
-      # Download and vendor Cookbook
-      - name: DownloadCookbook
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
+              }
+              
+              # Download cookbook
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "{{ build.CookbookUrl.outputs.stdout }}"
-
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL"
+              
               cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
 
-      - name: CreatingChefClientFile
+      - name: CreateChefFiles
         action: CreateFile
         inputs:
           - path: /etc/chef/client.rb
             content: |
               cookbook_path ['/etc/chef/cookbooks']
             overwrite: true
-
-      - name: CreatingJsonFile
-        action: CreateFile
-        inputs:
           - path: /etc/parallelcluster/image_dna.json
             content: |
               ${CfnParamChefDnaJson}
@@ -345,59 +208,40 @@ phases:
           commands:
             - |
               set -v
+              . /opt/parallelcluster/system_info
               echo "Calling chef-client with /etc/parallelcluster/image_dna.json"
               cat /etc/parallelcluster/image_dna.json
               cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster-entrypoints::install
+              # Create bootstrap file
+              echo "$COOKBOOK_NAME" > /opt/parallelcluster/.bootstrapped
 
-      - name: CreateBootstrapFile
-        action: CreateFile
-        inputs:
-          - path: /opt/parallelcluster/.bootstrapped
-            content: |
-              {{ build.PClusterCookbookVersionName.outputs.stdout }}
-            overwrite: true
-
-      - name: RemoveKernelPin
+      - name: RemoveKernelPinAndCleanup
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -v
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              . /opt/parallelcluster/system_info
+              
               # Remove kernel version lock
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum versionlock delete kernel kernel-core kernel-modules
-
-                if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
-                  yum versionlock delete rocky-release rocky-repos
-                elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
-                  yum versionlock delete redhat-release
-                fi
+                [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
+                [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
                 apt-mark unhold linux-aws* linux-base* linux-headers* linux-image* 
               fi
-              echo "Kernel version unlocked"
-
-      - name: KeepSSM
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
+              
+              # Handle SSM agent
               if [[ -f /tmp/imagebuilder_service/ssm_installed ]]; then
                 echo "Keeping SSM agent installed"
                 rm -rf /tmp/imagebuilder_service/ssm_installed
               else
                  echo "SSM agent is installed by default"
               fi
-
-      - name: AmiCleanup
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
+              
+              # Final cleanup
+              rm -f /opt/parallelcluster/system_info
               /usr/local/sbin/ami_cleanup.sh "${CfnParamIsOfficialAmiBuild}"
 
   - name: validate

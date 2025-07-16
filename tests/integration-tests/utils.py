@@ -957,3 +957,29 @@ def get_cidr_from_ip(ip):
              otherwise returns None
     """
     return f"{ip}/32" if ip else None
+
+
+def get_free_tier_instance_types(region: str = None):
+    instance_types = []
+    ec2 = boto3.client("ec2", region_name=region)
+
+    # Pagination here is not only a best practice; it is required to make DescribeInstanceTypes return
+    # the expected values when we want to filter all instance types.
+    # If you remove pagination, this is going to return an empty list of instance types.
+    paginator = ec2.get_paginator("describe_instance_types")
+    pages = paginator.paginate(
+        Filters=[
+            {"Name": "free-tier-eligible", "Values": ["true"]},
+            {"Name": "current-generation", "Values": ["true"]},
+        ]
+    )
+
+    for page in pages:
+        instance_types.extend([instance["InstanceType"] for instance in page["InstanceTypes"]])
+
+    logging.info(f"Free tier instance types in region {region}: {instance_types}")
+    return instance_types
+
+
+def or_regex(items: list):
+    return "|".join(map(re.escape, items))
