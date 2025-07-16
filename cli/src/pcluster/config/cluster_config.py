@@ -28,7 +28,7 @@ from pcluster.config.common import (
     BaseDevSettings,
     BaseTag,
     CapacityType,
-    DefaultUserHomeType,
+    DefaultUserHomeType, SharedStorageType,
 )
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import (
@@ -289,15 +289,6 @@ class LocalStorage(Resource):
         super().__init__(**kwargs)
         self.root_volume = root_volume or RootVolume(implied=True)
         self.ephemeral_volume = ephemeral_volume
-
-
-class SharedStorageType(Enum):
-    """Define storage types to be used as shared storage."""
-
-    EBS = "ebs"
-    RAID = "raid"
-    EFS = "efs"
-    FSX = "fsx"
 
 
 class SharedEbs(Ebs):

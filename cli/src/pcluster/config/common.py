@@ -434,3 +434,12 @@ class ExtraChefAttributes:
         attribute_json = {"cluster": self._cluster_attributes}
         attribute_json.update(self._extra_attributes)
         return json.dumps(attribute_json, sort_keys=True)
+
+
+class SharedStorageType(Enum):
+    """Define storage types to be used as shared storage."""
+
+    EBS = "ebs"
+    RAID = "raid"
+    EFS = "efs"
+    FSX = "fsx"

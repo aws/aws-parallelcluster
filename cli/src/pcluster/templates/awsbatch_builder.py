@@ -22,7 +22,8 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.aws_ec2 import CfnSecurityGroup
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
-from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
+from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType
+from pcluster.config.common import SharedStorageType
 from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS, CW_LOG_GROUP_NAME_PREFIX, IAM_ROLE_PATH
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (

@@ -15,7 +15,7 @@ import pytest
 import yaml
 from assertpy import assert_that
 
-from pcluster.config.cluster_config import SharedStorageType
+from pcluster.config.common import SharedStorageType
 from pcluster.constants import Feature
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
