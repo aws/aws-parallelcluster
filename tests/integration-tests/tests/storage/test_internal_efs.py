@@ -17,22 +17,37 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.storage.storage_common import (
     test_directory_correctly_shared_between_ln_and_hn,
     test_efs_correctly_mounted,
+    test_efs_correctly_encrypted,
     verify_directory_correctly_shared,
 )
 
-
+@pytest.mark.parametrize(
+    "encrypted",
+    [True, False],
+)
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_internal_efs(
-    region, scheduler, pcluster_config_reader, architecture, clusters_factory, vpc_stack, scheduler_commands_factory
+    region,
+    scheduler,
+    pcluster_config_reader,
+    architecture,
+    clusters_factory,
+    vpc_stack,
+    scheduler_commands_factory,
+    encrypted
 ):
+    """Verify that the internal shared efs is correctly encrypted"""
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    managed_efs_filesystem_ids = [efs_id for efs_id in cluster.cfn_outputs["EFSIds"].split(",")]
+    test_efs_correctly_encrypted(region, managed_efs_filesystem_ids[0], encrypted=encrypted)
+
     """Verify the internal shared storage fs is available when set to Efs"""
     compute_shared_dirs = ["/opt/parallelcluster/shared", "/opt/slurm", "/home"]
     login_shared_dirs = ["/opt/parallelcluster/shared_login_nodes", "/opt/slurm", "/home"]
     if architecture == "x86_64":
         compute_shared_dirs.append("/opt/intel")
         login_shared_dirs.append("/opt/intel")
-    cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
 
