@@ -1349,7 +1349,7 @@ class SharedStorageEfsSettingsValidator(Validator):
                 "SharedStorageEfsSettings is specified "
                 f"but the SharedStorageType is set to {shared_storage_type}. "
                 "SharedStorageEfsSettings can only be used when SharedStorageType "
-                f"is specified as {SharedStorageType.EFS.value}.",
+                f"is specified as Efs.",
                 FailureLevel.ERROR,
             )
 

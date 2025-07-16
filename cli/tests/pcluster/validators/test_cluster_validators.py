@@ -2079,39 +2079,45 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
 @pytest.mark.parametrize(
     "shared_storage_type, shared_storage_efs_settings, expected_message",
     [
-        (
+        pytest.param(
             "Efs",
             {"encrypted": True},
             None,
+            id="test Efs SharedStorageType with SharedStorageEfsSettings/encrypted is True",
         ),
-        (
+        pytest.param(
             "Efs",
             {"encrypted": False},
             None,
+            id="test Efs SharedStorageType with SharedStorageEfsSettings/encrypted is False",
         ),
-        (
+        pytest.param(
             "Efs",
             None,
             None,
+            id="test Efs SharedStorageType without SharedStorageEfsSettings",
         ),
-        (
+        pytest.param(
             "Ebs",
             {"encrypted": True},
             f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
             "SharedStorageEfsSettings can only be used when SharedStorageType "
-            f"is specified as {SharedStorageType.EFS.value}.",
+            f"is specified as Efs.",
+            id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is True",
         ),
-        (
+        pytest.param(
             "Ebs",
             {"encrypted": False},
             f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
             "SharedStorageEfsSettings can only be used when SharedStorageType "
-            f"is specified as {SharedStorageType.EFS.value}.",
+            f"is specified as Efs.",
+            id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is False",
         ),
-        (
+        pytest.param(
             "Ebs",
             None,
             None,
+            id="test Ebs SharedStorageType without SharedStorageEfsSettings",
         ),
     ],
 )
