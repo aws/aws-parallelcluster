@@ -31,7 +31,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
-from pcluster.config.common import CapacityType, SharedStorageType
+from pcluster.config.common import CapacityType
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -2102,7 +2102,7 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
             {"encrypted": True},
             f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
             "SharedStorageEfsSettings can only be used when SharedStorageType "
-            f"is specified as Efs.",
+            "is specified as Efs.",
             id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is True",
         ),
         pytest.param(
@@ -2110,7 +2110,7 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
             {"encrypted": False},
             f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
             "SharedStorageEfsSettings can only be used when SharedStorageType "
-            f"is specified as Efs.",
+            "is specified as Efs.",
             id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is False",
         ),
         pytest.param(

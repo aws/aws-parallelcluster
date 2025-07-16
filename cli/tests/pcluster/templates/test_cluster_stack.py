@@ -204,22 +204,23 @@ def _generate_template(cluster, capsys):
     assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
     return generated_template, cluster_assets
 
+
 @pytest.mark.parametrize(
     "config_file_name, expected_file_system_properties",
     [
         pytest.param(
             "config-default.yaml",
-            {'Encrypted': False, 'FileSystemTags': [{'Key': 'Name', 'Value': 'internal_pcluster_shared'}]},
+            {"Encrypted": False, "FileSystemTags": [{"Key": "Name", "Value": "internal_pcluster_shared"}]},
             id="test default Efs shared storage without SharedStorageEfsSettings",
         ),
         pytest.param(
             "config-encrypted.yaml",
-            {'Encrypted': True, 'FileSystemTags': [{'Key': 'Name', 'Value': 'internal_pcluster_shared'}]},
+            {"Encrypted": True, "FileSystemTags": [{"Key": "Name", "Value": "internal_pcluster_shared"}]},
             id="test Efs shared storage with SharedStorageEfsSettings/Encrypted is True",
         ),
         pytest.param(
             "config-unencrypted.yaml",
-            {'Encrypted': False, 'FileSystemTags': [{'Key': 'Name', 'Value': 'internal_pcluster_shared'}]},
+            {"Encrypted": False, "FileSystemTags": [{"Key": "Name", "Value": "internal_pcluster_shared"}]},
             id="test Efs shared storage with SharedStorageEfsSettings/Encrypted is False",
         ),
     ],
@@ -239,6 +240,7 @@ def test_efs_shared_storage_encryption(mocker, test_datadir, config_file_name, e
         generated_template, type="AWS::EFS::FileSystem", properties=expected_file_system_properties
     )
     assert_that(matched_resources).is_length(1)
+
 
 @pytest.mark.parametrize(
     "config_file_name",
