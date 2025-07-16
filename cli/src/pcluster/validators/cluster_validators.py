@@ -1348,8 +1348,7 @@ class SharedStorageEfsSettingsValidator(Validator):
             self._add_failure(
                 "SharedStorageEfsSettings is specified "
                 f"but the SharedStorageType is set to {shared_storage_type}. "
-                "SharedStorageEfsSettings can only be used when SharedStorageType "
-                f"is specified as Efs.",
+                f"SharedStorageEfsSettings can only be used when SharedStorageType is {SharedStorageType.EFS.value.capitalize()}",
                 FailureLevel.ERROR,
             )
 
