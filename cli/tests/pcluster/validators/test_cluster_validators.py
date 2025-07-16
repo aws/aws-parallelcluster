@@ -2100,17 +2100,15 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
         pytest.param(
             "Ebs",
             {"encrypted": True},
-            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
-            "SharedStorageEfsSettings can only be used when SharedStorageType "
-            "is specified as Efs.",
+            "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
+            "SharedStorageEfsSettings can only be used when SharedStorageType is Efs.",
             id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is True",
         ),
         pytest.param(
             "Ebs",
             {"encrypted": False},
-            f"SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
-            "SharedStorageEfsSettings can only be used when SharedStorageType "
-            "is specified as Efs.",
+            "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
+            "SharedStorageEfsSettings can only be used when SharedStorageType is Efs",
             id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is False",
         ),
         pytest.param(
