@@ -338,5 +338,5 @@ PCLUSTER_BUCKET_REQUIRED_BOOTSTRAP_FEATURES = ["basic", "export-logs"]
 
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX = "PClusterBuildImageCleanupRole"
 # Tag key & expected revision (increment when policy widens)
-CLEANUP_ROLE_REVISION_TAG_KEY = "parallelcluster:cleanup-role-revision"
-PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION = 1
+PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 2
+PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-image-cleanup-role-bootstrapped"

@@ -54,7 +54,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES, Operation
-from pcluster.imagebuilder_utils import ensure_cleanup_role
+from pcluster.imagebuilder_utils import ensure_default_build_image_stack_cleanup_role
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     ConfigValidationError,
@@ -110,7 +110,7 @@ def build_image(
 
     raw_cfg_str = build_image_request_content["imageConfiguration"]
     cfg_dict = yaml.safe_load(raw_cfg_str) or {}
-    # If CleanupLambdaRole exists in the config, skip ensure_cleanup_role
+    # If CleanupLambdaRole exists in the config, skip ensure_default_build_image_stack_cleanup_role
     has_custom_cleanup_role = cfg_dict.get("Build", {}).get("Iam", {}).get("CleanupLambdaRole")
     # If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
     has_lambda_functions_vpc_config = cfg_dict.get("DeploymentSettings", {}).get("LambdaFunctionsVpcConfig")
@@ -118,7 +118,7 @@ def build_image(
     if not has_custom_cleanup_role:
         try:
             account_id = AWSApi.instance().sts.get_account_id()
-            ensure_cleanup_role(
+            ensure_default_build_image_stack_cleanup_role(
                 account_id, get_partition(), attach_vpc_access_policy=bool(has_lambda_functions_vpc_config)
             )
         except AWSClientError as e:
@@ -127,9 +127,7 @@ def build_image(
                     "Current principal lacks permissions to create or update the ParallelCluster build-image "
                     "cleanup IAM role. "
                     "Either pass `Build/Iam/CleanupLambdaRole` or grant the missing permissions to continue. "
-                    "For detailed instructions, please refer to our documentation. "
-                    "https://docs.aws.amazon.com/parallelcluster/latest/ug/iam-roles-in-parallelcluster-v3.html#iam-rol"
-                    "es-in-parallelcluster-v3-user-policy-build-image"
+                    "For detailed instructions, please refer to our public documentation."
                 )
             raise
 

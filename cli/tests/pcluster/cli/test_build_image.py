@@ -19,10 +19,11 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
 from pcluster.imagebuilder_utils import (
-    CLEANUP_ROLE_REVISION_TAG_KEY,
-    PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION,
+    PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY,
+    PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION,
     _expected_inline_policy,
-    ensure_cleanup_role,
+    ensure_default_build_image_stack_cleanup_role,
+    get_cleanup_role_name,
 )
 
 
@@ -128,6 +129,12 @@ class TestBuildImageCommand:
             self.run_build_image_command(test_datadir)
         assert_that(exc_info.value.data.get("message")).matches("requires Node.js version >=")
 
+    def test_get_cleanup_role_name(self):
+        fake_account = "123456789012"
+        role = get_cleanup_role_name(fake_account)
+        assert_that(role).starts_with("PClusterBuildImageCleanupRole-")
+        assert_that(role).ends_with(f"-revision-{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION}")
+
     @pytest.mark.parametrize(
         "cleanup_role_in_cfg, vpc_cfg_present, expect_call, expect_vpc_flag",
         [
@@ -137,7 +144,7 @@ class TestBuildImageCommand:
             ("arn:aws:iam::123456789012:role/AlreadyProvided", True, False, False),
         ],
     )
-    def test_cleanup_role_call_and_vpc_flag(
+    def test_enable_cleanup_role_call_and_vpc_flag(
         self,
         mocker,
         aws_api_mock,
@@ -148,11 +155,11 @@ class TestBuildImageCommand:
     ):
         """Validate following things.
 
-        1. when (and only when) no custom CleanupLambdaRole is given we call ensure_cleanup_role.
+        1. when (and only when) no custom CleanupLambdaRole is given call ensure_default_build_image_stack_cleanup_role.
         2. attach_vpc_access_policy flag reflects presence of DeploymentSettings/LambdaFunctionsVpcConfig.
         """
         ensure_mock = mocker.patch(
-            "pcluster.api.controllers.image_operations_controller.ensure_cleanup_role",
+            "pcluster.api.controllers.image_operations_controller.ensure_default_build_image_stack_cleanup_role",
             return_value="arn:aws:iam::123456789012:role/cleanup",
         )
 
@@ -207,7 +214,7 @@ class TestBuildImageCommand:
         "vpc_cfg_present",
         [False, True],
     )
-    def test_ensure_cleanup_role_updates_tag_after_policy(self, aws_api_mock, vpc_cfg_present):
+    def test_ensure_default_build_image_stack_cleanup_role_bootstrap_flow(self, aws_api_mock, vpc_cfg_present):
         """
         If the cleanup IAM role exist and have an old revision.
 
@@ -222,21 +229,16 @@ class TestBuildImageCommand:
         def record(name):
             return lambda *a, **k: call_seq.append(name)
 
-        resp_outdated = {
-            "Role": {
-                "RoleName": "dummy",
-                "Tags": [{"Key": CLEANUP_ROLE_REVISION_TAG_KEY, "Value": "0"}],
-            }
-        }
+        resp_outdated = {"Role": {"RoleName": "dummy", "Tags": []}}
         aws_api_mock.iam.get_role.return_value = resp_outdated
         aws_api_mock.iam.attach_role_policy.side_effect = record("attach")
         aws_api_mock.iam.put_role_policy.side_effect = record("put")
         aws_api_mock.iam.tag_role.side_effect = record("tag")
 
-        ensure_cleanup_role("fake-account", "aws", vpc_cfg_present)
+        ensure_default_build_image_stack_cleanup_role("fake-account", "aws", vpc_cfg_present)
         assert list(call_seq) == ["attach", "attach", "put", "tag"] if vpc_cfg_present else ["attach", "put", "tag"]
 
-    def test_ensure_cleanup_role_noop_when_revision_current(
+    def test_ensure_default_build_image_stack_cleanup_role_skip_when_already_bootstrapped(
         self,
         mocker,
         aws_api_mock,
@@ -246,8 +248,8 @@ class TestBuildImageCommand:
                 "RoleName": "dummy",
                 "Tags": [
                     {
-                        "Key": CLEANUP_ROLE_REVISION_TAG_KEY,
-                        "Value": str(PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION),
+                        "Key": PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY,
+                        "Value": "true",
                     }
                 ],
             }
@@ -255,12 +257,12 @@ class TestBuildImageCommand:
 
         aws_api_mock.iam.get_role.return_value = current_resp
 
-        ensure_cleanup_role("fake-account-id", "fake-partition")
+        ensure_default_build_image_stack_cleanup_role("fake-account-id", "fake-partition")
         aws_api_mock.iam.get_role.assert_called()
-        aws_api_mock.put_role_policy.assert_not_called()
-        aws_api_mock.tag_role.assert_not_called()
+        aws_api_mock.iam.put_role_policy.assert_not_called()
+        aws_api_mock.iam.tag_role.assert_not_called()
 
-    def test_ensure_cleanup_role_permission_denied(self, aws_api_mock):
+    def test_ensure_default_build_image_stack_cleanup_role_permission_denied(self, aws_api_mock):
         """put_role_policy AccessDenied → It should throw an error and the cleanup IAM role should not be tagged."""
         resp_outdated = {"Role": {"RoleName": "dummy", "Tags": []}}
         aws_api_mock.iam.get_role.return_value = resp_outdated
@@ -272,7 +274,7 @@ class TestBuildImageCommand:
         )
 
         with pytest.raises(AWSClientError) as exc:
-            ensure_cleanup_role("fake-account", "aws")
+            ensure_default_build_image_stack_cleanup_role("fake-account", "aws")
         assert_that(exc.value.error_code).is_equal_to("AccessDenied")
         # tag_role should not be called
         aws_api_mock.iam.tag_role.assert_not_called()

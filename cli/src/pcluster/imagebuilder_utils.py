@@ -11,19 +11,18 @@
 import json
 import logging
 import os
-from hashlib import sha256
 
 import yaml
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import (
-    CLEANUP_ROLE_REVISION_TAG_KEY,
     IAM_ROLE_PATH,
-    PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION,
+    PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY,
     PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX,
+    PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION,
 )
-from pcluster.utils import get_url_scheme, yaml_load
+from pcluster.utils import generate_string_hash, get_url_scheme, yaml_load
 
 ROOT_VOLUME_TYPE = "gp3"
 PCLUSTER_RESERVED_VOLUME_SIZE = 37
@@ -77,13 +76,13 @@ def _generate_action(action_name, commands):
     return action
 
 
-def _hash(account_id: str) -> str:
-    """Return first 12 hex chars of sha256(account_id)."""
-    return sha256(account_id.encode()).hexdigest()[:12]
-
-
 def get_cleanup_role_name(account_id: str) -> str:
-    return f"{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX}-{_hash(account_id)}"
+    """Return the role name including a revision number."""
+    hashed_account_id = generate_string_hash(account_id)
+    return (
+        f"{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX}-{hashed_account_id}"
+        f"-revision-{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION}"
+    )
 
 
 def _expected_inline_policy(account_id: str, partition: str):
@@ -132,12 +131,15 @@ def _expected_inline_policy(account_id: str, partition: str):
                 {
                     "Action": "cloudformation:DeleteStack",
                     "Resource": f"arn:{partition}:cloudformation:*:{account_id}:stack/*/*",
+                    "Condition": {
+                        "ForAnyValue:StringLike": {"cloudformation:ResourceTag/parallelcluster:image_id": "*"}
+                    },
                     "Effect": "Allow",
                 },
                 # The below two permissions are required for the DeleteStackFunction Lambda to tag the
                 # created AMI with 'parallelcluster:build_status' and 'parallelcluster:parent_image' tags
                 {"Action": "ec2:CreateTags", "Resource": f"arn:{partition}:ec2:*::image/*", "Effect": "Allow"},
-                {"Action": "tag:TagResources", "Resource": "*", "Effect": "Allow"},
+                {"Action": "tag:TagResources", "Resource": f"arn:{partition}:ec2:*::image/*", "Effect": "Allow"},
                 {
                     "Action": ["lambda:DeleteFunction", "lambda:RemovePermission"],
                     "Resource": f"arn:{partition}:lambda:*:{account_id}:function:ParallelClusterImage-*",
@@ -163,19 +165,21 @@ def _expected_inline_policy(account_id: str, partition: str):
     )
 
 
-def ensure_cleanup_role(account_id: str, partition: str = "aws", attach_vpc_access_policy: bool = False):
+def ensure_default_build_image_stack_cleanup_role(
+    account_id: str, partition="aws", attach_vpc_access_policy: bool = False
+) -> str:
     """
     Ensure the global (account-wide) cleanup role exists and is at the expected revision.
 
     The function follows a safe order:
-      1. If the role does not exist, create it without the revision tag.
-      2. If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
+      1. If the role does not exist, create it without the bootstrapped tag.
+      2. If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy.
       3. Attach the AWS-managed Lambda basic policy.
       4. Update/write the inline policy (least-privilege cleanup policy).
-      5. Only after the inline policy succeeds, set or bump the revision tag.
+      5. Only after the inline policy succeeds, set the bootstrapped tag.
 
-    This way, if step 2 or 3 fails (e.g., lack of iam:PutRolePolicy permission) the tag
-    stays at an older revision and future invocations will keep retrying.
+    This way, if step 2, 3 or 4 fails (e.g., lack of iam:PutRolePolicy permission),
+    future invocations will keep retrying.
     """
     iam = AWSApi.instance().iam
     role_name = get_cleanup_role_name(account_id)
@@ -197,51 +201,48 @@ def ensure_cleanup_role(account_id: str, partition: str = "aws", attach_vpc_acce
             }
         ],
     }
-
     # Check whether the role already exists
     try:
         resp = iam.get_role(role_name=role_name)
         tags = {t["Key"]: t["Value"] for t in resp["Role"].get("Tags", [])}
-        current_revision = int(tags.get(CLEANUP_ROLE_REVISION_TAG_KEY, 0))
+        already_bootstrapped = tags.get(PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY, "").lower() == "true"
     except AWSClientError as e:
         if e.error_code == "NoSuchEntity":
-            logging.info("Creating global cleanup role %s", role_name)
+            logging.info("Creating default build-image stack cleanup role %s because it does not exists.", role_name)
             iam.create_role(
                 RoleName=role_name,
                 Path=IAM_ROLE_PATH,
                 AssumeRolePolicyDocument=json.dumps(assume_doc),
                 Description="AWS ParallelCluster build-image cleanup Lambda execution role",
             )
-            current_revision = 0
+            already_bootstrapped = False
         else:
-            raise e
-    # (re)attach AWSLambdaVPCAccessExecutionRole
+            raise
+
+    # Attach AWSLambdaVPCAccessExecutionRole
     if attach_vpc_access_policy:
         iam.attach_role_policy(
-            role_name, f"arn:{partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+            role_name,
+            f"arn:{partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
         )
 
-    if current_revision < PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION:
-        # (re)attach AWSLambdaBasicExecutionRole
-        cleanup_role_basic_managed_policy = f"arn:{partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-        iam.attach_role_policy(role_name, cleanup_role_basic_managed_policy)
+    if already_bootstrapped:
+        return role_arn
 
-        # Put (or overwrite) inline policy
-        iam.put_role_policy(
-            role_name=role_name,
-            policy_name="ParallelClusterCleanupInline",
-            policy_document=_expected_inline_policy(account_id, partition),
-        )
+    # Attach AWSLambdaBasicExecutionRole
+    cleanup_role_basic_managed_policy = f"arn:{partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    iam.attach_role_policy(role_name, cleanup_role_basic_managed_policy)
 
-        # Set/update revision tag after policy write succeeds
-        iam.tag_role(
-            role_name=role_name,
-            tags=[
-                {
-                    "Key": CLEANUP_ROLE_REVISION_TAG_KEY,
-                    "Value": str(PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_EXPECTED_REVISION),
-                }
-            ],
-        )
+    # Put inline policy
+    iam.put_role_policy(
+        role_name=role_name,
+        policy_name="ParallelClusterCleanupInline",
+        policy_document=_expected_inline_policy(account_id, partition),
+    )
 
+    # Set bootstrapped tag after policy write succeeds
+    iam.tag_role(
+        role_name=role_name,
+        tags=[{"Key": PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY, "Value": "true"}],
+    )
     return role_arn

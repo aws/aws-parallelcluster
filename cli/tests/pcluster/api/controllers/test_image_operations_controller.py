@@ -533,7 +533,7 @@ class TestBuildImage:
     ):
         mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocker.patch(
-            "pcluster.api.controllers.image_operations_controller.ensure_cleanup_role",
+            "pcluster.api.controllers.image_operations_controller.ensure_default_build_image_stack_cleanup_role",
             return_value="arn:aws:iam::123456789012:role/cleanup",
         )
         mocked_call = mocker.patch(
@@ -609,7 +609,7 @@ class TestBuildImage:
     def test_dryrun(self, client, mocker, validation_errors, error_code, expected_response):
         mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocker.patch(
-            "pcluster.api.controllers.image_operations_controller.ensure_cleanup_role",
+            "pcluster.api.controllers.image_operations_controller.ensure_default_build_image_stack_cleanup_role",
             return_value="arn:aws:iam::123456789012:role/cleanup",
         )
         if validation_errors:
@@ -646,7 +646,7 @@ class TestBuildImage:
     def test_that_errors_are_converted(self, client, mocker, error, error_code):
         mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocker.patch(
-            "pcluster.api.controllers.image_operations_controller.ensure_cleanup_role",
+            "pcluster.api.controllers.image_operations_controller.ensure_default_build_image_stack_cleanup_role",
             return_value="arn:aws:iam::123456789012:role/cleanup",
         )
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", side_effect=error)
@@ -669,7 +669,7 @@ class TestBuildImage:
     def test_parse_config_error(self, client, mocker):
         mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
         mocker.patch(
-            "pcluster.api.controllers.image_operations_controller.ensure_cleanup_role",
+            "pcluster.api.controllers.image_operations_controller.ensure_default_build_image_stack_cleanup_role",
             return_value="arn:aws:iam::123456789012:role/cleanup",
         )
         mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", return_value=False)
