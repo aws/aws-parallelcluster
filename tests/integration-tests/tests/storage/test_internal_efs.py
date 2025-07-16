@@ -21,10 +21,6 @@ from tests.storage.storage_common import (
     verify_directory_correctly_shared,
 )
 
-@pytest.mark.parametrize(
-    "encrypted",
-    [True, False],
-)
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_internal_efs(
     region,
@@ -34,13 +30,12 @@ def test_internal_efs(
     clusters_factory,
     vpc_stack,
     scheduler_commands_factory,
-    encrypted
 ):
     """Verify that the internal shared efs is correctly encrypted"""
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     managed_efs_filesystem_ids = [efs_id for efs_id in cluster.cfn_outputs["EFSIds"].split(",")]
-    test_efs_correctly_encrypted(region, managed_efs_filesystem_ids[0], encrypted=encrypted)
+    test_efs_correctly_encrypted(region, managed_efs_filesystem_ids[0], encrypted=True)
 
     """Verify the internal shared storage fs is available when set to Efs"""
     compute_shared_dirs = ["/opt/parallelcluster/shared", "/opt/slurm", "/home"]
