@@ -28,11 +28,12 @@ from pcluster.config.common import (
     BaseDevSettings,
     BaseTag,
     CapacityType,
-    DefaultUserHomeType, SharedStorageType,
+    DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
 from pcluster.config.common import (
     Resource,
+    SharedStorageType,
 )
 from pcluster.constants import (
     CIDR_ALL_IPS,
