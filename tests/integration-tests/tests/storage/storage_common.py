@@ -329,11 +329,13 @@ def _write_user_data(efs_id, random_file_name, access_point_id=None):
         - umount {mount_dir}
         """  # noqa: E501
 
+
 def test_efs_correctly_encrypted(region, efs_id, encrypted):
     client = boto3.client("efs", region_name=region)
     file_systems = client.describe_file_systems(FileSystemId=efs_id).get("FileSystems")
     assert_that(len(file_systems)).is_equal_to(1)
     assert_that(file_systems[0]["Encrypted"]).is_equal_to(encrypted)
+
 
 def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, iam=False, access_point_id=None):
     # The value of the two parameters should be set according to cluster configuration parameters.

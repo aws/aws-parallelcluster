@@ -16,10 +16,11 @@ from remote_command_executor import RemoteCommandExecutor
 
 from tests.storage.storage_common import (
     test_directory_correctly_shared_between_ln_and_hn,
-    test_efs_correctly_mounted,
     test_efs_correctly_encrypted,
+    test_efs_correctly_mounted,
     verify_directory_correctly_shared,
 )
+
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_internal_efs(
