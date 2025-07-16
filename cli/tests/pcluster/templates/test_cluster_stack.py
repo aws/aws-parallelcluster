@@ -225,7 +225,7 @@ def _generate_template(cluster, capsys):
         ),
     ],
 )
-def test_efs_shared_storage_encryption(mocker, test_datadir, config_file_name, expected_file_system_properties):
+def test_add_efs_shared_storage(mocker, test_datadir, config_file_name, expected_file_system_properties):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
