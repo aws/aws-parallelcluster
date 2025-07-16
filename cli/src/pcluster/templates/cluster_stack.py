@@ -335,7 +335,7 @@ class ClusterCdkStack:
         if self.config.head_node.shared_storage_efs_settings:
             encrypted = self.config.head_node.shared_storage_efs_settings.encrypted
         else:
-            encrypted = False
+            encrypted = None
         internal_efs_storage_shared = SharedEfs(
             mount_dir="/opt/parallelcluster/init_shared",
             name="internal_pcluster_shared",
