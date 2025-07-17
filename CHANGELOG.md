@@ -10,7 +10,7 @@ CHANGELOG
 - Support DCV on Amazon Linux 2023.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
-- Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to allow user create encrypted Efs shared storage.
+- Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to enable encryption on the EFS file system used for the head node internal shared storage.
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
