@@ -139,7 +139,7 @@ def _expected_inline_policy(account_id: str, partition: str):
                 # The below two permissions are required for the DeleteStackFunction Lambda to tag the
                 # created AMI with 'parallelcluster:build_status' and 'parallelcluster:parent_image' tags
                 {"Action": "ec2:CreateTags", "Resource": f"arn:{partition}:ec2:*::image/*", "Effect": "Allow"},
-                {"Action": "tag:TagResources", "Resource": f"arn:{partition}:ec2:*::image/*", "Effect": "Allow"},
+                {"Action": "tag:TagResources", "Resource": "*", "Effect": "Allow"},
                 {
                     "Action": ["lambda:DeleteFunction", "lambda:RemovePermission"],
                     "Resource": f"arn:{partition}:lambda:*:{account_id}:function:ParallelClusterImage-*",

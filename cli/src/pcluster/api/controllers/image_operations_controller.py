@@ -112,11 +112,11 @@ def build_image(
     cfg_dict = yaml.safe_load(raw_cfg_str) or {}
     # If CleanupLambdaRole exists in the config, skip ensure_default_build_image_stack_cleanup_role
     has_custom_cleanup_role = cfg_dict.get("Build", {}).get("Iam", {}).get("CleanupLambdaRole")
-    # If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
-    has_lambda_functions_vpc_config = cfg_dict.get("DeploymentSettings", {}).get("LambdaFunctionsVpcConfig")
 
     if not has_custom_cleanup_role:
         try:
+            # If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
+            has_lambda_functions_vpc_config = cfg_dict.get("DeploymentSettings", {}).get("LambdaFunctionsVpcConfig")
             account_id = AWSApi.instance().sts.get_account_id()
             ensure_default_build_image_stack_cleanup_role(
                 account_id, get_partition(), attach_vpc_access_policy=bool(has_lambda_functions_vpc_config)

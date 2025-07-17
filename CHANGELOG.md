@@ -10,7 +10,8 @@ CHANGELOG
 - Support DCV on Amazon Linux 2023.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
-- Introduce default global build-image cleanup IAM versioning roles to prevent build-image CloudFormation stacks from failing to be automatically deleted after images are either successfully built or fail to build.
+- The build-image command now deploys a global role that is used to automatically delete the build-image stack after images either succeed or fail the build. 
+  The role is meant to exists even after the stack has been deleted. This is to prevent build-image stack deletion failures, reported in https://github.com/aws/aws-parallelcluster/issues/5914
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
