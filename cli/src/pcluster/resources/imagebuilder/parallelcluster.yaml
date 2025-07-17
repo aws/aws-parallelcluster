@@ -87,7 +87,8 @@ phases:
                 }
                 
                 PACKAGE_LIST="kernel-headers-$(uname -r) kernel-devel-$(uname -r)"
-                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" kernel-devel-matched-$(uname -r)"
+                Repository="BaseOS"
+                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" kernel-devel-matched-$(uname -r)" && Repository="AppStream"
                 
                 if [[ $OS =~ rocky ]]; then
                   for PACKAGE in ${!PACKAGE_LIST}
@@ -97,6 +98,14 @@ phases:
                       sed -i 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=http://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
                       sed -i 's|^#baseurl=https://dl.rockylinux.org/$contentdir|baseurl=https://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
                       yum install -y ${!PACKAGE}
+                    } || {
+                      # Download package from vault. Sometimes simply enabling vault is not enough if repodata index is not in vault
+                      # Using the hard-coded links to download rpm is the last safety net.
+                      # Although the following code only deal with individual packages, and doesn't have the global impact of enabling vault.
+                      # We will figure out a global safety net when needed (build failure happens again)
+                      yum install -y wget
+                      wget https://dl.rockylinux.org/vault/rocky/${!VERSION_ID}/${!Repository}/$(uname -m)/os/Packages/k/${!PACKAGE}.rpm
+                      yum install -y ./${!PACKAGE}.rpm
                     }
                   done
                 else
