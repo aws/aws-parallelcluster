@@ -213,7 +213,7 @@ def ensure_default_build_image_stack_cleanup_role(
                 RoleName=role_name,
                 Path=IAM_ROLE_PATH,
                 AssumeRolePolicyDocument=json.dumps(assume_doc),
-                Description="AWS ParallelCluster build-image cleanup Lambda execution role",
+                Description="AWS ParallelCluster build-image cleanup Lambda execution role. Please do not delete it.",
             )
             already_bootstrapped = False
         else:
