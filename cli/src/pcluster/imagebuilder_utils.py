@@ -80,8 +80,7 @@ def get_cleanup_role_name(account_id: str) -> str:
     """Return the role name including a revision number."""
     hashed_account_id = generate_string_hash(account_id)
     return (
-        f"{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX}-{hashed_account_id}"
-        f"-revision-{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION}"
+        f"{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX}-{hashed_account_id}-v{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION}"
     )
 
 

@@ -8,6 +8,7 @@
 import itertools
 import json
 from collections import deque
+from hashlib import sha256
 from unittest.mock import PropertyMock
 
 import pytest
@@ -131,9 +132,11 @@ class TestBuildImageCommand:
 
     def test_get_cleanup_role_name(self):
         fake_account = "123456789012"
-        role = get_cleanup_role_name(fake_account)
-        assert_that(role).starts_with("PClusterBuildImageCleanupRole-")
-        assert_that(role).ends_with(f"-revision-{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION}")
+        role_name = get_cleanup_role_name(fake_account)
+        name_hash = sha256(fake_account.encode()).hexdigest()[:12]
+        assert_that(role_name).is_equal_to(
+            f"PClusterBuildImageCleanupRole-{name_hash}-v{PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION}"
+        )
 
     @pytest.mark.parametrize(
         "cleanup_role_in_cfg, vpc_cfg_present, expect_call, expect_vpc_flag",
