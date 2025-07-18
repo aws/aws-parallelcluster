@@ -7,6 +7,9 @@ HeadNode:
   Ssh:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32
+  SharedStorageType: Efs
+  SharedStorageEfsSettings:
+    Encrypted: true
 LoginNodes:
   Pools:
   - Name: test

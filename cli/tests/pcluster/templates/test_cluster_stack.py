@@ -206,6 +206,43 @@ def _generate_template(cluster, capsys):
 
 
 @pytest.mark.parametrize(
+    "config_file_name, expected_file_system_properties",
+    [
+        pytest.param(
+            "config-default.yaml",
+            {"Encrypted": False, "FileSystemTags": [{"Key": "Name", "Value": "internal_pcluster_shared"}]},
+            id="test default Efs shared storage without SharedStorageEfsSettings",
+        ),
+        pytest.param(
+            "config-encrypted.yaml",
+            {"Encrypted": True, "FileSystemTags": [{"Key": "Name", "Value": "internal_pcluster_shared"}]},
+            id="test Efs shared storage with SharedStorageEfsSettings/Encrypted is True",
+        ),
+        pytest.param(
+            "config-unencrypted.yaml",
+            {"Encrypted": False, "FileSystemTags": [{"Key": "Name", "Value": "internal_pcluster_shared"}]},
+            id="test Efs shared storage with SharedStorageEfsSettings/Encrypted is False",
+        ),
+    ],
+)
+def test_add_efs_shared_storage(mocker, test_datadir, config_file_name, expected_file_system_properties):
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+    cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    matched_resources = get_resources(
+        generated_template, type="AWS::EFS::FileSystem", properties=expected_file_system_properties
+    )
+    assert_that(matched_resources).is_length(1)
+
+
+@pytest.mark.parametrize(
     "config_file_name",
     [
         "slurm.required.yaml",
@@ -1272,7 +1309,6 @@ def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
     mock_bucket_object_utils(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
-
     cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(

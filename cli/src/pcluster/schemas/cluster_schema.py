@@ -85,6 +85,7 @@ from pcluster.config.cluster_config import (
     SharedEbs,
     SharedEfs,
     SharedFsxLustre,
+    SharedStorageEfsSettings,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmComputeResourceNetworking,
@@ -792,6 +793,17 @@ class HeadNodeSshSchema(BaseSshSchema):
         return HeadNodeSsh(**data)
 
 
+class SharedStorageEfsSettingsSchema(BaseSchema):
+    """Represent the schema of SharedStorageEfsSettings for the HeadNode."""
+
+    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SharedStorageEfsSettings(**data)
+
+
 class DcvSchema(BaseSchema):
     """Represent the schema of DCV."""
 
@@ -1362,6 +1374,9 @@ class HeadNodeSchema(BaseSchema):
         required=False,
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
         validate=validate.OneOf(["Ebs", "Efs"]),
+    )
+    shared_storage_efs_settings = fields.Nested(
+        SharedStorageEfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.IGNORED})

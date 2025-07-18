@@ -53,10 +53,9 @@ from pcluster.config.cluster_config import (
     SharedEbs,
     SharedEfs,
     SharedFsxLustre,
-    SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.config.common import DefaultUserHomeType
+from pcluster.config.common import DefaultUserHomeType, SharedStorageType
 from pcluster.constants import (
     ALL_PORTS_RANGE,
     CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT,
@@ -264,12 +263,9 @@ class ClusterCdkStack:
         # Add the internal use shared storage to the stack
         # This FS will be mounted, the shared dirs will be added,
         # then it will be unmounted and the shared dirs will be
-        # mounted.  We need to create the additional mount points first.
+        # mounted. We need to create the additional mount points first.
         if self.config.head_node.shared_storage_type.lower() == SharedStorageType.EFS.value:
-            internal_efs_storage_shared = SharedEfs(
-                mount_dir="/opt/parallelcluster/init_shared", name="internal_pcluster_shared", throughput_mode="elastic"
-            )
-            self._add_shared_storage(internal_efs_storage_shared)
+            self._add_internal_efs_shared_storage()
 
         # Add user configured shared storage
         if self.config.shared_storage:
@@ -334,6 +330,19 @@ class ClusterCdkStack:
                 cw_log_group=self.log_group,
                 head_node_alarms=self.head_node_alarms,
             )
+
+    def _add_internal_efs_shared_storage(self):
+        if self.config.head_node.shared_storage_efs_settings:
+            encrypted = self.config.head_node.shared_storage_efs_settings.encrypted
+        else:
+            encrypted = None
+        internal_efs_storage_shared = SharedEfs(
+            mount_dir="/opt/parallelcluster/init_shared",
+            name="internal_pcluster_shared",
+            throughput_mode="elastic",
+            encrypted=encrypted,
+        )
+        self._add_shared_storage(internal_efs_storage_shared)
 
     def _cw_metric_head_node(
         self, namespace, metric_name, statistic="Maximum", period_seconds=CW_ALARM_PERIOD_DEFAULT, extra_dimensions=None
