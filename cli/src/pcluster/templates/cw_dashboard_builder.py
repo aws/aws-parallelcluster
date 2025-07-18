@@ -17,7 +17,8 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.aws_cloudwatch import IAlarm
 from aws_cdk.core import Construct, Duration, Stack
 
-from pcluster.config.cluster_config import BaseClusterConfig, ExistingFileCache, SharedFsxLustre, SharedStorageType
+from pcluster.config.cluster_config import BaseClusterConfig, ExistingFileCache, SharedFsxLustre
+from pcluster.config.common import SharedStorageType
 from pcluster.constants import Feature
 from pcluster.utils import is_feature_supported
 

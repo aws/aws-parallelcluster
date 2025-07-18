@@ -71,6 +71,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerDisableSudoAccessForDefaultUserValidator,
     SchedulerOsValidator,
     SharedFileCacheNotHomeValidator,
+    SharedStorageEfsSettingsValidator,
     SharedStorageMountDirValidator,
     SharedStorageNameValidator,
     UnmanagedFsxMultiAzValidator,
@@ -2072,6 +2073,54 @@ def test_mixed_security_group_overwrite_validator(head_node_security_groups, que
         queues=queues,
     )
     expected_message = "make sure.*cluster nodes are reachable" if expect_warning else None
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "shared_storage_type, shared_storage_efs_settings, expected_message",
+    [
+        pytest.param(
+            "Efs",
+            {"encrypted": True},
+            None,
+            id="test Efs SharedStorageType with SharedStorageEfsSettings/encrypted is True",
+        ),
+        pytest.param(
+            "Efs",
+            {"encrypted": False},
+            None,
+            id="test Efs SharedStorageType with SharedStorageEfsSettings/encrypted is False",
+        ),
+        pytest.param(
+            "Efs",
+            None,
+            None,
+            id="test Efs SharedStorageType without SharedStorageEfsSettings",
+        ),
+        pytest.param(
+            "Ebs",
+            {"encrypted": True},
+            "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
+            "SharedStorageEfsSettings can only be used when SharedStorageType is Efs.",
+            id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is True",
+        ),
+        pytest.param(
+            "Ebs",
+            {"encrypted": False},
+            "SharedStorageEfsSettings is specified but the SharedStorageType is set to Ebs. "
+            "SharedStorageEfsSettings can only be used when SharedStorageType is Efs.",
+            id="test Ebs SharedStorageType with SharedStorageEfsSettings/encrypted is False",
+        ),
+        pytest.param(
+            "Ebs",
+            None,
+            None,
+            id="test Ebs SharedStorageType without SharedStorageEfsSettings",
+        ),
+    ],
+)
+def test_shared_storage_efs_settings_validator(shared_storage_type, shared_storage_efs_settings, expected_message):
+    actual_failures = SharedStorageEfsSettingsValidator().execute(shared_storage_type, shared_storage_efs_settings)
     assert_failure_messages(actual_failures, expected_message)
 
 

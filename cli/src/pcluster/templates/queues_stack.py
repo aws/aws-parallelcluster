@@ -7,8 +7,8 @@ from aws_cdk.core import CfnTag, Fn, NestedStack, Stack
 from constructs import Construct
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.config.cluster_config import SharedStorageType, SlurmClusterConfig, SlurmComputeResource, SlurmQueue
-from pcluster.config.common import DefaultUserHomeType
+from pcluster.config.cluster_config import SlurmClusterConfig, SlurmComputeResource, SlurmQueue
+from pcluster.config.common import DefaultUserHomeType, SharedStorageType
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,

@@ -29,11 +29,11 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     HeadNode,
     LoginNodesPool,
-    SharedStorageType,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
 )
+from pcluster.config.common import SharedStorageType
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,

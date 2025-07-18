@@ -13,6 +13,8 @@ LoginNodes:
 {% endif %}
 HeadNode:
   SharedStorageType: Efs
+  SharedStorageEfsSettings:
+    Encrypted: true
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}

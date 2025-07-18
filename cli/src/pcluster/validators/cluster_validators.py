@@ -20,7 +20,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config.common import CapacityType
+from pcluster.config.common import CapacityType, SharedStorageType
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DELETE_POLICY,
@@ -676,7 +676,7 @@ class ExistingFsxNetworkingValidator(Validator):
                         self._add_failure(
                             f"The current security group settings on file storage '{file_storage_id}' does not"
                             " satisfy mounting requirement. The file storage must be associated to a security group"
-                            f" that allows {direction } {protocol.upper()} traffic through ports {ports}. "
+                            f" that allows {direction} {protocol.upper()} traffic through ports {ports}. "
                             f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
                         )
@@ -1332,6 +1332,24 @@ class HeadNodeMemorySizeValidator(Validator):
                 f"Head node instance type {head_node_instance_type} has {head_node_memory} GB of memory. "
                 f"Please choose a head node instance type with at least {required_memory} GB of memory"
                 f" to manage {total_max_compute_nodes} compute nodes.",
+                FailureLevel.ERROR,
+            )
+
+
+class SharedStorageEfsSettingsValidator(Validator):
+    """
+    HeadNode SharedStorageEfsSettings Validator.
+
+    Verify HeadNode SharedStorageEfsSettings can only be used with Efs SharedStorageType.
+    """
+
+    def _validate(self, shared_storage_type: str, shared_storage_efs_settings):
+        if shared_storage_efs_settings and shared_storage_type.lower() != SharedStorageType.EFS.value:
+            self._add_failure(
+                "SharedStorageEfsSettings is specified "
+                f"but the SharedStorageType is set to {shared_storage_type}. "
+                "SharedStorageEfsSettings can only be used when "
+                f"SharedStorageType is {SharedStorageType.EFS.value.capitalize()}.",
                 FailureLevel.ERROR,
             )
 

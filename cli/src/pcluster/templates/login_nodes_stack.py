@@ -8,8 +8,8 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnTag, Construct, Fn, NestedStack, Stack, Tags
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.config.cluster_config import LoginNodesPool, SharedStorageType, SlurmClusterConfig
-from pcluster.config.common import DefaultUserHomeType
+from pcluster.config.cluster_config import LoginNodesPool, SlurmClusterConfig
+from pcluster.config.common import DefaultUserHomeType, SharedStorageType
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
