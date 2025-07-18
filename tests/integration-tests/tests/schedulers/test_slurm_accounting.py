@@ -179,8 +179,29 @@ def test_slurm_accounting(
     cluster = clusters_factory(cluster_config)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_that_slurmdbd_is_not_running(remote_command_executor)
+
+    job_1_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "srun sleep 3000",
+            "nodes": 10,
+            "other_options": "--exclusive",
+        }
+    )
+
+    job_2_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "srun sleep 3000",
+            "nodes": 10,
+            "other_options": "--exclusive",
+        }
+    )
+
+    scheduler_commands.wait_job_running(job_1_id)
+    scheduler_commands.assert_job_state(job_1_id, "RUNNING")
+    scheduler_commands.assert_job_state(job_2_id, "PENDING")
 
     # Then update the cluster to enable Slurm Accounting
     updated_config_file = pcluster_config_reader(
@@ -194,6 +215,11 @@ def test_slurm_accounting(
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    scheduler_commands.assert_job_state(job_1_id, "RUNNING")
+    scheduler_commands.assert_job_state(job_2_id, "PENDING")
+    scheduler_commands.cancel_job(job_1_id)
+    scheduler_commands.cancel_job(job_2_id)
 
     _test_that_slurmdbd_is_running(remote_command_executor)
     _test_successful_startup_in_log(remote_command_executor)
