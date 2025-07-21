@@ -13,6 +13,7 @@ import time
 from typing import List, Union
 
 import boto3
+import pytest
 from assertpy import assert_that, soft_assertions
 from constants import NodeType
 from remote_command_executor import RemoteCommandExecutor
@@ -390,3 +391,34 @@ def assert_instance_config_version_on_ddb(
             f"Verified that all {n_nodes} nodes ({node_type}) stored the expected config version on DDB: "
             f"{expected_cluster_config_version}"
         )
+
+
+def _assert_build_image_stack_deleted(stack_name, region, timeout_seconds=600, poll_interval=30):
+    """
+    Poll the CloudFormation stack status to ensure it is deleted successfully.
+
+    - Stack does not exist or StackStatus==DELETE_COMPLETE ⇒ return immediately
+    - StackStatus==DELETE_FAILED ⇒ assert failure immediately
+    - Timeout if not deleted ⇒ assert failure
+    """
+    cfn = boto3.client("cloudformation", region_name=region)
+    deadline = time.time() + timeout_seconds
+    last_status = None
+
+    while time.time() < deadline:
+        try:
+            last_status = cfn.describe_stacks(StackName=stack_name)["Stacks"][0]["StackStatus"]
+        except cfn.exceptions.ClientError as e:
+            if "does not exist" in str(e):
+                return
+            raise
+
+        if last_status == "DELETE_COMPLETE":
+            return
+
+        if last_status == "DELETE_FAILED":
+            pytest.fail(f"Image stack {stack_name} entered DELETE_FAILED")
+
+        time.sleep(poll_interval)
+
+    pytest.fail(f"Timed-out waiting for stack {stack_name} deletion (last status: {last_status})")
