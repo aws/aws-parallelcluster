@@ -10,6 +10,8 @@
 import logging
 import os as os_lib
 
+import yaml
+
 from pcluster.api.controllers.common import (
     assert_supported_operation,
     configure_aws_region,
@@ -52,6 +54,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES, Operation
+from pcluster.imagebuilder_utils import ensure_default_build_image_stack_cleanup_role
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     ConfigValidationError,
@@ -59,7 +62,7 @@ from pcluster.models.imagebuilder import (
     NonExistingImageError,
 )
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
-from pcluster.utils import get_installed_version, to_utc_datetime
+from pcluster.utils import get_installed_version, get_partition, to_utc_datetime
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -104,6 +107,29 @@ def build_image(
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False
+
+    raw_cfg_str = build_image_request_content["imageConfiguration"]
+    cfg_dict = yaml.safe_load(raw_cfg_str) or {}
+    # If CleanupLambdaRole exists in the config, skip ensure_default_build_image_stack_cleanup_role
+    has_custom_cleanup_role = cfg_dict.get("Build", {}).get("Iam", {}).get("CleanupLambdaRole")
+
+    if not has_custom_cleanup_role:
+        try:
+            # If LambdaFunctionsVpcConfig exists in the config, attach the AWS-managed LambdaVPCAccess policy
+            has_lambda_functions_vpc_config = cfg_dict.get("DeploymentSettings", {}).get("LambdaFunctionsVpcConfig")
+            account_id = AWSApi.instance().sts.get_account_id()
+            ensure_default_build_image_stack_cleanup_role(
+                account_id, get_partition(), attach_vpc_access_policy=bool(has_lambda_functions_vpc_config)
+            )
+        except AWSClientError as e:
+            if e.error_code in ("AccessDenied", "AccessDeniedException", "UnauthorizedOperation"):
+                raise BadRequestException(
+                    "Current principal lacks permissions to create or update the ParallelCluster build-image "
+                    "cleanup IAM role. "
+                    "Either pass `Build/Iam/CleanupLambdaRole` or grant the missing permissions to continue. "
+                    "For detailed instructions, please refer to our public documentation."
+                )
+            raise
 
     build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
 

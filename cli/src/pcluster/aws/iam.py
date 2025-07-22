@@ -32,3 +32,23 @@ class IamClient(Boto3Client):
     def get_instance_profile(self, instance_profile_name):
         """Get instance profile information."""
         return self._client.get_instance_profile(InstanceProfileName=instance_profile_name)
+
+    @AWSExceptionHandler.handle_client_exception
+    def create_role(self, **kwargs):
+        """Create IAM role."""
+        return self._client.create_role(**kwargs)
+
+    @AWSExceptionHandler.handle_client_exception
+    def attach_role_policy(self, role_name, policy_arn):
+        """Attach a managed policy to the given role."""
+        return self._client.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+
+    @AWSExceptionHandler.handle_client_exception
+    def put_role_policy(self, role_name, policy_name, policy_document):
+        """Create or replace the specified inline policy on a role."""
+        return self._client.put_role_policy(RoleName=role_name, PolicyName=policy_name, PolicyDocument=policy_document)
+
+    @AWSExceptionHandler.handle_client_exception
+    def tag_role(self, role_name, tags):
+        """Add or overwrite one or more tags for the specified role."""
+        return self._client.tag_role(RoleName=role_name, Tags=tags)

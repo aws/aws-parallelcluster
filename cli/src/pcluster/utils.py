@@ -23,6 +23,7 @@ import time
 import urllib
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from hashlib import sha256
 from importlib.metadata import version
 from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from io import BytesIO
@@ -597,3 +598,8 @@ def get_service_principal(service_name: str, partition: str, region: str = None,
 def format_arn(partition: str, service: str, region: str, account: str, resource: str) -> str:
     """Format an ARN string."""
     return f"arn:{partition}:{service}:{region}:{account}:{resource}"
+
+
+def generate_string_hash(input_string: str, hash_length: int = 12) -> str:
+    """Return first input length hex chars of sha256(str)."""
+    return sha256(input_string.encode()).hexdigest()[:hash_length]

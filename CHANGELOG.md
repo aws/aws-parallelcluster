@@ -10,10 +10,13 @@ CHANGELOG
 - Support DCV on Amazon Linux 2023.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
+- The build-image command now deploys a global role that is used to automatically delete the build-image stack after images either succeed or fail the build. 
+  The role is meant to exists even after the stack has been deleted. This is to prevent build-image stack deletion failures, reported in https://github.com/aws/aws-parallelcluster/issues/5914
 - Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to enable encryption on the EFS file system used for the head node internal shared storage.
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
+- Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
 
 3.13.2
 ------
