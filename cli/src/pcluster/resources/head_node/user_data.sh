@@ -75,9 +75,7 @@ function error_exit
 }
 function vendor_cookbook
 {
-  mkdir /tmp/cookbooks
-  cd /tmp/cookbooks
-  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1
+  cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
 }
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 
