@@ -65,9 +65,7 @@ write_files:
       }
       function vendor_cookbook
       {
-        mkdir /tmp/cookbooks
-        cd /tmp/cookbooks
-        tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1
+        cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
       }
 
       export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
