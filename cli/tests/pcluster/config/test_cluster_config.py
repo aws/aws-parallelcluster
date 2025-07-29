@@ -270,7 +270,7 @@ class TestSlurmComputeResource:
         )
 
         compute_resource = SlurmComputeResource(name="name", capacity_reservation_target=capacity_reservation_target)
-        assert_that(compute_resource._instance_type_from_capacity_reservation()).is_equal_to(expected_instance_type)
+        assert_that(compute_resource.instance_type_from_capacity_reservation).is_equal_to(expected_instance_type)
         if capacity_reservation_target and capacity_reservation_target.capacity_reservation_id:
             describe_capacity_res_mock.assert_called()
         else:

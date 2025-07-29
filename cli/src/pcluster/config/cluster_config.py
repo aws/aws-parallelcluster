@@ -63,7 +63,7 @@ from pcluster.constants import (
     NODE_BOOTSTRAP_TIMEOUT,
     ONTAP,
     OPENZFS,
-    Feature,
+    Feature, ULTRASERVER_INSTANCE_PREFIX_LIST,
 )
 from pcluster.utils import get_partition, get_resource_name_from_resource_arn, to_snake_case
 from pcluster.validators.awsbatch_validators import (
@@ -154,7 +154,7 @@ from pcluster.validators.ec2_validators import (
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
     PlacementGroupCapacityTypeValidator,
-    PlacementGroupNamingValidator,
+    PlacementGroupNamingValidator, CapacityBlockHealthStatusValidator,
 )
 from pcluster.validators.efs_validators import EfsAccessPointOptionsValidator, EfsMountOptionsValidator
 from pcluster.validators.feature_validators import FeatureRegionValidator
@@ -2304,6 +2304,51 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         """Return tags configured in the slurm compute resource configuration."""
         return self.tags
 
+    @property
+    def instance_type_from_capacity_reservation(self) -> [str, str]:
+        """Return the instance type from the configured CapacityReservationId, if any."""
+        instance_type = None
+        reservation_type = None
+        capacity_reservation_id = (
+            self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
+        )
+        if capacity_reservation_id:
+            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
+            if capacity_reservations:
+                instance_type = capacity_reservations[0].instance_type()
+                reservation_type = capacity_reservations[0].reservation_type()
+        return instance_type, reservation_type
+
+    @property
+    def instance_type_and_reservation_type_from_capacity_reservation(self) -> tuple[str | None, str | None]:
+        """
+        Return the instance type and reservation type from the configured CapacityReservationId.
+
+        Returns:
+            tuple: A tuple containing (instance_type, reservation_type).
+        """
+        instance_type = None
+        reservation_type = None
+
+        try:
+            capacity_reservation_id = (
+                self.capacity_reservation_target.capacity_reservation_id
+                if self.capacity_reservation_target
+                else None
+            )
+
+            if capacity_reservation_id:
+                capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
+                if capacity_reservations:
+                    reservation = capacity_reservations[0]
+                    instance_type = reservation.instance_type()
+                    reservation_type = reservation.reservation_type()
+
+        except AWSClientError:
+            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
+
+        return instance_type, reservation_type
+
 
 class FlexibleInstanceType(Resource):
     """Represent an instance type listed in the Instances of a ComputeResources."""
@@ -2409,7 +2454,7 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def instance_type(self):
         """Instance type of this compute resource."""
         if not self._instance_type:
-            self._instance_type = Resource.init_param(self._instance_type_from_capacity_reservation())
+            self._instance_type, _ = Resource.init_param(self.instance_type_and_reservation_type_from_capacity_reservation)
         return self._instance_type
 
     def _register_validators(self, context: ValidatorContext = None):
@@ -2452,18 +2497,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
         return self.disable_simultaneous_multithreading and self._instance_type_info.default_threads_per_core() > 1
-
-    def _instance_type_from_capacity_reservation(self):
-        """Return the instance type from the configured CapacityReservationId, if any."""
-        instance_type = None
-        capacity_reservation_id = (
-            self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
-        )
-        if capacity_reservation_id:
-            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
-            if capacity_reservations:
-                instance_type = capacity_reservations[0].instance_type()
-        return instance_type
 
 
 class _CommonQueue(BaseQueue):
@@ -3051,6 +3084,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
         capacity_reservation_id_max_count_map = {}
+        capacity_block_list_of_ultraserver_instance = []
         total_max_compute_nodes = 0
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
@@ -3116,6 +3150,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                         capacity_reservation_id_max_count_map[cr_target.capacity_reservation_id] = (
                             num_of_instances_in_capacity_reservation + compute_resource.max_count
                         )
+                        # Grab all capacity block of ultraserver instance
+                        instance_type, reservation_type = compute_resource.instance_type_and_reservation_type_from_capacity_reservation
+                        if reservation_type == "capacity-block" and instance_type in ULTRASERVER_INSTANCE_PREFIX_LIST:
+                            capacity_block_list_of_ultraserver_instance.append(cr_target.capacity_reservation_id)
+
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
@@ -3222,6 +3261,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                 capacity_reservation_id=capacity_reservation_id,
                 num_of_instances=num_of_instances,
             )
+
+        self._register_validator(
+            CapacityBlockHealthStatusValidator,
+            capacity_reservation_ids=capacity_block_list_of_ultraserver_instance,
+        )
 
     @property
     def image_dict(self):

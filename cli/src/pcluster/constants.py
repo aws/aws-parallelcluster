@@ -340,3 +340,5 @@ PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX = "PClusterBuildImageCleanupRole"
 # Tag key & expected revision (increment when policy widens)
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 1
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-image-cleanup-role-bootstrapped"
+
+ULTRASERVER_INSTANCE_PREFIX_LIST = ["p6e-gb200"]

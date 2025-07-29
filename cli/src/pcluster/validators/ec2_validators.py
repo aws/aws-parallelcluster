@@ -458,6 +458,113 @@ def get_capacity_reservations_per_az(
     return capacity_reservations_per_az
 
 
+# class CapacityBlockSameSizeValidator(Validator):
+#     """
+#     Validate that all ultraserver Capacity Blocks used together have the same size.
+#
+#     This validator is meant to be applied when multiple Capacity Blocks are used
+#     for the same instance type (e.g. multi-instance/ultraserver scenarios) where
+#     a homogeneous block size simplifies scheduler topology and operations.
+#     """
+#
+#     def _validate(self, capacity_reservation_ids: List[str], instance_type: str):
+#         # Nothing to validate if 0 or 1 CBs provided
+#         if not capacity_reservation_ids or len(capacity_reservation_ids) <= 1:
+#             return
+#
+#         capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
+#
+#         # Consider only Capacity Blocks of the same instance type
+#         capacity_reservation_sizes = []
+#         crid_size_pairs = []
+#         for capacity_reservation in capacity_reservations:
+#             if capacity_reservation.reservation_type() != "capacity-block":
+#                 # Ignore non-CB reservations
+#                 continue
+#             if instance_type and capacity_reservation.instance_type() != instance_type:
+#                 # Ignore CBs targeting a different instance type
+#                 continue
+#
+#             size = max(
+#                 capacity_reservation.total_instance_count(), capacity_reservation.incremental_requested_quantity()
+#             )
+#             capacity_reservation_sizes.append(size)
+#             crid_size_pairs.append((capacity_reservation.id(), size))
+#
+#         if len(capacity_reservation_sizes) <=1:
+#             return
+#
+#         unique_sizes = sorted(set(capacity_reservation_sizes))
+#         if len(unique_sizes) > 1:
+#             sizes_detail = ", ".join(f"{cid}:{sz}" for cid, sz in crid_size_pairs)
+#             self._add_failure(
+#                 (
+#                     "Capacity Blocks must have the same size when used together for multi-instance/ultraserver "
+#                     f"workloads. Detected different sizes: {unique_sizes}. Details: [{sizes_detail}]. "
+#                 ),
+#                 FailureLevel.ERROR,
+#             )
+
+
+class CapacityBlockHealthStatusValidator(Validator):
+    """
+    Validate that all provided ultraserver Capacity Blocks are in 'ok' state.
+
+    It checks two conditions from DescribeCapacityBlockStatus:
+      1) InterconnectStatus must be 'ok'
+      2) TotalUnavailableCapacity must be 0
+    If any Capacity Block violates the above, validation fails.
+    """
+
+    _BAD_INTERCONNECT = {"impaired", "insufficient-data"}
+
+    def _validate(self, capacity_reservation_ids: List[str]):
+        if not capacity_reservation_ids:
+            return
+
+        try:
+            # Expect a boto3-like dict: {"CapacityBlockStatuses": [...]}
+            resp = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
+            return
+
+        statuses = resp.get("CapacityBlockStatuses", [])
+        if not statuses:
+            self._add_failure(
+                "DescribeCapacityBlockStatus returned no entries for the provided Capacity Blocks; "
+                "unable to verify health.",
+                FailureLevel.WARNING,
+            )
+            return
+
+        unhealthy_details = []
+        for status in statuses:
+            cb_id = status.get("CapacityBlockId")
+            interconnect = (status.get("InterconnectStatus") or "").lower()
+            total_unavail = status.get("TotalUnavailableCapacity")
+
+            bad_interconnect = interconnect in self._BAD_INTERCONNECT
+            has_unavailable = isinstance(total_unavail, int) and total_unavail > 0
+
+            if bad_interconnect or has_unavailable:
+                unhealthy_details.append(
+                    f"{cb_id}[InterconnectStatus={status.get('InterconnectStatus')}, "
+                    f"TotalUnavailableCapacity={total_unavail}]"
+                )
+
+        if unhealthy_details:
+            self._add_failure(
+                (
+                    "One or more Capacity Blocks are not healthy or have insufficient capacity: "
+                    + "; ".join(unhealthy_details)
+                    + ". Please ensure each Capacity Block reports InterconnectStatus='ok' and "
+                      "TotalUnavailableCapacity=0 before cluster creation/update."
+                ),
+                FailureLevel.ERROR,
+            )
+
+
 class CapacityReservationResourceGroupValidator(Validator):
     """Validate capacity reservation group is can be used with existing instance types and subnets.
 

@@ -577,3 +577,30 @@ class Ec2Client(Boto3Client):
                 return True
 
         return False
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_capacity_block_status(self, capacity_block_ids: List[str] = None, filters=None, max_results: int = None):
+        """
+        DDescribes the availability of capacity for the specified Capacity blocks, or all of your Capacity Blocks.
+
+        :param capacity_block_ids: optional list of Capacity Block IDs to query.
+        :param filters: optional boto3-style filters (e.g. interconnect-status).
+        :param max_results: optional page size hint.
+        :return: dict with key 'CapacityBlockStatuses' containing a flattened list of entries.
+        """
+        kwargs = {}
+        if capacity_block_ids:
+            kwargs["CapacityBlockIds"] = capacity_block_ids
+        if filters:
+            kwargs["Filters"] = filters
+        if max_results:
+            kwargs["MaxResults"] = max_results
+
+        paginator = self._client.get_paginator("describe_capacity_block_status")
+        page_iterator = paginator.paginate(**kwargs)
+
+        statuses = []
+        for page in page_iterator:
+            statuses.extend(page.get("CapacityBlockStatuses", []))
+
+        return {"CapacityBlockStatuses": statuses}
