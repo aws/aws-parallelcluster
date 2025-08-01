@@ -151,7 +151,10 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
     )
 
     mock_aws_api(mocker)
-
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("p6e-gb200.36xlarge", "capacity-block"),
+    )
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.
     _load_and_validate(test_datadir / "slurm_1.yaml")
     _load_and_validate(test_datadir / "slurm_2.yaml")
@@ -173,7 +176,10 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     """Verify that validators are called with proper argument during validation."""
     # To avoid failure of the test as soon as a new validator is added.
     _mock_all_validators(mocker)
-
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("p6e-gb200.36xlarge", "capacity-block"),
+    )
     validators_path = "pcluster.validators"
 
     cluster_validators = validators_path + ".cluster_validators"

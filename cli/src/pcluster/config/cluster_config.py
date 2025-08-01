@@ -3275,10 +3275,11 @@ class SlurmClusterConfig(BaseClusterConfig):
             )
 
         for ultraserver_instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
-            self._register_validator(
-                CapacityBlockHealthStatusValidator,
-                capacity_reservation_ids=self.ultraserver_capacity_block_dict.get(ultraserver_instance_prefix),
-            )
+            if self.ultraserver_capacity_block_dict.get(ultraserver_instance_prefix):
+                self._register_validator(
+                    CapacityBlockHealthStatusValidator,
+                    capacity_reservation_ids=self.ultraserver_capacity_block_dict.get(ultraserver_instance_prefix),
+                )
 
     @property
     def image_dict(self):

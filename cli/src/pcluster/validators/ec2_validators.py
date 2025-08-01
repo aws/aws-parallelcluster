@@ -478,9 +478,6 @@ class CapacityBlockHealthStatusValidator(Validator):
     _BAD_INTERCONNECT = {"impaired", "insufficient-data"}
 
     def _validate(self, capacity_reservation_ids: List[str]):
-        if not capacity_reservation_ids:
-            return
-
         try:
             # Expect a boto3-like dict: {"CapacityBlockStatuses": [...]}
             resp = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)

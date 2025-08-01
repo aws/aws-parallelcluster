@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import CapacityReservationInfo, FsxStorageInfo, ImageInfo, InstanceTypeInfo
+from pcluster.aws.aws_resources import FsxStorageInfo, ImageInfo, InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
@@ -192,22 +192,6 @@ class _DummyEc2Client(Ec2Client):
             return subnet
         except ValueError:  # Otherwise, we call the real method
             return super().get_subnet_cidr(subnet)
-
-    def describe_capacity_reservations(self, capacity_reservation_ids):
-
-        result = []
-        for cr_id in capacity_reservation_ids:
-            if cr_id in self.capacity_reservations_cache:
-                # Create a mock capacity reservation data structure
-                cr_data = {
-                    "CapacityReservationId": cr_id,
-                    "InstanceType": self.capacity_reservations_cache[cr_id]["InstanceType"],
-                    "AvailabilityZone": self.capacity_reservations_cache[cr_id]["AvailabilityZone"],
-                    "ReservationType": "ondemand",  # Default to ondemand
-                    "Tags": [],
-                }
-                result.append(CapacityReservationInfo(cr_data))
-        return result
 
 
 class _DummyEfsClient(EfsClient):

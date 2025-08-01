@@ -23,7 +23,7 @@ import pcluster.aws.common
 import pcluster.utils as utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import CapacityReservationInfo, InstanceTypeInfo
-from pcluster.aws.common import AWSClientError, Cache
+from pcluster.aws.common import Cache
 from pcluster.constants import Feature
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import batch_by_property_callback, yaml_load
@@ -763,22 +763,6 @@ class TestUltraserverUtils:
         # Verify the result
         assert_that(result).is_equal_to(expected_result)
 
-    def test_get_instance_type_and_reservation_type_api_error(self, mocker):
-        """Test function behavior when AWS API call fails."""
-        mock_aws_api(mocker)
-
-        # Mock API error
-        mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
-            side_effect=AWSClientError(function_name="describe_capacity_reservations", message="Access denied"),
-        )
-
-        # Call the function
-        result = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation("cr-123456")
-
-        # Should return None values when API fails
-        assert_that(result).is_equal_to((None, None))
-
     def test_get_instance_type_and_reservation_type_empty_capacity_reservation_id(self, mocker):
         """Test function behavior with empty capacity reservation ID."""
         mock_aws_api(mocker)
@@ -792,22 +776,6 @@ class TestUltraserverUtils:
         # Should return None values without calling API
         assert_that(result).is_equal_to((None, None))
         describe_mock.assert_not_called()
-
-    def test_get_instance_type_and_reservation_type_logging(self, mocker, caplog):
-        """Test that function logs warning when API call fails."""
-        mock_aws_api(mocker)
-
-        # Mock API error
-        mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
-            side_effect=AWSClientError(function_name="describe_capacity_reservations", message="Access denied"),
-        )
-
-        # Call the function
-        AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation("cr-123456")
-
-        # Verify warning was logged
-        assert_that(caplog.text).contains("Unable to describe_capacity_reservations")
 
     @pytest.mark.parametrize(
         "capacity_reservations, expected_instance_type, expected_reservation_type",

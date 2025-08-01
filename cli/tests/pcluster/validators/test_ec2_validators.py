@@ -1737,8 +1737,6 @@ def test_instance_type_placement_group_validator(
 @pytest.mark.parametrize(
     "capacity_reservation_ids, describe_response, side_effect, expected_message",
     [
-        # No capacity reservation IDs provided
-        ([], None, None, None),
         # Healthy capacity blocks
         (
             ["cr-123", "cr-456"],

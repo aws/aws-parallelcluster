@@ -322,7 +322,7 @@ class TestSlurmComputeResource:
         network_test_parameters,
     )
     def test_network_cards(self, expected_max_network_cards, expected_network_cards_index_list):
-        compute_resource = SlurmComputeResource(name="compute_resource")
+        compute_resource = SlurmComputeResource(name="compute_resource", instance_type="fake-instance-type")
         assert_that(compute_resource.max_network_cards).is_equal_to(expected_max_network_cards)
         network_cards_list = compute_resource.network_cards_list
         for index in range(len(expected_network_cards_index_list)):
