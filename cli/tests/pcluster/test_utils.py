@@ -22,8 +22,8 @@ from yaml.constructor import ConstructorError
 import pcluster.aws.common
 import pcluster.utils as utils
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.aws.common import Cache
+from pcluster.aws.aws_resources import CapacityReservationInfo, InstanceTypeInfo
+from pcluster.aws.common import AWSClientError, Cache
 from pcluster.constants import Feature
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import batch_by_property_callback, yaml_load
@@ -693,3 +693,193 @@ def test_format_arn(partition, service, region, account, resource, expected_resu
     """Test format_arn with various inputs."""
     result = utils.format_arn(partition, service, region, account, resource)
     assert_that(result).is_equal_to(expected_result)
+
+
+class TestUltraserverUtils:
+    """Test ultraserver-related utility functions."""
+
+    @pytest.mark.parametrize(
+        "capacity_reservation_id, capacity_reservations, expected_result",
+        [
+            # Valid ultraserver capacity block
+            (
+                "cr-123456",
+                [
+                    CapacityReservationInfo(
+                        {
+                            "CapacityReservationId": "cr-123456",
+                            "InstanceType": "p6e-gb200.36xlarge",
+                            "ReservationType": "capacity-block",
+                        }
+                    )
+                ],
+                ("p6e-gb200.36xlarge", "capacity-block"),
+            ),
+            # Regular instance with ondemand reservation
+            (
+                "cr-789012",
+                [
+                    CapacityReservationInfo(
+                        {
+                            "CapacityReservationId": "cr-789012",
+                            "InstanceType": "c5.large",
+                            "ReservationType": "ondemand",
+                        }
+                    )
+                ],
+                ("c5.large", "ondemand"),
+            ),
+            # Empty capacity reservations list
+            (
+                "cr-nonexistent",
+                [],
+                (None, None),
+            ),
+            # None capacity reservation ID
+            (
+                None,
+                [],
+                (None, None),
+            ),
+        ],
+    )
+    def test_get_instance_type_and_reservation_type_from_capacity_reservation(
+        self, mocker, capacity_reservation_id, capacity_reservations, expected_result
+    ):
+        """Test get_instance_type_and_reservation_type_from_capacity_reservation function."""
+        mock_aws_api(mocker)
+
+        # Mock the EC2 API call
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+            return_value=capacity_reservations,
+        )
+
+        # Call the function
+        result = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation(
+            capacity_reservation_id
+        )
+
+        # Verify the result
+        assert_that(result).is_equal_to(expected_result)
+
+    def test_get_instance_type_and_reservation_type_api_error(self, mocker):
+        """Test function behavior when AWS API call fails."""
+        mock_aws_api(mocker)
+
+        # Mock API error
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+            side_effect=AWSClientError(function_name="describe_capacity_reservations", message="Access denied"),
+        )
+
+        # Call the function
+        result = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation("cr-123456")
+
+        # Should return None values when API fails
+        assert_that(result).is_equal_to((None, None))
+
+    def test_get_instance_type_and_reservation_type_empty_capacity_reservation_id(self, mocker):
+        """Test function behavior with empty capacity reservation ID."""
+        mock_aws_api(mocker)
+
+        # Mock should not be called for empty ID
+        describe_mock = mocker.patch("pcluster.aws.ec2.Ec2Client.describe_capacity_reservations")
+
+        # Call the function with empty string
+        result = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation("")
+
+        # Should return None values without calling API
+        assert_that(result).is_equal_to((None, None))
+        describe_mock.assert_not_called()
+
+    def test_get_instance_type_and_reservation_type_logging(self, mocker, caplog):
+        """Test that function logs warning when API call fails."""
+        mock_aws_api(mocker)
+
+        # Mock API error
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+            side_effect=AWSClientError(function_name="describe_capacity_reservations", message="Access denied"),
+        )
+
+        # Call the function
+        AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation("cr-123456")
+
+        # Verify warning was logged
+        assert_that(caplog.text).contains("Unable to describe_capacity_reservations")
+
+    @pytest.mark.parametrize(
+        "capacity_reservations, expected_instance_type, expected_reservation_type",
+        [
+            # Multiple reservations - should use first one
+            (
+                [
+                    CapacityReservationInfo(
+                        {
+                            "CapacityReservationId": "cr-123456",
+                            "InstanceType": "p6e-gb200.36xlarge",
+                            "ReservationType": "capacity-block",
+                        }
+                    ),
+                    CapacityReservationInfo(
+                        {
+                            "CapacityReservationId": "cr-789012",
+                            "InstanceType": "c5.large",
+                            "ReservationType": "ondemand",
+                        }
+                    ),
+                ],
+                "p6e-gb200.36xlarge",
+                "capacity-block",
+            ),
+            # Reservation with missing ReservationType
+            (
+                [
+                    CapacityReservationInfo(
+                        {
+                            "CapacityReservationId": "cr-123456",
+                            "InstanceType": "p6e-gb200.36xlarge",
+                            # Missing ReservationType
+                        }
+                    )
+                ],
+                "p6e-gb200.36xlarge",
+                None,
+            ),
+            # Reservation with missing InstanceType
+            (
+                [
+                    CapacityReservationInfo(
+                        {
+                            "CapacityReservationId": "cr-123456",
+                            # Missing InstanceType
+                            "ReservationType": "capacity-block",
+                        }
+                    )
+                ],
+                None,
+                "capacity-block",
+            ),
+        ],
+    )
+    def test_get_instance_type_and_reservation_type_edge_cases(
+        self, mocker, capacity_reservations, expected_instance_type, expected_reservation_type
+    ):
+        """Test function behavior with edge cases."""
+        mock_aws_api(mocker)
+
+        # Mock the EC2 API call
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+            return_value=capacity_reservations,
+        )
+
+        # Call the function
+        instance_type, reservation_type = (
+            AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation("cr-123456")
+        )
+
+        # Verify the results
+        assert_that(instance_type).is_equal_to(expected_instance_type)
+        assert_that(reservation_type).is_equal_to(expected_reservation_type)

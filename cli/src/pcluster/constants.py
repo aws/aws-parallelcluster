@@ -342,3 +342,7 @@ PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 1
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-image-cleanup-role-bootstrapped"
 
 ULTRASERVER_INSTANCE_PREFIX_LIST = ["p6e-gb200"]
+# Dictionary mapping ultraserver instance prefixes to their allowed capacity block sizes
+ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
+    "p6e-gb200": [9, 18],  # Allowed sizes for p6e-gb200 ultraserver instances
+}

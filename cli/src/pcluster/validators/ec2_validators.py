@@ -458,64 +458,23 @@ def get_capacity_reservations_per_az(
     return capacity_reservations_per_az
 
 
-# class CapacityBlockSameSizeValidator(Validator):
-#     """
-#     Validate that all ultraserver Capacity Blocks used together have the same size.
-#
-#     This validator is meant to be applied when multiple Capacity Blocks are used
-#     for the same instance type (e.g. multi-instance/ultraserver scenarios) where
-#     a homogeneous block size simplifies scheduler topology and operations.
-#     """
-#
-#     def _validate(self, capacity_reservation_ids: List[str], instance_type: str):
-#         # Nothing to validate if 0 or 1 CBs provided
-#         if not capacity_reservation_ids or len(capacity_reservation_ids) <= 1:
-#             return
-#
-#         capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations(capacity_reservation_ids)
-#
-#         # Consider only Capacity Blocks of the same instance type
-#         capacity_reservation_sizes = []
-#         crid_size_pairs = []
-#         for capacity_reservation in capacity_reservations:
-#             if capacity_reservation.reservation_type() != "capacity-block":
-#                 # Ignore non-CB reservations
-#                 continue
-#             if instance_type and capacity_reservation.instance_type() != instance_type:
-#                 # Ignore CBs targeting a different instance type
-#                 continue
-#
-#             size = max(
-#                 capacity_reservation.total_instance_count(), capacity_reservation.incremental_requested_quantity()
-#             )
-#             capacity_reservation_sizes.append(size)
-#             crid_size_pairs.append((capacity_reservation.id(), size))
-#
-#         if len(capacity_reservation_sizes) <=1:
-#             return
-#
-#         unique_sizes = sorted(set(capacity_reservation_sizes))
-#         if len(unique_sizes) > 1:
-#             sizes_detail = ", ".join(f"{cid}:{sz}" for cid, sz in crid_size_pairs)
-#             self._add_failure(
-#                 (
-#                     "Capacity Blocks must have the same size when used together for multi-instance/ultraserver "
-#                     f"workloads. Detected different sizes: {unique_sizes}. Details: [{sizes_detail}]. "
-#                 ),
-#                 FailureLevel.ERROR,
-#             )
-
-
 class CapacityBlockHealthStatusValidator(Validator):
     """
-    Validate that all provided ultraserver Capacity Blocks are in 'ok' state.
+    Validate that all provided ultraserver Capacity Blocks are in healthy state.
 
-    It checks two conditions from DescribeCapacityBlockStatus:
-      1) InterconnectStatus must be 'ok'
-      2) TotalUnavailableCapacity must be 0
-    If any Capacity Block violates the above, validation fails.
+    This validator is specifically designed for ultraserver instances (e.g., p6e-gb200)
+    that use capacity blocks. It ensures that the capacity blocks are ready for use
+    by checking their health status via the DescribeCapacityBlockStatus API.
+
+    The validator checks two critical conditions:
+      1) InterconnectStatus must be 'ok' - ensures GPU-to-GPU connectivity is functional
+      2) TotalUnavailableCapacity must be 0 - ensures all reserved capacity is available
+
+    If any Capacity Block fails these health checks, cluster creation/update will fail
+    to prevent launching instances on impaired infrastructure.
     """
 
+    # Set of interconnect statuses that indicate unhealthy capacity blocks
     _BAD_INTERCONNECT = {"impaired", "insufficient-data"}
 
     def _validate(self, capacity_reservation_ids: List[str]):
@@ -559,7 +518,7 @@ class CapacityBlockHealthStatusValidator(Validator):
                     "One or more Capacity Blocks are not healthy or have insufficient capacity: "
                     + "; ".join(unhealthy_details)
                     + ". Please ensure each Capacity Block reports InterconnectStatus='ok' and "
-                      "TotalUnavailableCapacity=0 before cluster creation/update."
+                    "TotalUnavailableCapacity=0"
                 ),
                 FailureLevel.ERROR,
             )

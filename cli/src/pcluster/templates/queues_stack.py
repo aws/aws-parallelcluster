@@ -29,11 +29,15 @@ from pcluster.templates.cdk_builder_utils import (
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_user_data_content,
+    has_ultraserver_instance,
     scheduler_is_slurm,
     to_comma_separated_string,
 )
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_attr, get_http_tokens_setting
+from pcluster.utils import (
+    get_attr,
+    get_http_tokens_setting,
+)
 
 
 class QueuesStack(NestedStack):
@@ -163,11 +167,16 @@ class QueuesStack(NestedStack):
                 ),
             )
         ]
-
+        cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
         for network_card in compute_resource.network_cards_list[1:]:
             compute_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=0 if network_card.maximum_network_interfaces() == 1 else 1,
+                    # Set device_index=0 for ultraserver instances or single-NIC network cards
+                    device_index=(
+                        0
+                        if has_ultraserver_instance(cr_target) or network_card.maximum_network_interfaces() == 1
+                        else 1
+                    ),
                     network_card_index=network_card.network_card_index(),
                     associate_public_ip_address=False,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,

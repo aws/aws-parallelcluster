@@ -63,9 +63,14 @@ from pcluster.constants import (
     NODE_BOOTSTRAP_TIMEOUT,
     ONTAP,
     OPENZFS,
-    Feature, ULTRASERVER_INSTANCE_PREFIX_LIST,
+    ULTRASERVER_INSTANCE_PREFIX_LIST,
+    Feature,
 )
-from pcluster.utils import get_partition, get_resource_name_from_resource_arn, to_snake_case
+from pcluster.utils import (
+    get_partition,
+    get_resource_name_from_resource_arn,
+    to_snake_case,
+)
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -141,6 +146,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     AmiOsCompatibleValidator,
+    CapacityBlockHealthStatusValidator,
     CapacityReservationResourceGroupValidator,
     CapacityReservationSizeValidator,
     CapacityReservationValidator,
@@ -154,7 +160,7 @@ from pcluster.validators.ec2_validators import (
     KeyPairValidator,
     PlacementGroupCapacityReservationValidator,
     PlacementGroupCapacityTypeValidator,
-    PlacementGroupNamingValidator, CapacityBlockHealthStatusValidator,
+    PlacementGroupNamingValidator,
 )
 from pcluster.validators.efs_validators import EfsAccessPointOptionsValidator, EfsMountOptionsValidator
 from pcluster.validators.feature_validators import FeatureRegionValidator
@@ -2304,51 +2310,6 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         """Return tags configured in the slurm compute resource configuration."""
         return self.tags
 
-    @property
-    def instance_type_from_capacity_reservation(self) -> [str, str]:
-        """Return the instance type from the configured CapacityReservationId, if any."""
-        instance_type = None
-        reservation_type = None
-        capacity_reservation_id = (
-            self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
-        )
-        if capacity_reservation_id:
-            capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
-            if capacity_reservations:
-                instance_type = capacity_reservations[0].instance_type()
-                reservation_type = capacity_reservations[0].reservation_type()
-        return instance_type, reservation_type
-
-    @property
-    def instance_type_and_reservation_type_from_capacity_reservation(self) -> tuple[str | None, str | None]:
-        """
-        Return the instance type and reservation type from the configured CapacityReservationId.
-
-        Returns:
-            tuple: A tuple containing (instance_type, reservation_type).
-        """
-        instance_type = None
-        reservation_type = None
-
-        try:
-            capacity_reservation_id = (
-                self.capacity_reservation_target.capacity_reservation_id
-                if self.capacity_reservation_target
-                else None
-            )
-
-            if capacity_reservation_id:
-                capacity_reservations = AWSApi.instance().ec2.describe_capacity_reservations([capacity_reservation_id])
-                if capacity_reservations:
-                    reservation = capacity_reservations[0]
-                    instance_type = reservation.instance_type()
-                    reservation_type = reservation.reservation_type()
-
-        except AWSClientError:
-            logging.warning("Unable to cache describe_capacity_reservations results for all capacity reservation ids.")
-
-        return instance_type, reservation_type
-
 
 class FlexibleInstanceType(Resource):
     """Represent an instance type listed in the Instances of a ComputeResources."""
@@ -2454,7 +2415,16 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def instance_type(self):
         """Instance type of this compute resource."""
         if not self._instance_type:
-            self._instance_type, _ = Resource.init_param(self.instance_type_and_reservation_type_from_capacity_reservation)
+            capacity_reservation_id = (
+                self.capacity_reservation_target.capacity_reservation_id if self.capacity_reservation_target else None
+            )
+            (
+                instance_type_from_capacity_reservation,
+                _,
+            ) = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation(
+                capacity_reservation_id
+            )
+            self._instance_type = Resource.init_param(instance_type_from_capacity_reservation)
         return self._instance_type
 
     def _register_validators(self, context: ValidatorContext = None):
@@ -2964,6 +2934,7 @@ class SlurmClusterConfig(BaseClusterConfig):
                     pool.ssh.allowed_ips = self.head_node.ssh.allowed_ips
 
         self.__image_dict = None
+        self.__ultraserver_capacity_block_dict = None
         # Cache capacity reservations information together to reduce number of boto3 calls.
         # Since this cache is only used for validation, if AWSClientError happens
         # (e.g insufficient IAM permissions to describe the capacity reservations), we catch the exception to avoid
@@ -3018,6 +2989,53 @@ class SlurmClusterConfig(BaseClusterConfig):
             for subnet_id in pool.networking.subnet_ids:
                 subnet_ids_set.add(subnet_id)
         return list(subnet_ids_set)
+
+    @property
+    def ultraserver_capacity_block_dict(self):
+        """
+        Return a dictionary mapping ultraserver instance prefixes to their capacity block reservation IDs.
+
+        This property collects all capacity block reservations used by ultraserver instances
+        (e.g., p6e-gb200) across all queues and compute resources in the cluster configuration.
+
+        Returns:
+            dict: A dictionary where keys are ultraserver instance prefixes (e.g., 'p6e-gb200')
+                  and values are lists of capacity reservation IDs for that instance type.
+
+        Example:
+            {
+                'p6e-gb200': ['cr-123456', 'cr-789012']
+            }
+        """
+        if self.__ultraserver_capacity_block_dict:
+            return self.__ultraserver_capacity_block_dict
+
+        self.__ultraserver_capacity_block_dict = {}
+
+        # Initialize empty lists for each supported ultraserver instance prefix
+        for ultraserver_instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
+            self.__ultraserver_capacity_block_dict[ultraserver_instance_prefix] = []
+
+        # Iterate through all queues and compute resources to find ultraserver capacity blocks
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                cr_target = compute_resource.capacity_reservation_target or queue.capacity_reservation_target
+                if cr_target and cr_target.capacity_reservation_id:
+                    # Get instance type and reservation type from the capacity reservation
+                    (
+                        instance_type,
+                        reservation_type,
+                    ) = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation(
+                        cr_target.capacity_reservation_id
+                    )
+                    # Extract instance prefix (e.g., 'p6e-gb200' from 'p6e-gb200.36xlarge')
+                    instance_prefix = instance_type.split(".")[0]
+                    # Only collect capacity blocks for ultraserver instances
+                    if reservation_type == "capacity-block" and instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
+                        self.__ultraserver_capacity_block_dict.get(instance_prefix).append(
+                            cr_target.capacity_reservation_id
+                        )
+        return self.__ultraserver_capacity_block_dict
 
     def _register_login_node_validators(self):
         """Register all login node validators to ensure that the resource parameters are valid."""
@@ -3084,7 +3102,6 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
         checked_images = []
         capacity_reservation_id_max_count_map = {}
-        capacity_block_list_of_ultraserver_instance = []
         total_max_compute_nodes = 0
         for index, queue in enumerate(self.scheduling.queues):
             queue_image = self.image_dict[queue.name]
@@ -3150,11 +3167,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                         capacity_reservation_id_max_count_map[cr_target.capacity_reservation_id] = (
                             num_of_instances_in_capacity_reservation + compute_resource.max_count
                         )
-                        # Grab all capacity block of ultraserver instance
-                        instance_type, reservation_type = compute_resource.instance_type_and_reservation_type_from_capacity_reservation
-                        if reservation_type == "capacity-block" and instance_type in ULTRASERVER_INSTANCE_PREFIX_LIST:
-                            capacity_block_list_of_ultraserver_instance.append(cr_target.capacity_reservation_id)
-
                     self._register_validator(
                         CapacityReservationValidator,
                         capacity_reservation_id=cr_target.capacity_reservation_id,
@@ -3262,10 +3274,11 @@ class SlurmClusterConfig(BaseClusterConfig):
                 num_of_instances=num_of_instances,
             )
 
-        self._register_validator(
-            CapacityBlockHealthStatusValidator,
-            capacity_reservation_ids=capacity_block_list_of_ultraserver_instance,
-        )
+        for ultraserver_instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
+            self._register_validator(
+                CapacityBlockHealthStatusValidator,
+                capacity_reservation_ids=self.ultraserver_capacity_block_dict.get(ultraserver_instance_prefix),
+            )
 
     @property
     def image_dict(self):
