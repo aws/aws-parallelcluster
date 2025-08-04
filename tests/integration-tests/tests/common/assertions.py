@@ -9,12 +9,14 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import re
 import time
 from typing import List, Union
 
 import boto3
 import pytest
 from assertpy import assert_that, soft_assertions
+from clusters_factory import Cluster
 from constants import NodeType
 from remote_command_executor import RemoteCommandExecutor
 from retrying import RetryError, retry
@@ -28,7 +30,7 @@ from utils import (
 )
 
 from tests.common.scaling_common import get_compute_nodes_allocation
-from tests.common.utils import get_ddb_item
+from tests.common.utils import get_ddb_item, read_remote_file
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(6))
@@ -197,6 +199,19 @@ def assert_num_instances_in_cluster(cluster_name, region, desired):
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def wait_for_num_instances_in_queue(cluster_name, region, desired, queue):
     return assert_num_instances_in_queue(cluster_name, region, desired, queue)
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
+def wait_for_instances_in_compute_resource(
+    cluster: Cluster, queue: str, compute_resource: str, state: list, desired: int
+):
+    instances = cluster.get_compute_nodes(queue, compute_resource, state)
+    assert_that(instances).is_length(desired)
+    logging.info(
+        f"Cluster {cluster.name} has {desired} compute nodes "
+        f"in queue {queue} and compute resource {compute_resource}: {instances}"
+    )
+    return instances
 
 
 def assert_num_instances_in_queue(cluster_name, region, desired, queue):
@@ -422,3 +437,10 @@ def _assert_build_image_stack_deleted(stack_name, region, timeout_seconds=600, p
         time.sleep(poll_interval)
 
     pytest.fail(f"Timed-out waiting for stack {stack_name} deletion (last status: {last_status})")
+
+
+def assert_regex_in_file(cluster: Cluster, compute_node_ip: str, file_name: str, pattern: str, negate: bool = True):
+    rce = RemoteCommandExecutor(cluster, compute_node_ip)
+    file_content = read_remote_file(rce, file_name)
+    assertion = assert_that(bool(re.search(pattern, file_content, re.IGNORECASE)))
+    assertion.is_false() if negate else assertion.is_fals()

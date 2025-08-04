@@ -580,6 +580,32 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
+def file_reader(test_datadir, request, vpc_stack):
+    """
+    Define a fixture to render file templates associated to the running test.
+
+    The template file for a given test is a generic file stored in the configs_datadir folder.
+    The template can be written by using Jinja2 template engine.
+
+    :return: a _file_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
+    """
+
+    def _file_renderer(input_file: str = "script.sh", output_file: str = "script_rendered.sh", **kwargs):
+        input_file_path = test_datadir / input_file
+        if not os.path.isfile(input_file_path):
+            raise FileNotFoundError(f"Input file not found in the expected dir {input_file_path}")
+        output_file_path = test_datadir / output_file if output_file else input_file_path
+        default_values = _get_default_template_values(vpc_stack, request)
+        file_loader = FileSystemLoader(str(test_datadir))
+        env = SandboxedEnvironment(loader=file_loader)
+        rendered_template = env.get_template(input_file).render(**{**default_values, **kwargs})
+        output_file_path.write_text(rendered_template)
+        return output_file_path
+
+    return _file_renderer
+
+
+@pytest.fixture()
 def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, architecture):
     """
     Define a fixture to render pcluster config templates associated to the running test.

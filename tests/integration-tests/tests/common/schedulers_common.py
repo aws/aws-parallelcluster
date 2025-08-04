@@ -440,6 +440,24 @@ class SlurmCommands(SchedulerCommands):
         logging.info("All running nodes: %s", result.stdout)
         return result.stdout.splitlines()
 
+    def get_nodename_from_ip(self, ip: str):
+        """Get the nodename from IP address"""
+        command = (
+            f"scontrol show nodes --json | "
+            f'jq -r --arg ip "{ip}" \'.nodes[] | '
+            f"select(.address == $ip) | .hostname'"
+        )  # noqa: W605
+        result = self._remote_command_executor.run_remote_command(command)
+        logging.info(f"Nodename for {ip} is: {result.stdout}")
+        return result.stdout
+
+    def get_batch_host_for_job(self, job_id: str):
+        """Get the node list for a given job."""
+        command = f"scontrol show jobs {job_id} --json | jq -r '.jobs[].batch_host'"  # noqa: W605
+        result = self._remote_command_executor.run_remote_command(command)
+        logging.info(f"Nodename for {job_id} is: {result.stdout}")
+        return result.stdout
+
     @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("sinfo -h -o '%t'").stdout
