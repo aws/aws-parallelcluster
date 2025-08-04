@@ -280,6 +280,13 @@ test-suites:
           instances: [{{ common.instance("instance_type_1") }}]
           oss: [{{ OS_X86_6 }}]
           schedulers: [ "slurm" ]
+  ultraserver:
+    test_gb200.py::test_gb200:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          instances: [ "g4dn.2xlarge" ]
+          oss: [ "alinux2023" ]
+          schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
