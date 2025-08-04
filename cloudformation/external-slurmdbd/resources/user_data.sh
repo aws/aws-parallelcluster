@@ -17,9 +17,7 @@ MIME-Version: 1.0
 
 function vendor_cookbook
 {
-  mkdir /tmp/cookbooks
-  cd /tmp/cookbooks
-  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1
+  cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
 }
 
 function wait_for_private_ip_assignment
