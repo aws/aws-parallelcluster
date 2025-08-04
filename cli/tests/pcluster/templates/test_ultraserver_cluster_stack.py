@@ -55,7 +55,7 @@ class TestUltraserverClusterStack:
         # Mock the describe_capacity_block_status API response
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_capacity_block_status",
-            return_value={"CapacityBlockStatuses": capacity_block_statuses},
+            return_value=capacity_block_statuses,
         )
 
         # Mock cluster config with ultraserver capacity blocks
@@ -79,12 +79,10 @@ class TestUltraserverClusterStack:
         # Mock API response with invalid size (not in allowed list)
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_capacity_block_status",
-            return_value={
-                "CapacityBlockStatuses": [
-                    {"CapacityBlockId": "cr-123", "TotalCapacity": 5},  # Invalid size
-                    {"CapacityBlockId": "cr-456", "TotalCapacity": 10},  # Invalid size
-                ]
-            },
+            return_value=[
+                {"CapacityBlockId": "cr-123", "TotalCapacity": 5},  # Invalid size
+                {"CapacityBlockId": "cr-456", "TotalCapacity": 10},  # Invalid size
+            ],
         )
 
         mock_config = mocker.MagicMock()

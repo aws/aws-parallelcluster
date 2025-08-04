@@ -614,7 +614,7 @@ class Ec2Client(Boto3Client):
         for page in page_iterator:
             statuses.extend(page.get("CapacityBlockStatuses", []))
 
-        return {"CapacityBlockStatuses": statuses}
+        return statuses
 
     @AWSExceptionHandler.handle_client_exception
     def get_instance_type_and_reservation_type_from_capacity_reservation(

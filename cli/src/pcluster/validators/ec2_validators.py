@@ -480,12 +480,11 @@ class CapacityBlockHealthStatusValidator(Validator):
     def _validate(self, capacity_reservation_ids: List[str]):
         try:
             # Expect a boto3-like dict: {"CapacityBlockStatuses": [...]}
-            resp = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
+            statuses = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
             return
 
-        statuses = resp.get("CapacityBlockStatuses", [])
         if not statuses:
             self._add_failure(
                 "DescribeCapacityBlockStatus returned no entries for the provided Capacity Blocks; "

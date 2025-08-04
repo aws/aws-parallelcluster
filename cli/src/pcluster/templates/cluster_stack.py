@@ -1370,7 +1370,7 @@ class ClusterCdkStack:
                     ),
                     "launch_template_id": launch_template_id,
                     **(
-                        {"p6e_gb200_capacity_block_sizes": cluster_ultraserver_capacity_block_sizes_dict["p6e-gb200"]}
+                        {"p6egb200_block_sizes": cluster_ultraserver_capacity_block_sizes_dict["p6e-gb200"]}
                         if "p6e-gb200" in cluster_ultraserver_capacity_block_sizes_dict
                         and cluster_ultraserver_capacity_block_sizes_dict["p6e-gb200"]
                         else {}

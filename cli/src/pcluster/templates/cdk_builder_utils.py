@@ -389,8 +389,7 @@ def process_ultraserver_capacity_block_sizes(cluster_ultraserver_capacity_block_
 
         capacity_reservation_ids = cluster_ultraserver_capacity_block_dict.get(ultraserver_instance_prefix)
         if capacity_reservation_ids:
-            resp = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
-            statuses = resp.get("CapacityBlockStatuses", [])
+            statuses = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
 
             for status in statuses:
                 size = status.get("TotalCapacity")
@@ -415,12 +414,7 @@ def process_ultraserver_capacity_block_sizes(cluster_ultraserver_capacity_block_
 
 
 def has_ultraserver_instance(cr_target):
-    """
-    Check if the compute resource uses ultraserver instances with capacity blocks.
-
-    Ultraserver instances (e.g., p6e-gb200) require special network interface configuration
-    where all network interfaces must use device_index=0
-    """
+    """Check if the compute resource uses ultraserver instances with capacity blocks."""
     _has_ultraserver_instance = False
     if cr_target and cr_target.capacity_reservation_id:
         (

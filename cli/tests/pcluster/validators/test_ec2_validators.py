@@ -1740,35 +1740,31 @@ def test_instance_type_placement_group_validator(
         # Healthy capacity blocks
         (
             ["cr-123", "cr-456"],
-            {
-                "CapacityBlockStatuses": [
-                    {
-                        "CapacityBlockId": "cr-123",
-                        "InterconnectStatus": "ok",
-                        "TotalUnavailableCapacity": 0,
-                    },
-                    {
-                        "CapacityBlockId": "cr-456",
-                        "InterconnectStatus": "ok",
-                        "TotalUnavailableCapacity": 0,
-                    },
-                ]
-            },
+            [
+                {
+                    "CapacityBlockId": "cr-123",
+                    "InterconnectStatus": "ok",
+                    "TotalUnavailableCapacity": 0,
+                },
+                {
+                    "CapacityBlockId": "cr-456",
+                    "InterconnectStatus": "ok",
+                    "TotalUnavailableCapacity": 0,
+                },
+            ],
             None,
             None,
         ),
         # Unhealthy capacity block - impaired interconnect
         (
             ["cr-123"],
-            {
-                "CapacityBlockStatuses": [
-                    {
-                        "CapacityBlockId": "cr-123",
-                        "InterconnectStatus": "impaired",
-                        "TotalUnavailableCapacity": 0,
-                    },
-                ]
-            },
+            [
+                {
+                    "CapacityBlockId": "cr-123",
+                    "InterconnectStatus": "impaired",
+                    "TotalUnavailableCapacity": 0,
+                },
+            ],
             None,
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
             "cr-123\\[InterconnectStatus=impaired, TotalUnavailableCapacity=0\\]. "
@@ -1777,15 +1773,13 @@ def test_instance_type_placement_group_validator(
         # Unhealthy capacity block - insufficient data
         (
             ["cr-456"],
-            {
-                "CapacityBlockStatuses": [
-                    {
-                        "CapacityBlockId": "cr-456",
-                        "InterconnectStatus": "insufficient-data",
-                        "TotalUnavailableCapacity": 0,
-                    },
-                ]
-            },
+            [
+                {
+                    "CapacityBlockId": "cr-456",
+                    "InterconnectStatus": "insufficient-data",
+                    "TotalUnavailableCapacity": 0,
+                },
+            ],
             None,
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
             "cr-456\\[InterconnectStatus=insufficient-data, TotalUnavailableCapacity=0\\]. "
@@ -1794,15 +1788,13 @@ def test_instance_type_placement_group_validator(
         # Unhealthy capacity block - unavailable capacity
         (
             ["cr-789"],
-            {
-                "CapacityBlockStatuses": [
-                    {
-                        "CapacityBlockId": "cr-789",
-                        "InterconnectStatus": "ok",
-                        "TotalUnavailableCapacity": 2,
-                    },
-                ]
-            },
+            [
+                {
+                    "CapacityBlockId": "cr-789",
+                    "InterconnectStatus": "ok",
+                    "TotalUnavailableCapacity": 2,
+                },
+            ],
             None,
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
             "cr-789\\[InterconnectStatus=ok, TotalUnavailableCapacity=2\\]. "
@@ -1811,20 +1803,18 @@ def test_instance_type_placement_group_validator(
         # Multiple unhealthy capacity blocks
         (
             ["cr-123", "cr-456"],
-            {
-                "CapacityBlockStatuses": [
-                    {
-                        "CapacityBlockId": "cr-123",
-                        "InterconnectStatus": "impaired",
-                        "TotalUnavailableCapacity": 1,
-                    },
-                    {
-                        "CapacityBlockId": "cr-456",
-                        "InterconnectStatus": "insufficient-data",
-                        "TotalUnavailableCapacity": 0,
-                    },
-                ]
-            },
+            [
+                {
+                    "CapacityBlockId": "cr-123",
+                    "InterconnectStatus": "impaired",
+                    "TotalUnavailableCapacity": 1,
+                },
+                {
+                    "CapacityBlockId": "cr-456",
+                    "InterconnectStatus": "insufficient-data",
+                    "TotalUnavailableCapacity": 0,
+                },
+            ],
             None,
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
             "cr-123\\[InterconnectStatus=impaired, TotalUnavailableCapacity=1\\]; "
@@ -1841,7 +1831,7 @@ def test_instance_type_placement_group_validator(
         # Empty response
         (
             ["cr-123"],
-            {"CapacityBlockStatuses": []},
+            [],
             None,
             "DescribeCapacityBlockStatus returned no entries for the provided Capacity Blocks; "
             "unable to verify health.",
