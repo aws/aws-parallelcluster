@@ -346,3 +346,5 @@ ULTRASERVER_INSTANCE_PREFIX_LIST = ["p6e-gb200"]
 ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
     "p6e-gb200": [9, 18],  # Allowed sizes for p6e-gb200 ultraserver instances
 }
+# Capacity Block states that are considered inactive (cannot check health status)
+CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]

@@ -386,6 +386,7 @@ def process_ultraserver_capacity_block_sizes(cluster_ultraserver_capacity_block_
 
     for ultraserver_instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
         cluster_ultraserver_capacity_block_sizes_dict[ultraserver_instance_prefix] = []
+        allowed_sizes_list = ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT.get(ultraserver_instance_prefix)
 
         capacity_reservation_ids = cluster_ultraserver_capacity_block_dict.get(ultraserver_instance_prefix)
         if capacity_reservation_ids:
@@ -394,17 +395,14 @@ def process_ultraserver_capacity_block_sizes(cluster_ultraserver_capacity_block_
             for status in statuses:
                 size = status.get("TotalCapacity")
                 if size is not None:
+                    if size not in allowed_sizes_list:
+                        raise BadRequestException(
+                            f"The capacity block {status.get('CapacityBlockId')} has invalid block size "
+                            f"{size}. Allowed values are {allowed_sizes_list}."
+                        )
                     cluster_ultraserver_capacity_block_sizes_dict.get(ultraserver_instance_prefix).append(size)
 
         unique_sizes = sorted(set(cluster_ultraserver_capacity_block_sizes_dict.get(ultraserver_instance_prefix)))
-        if unique_sizes:  # Check if there are any sizes to validate
-            allowed_sizes_list = ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT.get(ultraserver_instance_prefix)
-            for size in unique_sizes:
-                if size not in allowed_sizes_list:
-                    raise BadRequestException(
-                        f"The capacity block sizes for ultraserver instance {ultraserver_instance_prefix} are "
-                        f"{unique_sizes}. The sizes should be in {allowed_sizes_list}, but not."
-                    )
 
         cluster_ultraserver_capacity_block_sizes_dict[ultraserver_instance_prefix] = ", ".join(
             str(unique_size) for unique_size in unique_sizes

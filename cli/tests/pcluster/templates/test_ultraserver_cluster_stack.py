@@ -13,7 +13,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.api.errors import BadRequestException
-from pcluster.templates.cdk_builder_utils import process_ultraserver_capacity_block_sizes
+from pcluster.templates.cdk_builder_utils import has_ultraserver_instance, process_ultraserver_capacity_block_sizes
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
@@ -99,10 +99,8 @@ class TestUltraserverClusterStack:
             if hasattr(exc_info.value.content, "message")
             else str(exc_info.value.content)
         )
-        assert_that(exception_message).contains(
-            "The capacity block sizes for ultraserver instance p6e-gb200 are [5, 10]"
-        )
-        assert_that(exception_message).contains("The sizes should be in [9, 18], but not")
+        assert_that(exception_message).contains("The capacity block cr-123 has invalid block size 5.")
+        assert_that(exception_message).contains("Allowed values are [9, 18].")
 
     def test_dna_json_p6e_gb200_capacity_block_sizes_inclusion(self, mocker):
         """Test that p6e_gb200_capacity_block_sizes is correctly included in DNA JSON."""
@@ -140,3 +138,35 @@ class TestUltraserverClusterStack:
         )
 
         assert_that(result).is_equal_to({})
+
+    @pytest.mark.parametrize(
+        "instance_type, reservation_type, expected_has_ultraserver",
+        [
+            # Regular instance with ondemand reservation
+            ("c5.large", "ondemand", False),
+            # Regular instance with capacity block
+            ("c5.large", "capacity-block", False),
+            # Ultraserver instance with ondemand reservation
+            ("p6e-gb200.36xlarge", "ondemand", False),
+            # Ultraserver instance with capacity block (should be True)
+            ("p6e-gb200.36xlarge", "capacity-block", True),
+        ],
+    )
+    def test_ultraserver_instance_detection(self, mocker, instance_type, reservation_type, expected_has_ultraserver):
+        """Test detection of ultraserver instances with capacity blocks."""
+        mock_aws_api(mocker)
+
+        # Mock the utility function
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+            return_value=(instance_type, reservation_type),
+        )
+
+        # Mock capacity reservation target
+        class MockCapacityReservationTarget:
+            def __init__(self, cr_id):
+                self.capacity_reservation_id = cr_id
+
+        cr_target = MockCapacityReservationTarget("cr-123456")
+
+        assert_that(has_ultraserver_instance(cr_target)).is_equal_to(expected_has_ultraserver)

@@ -1735,23 +1735,20 @@ def test_instance_type_placement_group_validator(
 
 
 @pytest.mark.parametrize(
-    "capacity_reservation_ids, describe_response, side_effect, expected_message",
+    "capacity_reservation_ids, describe_block_response, describe_block_side_effect, describe_reservation_response, "
+    "expected_message, expected_level",
     [
         # Healthy capacity blocks
         (
-            ["cr-123", "cr-456"],
+            ["cr-123"],
             [
                 {
                     "CapacityBlockId": "cr-123",
                     "InterconnectStatus": "ok",
-                    "TotalUnavailableCapacity": 0,
-                },
-                {
-                    "CapacityBlockId": "cr-456",
-                    "InterconnectStatus": "ok",
-                    "TotalUnavailableCapacity": 0,
                 },
             ],
+            None,
+            [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 2})],
             None,
             None,
         ),
@@ -1762,13 +1759,14 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cr-123",
                     "InterconnectStatus": "impaired",
-                    "TotalUnavailableCapacity": 0,
                 },
             ],
             None,
+            [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 2})],
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
-            "cr-123\\[InterconnectStatus=impaired, TotalUnavailableCapacity=0\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and TotalUnavailableCapacity=0",
+            "cr-123\\[InterconnectStatus=impaired\\]. "
+            "Please ensure each Capacity Block reports InterconnectStatus='ok' and all reserved capacity is available",
+            FailureLevel.ERROR,
         ),
         # Unhealthy capacity block - insufficient data
         (
@@ -1777,13 +1775,14 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cr-456",
                     "InterconnectStatus": "insufficient-data",
-                    "TotalUnavailableCapacity": 0,
                 },
             ],
             None,
+            [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 2})],
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
-            "cr-456\\[InterconnectStatus=insufficient-data, TotalUnavailableCapacity=0\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and TotalUnavailableCapacity=0",
+            "cr-456\\[InterconnectStatus=insufficient-data\\]. "
+            "Please ensure each Capacity Block reports InterconnectStatus='ok' and all reserved capacity is available",
+            FailureLevel.ERROR,
         ),
         # Unhealthy capacity block - unavailable capacity
         (
@@ -1792,61 +1791,68 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cr-789",
                     "InterconnectStatus": "ok",
-                    "TotalUnavailableCapacity": 2,
                 },
             ],
             None,
+            [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 1})],
             "One or more Capacity Blocks are not healthy or have insufficient capacity: "
-            "cr-789\\[InterconnectStatus=ok, TotalUnavailableCapacity=2\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and TotalUnavailableCapacity=0",
+            "cr-789\\[TotalInstanceCount=2, AvailableInstanceCount=1\\]. "
+            "Please ensure each Capacity Block reports InterconnectStatus='ok' and all reserved capacity is available",
+            FailureLevel.ERROR,
         ),
-        # Multiple unhealthy capacity blocks
+        # Scheduled capacity block (inactive state)
         (
-            ["cr-123", "cr-456"],
-            [
-                {
-                    "CapacityBlockId": "cr-123",
-                    "InterconnectStatus": "impaired",
-                    "TotalUnavailableCapacity": 1,
-                },
-                {
-                    "CapacityBlockId": "cr-456",
-                    "InterconnectStatus": "insufficient-data",
-                    "TotalUnavailableCapacity": 0,
-                },
-            ],
+            ["cr-scheduled"],
             None,
-            "One or more Capacity Blocks are not healthy or have insufficient capacity: "
-            "cr-123\\[InterconnectStatus=impaired, TotalUnavailableCapacity=1\\]; "
-            "cr-456\\[InterconnectStatus=insufficient-data, TotalUnavailableCapacity=0\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and TotalUnavailableCapacity=0",
+            AWSClientError(function_name="describe_capacity_block_status", message="malformed"),
+            [CapacityReservationInfo({"State": "scheduled"})],
+            "Cannot verify health status for inactive Capacity Blocks: cr-scheduled. "
+            "Health status validation will be performed when the capacity blocks become active.",
+            FailureLevel.WARNING,
         ),
-        # API error
+        # Payment-pending capacity block (inactive state)
         (
-            ["cr-123"],
+            ["cr-pending"],
+            None,
+            AWSClientError(function_name="describe_capacity_block_status", message="malformed"),
+            [CapacityReservationInfo({"State": "payment-pending"})],
+            "Cannot verify health status for inactive Capacity Blocks: cr-pending. "
+            "Health status validation will be performed when the capacity blocks become active.",
+            FailureLevel.WARNING,
+        ),
+        # API error for non-inactive capacity block
+        (
+            ["cr-error"],
             None,
             AWSClientError(function_name="describe_capacity_block_status", message="API error"),
-            "API error",
-        ),
-        # Empty response
-        (
-            ["cr-123"],
-            [],
-            None,
-            "DescribeCapacityBlockStatus returned no entries for the provided Capacity Blocks; "
-            "unable to verify health.",
+            [CapacityReservationInfo({"State": "active"})],
+            "Unable to retrieve status for Capacity Block cr-error. "
+            "Please verify the Capacity Block ID is valid and accessible.",
+            FailureLevel.ERROR,
         ),
     ],
 )
 def test_capacity_block_health_status_validator(
-    mocker, capacity_reservation_ids, describe_response, side_effect, expected_message
+    mocker,
+    capacity_reservation_ids,
+    describe_block_response,
+    describe_block_side_effect,
+    describe_reservation_response,
+    expected_message,
+    expected_level,
 ):
     mock_aws_api(mocker)
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_capacity_block_status",
-        return_value=describe_response,
-        side_effect=side_effect,
+        return_value=describe_block_response,
+        side_effect=describe_block_side_effect,
+    )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_reservations",
+        return_value=describe_reservation_response,
     )
 
     actual_failures = CapacityBlockHealthStatusValidator().execute(capacity_reservation_ids)
     assert_failure_messages(actual_failures, expected_message)
+    if expected_level:
+        assert_failure_level(actual_failures, expected_level)

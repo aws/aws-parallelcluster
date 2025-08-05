@@ -20,6 +20,7 @@ from pcluster.aws.aws_resources import CapacityReservationInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.common import CapacityType
 from pcluster.constants import (
+    CAPACITY_BLOCK_INACTIVE_STATES,
     CAPACITY_RESERVATION_OS_MAP,
     NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES,
     UNSUPPORTED_OSES_FOR_MICRO_NANO,
@@ -468,53 +469,90 @@ class CapacityBlockHealthStatusValidator(Validator):
 
     The validator checks two critical conditions:
       1) InterconnectStatus must be 'ok' - ensures GPU-to-GPU connectivity is functional
-      2) TotalUnavailableCapacity must be 0 - ensures all reserved capacity is available
+      2) All reserved capacity must be available (TotalInstanceCount == AvailableInstanceCount)
 
     If any Capacity Block fails these health checks, cluster creation/update will fail
     to prevent launching instances on impaired infrastructure.
+
+    For scheduled capacity blocks, the validator will issue a warning since health status
+    cannot be checked until the capacity block becomes active.
     """
 
-    # Set of interconnect statuses that indicate unhealthy capacity blocks
-    _BAD_INTERCONNECT = {"impaired", "insufficient-data"}
+    # Set of interconnect statuses that indicate healthy capacity blocks
+    _GOOD_INTERCONNECT = {"ok"}
 
-    def _validate(self, capacity_reservation_ids: List[str]):
-        try:
-            # Expect a boto3-like dict: {"CapacityBlockStatuses": [...]}
-            statuses = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
-        except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR)
-            return
+    def _validate(self, capacity_reservation_ids: List[str]):  # noqa: C901
+        inactive_blocks = []
+        unhealthy_details = []
 
-        if not statuses:
+        for cb_id in capacity_reservation_ids:
+            try:
+                # Try to get capacity block status first
+                statuses = AWSApi.instance().ec2.describe_capacity_block_status([cb_id])
+
+                # Check health status for active capacity blocks
+                for status in statuses:
+                    interconnect = (status.get("InterconnectStatus") or "").lower()
+                    good_interconnect = interconnect in self._GOOD_INTERCONNECT
+
+                    if not good_interconnect:
+                        unhealthy_details.append(f"{cb_id}[InterconnectStatus={status.get('InterconnectStatus')}]")
+
+                # Also check capacity availability using describe_capacity_reservations
+                try:
+                    reservations = AWSApi.instance().ec2.describe_capacity_reservations([cb_id])
+                    if reservations:
+                        reservation = reservations[0]
+                        total_count = reservation.total_instance_count()
+                        available_count = reservation.available_instance_count()
+
+                        if total_count != available_count:
+                            unhealthy_details.append(
+                                f"{cb_id}[TotalInstanceCount={total_count}, "
+                                f"AvailableInstanceCount={available_count}]"
+                            )
+                except AWSClientError:
+                    # If we can't get reservation info, it's an error
+                    self._add_failure(
+                        f"Unable to retrieve capacity reservation information for {cb_id}.",
+                        FailureLevel.ERROR,
+                    )
+
+            except AWSClientError:
+                # If describe_capacity_block_status fails, check if it's a scheduled capacity block
+                try:
+                    reservations = AWSApi.instance().ec2.describe_capacity_reservations([cb_id])
+                    if reservations and reservations[0].state().lower() in CAPACITY_BLOCK_INACTIVE_STATES:
+                        inactive_blocks.append(cb_id)
+                    else:
+                        # Not in inactive state, so it's a real error
+                        self._add_failure(
+                            f"Unable to retrieve status for Capacity Block {cb_id}. "
+                            f"Please verify the Capacity Block ID is valid and accessible.",
+                            FailureLevel.ERROR,
+                        )
+                except AWSClientError as e:
+                    self._add_failure(
+                        f"Unable to retrieve information for Capacity Block {cb_id}: {str(e)}",
+                        FailureLevel.ERROR,
+                    )
+
+        # Report inactive capacity blocks as warnings
+        if inactive_blocks:
             self._add_failure(
-                "DescribeCapacityBlockStatus returned no entries for the provided Capacity Blocks; "
-                "unable to verify health.",
+                f"Cannot verify health status for inactive Capacity Blocks: {', '.join(inactive_blocks)}. "
+                f"Health status validation will be performed when the capacity blocks become active.",
                 FailureLevel.WARNING,
             )
-            return
 
-        unhealthy_details = []
-        for status in statuses:
-            cb_id = status.get("CapacityBlockId")
-            interconnect = (status.get("InterconnectStatus") or "").lower()
-            total_unavail = status.get("TotalUnavailableCapacity")
-
-            bad_interconnect = interconnect in self._BAD_INTERCONNECT
-            has_unavailable = isinstance(total_unavail, int) and total_unavail > 0
-
-            if bad_interconnect or has_unavailable:
-                unhealthy_details.append(
-                    f"{cb_id}[InterconnectStatus={status.get('InterconnectStatus')}, "
-                    f"TotalUnavailableCapacity={total_unavail}]"
-                )
-
+        # Report unhealthy capacity blocks as errors
         if unhealthy_details:
             self._add_failure(
                 (
                     "One or more Capacity Blocks are not healthy or have insufficient capacity: "
                     + "; ".join(unhealthy_details)
                     + ". Please ensure each Capacity Block reports InterconnectStatus='ok' and "
-                    "TotalUnavailableCapacity=0"
+                    "all reserved capacity is available"
                 ),
                 FailureLevel.ERROR,
             )
