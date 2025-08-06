@@ -67,7 +67,10 @@ def test_cluster_builder_from_configuration_file(
     # mock bucket initialization parameters
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
-
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("t3.micro", "capacity-reservation"),
+    )
     # Search config file from example_configs folder to test standard configuration
     _, cluster = load_cluster_model_from_yaml(config_file_name)
     _generate_template(cluster, capsys)
@@ -256,7 +259,10 @@ def test_add_alarms(mocker, config_file_name):
     # mock bucket initialization parameters
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
-
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("t3.micro", "capacity-reservation"),
+    )
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
@@ -1000,7 +1006,10 @@ def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_nod
     # mock bucket initialization parameters
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
-
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("t3.micro", "capacity-reservation"),
+    )
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
@@ -1062,6 +1071,10 @@ def test_head_node_tags_from_launch_template(
     mock_aws_api(mocker)
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("t3.micro", "capacity-reservation"),
+    )
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
@@ -1129,6 +1142,10 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     mock_aws_api(mocker)
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
+        return_value=("t3.micro", "capacity-reservation"),
+    )
     input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"

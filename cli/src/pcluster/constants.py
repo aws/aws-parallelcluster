@@ -340,3 +340,12 @@ PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX = "PClusterBuildImageCleanupRole"
 # Tag key & expected revision (increment when policy widens)
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 1
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-image-cleanup-role-bootstrapped"
+
+P6E_GB200 = "p6e-gb200"
+ULTRASERVER_INSTANCE_PREFIX_LIST = [P6E_GB200]
+# Dictionary mapping ultraserver instance prefixes to their allowed capacity block sizes
+ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
+    P6E_GB200: [9, 18],  # Allowed sizes for p6e-gb200 ultraserver instances
+}
+# Capacity Block states that are considered inactive (cannot check health status)
+CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]
