@@ -99,8 +99,9 @@ class TestUltraserverClusterStack:
             if hasattr(exc_info.value.content, "message")
             else str(exc_info.value.content)
         )
-        assert_that(exception_message).contains("The capacity block cr-123 has invalid block size 5.")
-        assert_that(exception_message).contains("Allowed values are [9, 18].")
+        assert_that(exception_message).contains(
+            "The following capacity blocks have invalid block sizes: cr-123 " "(size: 5, allowed: [9, 18])"
+        )
 
     def test_dna_json_p6e_gb200_capacity_block_sizes_inclusion(self, mocker):
         """Test that p6e_gb200_capacity_block_sizes is correctly included in DNA JSON."""

@@ -1763,9 +1763,9 @@ def test_instance_type_placement_group_validator(
             ],
             None,
             [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 2})],
-            "One or more Capacity Blocks are not healthy or have insufficient capacity: "
+            "One or more capacity blocks are not healthy or have insufficient capacity: "
             "cr-123\\[InterconnectStatus=impaired\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and all reserved capacity is available",
+            "Please ensure each capacity block is healthy and all reserved capacities are available.",
             FailureLevel.ERROR,
         ),
         # Unhealthy capacity block - insufficient data
@@ -1779,9 +1779,9 @@ def test_instance_type_placement_group_validator(
             ],
             None,
             [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 2})],
-            "One or more Capacity Blocks are not healthy or have insufficient capacity: "
+            "One or more capacity blocks are not healthy or have insufficient capacity: "
             "cr-456\\[InterconnectStatus=insufficient-data\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and all reserved capacity is available",
+            "Please ensure each capacity block is healthy and all reserved capacities are available.",
             FailureLevel.ERROR,
         ),
         # Unhealthy capacity block - unavailable capacity
@@ -1795,9 +1795,9 @@ def test_instance_type_placement_group_validator(
             ],
             None,
             [CapacityReservationInfo({"State": "active", "TotalInstanceCount": 2, "AvailableInstanceCount": 1})],
-            "One or more Capacity Blocks are not healthy or have insufficient capacity: "
+            "One or more capacity blocks are not healthy or have insufficient capacity: "
             "cr-789\\[TotalInstanceCount=2, AvailableInstanceCount=1\\]. "
-            "Please ensure each Capacity Block reports InterconnectStatus='ok' and all reserved capacity is available",
+            "Please ensure each capacity block is healthy and all reserved capacities are available.",
             FailureLevel.ERROR,
         ),
         # Scheduled capacity block (inactive state)
@@ -1806,8 +1806,7 @@ def test_instance_type_placement_group_validator(
             None,
             AWSClientError(function_name="describe_capacity_block_status", message="malformed"),
             [CapacityReservationInfo({"State": "scheduled"})],
-            "Cannot verify health status for inactive Capacity Blocks: cr-scheduled. "
-            "Health status validation will be performed when the capacity blocks become active.",
+            "Cannot verify health status for inactive capacity blocks: cr-scheduled.",
             FailureLevel.WARNING,
         ),
         # Payment-pending capacity block (inactive state)
@@ -1816,8 +1815,7 @@ def test_instance_type_placement_group_validator(
             None,
             AWSClientError(function_name="describe_capacity_block_status", message="malformed"),
             [CapacityReservationInfo({"State": "payment-pending"})],
-            "Cannot verify health status for inactive Capacity Blocks: cr-pending. "
-            "Health status validation will be performed when the capacity blocks become active.",
+            "Cannot verify health status for inactive capacity blocks: cr-pending.",
             FailureLevel.WARNING,
         ),
         # API error for non-inactive capacity block

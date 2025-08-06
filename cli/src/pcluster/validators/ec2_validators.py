@@ -540,8 +540,7 @@ class CapacityBlockHealthStatusValidator(Validator):
         # Report inactive capacity blocks as warnings
         if inactive_blocks:
             self._add_failure(
-                f"Cannot verify health status for inactive Capacity Blocks: {', '.join(inactive_blocks)}. "
-                f"Health status validation will be performed when the capacity blocks become active.",
+                f"Cannot verify health status for inactive capacity blocks: {', '.join(inactive_blocks)}.",
                 FailureLevel.WARNING,
             )
 
@@ -549,10 +548,9 @@ class CapacityBlockHealthStatusValidator(Validator):
         if unhealthy_details:
             self._add_failure(
                 (
-                    "One or more Capacity Blocks are not healthy or have insufficient capacity: "
+                    "One or more capacity blocks are not healthy or have insufficient capacity: "
                     + "; ".join(unhealthy_details)
-                    + ". Please ensure each Capacity Block reports InterconnectStatus='ok' and "
-                    "all reserved capacity is available"
+                    + ". Please ensure each capacity block is healthy and all reserved capacities are available."
                 ),
                 FailureLevel.ERROR,
             )
