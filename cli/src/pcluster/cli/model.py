@@ -212,7 +212,7 @@ def call(func_str, *args, **kwargs):
     if isinstance(ret, tuple):
         ret, status_code = ret
         if status_code >= 400:
-            data = json.loads(encoder.JSONEncoder().encode(ret))
+            data = json.loads(encoder.JSONEncoderForCli().encode(ret))
             raise APIOperationException(data)
-    data = json.loads(encoder.JSONEncoder().encode(ret))
+    data = json.loads(encoder.JSONEncoderForCli().encode(ret))
     return jmespath.search(query, data) if query else data

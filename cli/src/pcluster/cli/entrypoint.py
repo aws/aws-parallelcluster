@@ -217,7 +217,7 @@ def _run_operation(model, args, extra_args):
         except Exception as e:
             # format exception messages in the same manner as the api
             message = pcluster.api.errors.exception_message(e)
-            error_encoded = encoder.JSONEncoder().encode(message)
+            error_encoded = encoder.JSONEncoderForCli().encode(message)
             raise APIOperationException(json.loads(error_encoded))
     else:
         try:
@@ -225,7 +225,7 @@ def _run_operation(model, args, extra_args):
         except pcluster.api.errors.ParallelClusterApiException as e:
             # Format exception messages in the same manner as the api
             message = pcluster.api.errors.exception_message(e)
-            error_encoded = encoder.JSONEncoder().encode(message)
+            error_encoded = encoder.JSONEncoderForCli().encode(message)
             raise APIOperationException(json.loads(error_encoded))
         except Exception as e:
             raise e
