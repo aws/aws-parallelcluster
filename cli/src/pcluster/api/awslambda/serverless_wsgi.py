@@ -210,7 +210,7 @@ def handle_payload_v1(app, event, context):
         script_name = "/" + base_path
 
         if path_info.startswith(script_name):
-            path_info = path_info[len(script_name) :]
+            path_info = path_info[len(script_name) :]  # noqa: E203
 
     body = event.get("body") or ""
     body = get_body_bytes(event, body)
@@ -258,7 +258,7 @@ def handle_payload_v2(app, event, context):
         script_name = "/" + base_path
 
         if path_info.startswith(script_name):
-            path_info = path_info[len(script_name) :]
+            path_info = path_info[len(script_name) :]  # noqa: E203
 
     body = event.get("body", "")
     body = get_body_bytes(event, body)
