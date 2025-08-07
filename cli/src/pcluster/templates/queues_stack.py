@@ -13,6 +13,7 @@ from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
+    P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
@@ -366,9 +367,8 @@ def add_network_interfaces(
     compute_resource,
     queue_lt_security_groups,
 ):
-    """Generate launch template network interfaces list"""
-
-    is_gb200 = compute_resource.instance_types[0] == "p6e-gb200.36xlarge"
+    """Generate launch template network interfaces list."""
+    is_gb200 = compute_resource.instance_types[0].split(".")[0] == P6E_GB200
     interface = "efa" if compute_resource.efa and compute_resource.efa.enabled and not is_gb200 else None
 
     compute_lt_nw_interfaces = [
