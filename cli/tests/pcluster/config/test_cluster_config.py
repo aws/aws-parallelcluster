@@ -1,6 +1,7 @@
 import pytest
 from assertpy import assert_that
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import CapacityReservationInfo, InstanceTypeInfo
 from pcluster.config.cluster_config import (
     AmiSearchFilters,
@@ -270,7 +271,15 @@ class TestSlurmComputeResource:
         )
 
         compute_resource = SlurmComputeResource(name="name", capacity_reservation_target=capacity_reservation_target)
-        assert_that(compute_resource._instance_type_from_capacity_reservation()).is_equal_to(expected_instance_type)
+        capacity_reservation_id = (
+            compute_resource.capacity_reservation_target.capacity_reservation_id
+            if compute_resource.capacity_reservation_target
+            else None
+        )
+        instance_type, _ = AWSApi.instance().ec2.get_instance_type_and_reservation_type_from_capacity_reservation(
+            capacity_reservation_id
+        )
+        assert_that(instance_type).is_equal_to(expected_instance_type)
         if capacity_reservation_target and capacity_reservation_target.capacity_reservation_id:
             describe_capacity_res_mock.assert_called()
         else:
@@ -313,7 +322,7 @@ class TestSlurmComputeResource:
         network_test_parameters,
     )
     def test_network_cards(self, expected_max_network_cards, expected_network_cards_index_list):
-        compute_resource = SlurmComputeResource(name="compute_resource")
+        compute_resource = SlurmComputeResource(name="compute_resource", instance_type="fake-instance-type")
         assert_that(compute_resource.max_network_cards).is_equal_to(expected_max_network_cards)
         network_cards_list = compute_resource.network_cards_list
         for index in range(len(expected_network_cards_index_list)):

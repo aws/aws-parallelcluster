@@ -597,6 +597,10 @@ class CapacityReservationInfo:
         """Return the total instance count, if present, 0 otherwise."""
         return self.capacity_reservation_data.get("TotalInstanceCount", 0)
 
+    def available_instance_count(self):
+        """Return the available instance count, if present, 0 otherwise."""
+        return self.capacity_reservation_data.get("AvailableInstanceCount", 0)
+
     def get_tag(self, tag_key: str):
         """Get stack tag by tag key."""
         return next(

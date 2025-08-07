@@ -192,11 +192,6 @@ def ensure_default_build_image_stack_cleanup_role(
                 "Effect": "Allow",
                 "Principal": {"Service": "lambda.amazonaws.com"},
                 "Action": "sts:AssumeRole",
-                "Condition": {
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:{partition}:lambda:*:{account_id}:function:ParallelClusterImage-*"
-                    }
-                },
             }
         ],
     }

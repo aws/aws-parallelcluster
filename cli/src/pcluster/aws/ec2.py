@@ -577,3 +577,77 @@ class Ec2Client(Boto3Client):
                 return True
 
         return False
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_capacity_block_status(
+        self, capacity_block_ids: List[str] = None, filters=None, max_results: int = None
+    ):
+        """
+        Describe the availability and health status of capacity blocks, particularly for ultraserver instances.
+
+        This method is primarily used to check the health status of ultraserver capacity blocks
+        (e.g., p6e-gb200) to ensure they are ready for cluster operations. It provides information
+        about interconnect status and available capacity.
+
+        :param capacity_block_ids: List of Capacity Block IDs to query (e.g., ['cr-123456']).
+        :param filters: Optional boto3-style filters to narrow results (e.g., interconnect-status).
+        :param max_results: Optional page size hint for pagination.
+        :return: Dict with key 'CapacityBlockStatuses' containing a flattened list of capacity block
+                status entries. Each entry includes fields like:
+                - CapacityBlockId: The capacity block identifier
+                - InterconnectStatus: Health status ('ok', 'impaired', 'insufficient-data')
+                - TotalCapacity: Total number of instances in the capacity block
+                - TotalUnavailableCapacity: Number of unavailable instances
+        """
+        kwargs = {}
+        if capacity_block_ids:
+            kwargs["CapacityBlockIds"] = capacity_block_ids
+        if filters:
+            kwargs["Filters"] = filters
+        if max_results:
+            kwargs["MaxResults"] = max_results
+
+        paginator = self._client.get_paginator("describe_capacity_block_status")
+        page_iterator = paginator.paginate(**kwargs)
+
+        statuses = []
+        for page in page_iterator:
+            statuses.extend(page.get("CapacityBlockStatuses", []))
+
+        return statuses
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_instance_type_and_reservation_type_from_capacity_reservation(
+        self, capacity_reservation_id: str
+    ) -> tuple[str, str]:
+        """
+        Retrieve instance type and reservation type from a capacity reservation ID.
+
+        This method queries AWS EC2 to get detailed information about a capacity reservation,
+        specifically extracting the instance type and reservation type. This information is
+        crucial for determining if special handling is needed (e.g., for ultraserver instances
+        with capacity blocks).
+
+        Args:
+            capacity_reservation_id: The AWS capacity reservation ID to query (e.g., 'cr-123456')
+
+        Returns:
+            tuple: A tuple containing (instance_type, reservation_type) where:
+                   - instance_type: EC2 instance type (e.g., 'p6e-gb200.36xlarge')
+                   - reservation_type: Type of reservation (e.g., 'capacity-block', 'ondemand')
+                   Both values will be None if the reservation cannot be found or accessed.
+
+        Example:
+            ('p6e-gb200.36xlarge', 'capacity-block')
+        """
+        instance_type = None
+        reservation_type = None
+
+        if capacity_reservation_id:
+            capacity_reservations = self.describe_capacity_reservations([capacity_reservation_id])
+            if capacity_reservations:
+                reservation = capacity_reservations[0]
+                instance_type = reservation.instance_type()
+                reservation_type = reservation.reservation_type()
+
+        return instance_type, reservation_type

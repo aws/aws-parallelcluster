@@ -5,6 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
+- Add support for p6e-gb200 instances via capacity blocks.
 - Echo chef-client log when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
 
 **CHANGES**

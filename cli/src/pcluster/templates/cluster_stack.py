@@ -71,8 +71,10 @@ from pcluster.constants import (
     NFS_PORT,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
+    P6E_GB200,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
+    SLURM,
     SLURM_PORTS_RANGE,
 )
 from pcluster.models.s3_bucket import S3Bucket
@@ -98,6 +100,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_slurm_specific_dna_json_for_head_node,
     get_source_ingress_rule,
     get_user_data_content,
+    process_ultraserver_capacity_block_sizes,
     to_comma_separated_string,
 )
 from pcluster.templates.compute_fleet_stack import ComputeFleetConstruct
@@ -1265,6 +1268,16 @@ class ClusterCdkStack:
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
 
+        # Process ultraserver capacity block information for DNA JSON
+        # This section collects capacity block sizes for ultraserver instances (e.g., p6e-gb200)
+        # and validates that they conform to allowed size configurations for Slurm topology
+        cluster_ultraserver_capacity_block_sizes_dict = {}
+        if self.config.scheduling.scheduler == SLURM:
+            cluster_ultraserver_capacity_block_dict = self.config.ultraserver_capacity_block_dict
+            cluster_ultraserver_capacity_block_sizes_dict = process_ultraserver_capacity_block_sizes(
+                cluster_ultraserver_capacity_block_dict
+            )
+
         dna_json = json.dumps(
             {
                 "cluster": {
@@ -1358,6 +1371,12 @@ class ClusterCdkStack:
                         else "false"
                     ),
                     "launch_template_id": launch_template_id,
+                    **(
+                        {"p6egb200_block_sizes": cluster_ultraserver_capacity_block_sizes_dict[P6E_GB200]}
+                        if P6E_GB200 in cluster_ultraserver_capacity_block_sizes_dict
+                        and cluster_ultraserver_capacity_block_sizes_dict[P6E_GB200]
+                        else {}
+                    ),
                     **(
                         get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
                         if self._condition_is_slurm()
