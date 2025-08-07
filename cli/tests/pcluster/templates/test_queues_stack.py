@@ -171,7 +171,7 @@ class NetworkCard:
     [
         (
             True,
-            "p6e-gb200.36xlarge",
+            "p6e-gb200.WHATEVER_SIZE",
             [NetworkCard(0), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
             [
                 {"network_card_index": 0, "interface_type": None, "device_index": 0},
@@ -183,7 +183,7 @@ class NetworkCard:
         ),
         (
             False,
-            "p6e-gb200.36xlarge",
+            "p6e-gb200.WHATEVER_SIZE",
             [NetworkCard(0), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
             [
                 {"network_card_index": 0, "interface_type": None, "device_index": 0},
@@ -193,12 +193,22 @@ class NetworkCard:
         ),
         (
             True,
-            "c6in.32xlarge",
+            "NOTp6e-gb200.WHATEVER_SIZE",
             [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
             [
                 {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
                 {"network_card_index": 1, "interface_type": "efa", "device_index": 1},
                 {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+            ],
+        ),
+        (
+            False,
+            "NOTp6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 1, "interface_type": None, "device_index": 1},
+                {"network_card_index": 2, "interface_type": None, "device_index": 1},
             ],
         ),
     ],
