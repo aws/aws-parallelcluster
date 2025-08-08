@@ -202,6 +202,16 @@ class NetworkCard:
             ],
         ),
         (
+            True,
+            "NOTp6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1), NetworkCard(2)],
+            [
+                {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 0},
+            ],
+        ),
+        (
             False,
             "NOTp6e-gb200.WHATEVER_SIZE",
             [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
