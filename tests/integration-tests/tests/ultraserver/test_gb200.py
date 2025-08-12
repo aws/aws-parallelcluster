@@ -28,9 +28,9 @@ from tests.common.utils import is_existing_remote_file, read_remote_file, termin
 # hardwiring the reservation id here when we need it.
 CAPACITY_BLOCK_RESERVATION_ID = "cr-123456789"
 
-# We use 0.0.0.0 as placeholder IPs just to get IMEX started.
+# We use placeholder IPs just to get IMEX started.
 # These values are hardwired in the cookbook.
-FAKE_IPS = ["0.0.0.0", "0.0.0.0"]
+FAKE_IPS = ["172.31.51.93", "172.31.48.43"]
 
 
 def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: int = 1):
@@ -52,7 +52,8 @@ def assert_imex_nodes_config_is_correct(rce: RemoteCommandExecutor, launch_templ
     logging.info(f"Checking IMEX nodes config contains the expected nodes: {expected_ips}")
     imex_nodes_config_file = f"/opt/parallelcluster/shared/nvidia-imex/nodes_config_{launch_template_id}.cfg"
     imex_config_content = read_remote_file(rce, imex_nodes_config_file)
-    actual_ips = [ip.strip() for ip in imex_config_content.strip().split("\n")]
+    imex_config_content_clean = [line for line in imex_config_content.split("\n") if not line.strip().startswith("#")]
+    actual_ips = [ip.strip() for ip in imex_config_content_clean]
     assert_that(actual_ips).contains_only(*expected_ips)
     logging.info(f"IMEX nodes config {imex_nodes_config_file} contains the expected nodes: {expected_ips}")
 
@@ -263,11 +264,6 @@ def test_gb200(
     )
     bucket.upload_file(head_node_start_script_rendered, headnode_start_filename)
 
-    # TODO: Remove after testing: BEGIN: added compute custom action to force the configuraiton of IMEX
-    compute_configured_filename = "compute_node_configured.sh"
-    bucket.upload_file(str(test_datadir / compute_configured_filename), compute_configured_filename)
-    # TODO: Remove after testing: END
-
     queue_with_imex = "q1"
     compute_resource_with_imex = "cr1"
     queue_without_imex = "q2"
@@ -276,7 +272,6 @@ def test_gb200(
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         head_node_start_script=headnode_start_filename,
-        compute_node_configured_script=compute_configured_filename,
         max_queue_size=max_queue_size,
         queue_with_imex=queue_with_imex,
         compute_resource_with_imex=compute_resource_with_imex,
