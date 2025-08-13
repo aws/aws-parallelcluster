@@ -30,7 +30,7 @@ CAPACITY_BLOCK_RESERVATION_ID = "cr-123456789"
 
 # We use placeholder IPs just to get IMEX started.
 # These values are hardwired in the cookbook.
-FAKE_IPS = ["172.31.51.93", "172.31.48.43"]
+FAKE_IPS = ["0.0.0.0"] * 9
 
 
 def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: int = 1):
