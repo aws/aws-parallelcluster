@@ -223,23 +223,76 @@ def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: s
     )
 
 
+def assert_topology_plugin_configured(cluster: Cluster, queue: str, compute_resource: str, instance_type: str):
+    """Verify TopologyPlugin is configured and topology.conf contains correct content."""
+    rce = RemoteCommandExecutor(cluster)
+
+    # Check TopologyPlugin is set to topology/block
+    logging.info(f"Checking TopologyPlugin configuration for queue {queue}")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("TopologyPlugin = topology/block")
+
+    # Check topology.conf exists and contains correct content
+    topology_conf_path = "/opt/slurm/etc/topology.conf"
+    assert_that(is_existing_remote_file(rce, topology_conf_path)).is_true()
+
+    topology_content = read_remote_file(rce, topology_conf_path)
+    logging.info(f"Topology configuration content: {topology_content}")
+
+    # Verify content based on instance type - node naming format: {queue}-st-{compute_resource}-[1-{max_count}]
+    if instance_type == "p6e-gb200.36xlarge":
+        expected_block1 = f"BlockName=Block1  Nodes={queue}-st-{compute_resource}-[1-9]"
+        expected_sizes = "BlockSizes=9"
+        assert_that(topology_content).contains(expected_block1)
+    else:  # g4dn simulation with 2 nodes, using valid GB200 block size
+        expected_block1 = f"BlockName=Block1  Nodes={queue}-st-{compute_resource}-[1-2]"
+        expected_sizes = "BlockSizes=9"
+        assert_that(topology_content).contains(expected_block1)
+
+    assert_that(topology_content).contains(expected_sizes)
+
+    logging.info(f"TopologyPlugin correctly configured for queue {queue}")
+
+
+def assert_topology_plugin_not_configured(cluster: Cluster, queue: str):
+    """Verify TopologyPlugin is not configured and topology.conf does not exist."""
+    rce = RemoteCommandExecutor(cluster)
+
+    # Check TopologyPlugin is not set or empty
+    logging.info(f"Checking TopologyPlugin is not configured for queue {queue}")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin || echo 'TopologyPlugin not found'")
+    # TopologyPlugin should either not be present or be empty
+    assert_that(result.stdout.strip()).is_in("TopologyPlugin not found", "TopologyPlugin =")
+
+    # Check topology.conf does not exist
+    topology_conf_path = "/opt/slurm/etc/topology.conf"
+    assert_that(is_existing_remote_file(rce, topology_conf_path)).is_false()
+
+    logging.info(f"TopologyPlugin correctly not configured for queue {queue}")
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_gb200(
     pcluster_config_reader, file_reader, clusters_factory, test_datadir, s3_bucket_factory, region, instance
 ):
     """
-    Test automated configuration of Nvidia IMEX.
+    Test automated configuration of Nvidia IMEX and Slurm topology plugin.
 
     This test creates a cluster with the necessary custom actions to configure NVIDIA IMEX and verifies the following:
-    1. On the compute resource supporting IMEX (q1-cr1), the IMEX nodes file is configured by the prolog,
-       IMEX service is healthy and no errors are reported in IMEX's or prolog's logs.
-       Also, IMEX gets reconfigured when nodes belonging to the same compute resource get replaced
-    2. On the compute resource not supporting IMEX (q1-cr2), the IMEX nodes file is not configured by the prolog,
-       keeping the default values and IMEX is not started.
+    1. On the compute resource supporting IMEX (q1-cr1):
+       - The IMEX nodes file is configured by the prolog
+       - IMEX service is healthy and no errors are reported in IMEX's or prolog's logs
+       - TopologyPlugin is set to topology/block
+       - /opt/slurm/etc/topology.conf contains correct block configuration
+       - IMEX gets reconfigured when nodes belonging to the same compute resource get replaced
+    2. On the compute resource not supporting IMEX (q2-cr2):
+       - The IMEX nodes file is not configured by the prolog, keeping the default values and IMEX is not started
+       - TopologyPlugin is not configured
+       - /opt/slurm/etc/topology.conf does not exist
 
     The test prints in test log the full IMEX status to facilitate troubleshooting.
     The test uses instance type g4dn to simulate a p6e-gb200 instance.
-    This is a reasonable approximation for the test because the focus of the test is on IMEX configuration,
+    This is a reasonable approximation for the test because the focus of the test is on IMEX and topology configuration,
     which can be executed on g4dn as well.
     """
     max_queue_size = 2
@@ -283,8 +336,14 @@ def test_gb200(
 
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size)
 
+    # Test topology plugin configuration for queue with IMEX
+    assert_topology_plugin_configured(cluster, queue_with_imex, compute_resource_with_imex, instance)
+
     # IMEX is not configured on compute resource that does not support it
     assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+
+    # Test topology plugin is not configured for queue without IMEX
+    assert_topology_plugin_not_configured(cluster, queue_without_imex)
 
     # Forcefully terminate a compute node in the compute resource supporting IMEX
     # to simulate an outage that forces the replacement of the node and consequently the IMEX reconfiguration.
