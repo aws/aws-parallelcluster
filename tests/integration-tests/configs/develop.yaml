@@ -149,10 +149,6 @@ test-suites:
           instances: ["g4dn.2xlarge"]
           schedulers: [ "slurm" ]
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-        - regions: [ "use1-az6" ]
-          instances: ["g5g.2xlarge"]
-          schedulers: [ "slurm" ]
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
         - regions: ["cnn1-az1"]
           instances: ["g4dn.2xlarge"]
           schedulers: ["slurm"]
