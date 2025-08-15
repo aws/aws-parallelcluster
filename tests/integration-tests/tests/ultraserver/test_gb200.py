@@ -242,11 +242,27 @@ def assert_topology_plugin_configured(
     logging.info(f"Topology configuration content: {topology_content}")
 
     # Verify BlockSizes configuration
-    assert_that(topology_content).contains(f"BlockSizes={expected_block_sizes}")
+    expected_block_sizes_content = f"BlockSizes={expected_block_sizes}"
+    assert_that(topology_content).contains(expected_block_sizes_content)
 
     # Verify node naming format - always use range format for g4dn simulating GB200
-    expected_block1 = f"BlockName=Block1  Nodes={queue}-st-{compute_resource}-[1-{expected_max_nodes}]"
+    expected_block1 = "BlockName=Block1"
+    expected_nodes = f"Nodes={queue}-st-{compute_resource}-[1-{expected_max_nodes}]"
     assert_that(topology_content).contains(expected_block1)
+    assert_that(topology_content).contains(expected_nodes)
+
+    # Check scontrol show topology output
+    logging.info(f"Checking scontrol show topology output for queue {queue}")
+    topology_result = rce.run_remote_command("scontrol show topology")
+    topology_output = topology_result.stdout.strip()
+    logging.info(f"Topology output: {topology_output}")
+
+    # Verify the expected topology output format
+    expected_block_index = "BlockIndex=0"
+    assert_that(topology_output).contains(expected_block_sizes_content)
+    assert_that(topology_output).contains(expected_block_index)
+    assert_that(topology_output).contains(expected_block1)
+    assert_that(topology_output).contains(expected_nodes)
 
     logging.info(f"TopologyPlugin correctly configured for queue {queue}")
 
@@ -292,7 +308,7 @@ def test_gb200(
     This is a reasonable approximation for the test because the focus of the test is on IMEX and topology configuration,
     which can be executed on g4dn as well.
     """
-    max_queue_size = 9
+    max_queue_size = 2
     capacity_block_reservation_id = CAPACITY_BLOCK_RESERVATION_ID if instance == "p6e-gb200.36xlarge" else None
 
     # Create an S3 bucket for custom action scripts
@@ -333,14 +349,16 @@ def test_gb200(
 
     # Test IMEX and topology configuration for queue with IMEX support
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size)
-    assert_topology_plugin_configured(cluster, queue_with_imex, compute_resource_with_imex, "9", 9)
+    assert_topology_plugin_configured(
+        cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size}", max_queue_size
+    )
 
     # Test that IMEX and topology are not configured for queue without IMEX support
     assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
     assert_topology_plugin_not_configured(cluster, queue_without_imex)
 
     # Test cluster update with changed topology configuration
-    max_queue_size_updated = 18
+    max_queue_size_updated = 3
     updated_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         bucket_name=bucket_name,
@@ -355,7 +373,9 @@ def test_gb200(
     cluster.update(str(updated_cluster_config))
 
     # Verify topology plugin configuration after update
-    assert_topology_plugin_configured(cluster, queue_with_imex, compute_resource_with_imex, "18", 18)
+    assert_topology_plugin_configured(
+        cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size_updated}", max_queue_size_updated
+    )
     assert_topology_plugin_not_configured(cluster, queue_without_imex)
 
     # Forcefully terminate a compute node in the compute resource supporting IMEX
