@@ -31,6 +31,8 @@ CHANGELOG
 - Upgrade DCGM to version 4.2.3 (from 3.3.6) for all OSs except AL2.
 - Upgrade Python to 3.12.11 (from 3.12.8) for all OSs except AL2.
 - Upgrade Intel MPI Library to 2021.16.0 (from 2021.13.1).
+- Upgrade Connexion to ~=2.15.0rc3 (from ~=2.13.0).
+- Upgrade Werkzeug to >=3.0.3 (from ~=2.0) in response to this [security risk](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
