@@ -59,7 +59,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !Sub ec2.${AWS::URLSuffix}
+              Service: !If [ GovCloud, 'ec2.amazonaws-us-gov.com', !If [ China, 'ec2.amazonaws.cn', 'ec2.amazonaws.com']]
         Version: '2012-10-17'
       Path: /parallelcluster/
       ManagedPolicyArns:
@@ -105,7 +105,7 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PassedToService:
-                      - !Sub ec2.${AWS::URLSuffix}
+                      - !If [ GovCloud, 'ec2.amazonaws-us-gov.com', !If [ China, 'ec2.amazonaws.cn', 'ec2.amazonaws.com']]
               - Action:
                   - ec2:DescribeInstances
                   - ec2:DescribeInstanceStatus
@@ -147,7 +147,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !Sub ec2.${AWS::URLSuffix}
+              Service: !If [ GovCloud, 'ec2.amazonaws-us-gov.com', !If [ China, 'ec2.amazonaws.cn', 'ec2.amazonaws.com']]
         Version: '2012-10-17'
       Path: /parallelcluster/
       ManagedPolicyArns:
@@ -235,7 +235,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !Sub ec2.${AWS::URLSuffix}
+              Service: !If [ GovCloud, 'ec2.amazonaws-us-gov.com', !If [ China, 'ec2.amazonaws.cn', 'ec2.amazonaws.com']]
         Version: '2012-10-17'
       Path: /parallelcluster/
       ManagedPolicyArns:
