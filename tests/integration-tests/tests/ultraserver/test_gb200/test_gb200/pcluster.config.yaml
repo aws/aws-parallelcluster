@@ -50,5 +50,5 @@ Scheduling:
 DevSettings:
   Cookbook:
     ExtraChefAttributes: |
-      { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } }, "p6egb200_block_sizes": "2", "slurm":{"block_topology":{"force_configuration":"true"}} } }
+      { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } }, "p6egb200_block_sizes": "{{ max_queue_size }}", "slurm":{"block_topology":{"force_configuration":"true"}} } }
 {% endif %}

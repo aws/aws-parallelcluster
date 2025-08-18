@@ -232,7 +232,9 @@ def assert_topology_plugin_configured(
     # Check TopologyPlugin is set to topology/block
     logging.info(f"Checking TopologyPlugin configuration for queue {queue}")
     result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
-    assert_that(result.stdout.strip()).contains("TopologyPlugin = topology/block")
+    # Check like below because it's like "TopologyPlugin          = topology/block"
+    assert_that(result.stdout.strip()).contains("TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("= topology/block")
 
     # Check topology.conf exists and contains correct content
     topology_conf_path = "/opt/slurm/etc/topology.conf"
@@ -267,21 +269,35 @@ def assert_topology_plugin_configured(
     logging.info(f"TopologyPlugin correctly configured for queue {queue}")
 
 
-def assert_topology_plugin_not_configured(cluster: Cluster, queue: str):
-    """Verify TopologyPlugin is not configured and topology.conf does not exist."""
+def assert_topology_plugin_not_configured_for_queue(cluster: Cluster, queue: str, compute_resource: str):
+    """Verify that specific queue nodes are not included in topology configuration."""
     rce = RemoteCommandExecutor(cluster)
 
-    # Check TopologyPlugin is not set or empty
-    logging.info(f"Checking TopologyPlugin is not configured for queue {queue}")
-    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin || echo 'TopologyPlugin not found'")
-    # TopologyPlugin should either not be present or be empty
-    assert_that(result.stdout.strip()).is_in("TopologyPlugin not found", "TopologyPlugin =")
+    # TopologyPlugin should still be configured at cluster level
+    logging.info(f"Checking TopologyPlugin is configured at cluster level")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("= topology/block")
 
-    # Check topology.conf does not exist
+    # Check topology.conf exists (cluster-wide configuration)
     topology_conf_path = "/opt/slurm/etc/topology.conf"
-    assert_that(is_existing_remote_file(rce, topology_conf_path)).is_false()
+    assert_that(is_existing_remote_file(rce, topology_conf_path)).is_true()
 
-    logging.info(f"TopologyPlugin correctly not configured for queue {queue}")
+    # Verify that nodes from this queue are NOT in the topology configuration
+    topology_content = read_remote_file(rce, topology_conf_path)
+    logging.info(f"Topology configuration content: {topology_content}")
+    
+    # Check that q2-cr2 nodes are not mentioned in topology.conf
+    queue_nodes_pattern = f"{queue}-st-{compute_resource}"
+    assert_that(topology_content).does_not_contain(queue_nodes_pattern)
+
+    # Check scontrol show topology output - should not contain q2-cr2 nodes
+    topology_result = rce.run_remote_command("scontrol show topology")
+    topology_output = topology_result.stdout.strip()
+    logging.info(f"Topology output: {topology_output}")
+    assert_that(topology_output).does_not_contain(queue_nodes_pattern)
+
+    logging.info(f"Queue {queue} nodes correctly not included in topology configuration")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -296,12 +312,12 @@ def test_gb200(
        - The IMEX nodes file is configured by the prolog
        - IMEX service is healthy and no errors are reported in IMEX's or prolog's logs
        - TopologyPlugin is set to topology/block
-       - /opt/slurm/etc/topology.conf contains correct block configuration
+       - /opt/slurm/etc/topology.conf contains correct block configuration for q1-cr1 nodes
        - IMEX gets reconfigured when nodes belonging to the same compute resource get replaced
     2. On the compute resource not supporting IMEX (q2-cr2):
        - The IMEX nodes file is not configured by the prolog, keeping the default values and IMEX is not started
-       - TopologyPlugin is not configured
-       - /opt/slurm/etc/topology.conf does not exist
+       - TopologyPlugin is configured at cluster level but q2-cr2 nodes are not included in topology configuration
+       - /opt/slurm/etc/topology.conf exists but does not contain q2-cr2 nodes
 
     The test prints in test log the full IMEX status to facilitate troubleshooting.
     The test uses instance type g4dn to simulate a p6e-gb200 instance.
@@ -355,7 +371,7 @@ def test_gb200(
 
     # Test that IMEX and topology are not configured for queue without IMEX support
     assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
-    assert_topology_plugin_not_configured(cluster, queue_without_imex)
+    assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Test cluster update with changed topology configuration
     max_queue_size_updated = 3
@@ -376,7 +392,7 @@ def test_gb200(
     assert_topology_plugin_configured(
         cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size_updated}", max_queue_size_updated
     )
-    assert_topology_plugin_not_configured(cluster, queue_without_imex)
+    assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Forcefully terminate a compute node in the compute resource supporting IMEX
     # to simulate an outage that forces the replacement of the node and consequently the IMEX reconfiguration.
