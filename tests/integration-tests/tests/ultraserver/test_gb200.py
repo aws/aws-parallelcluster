@@ -391,11 +391,17 @@ def test_gb200(
     cluster.update(str(updated_cluster_config), force_update=True)
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
+    # Wait for compute nodes to be fully running
+    wait_for_instances_in_compute_resource(
+        cluster, queue_with_imex, compute_resource_with_imex, ["running"], max_queue_size_updated
+    )
 
-    # Verify topology plugin configuration after update
+    # Verify imex and topology plugin configuration after update
+    assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
     assert_topology_plugin_configured(
         cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size_updated}", max_queue_size_updated
     )
+    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
     assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Forcefully terminate a compute node in the compute resource supporting IMEX
