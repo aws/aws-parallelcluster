@@ -274,7 +274,7 @@ def assert_topology_plugin_not_configured_for_queue(cluster: Cluster, queue: str
     rce = RemoteCommandExecutor(cluster)
 
     # TopologyPlugin should still be configured at cluster level
-    logging.info(f"Checking TopologyPlugin is configured at cluster level")
+    logging.info("Checking TopologyPlugin is configured at cluster level")
     result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
     assert_that(result.stdout.strip()).contains("TopologyPlugin")
     assert_that(result.stdout.strip()).contains("= topology/block")
@@ -286,7 +286,7 @@ def assert_topology_plugin_not_configured_for_queue(cluster: Cluster, queue: str
     # Verify that nodes from this queue are NOT in the topology configuration
     topology_content = read_remote_file(rce, topology_conf_path)
     logging.info(f"Topology configuration content: {topology_content}")
-    
+
     # Check that q2-cr2 nodes are not mentioned in topology.conf
     queue_nodes_pattern = f"{queue}-st-{compute_resource}"
     assert_that(topology_content).does_not_contain(queue_nodes_pattern)
