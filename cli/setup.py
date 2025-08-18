@@ -52,9 +52,6 @@ REQUIRES = [
     "jsii==1.85.0",
     "werkzeug~=3.0",
     "flask~=3.0",
-    "requests",
-    "jsonschema",
-    "inflection",
     "packaging~=25.0",
 ]
 

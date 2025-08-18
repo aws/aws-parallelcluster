@@ -25,7 +25,4 @@ tabulate>=0.8.8,<=0.8.10
 connexion~=2.15.0rc3
 werkzeug~=3.0
 flask~=3.0
-requests
-jsonschema
-inflection
 packaging~=25.0
