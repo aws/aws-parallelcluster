@@ -416,6 +416,13 @@ def run_system_analyzer(cluster, scheduler_commands_factory, request, partition=
     logging.info("Compute node system information correctly retrieved.")
 
 
+def is_existing_remote_file(rce: RemoteCommandExecutor, file_path: str):
+    """Return true if the file exists, false otherwise"""
+    logging.info(f"Checking if remote file exists {file_path}")
+    result = rce.run_remote_command(f"cat {file_path}", raise_on_error=False)
+    return not result.failed
+
+
 @retry(stop_max_attempt_number=5, wait_fixed=seconds(3))
 def read_remote_file(remote_command_executor, file_path):
     """Reads the content of a remote file."""
@@ -536,3 +543,12 @@ def write_file(dirname, filename, content):
         f.write(content)
     logging.info(f"File written: {filepath}")
     return filepath
+
+
+def terminate_nodes_manually(instance_ids, region):
+    ec2_client = boto3.client("ec2", region_name=region)
+    for instance_id in instance_ids:
+        instance_states = ec2_client.terminate_instances(InstanceIds=[instance_id]).get("TerminatingInstances")[0]
+        assert_that(instance_states.get("InstanceId")).is_equal_to(instance_id)
+        assert_that(instance_states.get("CurrentState").get("Name")).is_in("shutting-down", "terminated")
+    logging.info("Terminated nodes: {}".format(instance_ids))

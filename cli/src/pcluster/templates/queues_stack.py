@@ -13,6 +13,7 @@ from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
+    P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
@@ -150,33 +151,7 @@ class QueuesStack(NestedStack):
         instance_profiles,
         is_detailed_monitoring_enabled,
     ):
-        # LT network interfaces
-        compute_lt_nw_interfaces = [
-            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                device_index=0,
-                network_card_index=0,
-                associate_public_ip_address=queue.networking.assign_public_ip,
-                interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
-                groups=queue_lt_security_groups,
-                subnet_id=(
-                    queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
-                ),
-            )
-        ]
-
-        for network_card in compute_resource.network_cards_list[1:]:
-            compute_lt_nw_interfaces.append(
-                ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=0 if network_card.maximum_network_interfaces() == 1 else 1,
-                    network_card_index=network_card.network_card_index(),
-                    associate_public_ip_address=False,
-                    interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
-                    groups=queue_lt_security_groups,
-                    subnet_id=(
-                        queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
-                    ),
-                )
-            )
+        compute_lt_nw_interfaces = add_network_interfaces(queue, compute_resource, queue_lt_security_groups)
 
         conditional_template_properties = {}
         if compute_resource.is_ebs_optimized:
@@ -385,3 +360,51 @@ class QueuesStack(NestedStack):
         )
 
         return launch_template
+
+
+def add_network_interfaces(
+    queue,
+    compute_resource,
+    queue_lt_security_groups,
+):
+    """Generate launch template network interfaces list."""
+    is_gb200 = compute_resource.instance_types[0].split(".")[0] == P6E_GB200
+    efa_enabled = compute_resource.efa and compute_resource.efa.enabled
+    interface_type = "efa" if efa_enabled and not is_gb200 else None
+
+    compute_lt_nw_interfaces = [
+        ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
+            device_index=0,
+            network_card_index=0,
+            associate_public_ip_address=queue.networking.assign_public_ip,
+            interface_type=interface_type,
+            groups=queue_lt_security_groups,
+            subnet_id=(queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None),
+        )
+    ]
+
+    for network_card in compute_resource.network_cards_list[1:]:
+        even = network_card.network_card_index() % 2 == 0
+        # if efa is disabled, and we have a gb200 instance we skip configuring odd numbered indexes because they only
+        # support efa-only interface type
+        if is_gb200 and not efa_enabled and not even:
+            continue
+
+        interface_type = "efa" if efa_enabled else None
+        # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
+        if is_gb200 and efa_enabled:
+            interface_type = "efa" if even else "efa-only"
+
+        compute_lt_nw_interfaces.append(
+            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
+                device_index=0 if network_card.maximum_network_interfaces() == 1 else 1,
+                network_card_index=network_card.network_card_index(),
+                associate_public_ip_address=False,
+                interface_type=interface_type,
+                groups=queue_lt_security_groups,
+                subnet_id=(
+                    queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                ),
+            )
+        )
+    return compute_lt_nw_interfaces

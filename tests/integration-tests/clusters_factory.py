@@ -18,7 +18,9 @@ import time
 
 import boto3
 import yaml
+from assertpy import assert_that
 from framework.credential_providers import run_pcluster_command
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from utils import (
@@ -33,6 +35,15 @@ from utils import (
     retrieve_cfn_resources,
     retry_if_subprocess_error,
 )
+
+from tests.common.utils import read_remote_file
+
+TAG_CLUSTER_NAME = "parallelcluster:cluster-name"
+TAG_NODE_TYPE = "parallelcluster:node-type"
+TAG_QUEUE_NAME = "parallelcluster:queue-name"
+TAG_COMPUTE_RESOURCE_NAME = "parallelcluster:compute-resource-name"
+
+LAUNCH_TEMPLATES_CONFIG_FILE = "/opt/parallelcluster/shared/launch-templates-config.json"
 
 
 def suppress_and_log_exception(func):
@@ -252,6 +263,63 @@ class Cluster:
         except subprocess.CalledProcessError as e:
             logging.error("Failed when getting cluster instances with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
+
+    @retry(wait_fixed=seconds(5), stop_max_delay=minutes(1))
+    def get_compute_nodes(
+        self,
+        queue_name: str = None,
+        compute_resource_name: str = None,
+        state: list = None,
+        expected_num_nodes: int = None,
+    ):
+        """Return the EC2 instance details for compute nodes matching the provided criteria."""
+        state = ["running"] if state is None else state
+        ec2 = boto3.client("ec2", region_name=self.region)
+        filters = [
+            {"Name": f"tag:{TAG_CLUSTER_NAME}", "Values": [self.cfn_name]},
+            {"Name": f"tag:{TAG_NODE_TYPE}", "Values": ["Compute"]},
+            {"Name": "instance-state-name", "Values": state},
+        ]
+
+        if queue_name:
+            filters.append({"Name": f"tag:{TAG_QUEUE_NAME}", "Values": [queue_name]})
+        if compute_resource_name:
+            filters.append({"Name": f"tag:{TAG_COMPUTE_RESOURCE_NAME}", "Values": [compute_resource_name]})
+
+        instances = []
+        for reservation in ec2.describe_instances(Filters=filters).get("Reservations"):
+            instances.extend(reservation.get("Instances", []))
+
+        if expected_num_nodes:
+            assert_that(instances).is_length(expected_num_nodes)
+
+        return instances
+
+    def get_compute_nodes_private_ip(
+        self,
+        queue_name: str = None,
+        compute_resource_name: str = None,
+        state: list = None,
+        expected_num_nodes: int = None,
+    ):
+        """Return the private IP address of compute nodes matching the provided criteria."""
+        instances = self.get_compute_nodes(queue_name, compute_resource_name, state, expected_num_nodes)
+        return [i.get("PrivateIpAddress") for i in instances]
+
+    def get_compute_nodes_launch_template_logical_id(self, queue_name: str, compute_resource_name: str):
+        """Return the launch template logical id of compute nodes matching the provided criteria."""
+        launch_templates_config = json.loads(
+            read_remote_file(RemoteCommandExecutor(self), LAUNCH_TEMPLATES_CONFIG_FILE)
+        )
+        logging.info(f"Read launch template config from {LAUNCH_TEMPLATES_CONFIG_FILE}: {launch_templates_config}")
+        return (
+            launch_templates_config.get("Queues", {})
+            .get(queue_name, {})
+            .get("ComputeResources", {})
+            .get(compute_resource_name, {})
+            .get("LaunchTemplate", {})
+            .get("LogicalId")
+        )
 
     def get_cluster_instance_ids(self, node_type=None, queue_name=None):
         """Run pcluster describe-cluster-instances and collect instance ids."""

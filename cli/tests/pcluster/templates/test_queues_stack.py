@@ -1,4 +1,5 @@
 import json
+from unittest.mock import MagicMock
 
 import pytest
 from assertpy import assert_that
@@ -6,6 +7,7 @@ from freezegun import freeze_time
 
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.queues_stack import add_network_interfaces
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket_object_utils
@@ -150,6 +152,97 @@ def test_compute_nodes_dna_json(
 
     # Assertions on extra.json
     assert_that(json.loads(compute_node_extra_json)).is_equal_to(expected_compute_node_extra_json)
+
+
+class NetworkCard:
+    def __init__(self, index, max_interfaces=1):
+        self._index = index
+        self._max_interfaces = max_interfaces
+
+    def network_card_index(self):
+        return self._index
+
+    def maximum_network_interfaces(self):
+        return self._max_interfaces
+
+
+@pytest.mark.parametrize(
+    "efa_enabled, instance_type, network_cards_list, expected_interfaces",
+    [
+        (
+            True,
+            "p6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa-only", "device_index": 0},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 3, "interface_type": "efa-only", "device_index": 0},
+                {"network_card_index": 4, "interface_type": "efa", "device_index": 1},
+            ],
+        ),
+        (
+            False,
+            "p6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 2, "interface_type": None, "device_index": 1},
+                {"network_card_index": 4, "interface_type": None, "device_index": 1},
+            ],
+        ),
+        (
+            True,
+            "NOTp6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
+            [
+                {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+            ],
+        ),
+        (
+            True,
+            "NOTp6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1), NetworkCard(2)],
+            [
+                {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 0},
+            ],
+        ),
+        (
+            False,
+            "NOTp6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 1, "interface_type": None, "device_index": 1},
+                {"network_card_index": 2, "interface_type": None, "device_index": 1},
+            ],
+        ),
+    ],
+)
+def test_add_compute_resource_launch_template(
+    mocker, efa_enabled, instance_type, test_datadir, network_cards_list, expected_interfaces
+):
+    mock_compute_resource = MagicMock()
+    mock_compute_resource.name = "test-compute-resource"
+    mock_compute_resource.instance_types = [instance_type]
+    mock_compute_resource.efa.enabled = efa_enabled
+    mock_compute_resource.network_cards_list = network_cards_list
+
+    mock_queue = MagicMock()
+    mock_queue.name = "test-queue"
+
+    network_interfaces = add_network_interfaces(mock_queue, mock_compute_resource, ["sg-12345"])
+
+    assert len(network_interfaces) == len(expected_interfaces)
+
+    for actual, expected in zip(network_interfaces, expected_interfaces):
+        assert actual.network_card_index == expected["network_card_index"]
+        assert actual.interface_type == expected["interface_type"]
+        assert actual.device_index == expected["device_index"]
 
 
 def render_join(elem: dict):

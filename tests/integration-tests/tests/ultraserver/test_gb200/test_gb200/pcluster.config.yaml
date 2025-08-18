@@ -1,0 +1,54 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: c5.xlarge
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeStart:
+      Script: s3://{{ bucket_name }}/{{ head_node_start_script }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+  - Name: {{ queue_with_imex }}
+    {% if capacity_block_reservation_id %}
+    CapacityType: CAPACITY_BLOCK
+    CapacityReservationTarget:
+      CapacityReservationId: {{ capacity_block_reservation_id }}
+    {% endif %}
+    ComputeResources:
+      - Name: {{ compute_resource_with_imex }}
+        Instances:
+          - InstanceType: {{ instance }}
+        MinCount: {{ max_queue_size }}
+        MaxCount: {{ max_queue_size }}
+        HealthChecks:
+          Gpu:
+            Enabled: True
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_id }}
+  - Name: {{ queue_without_imex }}
+    ComputeResources:
+      - Name: {{ compute_resource_without_imex }}
+        Instances:
+          - InstanceType: t3.medium
+        MinCount: 1
+        MaxCount: 1
+    Networking:
+      SubnetIds:
+        - {{ private_subnet_id }}
+
+# The DevSetting below forces the configuration of NVIDIA IMEX on instances that are not GB200.
+# We do it to simulate the behavior of GB200 instances.
+{% if instance != "p6e-gb200.36xlarge" %}
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: |
+      { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } } } }
+{% endif %}

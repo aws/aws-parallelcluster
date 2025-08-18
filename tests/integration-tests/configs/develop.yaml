@@ -149,10 +149,6 @@ test-suites:
           instances: ["g4dn.2xlarge"]
           schedulers: [ "slurm" ]
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-        - regions: [ "use1-az6" ]
-          instances: ["g5g.2xlarge"]
-          schedulers: [ "slurm" ]
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
         - regions: ["cnn1-az1"]
           instances: ["g4dn.2xlarge"]
           schedulers: ["slurm"]
@@ -279,6 +275,13 @@ test-suites:
         - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
           instances: [{{ common.instance("instance_type_1") }}]
           oss: [{{ OS_X86_6 }}]
+          schedulers: [ "slurm" ]
+  ultraserver:
+    test_gb200.py::test_gb200:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          instances: [ "g4dn.2xlarge" ]
+          oss: [ "alinux2023" ]
           schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
