@@ -244,8 +244,7 @@ def assert_topology_plugin_configured(
     logging.info(f"Topology configuration content: {topology_content}")
 
     # Verify BlockSizes configuration
-    expected_block_sizes_content = f"BlockSizes={expected_block_sizes}"
-    assert_that(topology_content).contains(expected_block_sizes_content)
+    assert_that(topology_content).contains(f"BlockSizes={expected_block_sizes}")
 
     # Verify node naming format - always use range format for g4dn simulating GB200
     expected_block1 = "BlockName=Block1"
@@ -261,7 +260,7 @@ def assert_topology_plugin_configured(
 
     # Verify the expected topology output format
     expected_block_index = "BlockIndex=0"
-    assert_that(topology_output).contains(expected_block_sizes_content)
+    assert_that(topology_output).contains(f"BlockSize={expected_block_sizes}")
     assert_that(topology_output).contains(expected_block_index)
     assert_that(topology_output).contains(expected_block1)
     assert_that(topology_output).contains(expected_nodes)
