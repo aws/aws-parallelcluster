@@ -300,6 +300,29 @@ def assert_topology_plugin_not_configured_for_queue(cluster: Cluster, queue: str
     logging.info(f"Queue {queue} nodes correctly not included in topology configuration")
 
 
+def assert_topology_plugin_completely_disabled(cluster: Cluster):
+    """Verify that TopologyPlugin is completely disabled and no topology configuration exists."""
+    rce = RemoteCommandExecutor(cluster)
+
+    # Check TopologyPlugin is not configured or empty
+    logging.info("Checking TopologyPlugin is completely disabled")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin || echo 'TopologyPlugin not found'")
+    # TopologyPlugin should either not be present or be empty
+    assert_that(result.stdout.strip()).is_equal_to("TopologyPlugin not found")
+
+    # Check topology.conf does not exist
+    topology_conf_path = "/opt/slurm/etc/topology.conf"
+    assert_that(is_existing_remote_file(rce, topology_conf_path)).is_false()
+
+    # Check scontrol show topology has no output
+    topology_result = rce.run_remote_command("scontrol show topology")
+    topology_output = topology_result.stdout.strip()
+    logging.info(f"Topology output: {topology_output}")
+    assert_that(topology_output).is_empty()
+
+    logging.info("TopologyPlugin correctly completely disabled")
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_gb200(
     pcluster_config_reader, file_reader, clusters_factory, test_datadir, s3_bucket_factory, region, instance
@@ -318,6 +341,16 @@ def test_gb200(
        - The IMEX nodes file is not configured by the prolog, keeping the default values and IMEX is not started
        - TopologyPlugin is configured at cluster level but q2-cr2 nodes are not included in topology configuration
        - /opt/slurm/etc/topology.conf exists but does not contain q2-cr2 nodes
+    3. After removing block_topology force_configuration:
+       - TopologyPlugin is completely disabled (scontrol show config | grep TopologyPlugin is empty)
+       - topology.conf file does not exist
+       - scontrol show topology produces no output
+       - IMEX continues to work normally
+
+    The test includes three cluster update phases:
+    - Initial: topology enabled with block size 2
+    - Second: topology enabled with block size 3 (scale up)
+    - Final: topology completely disabled
 
     The test prints in test log the full IMEX status to facilitate troubleshooting.
     The test uses instance type g4dn to simulate a p6e-gb200 instance.
@@ -416,3 +449,28 @@ def test_gb200(
 
     # Verify IMEX is still healthy after node replacement
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
+
+    # Test final cluster update to remove topology plugin configuration completely
+    final_cluster_config = pcluster_config_reader(
+        config_file="pcluster.config.final.yaml",
+        bucket_name=bucket_name,
+        head_node_start_script=headnode_start_filename,
+        max_queue_size=max_queue_size_updated,
+        queue_with_imex=queue_with_imex,
+        compute_resource_with_imex=compute_resource_with_imex,
+        queue_without_imex=queue_without_imex,
+        compute_resource_without_imex=compute_resource_without_imex,
+    )
+
+    cluster.stop()
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster.update(str(final_cluster_config), force_update=True)
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+
+    # Verify topology plugin is completely disabled after removing force_configuration
+    assert_topology_plugin_completely_disabled(cluster)
+
+    # Verify IMEX still works but topology is completely removed
+    assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
+    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
