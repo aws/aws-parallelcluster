@@ -8,9 +8,6 @@ ARG AWS_REGION
 COPY scripts/ /parallelcluster/bin/
 RUN chmod +x /parallelcluster/bin/*
 
-# Modify Amazon Linux yum repo configuration
-RUN /parallelcluster/bin/modify_yum_vars.sh "${AWS_REGION}"
-
 RUN yum update -y \
     && yum -y install \
     aws-cli \

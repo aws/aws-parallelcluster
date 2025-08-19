@@ -35,6 +35,7 @@ CHANGELOG
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 - Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
+- Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023. 
 
 3.13.2
 ------
