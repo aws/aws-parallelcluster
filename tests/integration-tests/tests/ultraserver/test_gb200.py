@@ -18,11 +18,11 @@ import pytest
 from assertpy import assert_that
 from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
+from utils import wait_for_computefleet_changed
 
 from tests.common.assertions import assert_regex_in_file, wait_for_instances_in_compute_resource
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import is_existing_remote_file, read_remote_file, terminate_nodes_manually
-from utils import wait_for_computefleet_changed
 
 # This is the capacity block reservation for p6e-gb200.36xlarge.
 # Given the limited availability of this capacity we test this instance type on demand,
