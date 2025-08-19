@@ -10,7 +10,7 @@ NCCL_BENCHMARKS_VERSION='2.13.8'
 mpirun \
 -x FI_PROVIDER="efa" \
 -x FI_EFA_USE_DEVICE_RDMA=1 \
--x LD_LIBRARY_PATH=/shared/openmpi/nccl-${NCCL_VERSION}/build/lib/:/shared/openmpi/ofi-plugin/lib/:$LD_LIBRARY_PATH \
+-x LD_LIBRARY_PATH=/shared/openmpi/nccl-${NCCL_VERSION}/build/lib/:$(cat /etc/ld.so.conf.d/100_ofinccl.conf):$LD_LIBRARY_PATH \
 -x RDMAV_FORK_SAFE=1 \
 -x NCCL_ALGO=ring \
 -x NCCL_DEBUG=WARNING \
