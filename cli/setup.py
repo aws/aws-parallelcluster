@@ -50,7 +50,7 @@ REQUIRES = [
     "connexion~=2.15.0rc3",
     "jmespath~=0.10",
     "jsii==1.85.0",
-    "werkzeug~=3.0.3",
+    "werkzeug~=3.1",
     "flask~=3.0",
     "packaging~=25.0",
 ]
