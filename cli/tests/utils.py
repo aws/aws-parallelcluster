@@ -19,4 +19,4 @@ def read_text(path):
 
 
 def wire_translate(data):
-    return json.loads(encoder.JSONEncoderForCli().encode(data))
+    return json.loads(encoder.JSONEncoder().encode(data))

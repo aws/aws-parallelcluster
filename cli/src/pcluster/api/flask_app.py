@@ -76,8 +76,8 @@ class ParallelClusterFlaskApp:
 
         self.app = FlaskApp(__name__, specification_dir="openapi/", skip_error_handlers=True)
         self.flask_app = self.app.app
-        self.flask_app.json_provider_class = encoder.JSONEncoder
-        self.flask_app.json = encoder.JSONEncoder(self.flask_app)
+        self.flask_app.json_provider_class = encoder.FlaskJSONEncoder
+        self.flask_app.json = encoder.FlaskJSONEncoder(self.flask_app)
         self.app.add_api(
             "openapi.yaml",
             arguments={"title": "ParallelCluster"},

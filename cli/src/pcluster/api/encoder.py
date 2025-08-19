@@ -18,7 +18,7 @@ from pcluster.api.models.base_model_ import Model
 from pcluster.utils import to_iso_timestr
 
 
-class JSONEncoderForCli(json.JSONEncoder):
+class JSONEncoder(json.JSONEncoder):
     """Make the model objects JSON serializable."""
 
     include_nulls = False
@@ -39,7 +39,7 @@ class JSONEncoderForCli(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class JSONEncoder(DefaultJSONProvider):
+class FlaskJSONEncoder(DefaultJSONProvider):
     """Make the model objects JSON serializable."""
 
     include_nulls = False
