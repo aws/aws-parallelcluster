@@ -25,6 +25,12 @@ Scheduling:
       - Name: {{ compute_resource_with_imex }}
         Instances:
           - InstanceType: {{ instance }}
+        {% if instance == "p6e-gb200.36xlarge" %}
+        DisableSimultaneousMultithreading: true
+        Efa:
+          Enabled: true
+          GdrSupport: true
+        {% endif %}
         MinCount: {{ max_queue_size }}
         MaxCount: {{ max_queue_size }}
         HealthChecks:
