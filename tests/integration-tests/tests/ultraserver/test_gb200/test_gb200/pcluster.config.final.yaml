@@ -44,11 +44,11 @@ Scheduling:
       SubnetIds:
         - {{ private_subnet_id }}
 
-# The DevSetting below forces the configuration of NVIDIA IMEX and topology plugin on instances that are not GB200.
-# We do it to simulate the behavior of GB200 instances.
+# The DevSetting below forces the configuration of NVIDIA IMEX but removes topology plugin configuration.
+# We do it to test that topology plugin is completely disabled when force_configuration is removed.
 {% if instance != "p6e-gb200.36xlarge" %}
 DevSettings:
   Cookbook:
     ExtraChefAttributes: |
-      { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } }, "p6egb200_block_sizes": "{{ max_queue_size }}", "slurm":{"block_topology":{"force_configuration":"true"}} } }
+      { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } } } }
 {% endif %}
