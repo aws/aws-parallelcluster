@@ -217,6 +217,7 @@ from pcluster.validators.slurm_settings_validator import (
     SlurmNodePrioritiesWarningValidator,
 )
 from pcluster.validators.tags_validators import ComputeResourceTagsValidator
+from pcluster.validators.login_nodes_validators import LoginNodesSshKeyNameDeprecatedValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -848,6 +849,10 @@ class LoginNodesSsh(_BaseSsh):
         # If AllowedIPs is not specified for the login node pool, then allowed_ips will default to the same settings
         # in the HeadNode to restrict SSH access from a specific CIDR or prefix-list.
         self.allowed_ips = Resource.init_param(allowed_ips)
+
+    def _register_validators(self, context=None):
+        super()._register_validators(context)
+        self._register_validator(LoginNodesSshKeyNameDeprecatedValidator, key_name=self.key_name)
 
 
 class SharedStorageEfsSettings(Resource):
