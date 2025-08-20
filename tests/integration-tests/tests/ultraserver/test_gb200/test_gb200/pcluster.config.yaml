@@ -23,8 +23,7 @@ Scheduling:
     {% endif %}
     ComputeResources:
       - Name: {{ compute_resource_with_imex }}
-        Instances:
-          - InstanceType: {{ instance }}
+        InstanceType: {{ instance }}
         MinCount: {{ max_queue_size }}
         MaxCount: {{ max_queue_size }}
         {% if instance == "p6e-gb200.36xlarge" %}
@@ -42,8 +41,7 @@ Scheduling:
   - Name: {{ queue_without_imex }}
     ComputeResources:
       - Name: {{ compute_resource_without_imex }}
-        Instances:
-          - InstanceType: t3.medium
+        InstanceType: t3.medium
         MinCount: 1
         MaxCount: 1
     Networking:
