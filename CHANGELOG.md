@@ -36,6 +36,7 @@ CHANGELOG
 - Upgrade DCGM to version 4.2.3 (from 3.3.6) for all OSs except AL2.
 - Upgrade Python to 3.12.11 (from 3.12.8) for all OSs except AL2.
 - Upgrade Intel MPI Library to 2021.16.0 (from 2021.13.1).
+- Add validator that warns against using non GPU instances with DCV
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).

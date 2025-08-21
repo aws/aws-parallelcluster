@@ -1799,21 +1799,50 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
 
 
 @pytest.mark.parametrize(
-    "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
+    "dcv_enabled, os, instance_type, allowed_ips, port, gpu_count, expected_message",
     [
-        (True, "rhel8", "t3.medium", None, None, None),
-        (True, "ubuntu1804", "t3.medium", None, "1.2.3.4/32", "Please double check the os configuration"),
-        (True, "ubuntu2404", "t3.medium", None, None, None),
-        (True, "alinux2", "t3.medium", None, None, None),
-        (True, "alinux2", "t3.nano", None, None, "is recommended to use an instance type with at least"),
-        (True, "alinux2", "t3.micro", None, None, "is recommended to use an instance type with at least"),
-        (False, "alinux2", "t3.micro", None, None, None),  # doesn't fail because DCV is disabled
-        (True, "alinux2", "m6g.xlarge", None, None, None),
-        (True, "rhel8", "m6g.xlarge", None, None, None),
-        (True, "alinux2023", "m6g.xlarge", None, None, None),
+        (True, "rhel8", "t3.medium", None, None, 1, None),
+        (True, "ubuntu1804", "t3.medium", None, "1.2.3.4/32", 1, "Please double check the os configuration"),
+        (True, "ubuntu2404", "t3.medium", None, None, 1, None),
+        (True, "alinux2", "t3.medium", None, None, 1, None),
+        (True, "alinux2", "t3.nano", None, None, 1, "is recommended to use an instance type with at least"),
+        (True, "alinux2", "t3.micro", None, None, 1, "is recommended to use an instance type with at least"),
+        (False, "alinux2", "t3.micro", None, None, 1, None),  # doesn't fail because DCV is disabled
+        (True, "alinux2", "m6g.xlarge", None, None, 1, None),
+        (True, "rhel8", "m6g.xlarge", None, None, 1, None),
+        (True, "alinux2023", "m6g.xlarge", None, None, 1, None),
+        (False, "rhel9", "m6g.xlarge", None, None, 0, None),
+        (
+            True,
+            "alinux2023",
+            "m6g.xlarge",
+            None,
+            None,
+            0,
+            "It is recommended to use DCV with a GPU-enabled instance type.",
+        ),
     ],
 )
-def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expected_message):
+def test_dcv_validator(
+    mocker, boto3_stubber, dcv_enabled, os, instance_type, allowed_ips, port, gpu_count, expected_message
+):
+    mock_aws_api(mocker)
+    get_instance_type_info_mock = mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "GpuInfo": {
+                    "Gpus": [
+                        {
+                            "Manufacturer": "NVIDIA",
+                            "Count": gpu_count,
+                        },
+                    ]
+                },
+            }
+        ),
+    )
     actual_failures = DcvValidator().execute(
         instance_type,
         dcv_enabled,
