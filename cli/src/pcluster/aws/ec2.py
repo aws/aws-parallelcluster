@@ -580,7 +580,6 @@ class Ec2Client(Boto3Client):
         return False
 
     @AWSExceptionHandler.handle_client_exception
-    @AWSExceptionHandler.handle_client_exception
     def describe_capacity_block_status(  # noqa: C901
         self, capacity_block_ids: List[str] = None, filters=None, max_results: int = None
     ):
