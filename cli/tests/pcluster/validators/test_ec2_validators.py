@@ -40,6 +40,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityReservationValidator,
     PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
+    UltraserverCapacityBlockSizeValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
@@ -1743,7 +1744,7 @@ def test_instance_type_placement_group_validator(
             ["cr-123"],
             [
                 {
-                    "CapacityBlockId": "cr-123",
+                    "CapacityBlockId": "cbr-123",
                     "InterconnectStatus": "ok",
                 },
             ],
@@ -1757,7 +1758,7 @@ def test_instance_type_placement_group_validator(
             ["cr-123"],
             [
                 {
-                    "CapacityBlockId": "cr-123",
+                    "CapacityBlockId": "cbr-123",
                     "InterconnectStatus": "impaired",
                 },
             ],
@@ -1773,7 +1774,7 @@ def test_instance_type_placement_group_validator(
             ["cr-456"],
             [
                 {
-                    "CapacityBlockId": "cr-456",
+                    "CapacityBlockId": "cbr-456",
                     "InterconnectStatus": "insufficient-data",
                 },
             ],
@@ -1789,7 +1790,7 @@ def test_instance_type_placement_group_validator(
             ["cr-789"],
             [
                 {
-                    "CapacityBlockId": "cr-789",
+                    "CapacityBlockId": "cbr-789",
                     "InterconnectStatus": "ok",
                 },
             ],
@@ -1850,7 +1851,111 @@ def test_capacity_block_health_status_validator(
         return_value=describe_reservation_response,
     )
 
+    # Mock get_needed_ultraserver_capacity_block_statuses to return the expected statuses
+    mocker.patch(
+        "pcluster.validators.ec2_validators.get_needed_ultraserver_capacity_block_statuses",
+        return_value=describe_block_response or [],
+    )
+
     actual_failures = CapacityBlockHealthStatusValidator().execute(capacity_reservation_ids)
     assert_failure_messages(actual_failures, expected_message)
     if expected_level:
         assert_failure_level(actual_failures, expected_level)
+
+
+@pytest.mark.parametrize(
+    "cluster_ultraserver_capacity_block_dict, describe_block_response, expected_message",
+    [
+        # Valid capacity block sizes
+        (
+            {"p6e-gb200": ["cr-123"]},
+            [
+                {
+                    "CapacityBlockId": "cbr-123",
+                    "TotalCapacity": 9,
+                    "CapacityReservationStatuses": [
+                        {
+                            "CapacityReservationId": "cr-123",
+                            "TotalCapacity": 9,
+                        }
+                    ],
+                },
+            ],
+            None,
+        ),
+        # Invalid capacity block size
+        (
+            {"p6e-gb200": ["cr-456"]},
+            [
+                {
+                    "CapacityBlockId": "cbr-456",
+                    "TotalCapacity": 16,
+                    "CapacityReservationStatuses": [
+                        {
+                            "CapacityReservationId": "cr-456",
+                            "TotalCapacity": 16,
+                        }
+                    ],
+                },
+            ],
+            "The following capacity blocks have invalid block sizes: cbr-456 \\(size: 16, allowed: \\[9, 18\\]\\).",
+        ),
+        # Multiple capacity blocks with mixed validity
+        (
+            {"p6e-gb200": ["cr-123", "cr-456"]},
+            [
+                {
+                    "CapacityBlockId": "cbr-123",
+                    "TotalCapacity": 18,
+                    "CapacityReservationStatuses": [
+                        {
+                            "CapacityReservationId": "cr-123",
+                            "TotalCapacity": 18,
+                        }
+                    ],
+                },
+                {
+                    "CapacityBlockId": "cbr-456",
+                    "TotalCapacity": 16,
+                    "CapacityReservationStatuses": [
+                        {
+                            "CapacityReservationId": "cr-456",
+                            "TotalCapacity": 16,
+                        }
+                    ],
+                },
+            ],
+            "The following capacity blocks have invalid block sizes: cbr-456 \\(size: 16, allowed: \\[9, 18\\]\\).",
+        ),
+        # Empty capacity block dict
+        (
+            {},
+            [],
+            None,
+        ),
+        # No capacity reservation IDs for ultraserver prefix
+        (
+            {"p6e-gb200": []},
+            [],
+            None,
+        ),
+    ],
+)
+def test_ultraserver_capacity_block_size_validator(
+    mocker, cluster_ultraserver_capacity_block_dict, describe_block_response, expected_message
+):
+
+    mock_aws_api(mocker)
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_capacity_block_status",
+        return_value=describe_block_response,
+    )
+    mocker.patch(
+        "pcluster.validators.ec2_validators.get_needed_ultraserver_capacity_block_statuses",
+        return_value=describe_block_response,
+    )
+
+    actual_failures = UltraserverCapacityBlockSizeValidator().execute(
+        cluster_ultraserver_capacity_block_dict=cluster_ultraserver_capacity_block_dict
+    )
+    assert_failure_messages(actual_failures, expected_message)

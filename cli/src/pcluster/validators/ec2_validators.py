@@ -23,9 +23,11 @@ from pcluster.constants import (
     CAPACITY_BLOCK_INACTIVE_STATES,
     CAPACITY_RESERVATION_OS_MAP,
     NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES,
+    ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT,
+    ULTRASERVER_INSTANCE_PREFIX_LIST,
     UNSUPPORTED_OSES_FOR_MICRO_NANO,
 )
-from pcluster.utils import get_resource_name_from_resource_arn
+from pcluster.utils import get_needed_ultraserver_capacity_block_statuses, get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
 
 LOGGER = logging.getLogger(__name__)
@@ -488,10 +490,13 @@ class CapacityBlockHealthStatusValidator(Validator):
         for cb_id in capacity_reservation_ids:
             try:
                 # Try to get capacity block status first
-                statuses = AWSApi.instance().ec2.describe_capacity_block_status([cb_id])
+                statuses = AWSApi.instance().ec2.describe_capacity_block_status()
+                needed_capacity_block_statuses = get_needed_ultraserver_capacity_block_statuses(
+                    statuses, capacity_reservation_ids
+                )
 
                 # Check health status for active capacity blocks
-                for status in statuses:
+                for status in needed_capacity_block_statuses:
                     interconnect = (status.get("InterconnectStatus") or "").lower()
                     good_interconnect = interconnect in self._GOOD_INTERCONNECT
 
@@ -797,3 +802,35 @@ class PlacementGroupCapacityReservationValidator(Validator):
                         capacity_reservations=capacity_reservations,
                         subnet_id_az_mapping=subnet_id_az_mapping,
                     )
+
+
+class UltraserverCapacityBlockSizeValidator(Validator):
+    """Validate ultraserver capacity block sizes are allowed."""
+
+    def _validate(self, cluster_ultraserver_capacity_block_dict):
+        invalid_capacity_blocks = []
+
+        for ultraserver_instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
+            allowed_sizes_list = ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT.get(ultraserver_instance_prefix)
+            capacity_reservation_ids = cluster_ultraserver_capacity_block_dict.get(ultraserver_instance_prefix)
+
+            if capacity_reservation_ids:
+                statuses = AWSApi.instance().ec2.describe_capacity_block_status()
+                needed_capacity_block_statuses = get_needed_ultraserver_capacity_block_statuses(
+                    statuses, capacity_reservation_ids
+                )
+
+                for status in needed_capacity_block_statuses:
+                    size = status.get("TotalCapacity")
+                    if size is not None:
+                        if size not in allowed_sizes_list:
+                            invalid_capacity_blocks.append(
+                                f"{status.get('CapacityBlockId')} (size: {size}, allowed: {allowed_sizes_list})"
+                            )
+
+        # Report invalid capacity blocks as errors
+        if invalid_capacity_blocks:
+            self._add_failure(
+                f"The following capacity blocks have invalid block sizes: {'; '.join(invalid_capacity_blocks)}.",
+                FailureLevel.ERROR,
+            )

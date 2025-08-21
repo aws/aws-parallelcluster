@@ -38,6 +38,7 @@ class Ec2Client(Boto3Client):
         self.security_groups_cache = {}
         self.subnets_cache = {}
         self.capacity_reservations_cache = {}
+        self.capacity_block_status_cache = {}
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -579,7 +580,8 @@ class Ec2Client(Boto3Client):
         return False
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_capacity_block_status(
+    @AWSExceptionHandler.handle_client_exception
+    def describe_capacity_block_status(  # noqa: C901
         self, capacity_block_ids: List[str] = None, filters=None, max_results: int = None
     ):
         """
@@ -599,22 +601,51 @@ class Ec2Client(Boto3Client):
                 - TotalCapacity: Total number of instances in the capacity block
                 - TotalUnavailableCapacity: Number of unavailable instances
         """
-        kwargs = {}
+        # If no specific capacity_block_ids are requested, use cache key based on filters and max_results
         if capacity_block_ids:
-            kwargs["CapacityBlockIds"] = capacity_block_ids
-        if filters:
-            kwargs["Filters"] = filters
-        if max_results:
-            kwargs["MaxResults"] = max_results
+            result = []
+            missed_capacity_blocks = []
+            for capacity_block_id in capacity_block_ids:
+                cached_data = self.capacity_block_status_cache.get(capacity_block_id)
+                if cached_data:
+                    result.append(cached_data)
+                else:
+                    missed_capacity_blocks.append(capacity_block_id)
 
-        paginator = self._client.get_paginator("describe_capacity_block_status")
-        page_iterator = paginator.paginate(**kwargs)
+            if missed_capacity_blocks:
+                kwargs = {"CapacityBlockIds": missed_capacity_blocks}
+                if filters:
+                    kwargs["Filters"] = filters
+                if max_results:
+                    kwargs["MaxResults"] = max_results
 
-        statuses = []
-        for page in page_iterator:
-            statuses.extend(page.get("CapacityBlockStatuses", []))
+                paginator = self._client.get_paginator("describe_capacity_block_status")
+                page_iterator = paginator.paginate(**kwargs)
 
-        return statuses
+                for page in page_iterator:
+                    for status in page.get("CapacityBlockStatuses", []):
+                        capacity_block_id = status.get("CapacityBlockId")
+                        if capacity_block_id:
+                            self.capacity_block_status_cache[capacity_block_id] = status
+                        result.append(status)
+
+            return result
+        else:
+            # For requests without specific IDs, don't cache (as results may vary)
+            kwargs = {}
+            if filters:
+                kwargs["Filters"] = filters
+            if max_results:
+                kwargs["MaxResults"] = max_results
+
+            paginator = self._client.get_paginator("describe_capacity_block_status")
+            page_iterator = paginator.paginate(**kwargs)
+
+            statuses = []
+            for page in page_iterator:
+                statuses.extend(page.get("CapacityBlockStatuses", []))
+
+            return statuses
 
     @AWSExceptionHandler.handle_client_exception
     def get_instance_type_and_reservation_type_from_capacity_reservation(

@@ -161,6 +161,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupCapacityReservationValidator,
     PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
+    UltraserverCapacityBlockSizeValidator,
 )
 from pcluster.validators.efs_validators import EfsAccessPointOptionsValidator, EfsMountOptionsValidator
 from pcluster.validators.feature_validators import FeatureRegionValidator
@@ -3280,6 +3281,13 @@ class SlurmClusterConfig(BaseClusterConfig):
                     CapacityBlockHealthStatusValidator,
                     capacity_reservation_ids=self.ultraserver_capacity_block_dict.get(ultraserver_instance_prefix),
                 )
+
+        # Validate ultraserver capacity block sizes
+        if any(self.ultraserver_capacity_block_dict.get(prefix) for prefix in ULTRASERVER_INSTANCE_PREFIX_LIST):
+            self._register_validator(
+                UltraserverCapacityBlockSizeValidator,
+                cluster_ultraserver_capacity_block_dict=self.ultraserver_capacity_block_dict,
+            )
 
     @property
     def image_dict(self):
