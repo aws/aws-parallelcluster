@@ -227,18 +227,18 @@ test-suites:
         # DCV in cn regions and non GPU enabled instance
         - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_2 }}]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
         # DCV in gov-cloud regions and non GPU enabled instance
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_4 }}]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_dcv.py::test_dcv_with_remote_access:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_6 }}]
+          oss: ["ubuntu2204"]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
