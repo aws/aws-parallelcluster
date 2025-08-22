@@ -4,8 +4,8 @@
 #SBATCH --ntasks-per-node=8
 
 module load openmpi
-NCCL_VERSION='2.19.4-1'
-NCCL_BENCHMARKS_VERSION='2.13.8'
+NCCL_VERSION='2.27.7-1'
+NCCL_BENCHMARKS_VERSION='2.16.7'
 
 mpirun \
 -x FI_PROVIDER="efa" \
