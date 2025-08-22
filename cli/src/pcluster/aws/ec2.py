@@ -591,6 +591,7 @@ class Ec2Client(Boto3Client):
         about interconnect status and available capacity.
 
         :param capacity_block_ids: List of Capacity Block IDs to query (e.g., ['cr-123456']).
+               If no specific capacity_block_ids are requested, use cache key based on filters and max_results
         :param filters: Optional boto3-style filters to narrow results (e.g., interconnect-status).
         :param max_results: Optional page size hint for pagination.
         :return: Dict with key 'CapacityBlockStatuses' containing a flattened list of capacity block
@@ -600,14 +601,14 @@ class Ec2Client(Boto3Client):
                 - TotalCapacity: Total number of instances in the capacity block
                 - TotalUnavailableCapacity: Number of unavailable instances
         """
-        # If no specific capacity_block_ids are requested, use cache key based on filters and max_results
+        statuses = []
+        
         if capacity_block_ids:
-            result = []
             missed_capacity_blocks = []
             for capacity_block_id in capacity_block_ids:
                 cached_data = self.capacity_block_status_cache.get(capacity_block_id)
                 if cached_data:
-                    result.append(cached_data)
+                    statuses.append(cached_data)
                 else:
                     missed_capacity_blocks.append(capacity_block_id)
 
@@ -626,9 +627,7 @@ class Ec2Client(Boto3Client):
                         capacity_block_id = status.get("CapacityBlockId")
                         if capacity_block_id:
                             self.capacity_block_status_cache[capacity_block_id] = status
-                        result.append(status)
-
-            return result
+                        statuses.append(status)
         else:
             # For requests without specific IDs, don't cache (as results may vary)
             kwargs = {}
@@ -640,11 +639,10 @@ class Ec2Client(Boto3Client):
             paginator = self._client.get_paginator("describe_capacity_block_status")
             page_iterator = paginator.paginate(**kwargs)
 
-            statuses = []
             for page in page_iterator:
                 statuses.extend(page.get("CapacityBlockStatuses", []))
 
-            return statuses
+        return statuses
 
     @AWSExceptionHandler.handle_client_exception
     def get_instance_type_and_reservation_type_from_capacity_reservation(
