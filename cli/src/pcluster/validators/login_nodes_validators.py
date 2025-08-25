@@ -19,9 +19,9 @@ LOGGER = logging.getLogger(__name__)
 class LoginNodesSshKeyNameDeprecatedValidator(Validator):
     """Validator to warn about deprecated LoginNodes SSH KeyName."""
 
-    def _validate(self, key_name: str = None):
+    def _validate(self, key_name: str = None, key_name_explicitly_set: bool = False):
         """Validate that LoginNodes SSH KeyName is deprecated."""
-        if key_name:
+        if key_name and key_name_explicitly_set:
             self._add_failure(
                 "LoginNodes/Pools/Ssh/KeyName is deprecated. Please remove it from cluster configuration. "
                 "The SSH key for the login nodes will be the one used by the head node.",
