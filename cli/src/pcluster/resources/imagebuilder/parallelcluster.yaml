@@ -19,7 +19,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               . /etc/os-release
               RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               case "$RELEASE" in
@@ -40,7 +40,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               # Get OS info
               . /etc/os-release
               # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
@@ -75,7 +75,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               . /opt/parallelcluster/system_info
 
               # Pin kernel versions and install packages
@@ -132,7 +132,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               . /opt/parallelcluster/system_info
               
               # Disable Nouveau driver
@@ -174,7 +174,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               . /opt/parallelcluster/system_info
               
               # Update CA certificates and install Cinc
@@ -220,7 +220,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -ex
               . /opt/parallelcluster/system_info
               echo "Calling chef-client with /etc/parallelcluster/image_dna.json"
               cat /etc/parallelcluster/image_dna.json
@@ -233,7 +233,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               . /opt/parallelcluster/system_info
               
               # Remove kernel version lock
