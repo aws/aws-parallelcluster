@@ -12,7 +12,6 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.api.errors import BadRequestException
 from pcluster.templates.cdk_builder_utils import has_ultraserver_instance, process_ultraserver_capacity_block_sizes
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -27,22 +26,44 @@ class TestUltraserverClusterStack:
             ([], {"p6e-gb200": ""}),
             # Single capacity block
             (
-                [{"CapacityBlockId": "cr-123", "TotalCapacity": 18}],
+                [
+                    {
+                        "CapacityBlockId": "cbr-123",
+                        "TotalCapacity": 18,
+                        "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123", "TotalCapacity": 18}],
+                    }
+                ],
                 {"p6e-gb200": "18"},
             ),
             # Multiple capacity blocks with same size
             (
                 [
-                    {"CapacityBlockId": "cr-123", "TotalCapacity": 18},
-                    {"CapacityBlockId": "cr-456", "TotalCapacity": 18},
+                    {
+                        "CapacityBlockId": "cbr-123",
+                        "TotalCapacity": 18,
+                        "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123", "TotalCapacity": 18}],
+                    },
+                    {
+                        "CapacityBlockId": "cbr-456",
+                        "TotalCapacity": 18,
+                        "CapacityReservationStatuses": [{"CapacityReservationId": "cr-456", "TotalCapacity": 18}],
+                    },
                 ],
                 {"p6e-gb200": "18"},
             ),
             # Multiple capacity blocks with different allowed sizes
             (
                 [
-                    {"CapacityBlockId": "cr-123", "TotalCapacity": 9},
-                    {"CapacityBlockId": "cr-456", "TotalCapacity": 18},
+                    {
+                        "CapacityBlockId": "cbr-123",
+                        "TotalCapacity": 9,
+                        "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123", "TotalCapacity": 9}],
+                    },
+                    {
+                        "CapacityBlockId": "cbr-456",
+                        "TotalCapacity": 18,
+                        "CapacityReservationStatuses": [{"CapacityReservationId": "cr-456", "TotalCapacity": 18}],
+                    },
                 ],
                 {"p6e-gb200": "9, 18"},
             ),
@@ -55,6 +76,12 @@ class TestUltraserverClusterStack:
         # Mock the describe_capacity_block_status API response
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_capacity_block_status",
+            return_value=capacity_block_statuses,
+        )
+
+        # Mock get_needed_ultraserver_capacity_block_statuses to return the expected statuses
+        mocker.patch(
+            "pcluster.templates.cdk_builder_utils.get_needed_ultraserver_capacity_block_statuses",
             return_value=capacity_block_statuses,
         )
 
@@ -71,37 +98,6 @@ class TestUltraserverClusterStack:
 
         # Verify the result
         assert_that(cluster_ultraserver_capacity_block_sizes_dict).is_equal_to(expected_sizes_dict)
-
-    def test_ultraserver_capacity_block_sizes_validation_failure(self, mocker):
-        """Test that invalid capacity block sizes raise BadRequestException."""
-        mock_aws_api(mocker)
-
-        # Mock API response with invalid size (not in allowed list)
-        mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.describe_capacity_block_status",
-            return_value=[
-                {"CapacityBlockId": "cr-123", "TotalCapacity": 5},  # Invalid size
-                {"CapacityBlockId": "cr-456", "TotalCapacity": 10},  # Invalid size
-            ],
-        )
-
-        mock_config = mocker.MagicMock()
-        mock_config.ultraserver_capacity_block_dict = {"p6e-gb200": ["cr-123", "cr-456"]}
-
-        cluster_ultraserver_capacity_block_dict = mock_config.ultraserver_capacity_block_dict
-
-        with pytest.raises(BadRequestException) as exc_info:
-            process_ultraserver_capacity_block_sizes(cluster_ultraserver_capacity_block_dict)
-
-        # Check the exception message
-        exception_message = (
-            exc_info.value.content.message
-            if hasattr(exc_info.value.content, "message")
-            else str(exc_info.value.content)
-        )
-        assert_that(exception_message).contains(
-            "The following capacity blocks have invalid block sizes: cr-123 " "(size: 5, allowed: [9, 18])"
-        )
 
     def test_dna_json_p6e_gb200_capacity_block_sizes_inclusion(self, mocker):
         """Test that p6e_gb200_capacity_block_sizes is correctly included in DNA JSON."""
