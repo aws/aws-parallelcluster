@@ -461,12 +461,14 @@ def get_capacity_reservations_per_az(
     return capacity_reservations_per_az
 
 
-def get_missed_capacity_block_ids(capacity_block_statuses: List[dict], capacity_reservation_ids: List[str]) -> List[str]:
+def get_missed_capacity_block_ids(
+    capacity_block_statuses: List[dict], capacity_reservation_ids: List[str]
+) -> List[str]:
     """Return capacity reservation IDs that are not found in the capacity block status response."""
     found_cr_ids = set()
     for status in capacity_block_statuses:
-        for cr_status in status.get('CapacityReservationStatuses', []):
-            cr_id = cr_status.get('CapacityReservationId')
+        for cr_status in status.get("CapacityReservationStatuses", []):
+            cr_id = cr_status.get("CapacityReservationId")
             if cr_id:
                 found_cr_ids.add(cr_id)
     return [cr_id for cr_id in capacity_reservation_ids if cr_id not in found_cr_ids]
@@ -530,8 +532,7 @@ class CapacityBlockHealthStatusValidator(Validator):
 
                     if total_count != available_count:
                         unhealthy_details.append(
-                            f"{cr_id}[TotalInstanceCount={total_count}, "
-                            f"AvailableInstanceCount={available_count}]"
+                            f"{cr_id}[TotalInstanceCount={total_count}, " f"AvailableInstanceCount={available_count}]"
                         )
             except AWSClientError:
                 # If we can't get reservation info, it's an error

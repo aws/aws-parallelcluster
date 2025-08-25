@@ -1746,11 +1746,11 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cbr-123",
                     "InterconnectStatus": "ok",
-                    'CapacityReservationStatuses': [
+                    "CapacityReservationStatuses": [
                         {
-                            'CapacityReservationId': 'cr-123',
+                            "CapacityReservationId": "cr-123",
                         },
-                    ]
+                    ],
                 },
             ],
             None,
@@ -1765,11 +1765,11 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cbr-123",
                     "InterconnectStatus": "impaired",
-                    'CapacityReservationStatuses': [
+                    "CapacityReservationStatuses": [
                         {
-                            'CapacityReservationId': 'cr-123',
+                            "CapacityReservationId": "cr-123",
                         },
-                    ]
+                    ],
                 },
             ],
             None,
@@ -1786,11 +1786,11 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cbr-456",
                     "InterconnectStatus": "insufficient-data",
-                    'CapacityReservationStatuses': [
+                    "CapacityReservationStatuses": [
                         {
-                            'CapacityReservationId': 'cr-456',
+                            "CapacityReservationId": "cr-456",
                         },
-                    ]
+                    ],
                 },
             ],
             None,
@@ -1807,11 +1807,11 @@ def test_instance_type_placement_group_validator(
                 {
                     "CapacityBlockId": "cbr-789",
                     "InterconnectStatus": "ok",
-                    'CapacityReservationStatuses': [
+                    "CapacityReservationStatuses": [
                         {
-                            'CapacityReservationId': 'cr-789',
+                            "CapacityReservationId": "cr-789",
                         },
-                    ]
+                    ],
                 },
             ],
             None,
@@ -1885,13 +1885,13 @@ def test_capacity_block_health_status_validator(
         "pcluster.validators.ec2_validators.get_needed_ultraserver_capacity_block_statuses",
         return_value=describe_block_response or [],
     )
-    
+
     # Mock get_missed_capacity_block_ids to return the CRIDs when describe_block_response is empty
     def mock_get_missed_capacity_block_ids(statuses, cr_ids):
         if not statuses:  # If statuses is empty, all CRIDs are missed
             return cr_ids
         return []  # Otherwise no CRIDs are missed
-    
+
     mocker.patch(
         "pcluster.validators.ec2_validators.get_missed_capacity_block_ids",
         side_effect=mock_get_missed_capacity_block_ids,

@@ -602,7 +602,7 @@ class Ec2Client(Boto3Client):
                 - TotalUnavailableCapacity: Number of unavailable instances
         """
         statuses = []
-        
+
         if capacity_block_ids:
             missed_capacity_blocks = []
             for capacity_block_id in capacity_block_ids:
