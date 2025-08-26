@@ -45,7 +45,7 @@ Scheduling:
           - InstanceType: m6g.xlarge
           - InstanceType: t4g.xlarge
           - InstanceType: c6gn.xlarge
-        MinCount: 1
+        MinCount: {{ max_queue_size_without_imex }}
         MaxCount: 1
     Networking:
       SubnetIds:
