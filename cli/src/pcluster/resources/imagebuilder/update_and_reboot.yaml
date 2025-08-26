@@ -165,12 +165,17 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              if [[ $OS == alinux2023 && $(uname -r) == 6.12.* ]]; then
+                KERNEL_PACKAGES_PREFIX="kernel6.12"
+              else
+                KERNEL_PACKAGES_PREFIX="kernel"
+              fi
 
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
                 if [[ ${!PLATFORM} == RHEL ]]; then
                   yum install -y yum-plugin-versionlock
                   # listing all the packages because wildcard does not work as expected
-                  yum versionlock kernel kernel-core kernel-modules
+                  yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
 
                   if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                     yum versionlock rocky-release rocky-repos
@@ -226,10 +231,15 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              if [[ $OS == alinux2023 && $(uname -r) == 6.12.* ]]; then
+                KERNEL_PACKAGES_PREFIX="kernel6.12"
+              else
+                KERNEL_PACKAGES_PREFIX="kernel"
+              fi
 
               # Remove kernel version lock
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
-                yum versionlock delete kernel kernel-core kernel-modules
+                yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release
