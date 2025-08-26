@@ -68,3 +68,7 @@ DevSettings:
     ExtraChefAttributes: |
       { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } }, "p6egb200_block_sizes": "{{ max_queue_size }}", "slurm":{"block_topology":{"force_configuration":"true"}} } }
 {% endif %}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
