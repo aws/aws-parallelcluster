@@ -16,7 +16,7 @@ from datetime import datetime
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from utils import wait_for_computefleet_changed
@@ -429,8 +429,9 @@ def test_gb200(
     )
 
     # Test that IMEX and topology are not configured for queue without IMEX support
-    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
-    assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
+    with soft_assertions():
+        assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+        assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Test cluster update with changed topology configuration
     max_queue_size_updated = 3
@@ -460,8 +461,9 @@ def test_gb200(
     assert_topology_plugin_configured(
         cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size_updated}", max_queue_size_updated
     )
-    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
-    assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
+    with soft_assertions():
+        assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+        assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Forcefully terminate a compute node in the compute resource supporting IMEX
     # to simulate an outage that forces the replacement of the node and consequently the IMEX reconfiguration.
@@ -499,4 +501,5 @@ def test_gb200(
 
     # Verify IMEX still works but topology is completely removed
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
-    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+    with soft_assertions():
+        assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
