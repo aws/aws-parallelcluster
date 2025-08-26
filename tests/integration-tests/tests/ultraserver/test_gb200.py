@@ -393,7 +393,7 @@ def test_gb200(
 
     # Upload files to test bucket
     headnode_start_filename = "head_node_start.sh"
-    prolog_filename = "90-nvidia-imex.prolog.sh"
+    prolog_filename = "91_nvidia_imex.prolog.sh"
     job_filename = "nvidia-imex-status.job"
     bucket.upload_file(str(test_datadir / prolog_filename), prolog_filename)
     bucket.upload_file(str(test_datadir / job_filename), job_filename)
