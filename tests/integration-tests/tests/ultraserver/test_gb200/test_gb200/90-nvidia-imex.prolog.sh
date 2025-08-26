@@ -9,8 +9,8 @@ SCONTROL_CMD="/opt/slurm/bin/scontrol"
 IMEX_START_TIMEOUT=60
 IMEX_STOP_TIMEOUT=15
 WAIT_TIME_TO_STABILIZE=30
-#TODO In production, specify p6e-gb200, only. We added g4dn only for testing purposes.
-ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g4dn)"
+#TODO In production, specify p6e-gb200, only. We added m6g only for testing purposes.
+ALLOWED_INSTANCE_TYPES="^(p6e-gb200|m6g)"
 IMEX_SERVICE="nvidia-imex"
 
 function info() {
