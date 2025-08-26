@@ -60,6 +60,12 @@ phases:
               CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install-1.4.0.sh"
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               
+              if [[ $OS == alinux2023 && $(uname -r) == 6.12.* ]]; then
+                KERNEL_PACKAGES_PREFIX="kernel6.12"
+              else
+                KERNEL_PACKAGES_PREFIX="kernel"
+              fi
+              
               # Output all variables to persistent location
               mkdir -p /opt/parallelcluster
               echo "OS=$OS" > /opt/parallelcluster/system_info
@@ -69,6 +75,7 @@ phases:
               echo "COOKBOOK_URL=$COOKBOOK_URL" >> /opt/parallelcluster/system_info
               echo "CINC_URL=$CINC_URL" >> /opt/parallelcluster/system_info
               echo "COOKBOOK_NAME=$COOKBOOK_NAME" >> /opt/parallelcluster/system_info
+              echo "KERNEL_PACKAGES_PREFIX=$KERNEL_PACKAGES_PREFIX" >> /opt/parallelcluster/system_info
 
       - name: PinVersion
         action: ExecuteBash
@@ -86,9 +93,9 @@ phases:
                   yum clean all
                 }
                 
-                PACKAGE_LIST="kernel-headers-$(uname -r) kernel-devel-$(uname -r)"
+                PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r)"
                 Repository="BaseOS"
-                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" kernel-devel-matched-$(uname -r)" && Repository="AppStream"
+                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
                 
                 if [[ $OS =~ rocky ]]; then
                   for PACKAGE in ${!PACKAGE_LIST}
@@ -117,7 +124,7 @@ phases:
 
                 yum install -y yum-plugin-versionlock
                 # listing all the packages because wildcard does not work as expected
-                yum versionlock kernel kernel-core kernel-modules
+                yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
                 [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
@@ -238,7 +245,7 @@ phases:
               
               # Remove kernel version lock
               if [[ ${!PLATFORM} == RHEL ]]; then
-                yum versionlock delete kernel kernel-core kernel-modules
+                yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
