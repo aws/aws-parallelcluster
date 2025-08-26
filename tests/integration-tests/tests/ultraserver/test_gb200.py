@@ -467,6 +467,9 @@ def test_gb200(
     cluster.update(str(final_cluster_config), force_update=True)
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
+    wait_for_instances_in_compute_resource(
+        cluster, queue_with_imex, compute_resource_with_imex, ["running"], max_queue_size_updated
+    )
 
     # Verify topology plugin is completely disabled after removing force_configuration
     assert_topology_plugin_completely_disabled(cluster)
