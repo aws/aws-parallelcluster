@@ -1415,7 +1415,9 @@ class LoginNodesSshSchema(BaseSshSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LoginNodesSsh(**data)
+        # If KeyName is present in the user configuration, mark it as explicitly set
+        key_name_explicitly_set = "key_name" in data
+        return LoginNodesSsh(key_name_explicitly_set=key_name_explicitly_set, **data)
 
 
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):
