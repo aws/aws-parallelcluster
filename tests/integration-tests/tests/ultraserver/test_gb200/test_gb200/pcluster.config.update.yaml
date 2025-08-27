@@ -14,6 +14,11 @@ HeadNode:
       - BucketName: {{ bucket_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
+  {% if instance == "p6e-gb200.36xlarge" %}
+  SlurmSettings:
+    CustomSlurmSettings:
+      - PrologFlags: "Alloc,NoHold"
+  {% endif %}
   SlurmQueues:
   - Name: {{ queue_with_imex }}
     {% if capacity_block_reservation_id %}
