@@ -9,8 +9,6 @@ LoginNodes:
     Networking:
       SubnetIds:
       - subnet-12345678
-    Ssh:
-      KeyName: valid-ssh-key
 HeadNode:
   InstanceType: t3.micro
   Networking:

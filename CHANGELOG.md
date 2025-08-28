@@ -4,9 +4,14 @@ CHANGELOG
 3.14.0
 ------
 
+**DEPRECATIONS**
+- The configuration parameter `LoginNodes/Pools/Ssh/KeyName` has been deprecated. The CLI now returns a warning message when it is used in the cluster configuration.
+  See https://github.com/aws/aws-parallelcluster/issues/6811.
+
 **ENHANCEMENTS**
 - Add support for p6e-gb200 instances via capacity blocks.
 - Echo chef-client log when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
+- Add `build-image` support for kernel 6.12 of Amazon Linux 2023. The official ParallelCluster Amazon Linux 2023 AMIs use kernel 6.12.
 
 **CHANGES**
 - Ubuntu 20.04 is no longer supported.

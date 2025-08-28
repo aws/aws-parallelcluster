@@ -16,7 +16,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               FILE=/etc/os-release
               if [ -e ${!FILE} ]; then
                 . ${!FILE}
@@ -32,7 +32,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
@@ -64,7 +64,7 @@ phases:
         inputs:
           commands:
             - |
-               set -v
+               set -x
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
                if [ `echo "${!OS}" | grep -E '^(alinux|rhel|rocky)'` ]; then
@@ -81,7 +81,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
               if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|ubuntu|rhel|rocky)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
@@ -102,7 +102,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == DEBIAN ]]; then
@@ -120,7 +120,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
@@ -136,7 +136,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               echo ${AWS::Region}
 
       - name: CreatingJsonFile
@@ -152,7 +152,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               DISABLE_KERNEL_UPDATE=$(cat /etc/parallelcluster/image_dna.json | jq -r '.cluster.disable_kernel_update')
               echo "${!DISABLE_KERNEL_UPDATE}"
 
@@ -161,16 +161,21 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              if [[ $OS == alinux2023 && $(uname -r) == 6.12.* ]]; then
+                KERNEL_PACKAGES_PREFIX="kernel6.12"
+              else
+                KERNEL_PACKAGES_PREFIX="kernel"
+              fi
 
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
                 if [[ ${!PLATFORM} == RHEL ]]; then
                   yum install -y yum-plugin-versionlock
                   # listing all the packages because wildcard does not work as expected
-                  yum versionlock kernel kernel-core kernel-modules
+                  yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
 
                   if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                     yum versionlock rocky-release rocky-repos
@@ -186,7 +191,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
@@ -222,14 +227,19 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              if [[ $OS == alinux2023 && $(uname -r) == 6.12.* ]]; then
+                KERNEL_PACKAGES_PREFIX="kernel6.12"
+              else
+                KERNEL_PACKAGES_PREFIX="kernel"
+              fi
 
               # Remove kernel version lock
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]] && [[ ${!PLATFORM} == RHEL ]]; then
-                yum versionlock delete kernel kernel-core kernel-modules
+                yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
                   yum versionlock delete rocky-release
@@ -244,7 +254,7 @@ phases:
         inputs:
           commands:
             - |
-              set -v
+              set -x
               if [[ -f /tmp/imagebuilder_service/ssm_installed ]]; then
                 echo "Keeping SSM agent installed"
                 rm -rf /tmp/imagebuilder_service/ssm_installed

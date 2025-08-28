@@ -18,8 +18,6 @@ LoginNodes:
     Networking:
       SubnetIds:
         - subnet-12345678
-    Ssh:
-      KeyName: ec2-key-name
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

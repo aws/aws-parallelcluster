@@ -24,8 +24,6 @@ LoginNodes:
           - subnet-12345678
         SecurityGroups:
           - sg-12345678
-      Ssh:
-        KeyName: kn-12345678
 SharedStorage:
   - MountDir: /opt/shared/fsx-lustre/managed/1
     Name: shared-fsx-lustre-managed-1

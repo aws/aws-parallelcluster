@@ -27,5 +27,3 @@ LoginNodes:
           - subnet-12345678
         AdditionalSecurityGroups:
           - sg-12345678
-      Ssh:
-        KeyName: kn-12345678
