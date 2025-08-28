@@ -18,6 +18,7 @@ Scheduling:
   SlurmSettings:
     CustomSlurmSettings:
       - PrologFlags: "Alloc,NoHold"
+      - MessageTimeout: 200
   {% endif %}
   SlurmQueues:
   - Name: {{ queue_with_imex }}
