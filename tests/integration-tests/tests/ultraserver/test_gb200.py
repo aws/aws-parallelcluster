@@ -72,14 +72,13 @@ def assert_no_errors_in_logs(cluster: Cluster, queue: str, compute_resource: str
             assert_regex_in_file(cluster, compute_node_ip, log, r"(warn|error|fail)", negate=True)
 
 
-def assert_imex_status(  # noqa: C901
+def assert_imex_status(
     rce: RemoteCommandExecutor,
     job_id: str,
     ips: list,
     service_status: str = "UP",
     node_status: str = "READY",
     connection_status: str = "CONNECTED",
-    retry_on_failure: bool = True,
 ):
     """
     Assert that the output returned by the nvidia-imex-ctl command represent a healthy status for IMEX.
@@ -153,90 +152,86 @@ def assert_imex_status(  # noqa: C901
     }
     """
 
-    def _check_imex_status():
-        slurm = SlurmCommands(rce)
-        unique_ips = set(ips)
+    slurm = SlurmCommands(rce)
+    unique_ips = set(ips)
 
-        imex_statuses = []
-        for reporting_node_ip in unique_ips:
-            # When fake ips are used we cannot retrieve the node name from the ip.
-            # We retrieve the nodename from the list of nodes executing the job to check IMEX status.
-            if reporting_node_ip in FAKE_IPS:
-                reporting_node_name = slurm.get_batch_host_for_job(job_id)
-            else:
-                reporting_node_name = slurm.get_nodename_from_ip(reporting_node_ip)
-            logging.info(
-                f"Retrieving IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}"
+    imex_statuses = []
+    for reporting_node_ip in unique_ips:
+        # When fake ips are used we cannot retrieve the node name from the ip.
+        # We retrieve the nodename from the list of nodes executing the job to check IMEX status.
+        if reporting_node_ip in FAKE_IPS:
+            reporting_node_name = slurm.get_batch_host_for_job(job_id)
+        else:
+            reporting_node_name = slurm.get_nodename_from_ip(reporting_node_ip)
+        logging.info(f"Retrieving IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}")
+        result_file_name = f"result_{job_id}_{reporting_node_name}"
+        result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
+        result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
+        if service_status == "UP":
+            assert_that(result_stderr).is_empty()
+        logging.info(
+            f"IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}: {result_stdout}"
+        )
+        imex_statuses.append(json.loads(result_stdout))
+    latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
+    logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
+    assert_that(latest_imex_status["status"]).is_equal_to(service_status)
+    for ip_source in unique_ips:
+        node_item = next(filter(lambda i: i["host"] == ip_source, latest_imex_status["nodes"].values()), None)
+        assert_that(node_item).is_not_none()
+        assert_that(node_item["status"]).is_equal_to(node_status)
+        for ip_destination in unique_ips:
+            connection_item = next(
+                filter(lambda i: i["host"] == ip_destination, node_item["connections"].values()), None
             )
-            result_file_name = f"result_{job_id}_{reporting_node_name}"
-            result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
-            result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
-            if service_status == "UP":
-                assert_that(result_stderr).is_empty()
-            logging.info(
-                f"IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}: {result_stdout}"
-            )
-            imex_statuses.append(json.loads(result_stdout))
-        latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
-        logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
-        assert_that(latest_imex_status["status"]).is_equal_to(service_status)
-        for ip_source in unique_ips:
-            node_item = next(filter(lambda i: i["host"] == ip_source, latest_imex_status["nodes"].values()), None)
-            assert_that(node_item).is_not_none()
-            assert_that(node_item["status"]).is_equal_to(node_status)
-            for ip_destination in unique_ips:
-                connection_item = next(
-                    filter(lambda i: i["host"] == ip_destination, node_item["connections"].values()), None
-                )
-                assert_that(connection_item).is_not_none()
-                assert_that(connection_item["status"]).is_equal_to(connection_status)
-
-    if not retry_on_failure:
-        _check_imex_status()
-        return
-
-    # Retry mechanism: check every 30 seconds for up to 700 seconds
-    timeout_seconds = 700
-    retry_interval = 30
-    start_time = time.time()
-
-    while True:
-        try:
-            _check_imex_status()
-            logging.info("IMEX status check succeeded")
-            return
-        except Exception as e:
-            elapsed_time = time.time() - start_time
-            if elapsed_time >= timeout_seconds:
-                logging.error(f"IMEX status check failed after {elapsed_time:.1f} seconds: {e}")
-                raise
-
-            logging.warning(
-                f"IMEX status check failed after {elapsed_time:.1f}s: {e}. Retrying in {retry_interval}s..."
-            )
-            time.sleep(retry_interval)
+            assert_that(connection_item).is_not_none()
+            assert_that(connection_item["status"]).is_equal_to(connection_status)
 
 
 def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
-    rce = RemoteCommandExecutor(cluster)
+    def _check_imex_healthy():
+        rce = RemoteCommandExecutor(cluster)
 
-    launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-    logging.info(
-        f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: " f"{launch_template_id}"
-    )
+        launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
+        logging.info(
+            f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: "
+            f"{launch_template_id}"
+        )
 
-    job_id = submit_job_imex_status(rce, queue, max_nodes)
+        job_id = submit_job_imex_status(rce, queue, max_nodes)
 
-    logging.info(
-        f"Retrieving private IP addresses for {max_nodes} compute nodes "
-        f"in queue {queue} and compute resource {compute_resource}"
-    )
-    ips = cluster.get_compute_nodes_private_ip(queue, compute_resource, ["running"], max_nodes)
-    logging.info(f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}")
+        logging.info(
+            f"Retrieving private IP addresses for {max_nodes} compute nodes "
+            f"in queue {queue} and compute resource {compute_resource}"
+        )
+        ips = cluster.get_compute_nodes_private_ip(queue, compute_resource, ["running"], max_nodes)
+        logging.info(
+            f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}"
+        )
 
-    assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
-    assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
-    assert_no_errors_in_logs(cluster, queue, compute_resource)
+        assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
+        assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
+        assert_no_errors_in_logs(cluster, queue, compute_resource)
+
+    # Retry mechanism: retry every 5 minutes, maximum 2 retries (3 total attempts)
+    max_retries = 2
+    retry_interval = 300  # 5 minutes
+
+    for attempt in range(max_retries + 1):
+        try:
+            _check_imex_healthy()
+            logging.info("IMEX health check succeeded")
+            return
+        except Exception as e:
+            if attempt == max_retries:
+                logging.error(f"IMEX health check failed after {attempt + 1} attempts: {e}")
+                raise
+
+            logging.warning(
+                f"IMEX health check failed on attempt {attempt + 1}/{max_retries + 1}: {e}. "
+                f"Retrying in {retry_interval}s..."
+            )
+            time.sleep(retry_interval)
 
 
 def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
@@ -498,9 +493,6 @@ def test_gb200(
     cluster.update(str(final_cluster_config), force_update=True)
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
-    wait_for_instances_in_compute_resource(
-        cluster, queue_with_imex, compute_resource_with_imex, ["running"], max_queue_size_updated
-    )
 
     # Verify topology plugin is completely disabled after removing force_configuration
     assert_topology_plugin_completely_disabled(cluster)
