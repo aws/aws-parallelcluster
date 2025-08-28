@@ -42,6 +42,10 @@ Scheduling:
           Gpu:
             Enabled: True
     Networking:
+      {% if instance == "p6e-gb200.36xlarge" %}
+      PlacementGroup:
+        Enabled: false
+      {% endif %}
       SubnetIds:
         - {{ private_subnet_id }}
   - Name: {{ queue_without_imex }}
