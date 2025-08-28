@@ -279,8 +279,8 @@ test-suites:
   ultraserver:
     test_gb200.py::test_gb200:
       dimensions:
-        - regions: [ "us-east-1" ]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        - regions: [ "use1-az1" ] # do not move, unless instance type support is moved as well
+          instances: [ "g5g.xlarge" ]
           oss: [ "alinux2023" ]
           schedulers: [ "slurm" ]
   health_checks:
