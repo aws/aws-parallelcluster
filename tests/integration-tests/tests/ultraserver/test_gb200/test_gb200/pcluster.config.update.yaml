@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: m6g.xlarge
+  InstanceType: c6g.xlarge
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -30,14 +30,14 @@ Scheduling:
     ComputeResources:
       - Name: {{ compute_resource_with_imex }}
         InstanceType: {{ instance }}
+        MinCount: {{ max_queue_size }}
+        MaxCount: {{ max_queue_size }}
         {% if instance == "p6e-gb200.36xlarge" %}
         DisableSimultaneousMultithreading: true
         Efa:
           Enabled: true
           GdrSupport: true
         {% endif %}
-        MinCount: {{ max_queue_size }}
-        MaxCount: {{ max_queue_size }}
         HealthChecks:
           Gpu:
             Enabled: True
@@ -55,7 +55,7 @@ Scheduling:
           - InstanceType: m6g.xlarge
           - InstanceType: t4g.xlarge
           - InstanceType: c6gn.xlarge
-        MinCount: {{ max_queue_size_without_imex }}
+        MinCount: {{ min_queue_size_without_imex }}
         MaxCount: 1
     Networking:
       SubnetIds:
