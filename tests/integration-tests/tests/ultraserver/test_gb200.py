@@ -188,23 +188,28 @@ def assert_imex_status(
                 assert_that(connection_item).is_not_none()
                 assert_that(connection_item["status"]).is_equal_to(connection_status)
 
-    # First attempt
-    try:
+    if not retry_on_failure:
         _check_imex_status()
         return
-    except Exception as e:
-        if not retry_on_failure:
-            raise
-        logging.warning(f"IMEX status check failed on first attempt: {e}. Retrying once after 3 minutes...")
     
-    # Retry once after delay to handle transitory DEGRADED to UP state
-    time.sleep(180)
-    try:
-        _check_imex_status()
-        logging.info("IMEX status check succeeded on retry")
-    except Exception as e:
-        logging.error(f"IMEX status check failed on retry: {e}")
-        raise
+    # Retry mechanism: check every 30 seconds for up to 700 seconds
+    timeout_seconds = 700
+    retry_interval = 30
+    start_time = time.time()
+    
+    while True:
+        try:
+            _check_imex_status()
+            logging.info("IMEX status check succeeded")
+            return
+        except Exception as e:
+            elapsed_time = time.time() - start_time
+            if elapsed_time >= timeout_seconds:
+                logging.error(f"IMEX status check failed after {elapsed_time:.1f} seconds: {e}")
+                raise
+            
+            logging.warning(f"IMEX status check failed after {elapsed_time:.1f}s: {e}. Retrying in {retry_interval}s...")
+            time.sleep(retry_interval)
 
 
 def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
