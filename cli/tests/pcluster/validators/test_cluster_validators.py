@@ -1827,7 +1827,7 @@ def test_dcv_validator(
     mocker, boto3_stubber, dcv_enabled, os, instance_type, allowed_ips, port, gpu_count, expected_message
 ):
     mock_aws_api(mocker)
-    get_instance_type_info_mock = mocker.patch(
+    mocker.patch(
         "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(
             {
