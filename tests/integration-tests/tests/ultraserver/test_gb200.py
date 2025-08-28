@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import time
 from datetime import datetime
 
 import boto3
@@ -78,6 +79,7 @@ def assert_imex_status(
     service_status: str = "UP",
     node_status: str = "READY",
     connection_status: str = "CONNECTED",
+    retry_on_failure: bool = True,
 ):
     """
     Assert that the output returned by the nvidia-imex-ctl command represent a healthy status for IMEX.
@@ -150,40 +152,59 @@ def assert_imex_status(
      "status": "DOWN"
     }
     """
-    slurm = SlurmCommands(rce)
-    unique_ips = set(ips)
+    def _check_imex_status():
+        slurm = SlurmCommands(rce)
+        unique_ips = set(ips)
 
-    imex_statuses = []
-    for reporting_node_ip in unique_ips:
-        # When fake ips are used we cannot retrieve the node name from the ip.
-        # We retrieve the nodename from the list of nodes executing the job to check IMEX status.
-        if reporting_node_ip in FAKE_IPS:
-            reporting_node_name = slurm.get_batch_host_for_job(job_id)
-        else:
-            reporting_node_name = slurm.get_nodename_from_ip(reporting_node_ip)
-        logging.info(f"Retrieving IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}")
-        result_file_name = f"result_{job_id}_{reporting_node_name}"
-        result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
-        result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
-        if service_status == "UP":
-            assert_that(result_stderr).is_empty()
-        logging.info(
-            f"IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}: {result_stdout}"
-        )
-        imex_statuses.append(json.loads(result_stdout))
-    latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
-    logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
-    assert_that(latest_imex_status["status"]).is_equal_to(service_status)
-    for ip_source in unique_ips:
-        node_item = next(filter(lambda i: i["host"] == ip_source, latest_imex_status["nodes"].values()), None)
-        assert_that(node_item).is_not_none()
-        assert_that(node_item["status"]).is_equal_to(node_status)
-        for ip_destination in unique_ips:
-            connection_item = next(
-                filter(lambda i: i["host"] == ip_destination, node_item["connections"].values()), None
+        imex_statuses = []
+        for reporting_node_ip in unique_ips:
+            # When fake ips are used we cannot retrieve the node name from the ip.
+            # We retrieve the nodename from the list of nodes executing the job to check IMEX status.
+            if reporting_node_ip in FAKE_IPS:
+                reporting_node_name = slurm.get_batch_host_for_job(job_id)
+            else:
+                reporting_node_name = slurm.get_nodename_from_ip(reporting_node_ip)
+            logging.info(f"Retrieving IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}")
+            result_file_name = f"result_{job_id}_{reporting_node_name}"
+            result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
+            result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
+            if service_status == "UP":
+                assert_that(result_stderr).is_empty()
+            logging.info(
+                f"IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}: {result_stdout}"
             )
-            assert_that(connection_item).is_not_none()
-            assert_that(connection_item["status"]).is_equal_to(connection_status)
+            imex_statuses.append(json.loads(result_stdout))
+        latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
+        logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
+        assert_that(latest_imex_status["status"]).is_equal_to(service_status)
+        for ip_source in unique_ips:
+            node_item = next(filter(lambda i: i["host"] == ip_source, latest_imex_status["nodes"].values()), None)
+            assert_that(node_item).is_not_none()
+            assert_that(node_item["status"]).is_equal_to(node_status)
+            for ip_destination in unique_ips:
+                connection_item = next(
+                    filter(lambda i: i["host"] == ip_destination, node_item["connections"].values()), None
+                )
+                assert_that(connection_item).is_not_none()
+                assert_that(connection_item["status"]).is_equal_to(connection_status)
+
+    # First attempt
+    try:
+        _check_imex_status()
+        return
+    except Exception as e:
+        if not retry_on_failure:
+            raise
+        logging.warning(f"IMEX status check failed on first attempt: {e}. Retrying once after 3 minutes...")
+    
+    # Retry once after delay to handle transitory DEGRADED to UP state
+    time.sleep(180)
+    try:
+        _check_imex_status()
+        logging.info("IMEX status check succeeded on retry")
+    except Exception as e:
+        logging.error(f"IMEX status check failed on retry: {e}")
+        raise
 
 
 def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
