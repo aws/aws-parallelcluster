@@ -72,7 +72,7 @@ def assert_no_errors_in_logs(cluster: Cluster, queue: str, compute_resource: str
             assert_regex_in_file(cluster, compute_node_ip, log, r"(warn|error|fail)", negate=True)
 
 
-def assert_imex_status(
+def assert_imex_status(  # noqa: C901
     rce: RemoteCommandExecutor,
     job_id: str,
     ips: list,
@@ -152,6 +152,7 @@ def assert_imex_status(
      "status": "DOWN"
     }
     """
+
     def _check_imex_status():
         slurm = SlurmCommands(rce)
         unique_ips = set(ips)
@@ -164,7 +165,9 @@ def assert_imex_status(
                 reporting_node_name = slurm.get_batch_host_for_job(job_id)
             else:
                 reporting_node_name = slurm.get_nodename_from_ip(reporting_node_ip)
-            logging.info(f"Retrieving IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}")
+            logging.info(
+                f"Retrieving IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}"
+            )
             result_file_name = f"result_{job_id}_{reporting_node_name}"
             result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
             result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
@@ -191,12 +194,12 @@ def assert_imex_status(
     if not retry_on_failure:
         _check_imex_status()
         return
-    
+
     # Retry mechanism: check every 30 seconds for up to 700 seconds
     timeout_seconds = 700
     retry_interval = 30
     start_time = time.time()
-    
+
     while True:
         try:
             _check_imex_status()
@@ -207,8 +210,10 @@ def assert_imex_status(
             if elapsed_time >= timeout_seconds:
                 logging.error(f"IMEX status check failed after {elapsed_time:.1f} seconds: {e}")
                 raise
-            
-            logging.warning(f"IMEX status check failed after {elapsed_time:.1f}s: {e}. Retrying in {retry_interval}s...")
+
+            logging.warning(
+                f"IMEX status check failed after {elapsed_time:.1f}s: {e}. Retrying in {retry_interval}s..."
+            )
             time.sleep(retry_interval)
 
 
