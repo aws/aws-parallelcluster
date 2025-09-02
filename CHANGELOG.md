@@ -15,13 +15,14 @@ CHANGELOG
 
 **CHANGES**
 - Ubuntu 20.04 is no longer supported.
-- Support prioritized and capacity-optimized-prioritized Allocation Strategy
+- Support prioritized and capacity-optimized-prioritized Allocation Strategy.
 - Support DCV on Amazon Linux 2023.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
-- The build-image command now deploys a global role that is used to automatically delete the build-image stack after images either succeed or fail the build. 
-  The role is meant to exists even after the stack has been deleted. This is to prevent build-image stack deletion failures, reported in https://github.com/aws/aws-parallelcluster/issues/5914
+- The build-image command now deploys a global role that is used to automatically delete the build-image stack after images either succeed or fail the build.
+  The role is meant to exist even after the stack has been deleted. This is to prevent build-image stack deletion failures, reported in https://github.com/aws/aws-parallelcluster/issues/5914.
 - Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to enable encryption on the EFS file system used for the head node internal shared storage.
+- Add validator that warns against using non GPU instances with DCV.
 - Upgrade Slurm to version 24.11.6 (from 24.05.8).
 - Upgrade EFA installer to 1.42.0 (from 1.41.0).
   - Efa-driver: efa-2.15.3-1
@@ -30,18 +31,17 @@ CHANGELOG
   - Libfabric-aws: libfabric-aws-2.1.0-3
   - Rdma-core: rdma-core-57.0-1
   - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.6-11
-- Upgrade Cinc Client to version to 18.4.12 from 18.2.7.
+- Upgrade Cinc Client to version 18.4.12 (from 18.2.7).
 - Upgrade NVIDIA driver to version 570.172.08 (from 570.86.15) for all OSs except AL2.
 - Upgrade CUDA Toolkit to version 12.8.1 (from 12.8.0) for all OSs except AL2.
 - Upgrade DCGM to version 4.2.3 (from 3.3.6) for all OSs except AL2.
 - Upgrade Python to 3.12.11 (from 3.12.8) for all OSs except AL2.
 - Upgrade Intel MPI Library to 2021.16.0 (from 2021.13.1).
-- Add validator that warns against using non GPU instances with DCV.
 
 **BUG FIXES**
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 - Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
-- Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023. 
+- Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023.
 
 3.13.2
 ------
