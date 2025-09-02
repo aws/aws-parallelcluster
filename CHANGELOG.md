@@ -12,8 +12,10 @@ CHANGELOG
 - Add support for p6e-gb200 instances via capacity blocks.
 - Echo chef-client log when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
 - Add `build-image` support for kernel 6.12 of Amazon Linux 2023. The official ParallelCluster Amazon Linux 2023 AMIs use kernel 6.12.
+- Remove UnkillableStepTimeout from slurm.conf and let slurm set this value.
 
 **CHANGES**
+- Install nvidia-imex for all OSs except AL2.
 - Ubuntu 20.04 is no longer supported.
 - Support prioritized and capacity-optimized-prioritized Allocation Strategy.
 - Support DCV on Amazon Linux 2023.
