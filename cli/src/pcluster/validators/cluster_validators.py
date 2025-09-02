@@ -1061,6 +1061,14 @@ class DcvValidator(Validator):
                     FailureLevel.WARNING,
                 )
 
+            instance_info = AWSApi.instance().ec2.get_instance_type_info(instance_type)
+            if not instance_info.gpu_count():
+                self._add_failure(
+                    f"DCV is enabled but the instance type '{instance_type}' does not have a GPU. "
+                    "It is recommended to use DCV with a GPU-enabled instance type.",
+                    FailureLevel.WARNING,
+                )
+
 
 class IntelHpcOsValidator(Validator):
     """Intel HPC OS validator."""

@@ -238,7 +238,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_6 }}]
+          oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
@@ -280,7 +280,7 @@ test-suites:
     test_gb200.py::test_gb200:
       dimensions:
         - regions: [ "us-east-1" ]
-          instances: [ "g4dn.2xlarge" ]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: [ "alinux2023" ]
           schedulers: [ "slurm" ]
   health_checks:

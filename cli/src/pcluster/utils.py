@@ -603,3 +603,14 @@ def format_arn(partition: str, service: str, region: str, account: str, resource
 def generate_string_hash(input_string: str, hash_length: int = 12) -> str:
     """Return first input length hex chars of sha256(str)."""
     return sha256(input_string.encode()).hexdigest()[:hash_length]
+
+
+def get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reservation_ids):
+    needed_capacity_block_statuses = []
+    for status in statuses:
+        if (
+            status.get("CapacityReservationStatuses")
+            and status.get("CapacityReservationStatuses")[0].get("CapacityReservationId") in capacity_reservation_ids
+        ):
+            needed_capacity_block_statuses.append(status)
+    return needed_capacity_block_statuses
