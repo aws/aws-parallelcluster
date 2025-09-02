@@ -12,12 +12,12 @@ CHANGELOG
 - Add support for p6e-gb200 instances via capacity blocks.
 - Echo chef-client log when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
 - Add `build-image` support for kernel 6.12 of Amazon Linux 2023. The official ParallelCluster Amazon Linux 2023 AMIs use kernel 6.12.
-- Remove `UnkillableStepTimeout` from slurm.conf and let slurm set this value.
+- Support `prioritized` and `capacity-optimized-prioritized` Allocation Strategy. This allows users to prioritize subnets for instance placement to optimize costs and performance.
 
 **CHANGES**
 - Install nvidia-imex for all OSs except AL2.
 - Ubuntu 20.04 is no longer supported.
-- Support prioritized and capacity-optimized-prioritized Allocation Strategy.
+- Remove `UnkillableStepTimeout` from slurm.conf and let slurm set this value.
 - Support DCV on Amazon Linux 2023.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
@@ -44,7 +44,7 @@ CHANGELOG
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 - Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
 - Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023.
-- Fix cluster id mismatch known issue by deleting the file `/var/spool/slurm.state/clustername` before configuring Slurm accounting.
+- Fix cluster id mismatch issue by deleting the file `/var/spool/slurm.state/clustername` before configuring Slurm accounting.
 
 3.13.2
 ------
