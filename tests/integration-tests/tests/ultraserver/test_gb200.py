@@ -332,9 +332,9 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
 
     # Check TopologyPlugin is not configured or empty
     logging.info("Checking TopologyPlugin is completely disabled")
-    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin || echo 'TopologyPlugin not found'")
-    # TopologyPlugin should either not be present or be empty
-    assert_that(result.stdout.strip()).is_equal_to("TopologyPlugin not found")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("= topology/default")
 
     # Check topology.conf does not exist
     topology_conf_path = "/opt/slurm/etc/topology.conf"
