@@ -330,7 +330,7 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     """Verify that TopologyPlugin is completely disabled and no topology configuration exists."""
     rce = RemoteCommandExecutor(cluster)
 
-    # Check TopologyPlugin is not configured or empty
+    # Check TopologyPlugin is not configured -> default
     logging.info("Checking TopologyPlugin is completely disabled")
     result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
     assert_that(result.stdout.strip()).contains("TopologyPlugin")
