@@ -5,15 +5,18 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add basic support for p6e-gb200 instances via capacity blocks. AL2 is not supported and IMEX configuration must be done manually.
-- Chef-client logs are now available in the instance console to help investigating node bootstrap failures in cases CloudWatch logs are not available.
+- Support for P6e-GB200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
+- Echo chef-client logs in the instance console when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
 - Add `build-image` support for kernel 6.12 of Amazon Linux 2023. The official ParallelCluster Amazon Linux 2023 AMIs use kernel 6.12.
 - Support `prioritized` and `capacity-optimized-prioritized` Allocation Strategy. This allows users to prioritize subnets for instance placement to optimize costs and performance.
 - Support DCV on Amazon Linux 2023.
 
+**LIMITATIONS**
+- P6e-GB200 instances are only tested on Amazon Linux 2023, Ubuntu 20.04 and Ubuntu 24.04.
+- Using IMEX on P6e-GB200 requires additional setup. Please refer to <PLACE_HOLDER for the tutorial link>.
+
 **CHANGES**
 - Install nvidia-imex for all OSs except AL2.
-- Ubuntu 20.04 is no longer supported.
 - Remove `UnkillableStepTimeout` from slurm.conf and let slurm set this value.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
@@ -37,8 +40,8 @@ CHANGELOG
 - Upgrade DCV to version 2024.0-19030.
 
 **BUG FIXES**
-- The `build-image` command now deploys a global role that is used to automatically delete the build-image stack after images either succeed or fail the build.
-  The role is meant to exist even after the stack has been deleted. This is to prevent build-image stack deletion failures, reported in https://github.com/aws/aws-parallelcluster/issues/5914.
+- Prevent `build-image` stack deletion failures by deploying a global role that automatically deletes the `build-image` stack after images either succeed or fail the build.
+  The role is meant to exist even after the stack has been deleted. See https://github.com/aws/aws-parallelcluster/issues/5914.
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 - Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
 - Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023.
@@ -47,6 +50,7 @@ CHANGELOG
 **DEPRECATIONS**
 - The configuration parameter `LoginNodes/Pools/Ssh/KeyName` has been deprecated, and it will be removed in future releases. The CLI now returns a warning message when it is used in the cluster configuration.
   See https://github.com/aws/aws-parallelcluster/issues/6811.
+- Ubuntu 20.04 is no longer supported.
 
 3.13.2
 ------
