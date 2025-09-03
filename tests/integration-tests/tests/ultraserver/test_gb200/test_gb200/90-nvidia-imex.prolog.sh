@@ -9,7 +9,7 @@ SCONTROL_CMD="/opt/slurm/bin/scontrol"
 IMEX_START_TIMEOUT=60
 IMEX_STOP_TIMEOUT=15
 WAIT_TIME_TO_STABILIZE=30
-#TODO In production, specify p6e-gb200, only. We added m6g only for testing purposes.
+#TODO In production, specify p6e-gb200, only. We added g5g only for testing purposes.
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
 
@@ -100,25 +100,25 @@ function write_file() {
       fi
       echo "${_content}" > "${_file}"
   ) 200>"${_lock_file}"
-  
+
   local _lock_result=$?
-  
+
   if [[ ${_lock_result} -eq 0 ]]; then
     return 0 # Updated successfully
   fi
-  
+
   # Deadlock recovery: remove stale lock file and retry once
   error "Potential deadlock detected for ${_file}, attempting recovery"
   rm -f "${_lock_file}"
   sleep 1  # Brief pause to avoid race conditions
-  
+
   (
       if ! flock -x -w 10 200; then
         exit 1
       fi
       echo "${_content}" > "${_file}"
   ) 200>"${_lock_file}"
-  
+
   if [[ $? -eq 0 ]]; then
     info "Lock acquired after deadlock recovery for ${_file}"
     return 0 # Updated
