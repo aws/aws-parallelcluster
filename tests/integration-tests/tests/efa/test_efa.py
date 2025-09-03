@@ -62,7 +62,9 @@ def test_efa(
 
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
-    if instance in ["p4d.24xlarge", "p5.48xlarge"]:
+    if instance in ["p4d.24xlarge", "p5.48xlarge"] and not os.startswith(("rocky", "rhel")):
+        # Doc of supported instance types and operating systems:
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
         _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands, instance)
 
     with soft_assertions():
