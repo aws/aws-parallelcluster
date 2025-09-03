@@ -15,7 +15,7 @@ import pytest
 import xmltodict
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_compute_nodes_instance_ids
+from utils import get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
@@ -184,8 +184,21 @@ def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, sch
         str(test_datadir / "nccl_benchmarks" / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True, timeout=600
     )
 
+    try:
+        gpu_per_node = get_instance_info(instance)["GpuInfo"]["Gpus"][0]["Count"]
+    except Exception as e:
+        # Getting information from us-east-1 is useful for p6e-GB200
+        # because it is only publicly available in us-east-1 while we are testing in other regions.
+        logging.warning(
+            f"Failed to get gpu count for {instance} from the current region. Exception: {e}. "
+            "Trying to retrieve the information from us-east-1..."
+        )
+        gpu_per_node = get_instance_info(instance, "us-east-1")["GpuInfo"]["Gpus"][0]["Count"]
+
     result = scheduler_commands.submit_script(
-        str(test_datadir / "nccl_benchmarks" / "nccl_tests_submit_{0}.sh".format(mpi_module)), nodes=2
+        str(test_datadir / "nccl_benchmarks" / "nccl_tests_submit_{0}.sh".format(mpi_module)),
+        nodes=2,
+        ntasks_per_node=gpu_per_node,
     )
 
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
@@ -215,11 +228,16 @@ def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, sch
         "cat /shared/nccl_tests.out | grep -E '1073741824\\s+268435456' | awk '{print $12}'"
     ).stdout
 
+    out_of_place_max_bandwidth = remote_command_executor.run_remote_command(
+        "cat /shared/nccl_tests.out | grep -E '1073741824\\s+268435456' | awk '{print $8}'"
+    ).stdout
+
     instance_bandwidth_dict = {
         # p4d.24xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
         "p4d.24xlarge": 26.0,
         # p5.48xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 250GB/s
         "p5.48xlarge": 250.0,
+        "p6e-gb200.36xlarge": 500,
     }
 
     expected_bandwidth = instance_bandwidth_dict.get(instance)
@@ -227,3 +245,8 @@ def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, sch
         pytest.fail(f"Instance {instance} is not valid for multiple bandwidth tests")
 
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
+    if instance == "p6e-gb200.36xlarge":
+        # Check "out of place" bandwidth for p6e-GB200
+        # because the GPUs are directly connected for different instances on the same ultra server.
+        # The "out of place" bandwidth is expected to be similar to the in-place bandwidth.
+        assert_that(float(out_of_place_max_bandwidth)).is_greater_than(expected_bandwidth)

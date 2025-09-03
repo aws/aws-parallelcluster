@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --nodes=2
 #SBATCH --exclusive
-#SBATCH --ntasks-per-node=8
 
 module load openmpi
 NCCL_VERSION='2.27.7-1'
