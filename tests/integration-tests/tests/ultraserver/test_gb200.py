@@ -488,6 +488,7 @@ def test_gb200(
     # Verify IMEX is still healthy after node replacement
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
 
+    min_queue_size_without_imex = 0  # Update MinCount to 0 so that the slurmctld can be restarted.
     # Test final cluster update to remove topology plugin configuration completely
     final_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.final.yaml",
@@ -507,12 +508,12 @@ def test_gb200(
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
 
-    # Verify topology plugin is completely disabled after removing force_configuration
-    if instance != "p6e-gb200.36xlarge":
-        assert_topology_plugin_completely_disabled(cluster)
+    # Verify topology plugin is completely disabled after removing force_configuration if using non-nvl instances
+    # Verify topology plugin is completely disabled after removing the queue which contains nvl instances
+    assert_topology_plugin_completely_disabled(cluster)
 
     # Verify IMEX still works but topology is completely removed
-    assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
     with soft_assertions():
         if instance != "p6e-gb200.36xlarge":
+            assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
             assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)

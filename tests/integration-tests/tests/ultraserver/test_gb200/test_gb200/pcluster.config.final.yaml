@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: c6g.xlarge
+  InstanceType: m6g.xlarge
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -21,6 +21,7 @@ Scheduling:
       - MessageTimeout: 200
   {% endif %}
   SlurmQueues:
+  {% if instance != "p6e-gb200.36xlarge" %}
   - Name: {{ queue_with_imex }}
     {% if capacity_block_reservation_id %}
     CapacityType: CAPACITY_BLOCK
@@ -48,6 +49,7 @@ Scheduling:
       {% endif %}
       SubnetIds:
         - {{ private_subnet_id }}
+  {% endif %}
   - Name: {{ queue_without_imex }}
     ComputeResources:
       - Name: {{ compute_resource_without_imex }}
