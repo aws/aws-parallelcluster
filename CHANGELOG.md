@@ -12,7 +12,7 @@ CHANGELOG
 - Support DCV on Amazon Linux 2023.
 
 **LIMITATIONS**
-- P6e-GB200 instances are only tested on Amazon Linux 2023, Ubuntu 20.04 and Ubuntu 24.04.
+- P6e-GB200 instances are only tested on Amazon Linux 2023, Ubuntu 22.04 and Ubuntu 24.04.
 - Using IMEX on P6e-GB200 requires additional setup. Please refer to <PLACE_HOLDER for the tutorial link>.
 
 **CHANGES**
