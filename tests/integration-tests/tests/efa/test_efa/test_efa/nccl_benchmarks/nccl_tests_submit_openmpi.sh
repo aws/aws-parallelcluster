@@ -6,10 +6,17 @@ module load openmpi
 NCCL_VERSION='2.27.7-1'
 NCCL_BENCHMARKS_VERSION='2.16.7'
 
+. /etc/os-release
+if [[ $ID==rhel || $ID==rocky ]]; then
+  OFI_PATH="/shared/openmpi/ofi-plugin/lib/"
+else
+  OFI_PATH=$(cat /etc/ld.so.conf.d/100_ofinccl.conf)
+fi
+
 mpirun \
 -x FI_PROVIDER="efa" \
 -x FI_EFA_USE_DEVICE_RDMA=1 \
--x LD_LIBRARY_PATH=/shared/openmpi/nccl-${NCCL_VERSION}/build/lib/:$(cat /etc/ld.so.conf.d/100_ofinccl.conf):$LD_LIBRARY_PATH \
+-x LD_LIBRARY_PATH=/shared/openmpi/nccl-${NCCL_VERSION}/build/lib/:${OFI_PATH}:$LD_LIBRARY_PATH \
 -x RDMAV_FORK_SAFE=1 \
 -x NCCL_ALGO=ring \
 -x NCCL_DEBUG=WARNING \
