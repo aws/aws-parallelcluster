@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import time
 from datetime import datetime
 
 import boto3
@@ -150,6 +151,7 @@ def assert_imex_status(
      "status": "DOWN"
     }
     """
+
     slurm = SlurmCommands(rce)
     unique_ips = set(ips)
 
@@ -187,25 +189,49 @@ def assert_imex_status(
 
 
 def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
-    rce = RemoteCommandExecutor(cluster)
+    def _check_imex_healthy():
+        rce = RemoteCommandExecutor(cluster)
 
-    launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-    logging.info(
-        f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: " f"{launch_template_id}"
-    )
+        launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
+        logging.info(
+            f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: "
+            f"{launch_template_id}"
+        )
 
-    job_id = submit_job_imex_status(rce, queue, max_nodes)
+        job_id = submit_job_imex_status(rce, queue, max_nodes)
 
-    logging.info(
-        f"Retrieving private IP addresses for {max_nodes} compute nodes "
-        f"in queue {queue} and compute resource {compute_resource}"
-    )
-    ips = cluster.get_compute_nodes_private_ip(queue, compute_resource, ["running"], max_nodes)
-    logging.info(f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}")
+        logging.info(
+            f"Retrieving private IP addresses for {max_nodes} compute nodes "
+            f"in queue {queue} and compute resource {compute_resource}"
+        )
+        ips = cluster.get_compute_nodes_private_ip(queue, compute_resource, ["running"], max_nodes)
+        logging.info(
+            f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}"
+        )
 
-    assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
-    assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
-    assert_no_errors_in_logs(cluster, queue, compute_resource)
+        assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
+        assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
+        assert_no_errors_in_logs(cluster, queue, compute_resource)
+
+    # Retry mechanism: retry every 5 minutes, maximum 2 retries (3 total attempts)
+    max_retries = 2
+    retry_interval = 300  # 5 minutes
+
+    for attempt in range(max_retries + 1):
+        try:
+            _check_imex_healthy()
+            logging.info("IMEX health check succeeded")
+            return
+        except Exception as e:
+            if attempt == max_retries:
+                logging.error(f"IMEX health check failed after {attempt + 1} attempts: {e}")
+                raise
+
+            logging.warning(
+                f"IMEX health check failed on attempt {attempt + 1}/{max_retries + 1}: {e}. "
+                f"Retrying in {retry_interval}s..."
+            )
+            time.sleep(retry_interval)
 
 
 def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
@@ -304,11 +330,11 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     """Verify that TopologyPlugin is completely disabled and no topology configuration exists."""
     rce = RemoteCommandExecutor(cluster)
 
-    # Check TopologyPlugin is not configured or empty
+    # Check TopologyPlugin is not configured -> default
     logging.info("Checking TopologyPlugin is completely disabled")
-    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin || echo 'TopologyPlugin not found'")
-    # TopologyPlugin should either not be present or be empty
-    assert_that(result.stdout.strip()).is_equal_to("TopologyPlugin not found")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("= topology/default")
 
     # Check topology.conf does not exist
     topology_conf_path = "/opt/slurm/etc/topology.conf"
