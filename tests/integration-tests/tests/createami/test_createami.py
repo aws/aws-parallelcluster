@@ -129,6 +129,11 @@ def test_build_image(
     enable_nvidia = True
     update_os_packages = False
     enable_lustre_client = True
+
+    # Disable nvidia installation for ubuntu2404 because nvidia drivers are failing with newest kernel
+    if os in ["ubuntu2404"]:
+        enable_nvidia = False
+
     # Get base AMI
     if os in ["alinux2", "ubuntu2004"]:
         # Test Deep Learning AMIs
@@ -143,7 +148,7 @@ def test_build_image(
             logging.info("First stage AMI not available, using official AMI instead.")
             base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
             update_os_packages = True
-            if os in ["ubuntu2204", "rhel9"]:
+            if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
                 enable_lustre_client = False
     else:
         # Test vanilla AMIs.
