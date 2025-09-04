@@ -25,3 +25,16 @@ wget https://github.com/NVIDIA/nccl-tests/archive/v${NCCL_BENCHMARKS_VERSION}.ta
 tar zxvf "v${NCCL_BENCHMARKS_VERSION}.tar.gz"
 cd "nccl-tests-${NCCL_BENCHMARKS_VERSION}/"
 NVCC_GENCODE="${NVCC_GENCODE}" make MPI=1 MPI_HOME=${MPI_HOME} NCCL_HOME=/shared/${1}/nccl-${NCCL_VERSION}/build/ CUDA_HOME=/usr/local/cuda
+
+# Compile OFI NCCL plugin for RHEL and Rocky because EFA doesn't ship the plugin on the OSes
+. /etc/os-release
+if [[ $ID==rhel || $ID==rocky ]]; then
+  OFI_NCCL_VERSION='1.16.3'
+  wget https://github.com/aws/aws-ofi-nccl/archive/v${OFI_NCCL_VERSION}.tar.gz
+  tar xvfz v${OFI_NCCL_VERSION}.tar.gz
+  cd aws-ofi-nccl-${OFI_NCCL_VERSION}
+  ./autogen.sh
+  ./configure --with-libfabric=/opt/amazon/efa --with-cuda=/usr/local/cuda/ --with-nccl=/shared/openmpi/nccl-${NCCL_VERSION}/build/ --with-mpi=${MPI_HOME} --prefix /shared/openmpi/ofi-plugin
+  make
+  make install
+fi
