@@ -7,7 +7,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - Support for P6e-GB200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
 - Echo chef-client logs in the instance console when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
-- Add `build-image` support for kernel 6.12 of Amazon Linux 2023. The official ParallelCluster Amazon Linux 2023 AMIs use kernel 6.12.
+- Add `build-image` support for Amazon Linux 2023 AMIs based on kernel 6.12 (in addition to 6.1).
 - Support `prioritized` and `capacity-optimized-prioritized` Allocation Strategy. This allows users to prioritize subnets for instance placement to optimize costs and performance.
 - Support DCV on Amazon Linux 2023.
 
@@ -38,6 +38,7 @@ CHANGELOG
 - Upgrade Python to 3.9.23 (from 3.9.20) for AL2.
 - Upgrade Intel MPI Library to 2021.16.0 (from 2021.13.1).
 - Upgrade DCV to version 2024.0-19030.
+- Upgrade the official ParallelCluster Amazon Linux 2023 AMIs to kernel 6.12 (from 6.1).
 
 **BUG FIXES**
 - Prevent `build-image` stack deletion failures by deploying a global role that automatically deletes the `build-image` stack after images either succeed or fail the build.
