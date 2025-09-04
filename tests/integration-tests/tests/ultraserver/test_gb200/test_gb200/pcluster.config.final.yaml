@@ -14,7 +14,14 @@ HeadNode:
       - BucketName: {{ bucket_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
+  {% if instance == "p6e-gb200.36xlarge" %}
+  SlurmSettings:
+    CustomSlurmSettings:
+      - PrologFlags: "Alloc,NoHold"
+      - MessageTimeout: 200
+  {% endif %}
   SlurmQueues:
+  {% if instance != "p6e-gb200.36xlarge" %}
   - Name: {{ queue_with_imex }}
     {% if capacity_block_reservation_id %}
     CapacityType: CAPACITY_BLOCK
@@ -24,25 +31,33 @@ Scheduling:
     ComputeResources:
       - Name: {{ compute_resource_with_imex }}
         InstanceType: {{ instance }}
+        MinCount: {{ max_queue_size }}
+        MaxCount: {{ max_queue_size }}
         {% if instance == "p6e-gb200.36xlarge" %}
         DisableSimultaneousMultithreading: true
         Efa:
           Enabled: true
           GdrSupport: true
         {% endif %}
-        MinCount: {{ max_queue_size }}
-        MaxCount: {{ max_queue_size }}
         HealthChecks:
           Gpu:
             Enabled: True
     Networking:
+      {% if instance == "p6e-gb200.36xlarge" %}
+      PlacementGroup:
+        Enabled: false
+      {% endif %}
       SubnetIds:
         - {{ private_subnet_id }}
+  {% endif %}
   - Name: {{ queue_without_imex }}
     ComputeResources:
       - Name: {{ compute_resource_without_imex }}
-        InstanceType: m6g.xlarge
-        MinCount: 0
+        Instances:
+          - InstanceType: m6g.xlarge
+          - InstanceType: t4g.xlarge
+          - InstanceType: c6gn.xlarge
+        MinCount: {{ min_queue_size_without_imex }}
         MaxCount: 1
     Networking:
       SubnetIds:
