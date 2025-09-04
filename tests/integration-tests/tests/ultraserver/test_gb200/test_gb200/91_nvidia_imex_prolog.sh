@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This prolog script configures the NVIDIA IMEX nodes config file and realods the nvidia-imex service.
+# This prolog script configures the NVIDIA IMEX nodes config file and reloads the nvidia-imex service.
 # This prolog is meant to be run by compute nodes.
 
 LOG_FILE_PATH="/var/log/parallelcluster/nvidia-imex-prolog.log"
@@ -13,12 +13,16 @@ WAIT_TIME_TO_STABILIZE=30
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
 
+# Global service lock to prevent concurrent service operations
+SERVICE_LOCK_FILE="/var/lock/nvidia-imex-service.lock"
+SERVICE_LOCK_TIMEOUT=120
+
 function info() {
-  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] $1"
+  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
 }
 
 function error() {
-  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [ERROR] $1"
+  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [ERROR] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
 }
 
 function error_exit() {
@@ -85,61 +89,85 @@ function write_file() {
   local _content=$2
   local _lock_file="${_file}.lock"
   local _lock_timeout_seconds=60
+  local _max_retries=3
+  local _retry_count=0
 
   if [[ -f "${_file}" ]] && [[ "$(cat "${_file}")" = "${_content}" ]]; then
     info "File ${_file} already has the expected content, skipping the write operation"
     return 1 # Not Updated
   fi
 
-  # Try to acquire lock with timeout
-  (
-      if ! flock -x -w ${_lock_timeout_seconds} 200; then
-        # If timeout, assume deadlock and try to recover
-        info "Lock timeout after ${_lock_timeout_seconds}s, attempting deadlock recovery"
-        exit 1
+  while [[ ${_retry_count} -lt ${_max_retries} ]]; do
+    (
+        if flock -x -w ${_lock_timeout_seconds} 200; then
+          echo "${_content}" > "${_file}"
+          exit 0
+        else
+          exit 1
+        fi
+    ) 200>"${_lock_file}"
+    
+    local _lock_result=$?
+    
+    if [[ ${_lock_result} -eq 0 ]]; then
+      return 0 # Updated successfully
+    fi
+    
+    _retry_count=$((_retry_count + 1))
+    info "Lock acquisition failed for ${_file}, retry ${_retry_count}/${_max_retries}"
+    
+    # Only remove stale lock if it's older than timeout + buffer
+    if [[ -f "${_lock_file}" ]]; then
+      local _lock_age=$(($(date +%s) - $(stat -c %Y "${_lock_file}" 2>/dev/null || echo 0)))
+      if [[ ${_lock_age} -gt $((${_lock_timeout_seconds} + 30)) ]]; then
+        info "Removing stale lock file ${_lock_file} (age: ${_lock_age}s)"
+        rm -f "${_lock_file}"
       fi
-      echo "${_content}" > "${_file}"
-  ) 200>"${_lock_file}"
-
-  local _lock_result=$?
-
-  if [[ ${_lock_result} -eq 0 ]]; then
-    return 0 # Updated successfully
-  fi
-
-  # Deadlock recovery: remove stale lock file and retry once
-  error "Potential deadlock detected for ${_file}, attempting recovery"
-  rm -f "${_lock_file}"
-  sleep 1  # Brief pause to avoid race conditions
-
-  (
-      if ! flock -x -w 10 200; then
-        exit 1
-      fi
-      echo "${_content}" > "${_file}"
-  ) 200>"${_lock_file}"
-
-  if [[ $? -eq 0 ]]; then
-    info "Lock acquired after deadlock recovery for ${_file}"
-    return 0 # Updated
-  fi
+    fi
+    
+    sleep $((${_retry_count} * 2))  # Exponential backoff
+  done
   
-  error_exit "Failed to acquire lock for ${_file} even after deadlock recovery"
+  error_exit "Failed to acquire lock for ${_file} after ${_max_retries} retries"
 }
 
 function reload_imex() {
-  info "Stopping IMEX"
-  timeout ${IMEX_STOP_TIMEOUT} systemctl stop ${IMEX_SERVICE}
-  pkill -9 ${IMEX_SERVICE}
+  info "Attempting to acquire service lock for IMEX reload"
+  
+  # Use a global lock to prevent concurrent service operations
+  (
+    if ! flock -x -w ${SERVICE_LOCK_TIMEOUT} 201; then
+      error "Failed to acquire service lock within ${SERVICE_LOCK_TIMEOUT}s"
+      exit 1
+    fi
+    
+    info "Service lock acquired, proceeding with IMEX reload"
+    
+    info "Stopping IMEX"
+    timeout ${IMEX_STOP_TIMEOUT} systemctl stop ${IMEX_SERVICE}
+    pkill -9 ${IMEX_SERVICE}
 
-  #TODO Improvement: rotate server port to prevent race condition
-  # info "Rotating server port in IMEX config ${IMEX_MAIN_CONFIG}"
-  # NEW_SERVER_PORT=$((${SLURM_JOB_ID} % 16384 + 33792))
-  # sed -i "s/SERVER_PORT.*/SERVER_PORT=${NEW_SERVER_PORT}/" "${IMEX_MAIN_CONFIG}"
+    #TODO Improvement: rotate server port to prevent race condition
+    # info "Rotating server port in IMEX config ${IMEX_MAIN_CONFIG}"
+    # NEW_SERVER_PORT=$((${SLURM_JOB_ID} % 16384 + 33792))
+    # sed -i "s/SERVER_PORT.*/SERVER_PORT=${NEW_SERVER_PORT}/" "${IMEX_MAIN_CONFIG}"
 
-  info "Restarting IMEX"
-  timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}
+    info "Restarting IMEX"
+    timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}
+    
+  ) 201>"${SERVICE_LOCK_FILE}"
+  
+  local _service_result=$?
+  if [[ ${_service_result} -ne 0 ]]; then
+    error "IMEX service reload failed"
+    return 1
+  fi
+  
+  return 0
 }
+
+# Use process-specific log file to avoid concurrent write issues
+PROCESS_LOG_FILE="${LOG_FILE_PATH}.${SLURM_JOB_ID}.$$"
 
 {
   info "PROLOG Start JobId=${SLURM_JOB_ID}: $0"
@@ -163,14 +191,24 @@ function reload_imex() {
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
 
   info "Updating IMEX nodes config ${IMEX_NODES_CONFIG}"
-  write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"
-
-  #TODO Improvement: reload IMEX only if the config has changed
-  reload_imex
-
-  info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
-  sleep ${WAIT_TIME_TO_STABILIZE}
+  if write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
+    info "IMEX nodes config updated, reloading service"
+    if reload_imex; then
+      info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
+      sleep ${WAIT_TIME_TO_STABILIZE}
+    else
+      error "Failed to reload IMEX service"
+    fi
+  else
+    info "IMEX nodes config unchanged, skipping service reload"
+  fi
 
   prolog_end
 
-} >> "${LOG_FILE_PATH}" 2>&1
+} >> "${PROCESS_LOG_FILE}" 2>&1
+
+# Append to main log file with lock protection
+(
+  flock -x -w 10 202 && cat "${PROCESS_LOG_FILE}" >> "${LOG_FILE_PATH}"
+  rm -f "${PROCESS_LOG_FILE}"
+) 202>"${LOG_FILE_PATH}.append.lock" 2>/dev/null
