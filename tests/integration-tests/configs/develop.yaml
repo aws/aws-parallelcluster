@@ -238,7 +238,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_6 }}]
+          oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:

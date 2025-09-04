@@ -845,15 +845,6 @@ def _get_config_arguments(args):
 
 
 def _check_args(args):
-    # If --cluster is set only one os, scheduler, instance type and region can be provided
-    if args.cluster:
-        if len(args.oss) > 1 or len(args.schedulers) > 1 or len(args.instances) > 1 or len(args.regions) > 1:
-            logger.error(
-                "when cluster option is specified, you can have a single value for oss, regions, instances "
-                "and schedulers and you need to make sure they match the cluster specific ones"
-            )
-            exit(1)
-
     if not args.tests_config:
         assert_that(args.regions).described_as("--regions cannot be empty").is_not_empty()
         assert_that(args.instances).described_as("--instances cannot be empty").is_not_empty()

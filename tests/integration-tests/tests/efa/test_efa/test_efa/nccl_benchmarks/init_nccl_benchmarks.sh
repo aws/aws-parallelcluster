@@ -5,8 +5,8 @@ set -xe
 rm -rf /shared/${1}
 
 module load ${1}
-NCCL_BENCHMARKS_VERSION='2.13.8'
-NCCL_VERSION='2.19.4-1'
+NCCL_BENCHMARKS_VERSION='2.16.7'
+NCCL_VERSION='2.27.7-1'
 MPI_HOME=$(which mpirun | awk -F '/bin' '{print $1}')
 NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90" # Arch for NVIDIA A100 and H100, ref https://docs.nvidia.com/cuda/ada-compatibility-guide/index.html
 
