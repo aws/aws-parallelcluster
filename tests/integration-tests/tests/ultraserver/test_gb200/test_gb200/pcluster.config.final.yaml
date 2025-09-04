@@ -42,7 +42,7 @@ Scheduling:
     ComputeResources:
       - Name: {{ compute_resource_without_imex }}
         InstanceType: m6g.xlarge
-        MinCount: 1
+        MinCount: 0
         MaxCount: 1
     Networking:
       SubnetIds:
