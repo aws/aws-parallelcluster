@@ -271,6 +271,7 @@ class SlurmCommands(SchedulerCommands):
         command,
         nodes=0,
         slots=None,
+        ntasks_per_node=None,
         host=None,
         after_ok=None,
         partition=None,
@@ -287,6 +288,7 @@ class SlurmCommands(SchedulerCommands):
             job_submit_command,
             nodes=nodes,
             slots=slots,
+            ntasks_per_node=ntasks_per_node,
             host=host,
             after_ok=after_ok,
             partition=partition,
@@ -303,6 +305,7 @@ class SlurmCommands(SchedulerCommands):
         script_args=None,
         nodes=0,
         slots=None,
+        ntasks_per_node=None,
         host=None,
         after_ok=None,
         partition=None,
@@ -325,6 +328,7 @@ class SlurmCommands(SchedulerCommands):
             job_submit_command,
             nodes=nodes,
             slots=slots,
+            ntasks_per_node=ntasks_per_node,
             host=host,
             after_ok=after_ok,
             partition=partition,
@@ -340,6 +344,7 @@ class SlurmCommands(SchedulerCommands):
         job_submit_command,
         nodes=0,
         slots=None,
+        ntasks_per_node=None,
         host=None,
         after_ok=None,
         partition=None,
@@ -355,6 +360,8 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " --nodelist={0}".format(host)
         if slots:
             submission_command += " -n {0}".format(slots)
+        if ntasks_per_node:
+            submission_command += " --ntasks-per-node {0}".format(ntasks_per_node)
         if nodes > 0:
             submission_command += " -N {0}".format(nodes)
         if after_ok:

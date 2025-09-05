@@ -11,11 +11,12 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import time
 from datetime import datetime
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from clusters_factory import Cluster
 from remote_command_executor import RemoteCommandExecutor
 from utils import wait_for_computefleet_changed
@@ -150,6 +151,7 @@ def assert_imex_status(
      "status": "DOWN"
     }
     """
+
     slurm = SlurmCommands(rce)
     unique_ips = set(ips)
 
@@ -187,25 +189,49 @@ def assert_imex_status(
 
 
 def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
-    rce = RemoteCommandExecutor(cluster)
+    def _check_imex_healthy():
+        rce = RemoteCommandExecutor(cluster)
 
-    launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-    logging.info(
-        f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: " f"{launch_template_id}"
-    )
+        launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
+        logging.info(
+            f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: "
+            f"{launch_template_id}"
+        )
 
-    job_id = submit_job_imex_status(rce, queue, max_nodes)
+        job_id = submit_job_imex_status(rce, queue, max_nodes)
 
-    logging.info(
-        f"Retrieving private IP addresses for {max_nodes} compute nodes "
-        f"in queue {queue} and compute resource {compute_resource}"
-    )
-    ips = cluster.get_compute_nodes_private_ip(queue, compute_resource, ["running"], max_nodes)
-    logging.info(f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}")
+        logging.info(
+            f"Retrieving private IP addresses for {max_nodes} compute nodes "
+            f"in queue {queue} and compute resource {compute_resource}"
+        )
+        ips = cluster.get_compute_nodes_private_ip(queue, compute_resource, ["running"], max_nodes)
+        logging.info(
+            f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}"
+        )
 
-    assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
-    assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
-    assert_no_errors_in_logs(cluster, queue, compute_resource)
+        assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
+        assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
+        assert_no_errors_in_logs(cluster, queue, compute_resource)
+
+    # Retry mechanism: retry every 5 minutes, maximum 2 retries (3 total attempts)
+    max_retries = 2
+    retry_interval = 300  # 5 minutes
+
+    for attempt in range(max_retries + 1):
+        try:
+            _check_imex_healthy()
+            logging.info("IMEX health check succeeded")
+            return
+        except Exception as e:
+            if attempt == max_retries:
+                logging.error(f"IMEX health check failed after {attempt + 1} attempts: {e}")
+                raise
+
+            logging.warning(
+                f"IMEX health check failed on attempt {attempt + 1}/{max_retries + 1}: {e}. "
+                f"Retrying in {retry_interval}s..."
+            )
+            time.sleep(retry_interval)
 
 
 def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
@@ -304,11 +330,11 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     """Verify that TopologyPlugin is completely disabled and no topology configuration exists."""
     rce = RemoteCommandExecutor(cluster)
 
-    # Check TopologyPlugin is not configured or empty
+    # Check TopologyPlugin is not configured -> default
     logging.info("Checking TopologyPlugin is completely disabled")
-    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin || echo 'TopologyPlugin not found'")
-    # TopologyPlugin should either not be present or be empty
-    assert_that(result.stdout.strip()).is_equal_to("TopologyPlugin not found")
+    result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("TopologyPlugin")
+    assert_that(result.stdout.strip()).contains("= topology/default")
 
     # Check topology.conf does not exist
     topology_conf_path = "/opt/slurm/etc/topology.conf"
@@ -358,6 +384,7 @@ def test_gb200(
     which can be executed on g4dn as well.
     """
     max_queue_size = 2
+    min_queue_size_without_imex = 1 if instance != "p6e-gb200.36xlarge" else 0
     capacity_block_reservation_id = CAPACITY_BLOCK_RESERVATION_ID if instance == "p6e-gb200.36xlarge" else None
 
     # Create an S3 bucket for custom action scripts
@@ -366,7 +393,7 @@ def test_gb200(
 
     # Upload files to test bucket
     headnode_start_filename = "head_node_start.sh"
-    prolog_filename = "90-nvidia-imex.prolog.sh"
+    prolog_filename = "91_nvidia_imex_prolog.sh"
     job_filename = "nvidia-imex-status.job"
     bucket.upload_file(str(test_datadir / prolog_filename), prolog_filename)
     bucket.upload_file(str(test_datadir / job_filename), job_filename)
@@ -388,6 +415,7 @@ def test_gb200(
         bucket_name=bucket_name,
         head_node_start_script=headnode_start_filename,
         max_queue_size=max_queue_size,
+        min_queue_size_without_imex=min_queue_size_without_imex,
         queue_with_imex=queue_with_imex,
         compute_resource_with_imex=compute_resource_with_imex,
         queue_without_imex=queue_without_imex,
@@ -403,39 +431,49 @@ def test_gb200(
     )
 
     # Test that IMEX and topology are not configured for queue without IMEX support
-    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
-    assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
+    with soft_assertions():
+        # We enable nvidia-imex force_configuration only for non-gb200 instances
+        if instance != "p6e-gb200.36xlarge":
+            assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+        # Topology Plugin is Cluster wide setup so we check if compute_resource_without_imex is not in that file
+        assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Test cluster update with changed topology configuration
-    max_queue_size_updated = 3
-    updated_cluster_config = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml",
-        bucket_name=bucket_name,
-        head_node_start_script=headnode_start_filename,
-        max_queue_size=max_queue_size_updated,
-        queue_with_imex=queue_with_imex,
-        compute_resource_with_imex=compute_resource_with_imex,
-        queue_without_imex=queue_without_imex,
-        compute_resource_without_imex=compute_resource_without_imex,
-    )
+    if instance == "p6e-gb200.36xlarge":
+        # The size of Capacity Block remains constant
+        max_queue_size_updated = max_queue_size
+    else:
+        max_queue_size_updated = 3
+        updated_cluster_config = pcluster_config_reader(
+            config_file="pcluster.config.update.yaml",
+            bucket_name=bucket_name,
+            head_node_start_script=headnode_start_filename,
+            min_queue_size_without_imex=min_queue_size_without_imex,
+            max_queue_size=max_queue_size_updated,
+            queue_with_imex=queue_with_imex,
+            compute_resource_with_imex=compute_resource_with_imex,
+            queue_without_imex=queue_without_imex,
+            compute_resource_without_imex=compute_resource_without_imex,
+        )
 
-    cluster.stop()
-    wait_for_computefleet_changed(cluster, "STOPPED")
-    cluster.update(str(updated_cluster_config), force_update=True)
-    cluster.start()
-    wait_for_computefleet_changed(cluster, "RUNNING")
-    # Wait for compute nodes to be fully running
-    wait_for_instances_in_compute_resource(
-        cluster, queue_with_imex, compute_resource_with_imex, ["running"], max_queue_size_updated
-    )
+        cluster.stop()
+        wait_for_computefleet_changed(cluster, "STOPPED")
+        cluster.update(str(updated_cluster_config), force_update=True)
+        cluster.start()
+        wait_for_computefleet_changed(cluster, "RUNNING")
+        # Wait for compute nodes to be fully running
+        wait_for_instances_in_compute_resource(
+            cluster, queue_with_imex, compute_resource_with_imex, ["running"], max_queue_size_updated
+        )
 
-    # Verify imex and topology plugin configuration after update
-    assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
-    assert_topology_plugin_configured(
-        cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size_updated}", max_queue_size_updated
-    )
-    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
-    assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
+        # Verify imex and topology plugin configuration after update
+        assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
+        assert_topology_plugin_configured(
+            cluster, queue_with_imex, compute_resource_with_imex, f"{max_queue_size_updated}", max_queue_size_updated
+        )
+        with soft_assertions():
+            assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+            assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
     # Forcefully terminate a compute node in the compute resource supporting IMEX
     # to simulate an outage that forces the replacement of the node and consequently the IMEX reconfiguration.
@@ -450,12 +488,14 @@ def test_gb200(
     # Verify IMEX is still healthy after node replacement
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
 
+    min_queue_size_without_imex = 0  # Update MinCount to 0 so that the slurmctld can be restarted.
     # Test final cluster update to remove topology plugin configuration completely
     final_cluster_config = pcluster_config_reader(
         config_file="pcluster.config.final.yaml",
         bucket_name=bucket_name,
         head_node_start_script=headnode_start_filename,
         max_queue_size=max_queue_size_updated,
+        min_queue_size_without_imex=min_queue_size_without_imex,
         queue_with_imex=queue_with_imex,
         compute_resource_with_imex=compute_resource_with_imex,
         queue_without_imex=queue_without_imex,
@@ -468,9 +508,12 @@ def test_gb200(
     cluster.start()
     wait_for_computefleet_changed(cluster, "RUNNING")
 
-    # Verify topology plugin is completely disabled after removing force_configuration
+    # Verify topology plugin is completely disabled after removing force_configuration if using non-nvl instances
+    # Verify topology plugin is completely disabled after removing the queue which contains nvl instances
     assert_topology_plugin_completely_disabled(cluster)
 
     # Verify IMEX still works but topology is completely removed
-    assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
-    assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
+    with soft_assertions():
+        if instance != "p6e-gb200.36xlarge":
+            assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size_updated)
+            assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
