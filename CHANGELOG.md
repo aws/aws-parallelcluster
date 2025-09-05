@@ -23,12 +23,12 @@ CHANGELOG
 - Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to enable encryption on the EFS file system used for the head node internal shared storage.
 - Add validator that warns against using non GPU instances with DCV.
 - Upgrade Slurm to version 24.11.6 (from 24.05.8).
-- Upgrade EFA installer to 1.42.0 (from 1.41.0).
-  - Efa-driver: efa-2.15.3-1
+- Upgrade EFA installer to 1.43.2 (from 1.41.0).
+  - Efa-driver: efa-2.17.2-1
   - Efa-config: efa-config-1.18-1
   - Efa-profile: efa-profile-1.7-1
-  - Libfabric-aws: libfabric-aws-2.1.0-3
-  - Rdma-core: rdma-core-57.0-1
+  - Libfabric-aws: libfabric-aws-2.1.0-5
+  - Rdma-core: rdma-core-58.0-1
   - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.6-11
 - Upgrade Cinc Client to version 18.4.12 (from 18.2.7).
 - Upgrade NVIDIA driver to version 570.172.08 (from 570.86.15) for all OSs except AL2.
