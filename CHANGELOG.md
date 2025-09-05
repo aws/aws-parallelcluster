@@ -5,7 +5,7 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Support for P6e-GB200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
+- Add support for P6e-GB200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
 - Echo chef-client logs in the instance console when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
 - Add `build-image` support for Amazon Linux 2023 AMIs based on kernel 6.12 (in addition to 6.1).
 - Support `prioritized` and `capacity-optimized-prioritized` Allocation Strategy. This allows users to prioritize subnets for instance placement to optimize costs and performance.
