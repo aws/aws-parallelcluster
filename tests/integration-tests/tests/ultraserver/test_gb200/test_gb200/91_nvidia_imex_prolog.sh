@@ -84,48 +84,67 @@ function get_dna_parameter() {
   jq -r ".cluster.${1}" "${DNA_JSON_FILE}"
 }
 
-function write_file() {
+function check_and_write_file() {
   local _file=$1
   local _content=$2
   local _lock_file="${_file}.lock"
+  local _decision_file="${_file}.decision.${SLURM_JOB_ID}"
   local _lock_timeout_seconds=60
   local _max_retries=3
   local _retry_count=0
 
-  if [[ -f "${_file}" ]] && [[ "$(cat "${_file}")" = "${_content}" ]]; then
-    info "File ${_file} already has the expected content, skipping the write operation"
-    return 1 # Not Updated
-  fi
-
   while [[ ${_retry_count} -lt ${_max_retries} ]]; do
     (
         if flock -x -w ${_lock_timeout_seconds} 200; then
-          echo "${_content}" > "${_file}"
-          exit 0
+          # Check if decision already made for this job
+          if [[ -f "${_decision_file}" ]]; then
+            local decision=$(cat "${_decision_file}")
+            info "Decision already made for job ${SLURM_JOB_ID}: ${decision}"
+            exit ${decision}
+          fi
+          
+          local current_content=""
+          [[ -f "${_file}" ]] && current_content=$(cat "${_file}")
+          
+          # Make decision based on content comparison
+          local decision=0  # Default: update
+          if [[ "${current_content}" = "${_content}" ]]; then
+            decision=1  # Skip
+            info "File ${_file} content unchanged, decision: skip"
+          else
+            info "File ${_file} content changed, decision: update"
+            echo "${_content}" > "${_file}"
+          fi
+          
+          # Record decision for this job - all nodes with same job will use same decision
+          echo "${decision}" > "${_decision_file}"
+          exit ${decision}
         else
-          exit 1
+          exit 2  # Lock failed
         fi
     ) 200>"${_lock_file}"
     
-    local _lock_result=$?
+    local _result=$?
     
-    if [[ ${_lock_result} -eq 0 ]]; then
-      return 0 # Updated successfully
+    if [[ ${_result} -eq 0 ]]; then
+      return 0 # Updated
+    elif [[ ${_result} -eq 1 ]]; then
+      return 1 # Skipped
     fi
     
     _retry_count=$((_retry_count + 1))
     info "Lock acquisition failed for ${_file}, retry ${_retry_count}/${_max_retries}"
     
-    # Only remove stale lock if it's older than timeout + buffer
+    # Clean stale locks and decisions
     if [[ -f "${_lock_file}" ]]; then
       local _lock_age=$(($(date +%s) - $(stat -c %Y "${_lock_file}" 2>/dev/null || echo 0)))
       if [[ ${_lock_age} -gt $((${_lock_timeout_seconds} + 30)) ]]; then
         info "Removing stale lock file ${_lock_file} (age: ${_lock_age}s)"
-        rm -f "${_lock_file}"
+        rm -f "${_lock_file}" "${_decision_file}"
       fi
     fi
     
-    sleep $((${_retry_count} * 2))  # Exponential backoff
+    sleep $((${_retry_count} * 2))
   done
   
   error_exit "Failed to acquire lock for ${_file} after ${_max_retries} retries"
@@ -190,9 +209,9 @@ PROCESS_LOG_FILE="${LOG_FILE_PATH}.${SLURM_JOB_ID}.$$"
   info "IMEX Main Config: ${IMEX_MAIN_CONFIG}"
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
 
-  info "Updating IMEX nodes config ${IMEX_NODES_CONFIG}"
-  if write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
-    info "IMEX nodes config updated, reloading service"
+  info "Checking IMEX nodes config ${IMEX_NODES_CONFIG}"
+  if check_and_write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
+    info "IMEX nodes config updated, reloading service on all nodes"
     if reload_imex; then
       info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
       sleep ${WAIT_TIME_TO_STABILIZE}
@@ -200,8 +219,11 @@ PROCESS_LOG_FILE="${LOG_FILE_PATH}.${SLURM_JOB_ID}.$$"
       error "Failed to reload IMEX service"
     fi
   else
-    info "IMEX nodes config unchanged, skipping service reload"
+    info "IMEX nodes config unchanged, skipping service reload on all nodes"
   fi
+  
+  # Clean up decision file for this job
+  rm -f "${IMEX_NODES_CONFIG}.decision.${SLURM_JOB_ID}"
 
   prolog_end
 
