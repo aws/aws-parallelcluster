@@ -11,14 +11,14 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
-import pytest
 import xmltodict
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_compute_nodes_instance_ids, get_instance_info
+from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
+from tests.common.nccl_common import install_and_run_nccl_benchmarks
 from tests.common.utils import fetch_instance_slots, read_remote_file, run_system_analyzer, wait_process_completion
 
 FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
@@ -65,7 +65,7 @@ def test_efa(
     if instance in ["p4d.24xlarge", "p5.48xlarge"]:
         # Doc of supported instance types and operating systems:
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
-        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands, instance)
+        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
 
     with soft_assertions():
         assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
@@ -176,77 +176,3 @@ def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, p
     scheduler_commands.assert_job_succeeded(job_id)
     result = remote_command_executor.run_remote_command("cat /shared/fi_info.out")
     assert_that(result.stdout).does_not_contain("SHM transfer will be disabled because of ptrace protection")
-
-
-def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, scheduler_commands, instance):
-    logging.info("Running NCCL benchmarks")
-    remote_command_executor.run_remote_script(
-        str(test_datadir / "nccl_benchmarks" / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True, timeout=600
-    )
-
-    try:
-        gpu_per_node = get_instance_info(instance)["GpuInfo"]["Gpus"][0]["Count"]
-    except Exception as e:
-        # Getting information from us-east-1 is useful for p6e-GB200
-        # because it is only publicly available in us-east-1 while we are testing in other regions.
-        logging.warning(
-            f"Failed to get gpu count for {instance} from the current region. Exception: {e}. "
-            "Trying to retrieve the information from us-east-1..."
-        )
-        gpu_per_node = get_instance_info(instance, "us-east-1")["GpuInfo"]["Gpus"][0]["Count"]
-
-    result = scheduler_commands.submit_script(
-        str(test_datadir / "nccl_benchmarks" / "nccl_tests_submit_{0}.sh".format(mpi_module)),
-        nodes=2,
-        ntasks_per_node=gpu_per_node,
-    )
-
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    result = remote_command_executor.run_remote_command("cat /shared/nccl_tests.out")
-    logging.info(f"Test result is: {result}")
-
-    # Expected output with NCCL_BENCHMARKS_VERSION='2.10.0', NCCL_VERSION='2.7.8-1' and OFI_NCCL_VERSION='1.1.1':
-    #                                                       out-of-place                       in-place
-    #       size         count      type   redop     time   algbw   busbw  error     time   algbw   busbw  error
-    #        (B)    (elements)                       (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
-    # ...
-    # 1073741824     268435456     float     sum    79531   13.50   26.58  2e-06    79371   13.53   26.63  2e-06
-    #
-    # --------
-    # Expected output with NCCL_BENCHMARKS_VERSION='2.13.8', NCCL_VERSION='2.19.4-1' and OFI_NCCL_VERSION='1.7.4-aws':
-    #                                                              out-of-place                       in-place
-    #       size         count      type   redop    root     time   algbw   busbw #wrong     time   algbw   busbw #wrong
-    #        (B)    (elements)                               (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
-    # ...
-    # 1073741824     268435456     float     sum      -1    44023   24.39   45.73      0    43947   24.43   45.81      0
-
-    # We are looking for packet size 1073741824, 268435456 elements and in-place busbw (GB/s).
-    max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/nccl_tests.out | grep -E '1073741824\\s+268435456' | awk '{print $12}'"
-    ).stdout
-
-    out_of_place_max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/nccl_tests.out | grep -E '1073741824\\s+268435456' | awk '{print $8}'"
-    ).stdout
-
-    instance_bandwidth_dict = {
-        # p4d.24xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
-        "p4d.24xlarge": 26.0,
-        # p5.48xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 250GB/s
-        "p5.48xlarge": 250.0,
-        "p6e-gb200.36xlarge": 500,
-    }
-
-    expected_bandwidth = instance_bandwidth_dict.get(instance)
-    if expected_bandwidth is None:
-        pytest.fail(f"Instance {instance} is not valid for multiple bandwidth tests")
-
-    assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
-    if instance == "p6e-gb200.36xlarge":
-        # Check "out of place" bandwidth for p6e-GB200
-        # because the GPUs are directly connected for different instances on the same ultra server.
-        # The "out of place" bandwidth is expected to be similar to the in-place bandwidth.
-        assert_that(float(out_of_place_max_bandwidth)).is_greater_than(expected_bandwidth)

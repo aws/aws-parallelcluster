@@ -4,25 +4,22 @@ CHANGELOG
 3.14.0
 ------
 
-**DEPRECATIONS**
-- The configuration parameter `LoginNodes/Pools/Ssh/KeyName` has been deprecated. The CLI now returns a warning message when it is used in the cluster configuration.
-  See https://github.com/aws/aws-parallelcluster/issues/6811.
-
 **ENHANCEMENTS**
-- Add support for p6e-gb200 instances via capacity blocks.
-- Echo chef-client log when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
-- Add `build-image` support for kernel 6.12 of Amazon Linux 2023. The official ParallelCluster Amazon Linux 2023 AMIs use kernel 6.12.
+- Add support for P6e-GB200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
+- Echo chef-client logs in the instance console when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
+- Add `build-image` support for Amazon Linux 2023 AMIs based on kernel 6.12 (in addition to 6.1).
 - Support `prioritized` and `capacity-optimized-prioritized` Allocation Strategy. This allows users to prioritize subnets for instance placement to optimize costs and performance.
+- Support DCV on Amazon Linux 2023.
+
+**LIMITATIONS**
+- P6e-GB200 instances are only tested on Amazon Linux 2023, Ubuntu 22.04 and Ubuntu 24.04.
+- Using IMEX on P6e-GB200 requires additional setup. Please refer to <PLACE_HOLDER for the tutorial link>.
 
 **CHANGES**
 - Install nvidia-imex for all OSs except AL2.
-- Ubuntu 20.04 is no longer supported.
 - Remove `UnkillableStepTimeout` from slurm.conf and let slurm set this value.
-- Support DCV on Amazon Linux 2023.
 - Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
 - Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
-- The build-image command now deploys a global role that is used to automatically delete the build-image stack after images either succeed or fail the build.
-  The role is meant to exist even after the stack has been deleted. This is to prevent build-image stack deletion failures, reported in https://github.com/aws/aws-parallelcluster/issues/5914.
 - Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to enable encryption on the EFS file system used for the head node internal shared storage.
 - Add validator that warns against using non GPU instances with DCV.
 - Upgrade Slurm to version 24.11.6 (from 24.05.8).
@@ -38,13 +35,23 @@ CHANGELOG
 - Upgrade CUDA Toolkit to version 12.8.1 (from 12.8.0) for all OSs except AL2.
 - Upgrade DCGM to version 4.2.3 (from 3.3.6) for all OSs except AL2.
 - Upgrade Python to 3.12.11 (from 3.12.8) for all OSs except AL2.
+- Upgrade Python to 3.9.23 (from 3.9.20) for AL2.
 - Upgrade Intel MPI Library to 2021.16.0 (from 2021.13.1).
+- Upgrade DCV to version 2024.0-19030.
+- Upgrade the official ParallelCluster Amazon Linux 2023 AMIs to kernel 6.12 (from 6.1).
 
 **BUG FIXES**
+- Prevent `build-image` stack deletion failures by deploying a global role that automatically deletes the `build-image` stack after images either succeed or fail the build.
+  The role is meant to exist even after the stack has been deleted. See https://github.com/aws/aws-parallelcluster/issues/5914.
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 - Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
 - Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023.
 - Fix cluster id mismatch issue by deleting the file `/var/spool/slurm.state/clustername` before configuring Slurm accounting.
+
+**DEPRECATIONS**
+- The configuration parameter `LoginNodes/Pools/Ssh/KeyName` has been deprecated, and it will be removed in future releases. The CLI now returns a warning message when it is used in the cluster configuration.
+  See https://github.com/aws/aws-parallelcluster/issues/6811.
+- Ubuntu 20.04 is no longer supported.
 
 3.13.2
 ------
