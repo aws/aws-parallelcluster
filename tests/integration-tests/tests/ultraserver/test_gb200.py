@@ -22,6 +22,7 @@ from remote_command_executor import RemoteCommandExecutor
 from utils import wait_for_computefleet_changed
 
 from tests.common.assertions import assert_regex_in_file, wait_for_instances_in_compute_resource
+from tests.common.nccl_common import install_and_run_nccl_benchmarks
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import is_existing_remote_file, read_remote_file, terminate_nodes_manually
 
@@ -351,7 +352,14 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_gb200(
-    pcluster_config_reader, file_reader, clusters_factory, test_datadir, s3_bucket_factory, region, instance
+    pcluster_config_reader,
+    file_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    region,
+    instance,
+    scheduler_commands_factory,
 ):
     """
     Test automated configuration of Nvidia IMEX and Slurm topology plugin.
@@ -423,6 +431,8 @@ def test_gb200(
         capacity_block_reservation_id=capacity_block_reservation_id,
     )
     cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     # Test IMEX and topology configuration for queue with IMEX support
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size)
@@ -437,6 +447,11 @@ def test_gb200(
             assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
         # Topology Plugin is Cluster wide setup so we check if compute_resource_without_imex is not in that file
         assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
+
+    if instance.startswith("p"):
+        # Doc of supported instance types and operating systems:
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
+        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
 
     # Test cluster update with changed topology configuration
     if instance == "p6e-gb200.36xlarge":
