@@ -95,33 +95,33 @@ function check_and_write_file() {
 
   while [[ ${_retry_count} -lt ${_max_retries} ]]; do
     (
-        if flock -x -w ${_lock_timeout_seconds} 200; then
-          # Check if decision already made for this job
-          if [[ -f "${_decision_file}" ]]; then
-            local decision=$(cat "${_decision_file}")
-            info "Decision already made for job ${SLURM_JOB_ID}: ${decision}"
-            exit ${decision}
-          fi
-          
-          local current_content=""
-          [[ -f "${_file}" ]] && current_content=$(cat "${_file}")
-          
-          # Make decision based on content comparison
-          local decision=0  # Default: update
-          if [[ "${current_content}" = "${_content}" ]]; then
-            decision=1  # Skip
-            info "File ${_file} content unchanged, decision: skip"
-          else
-            info "File ${_file} content changed, decision: update"
-            echo "${_content}" > "${_file}"
-          fi
-          
-          # Record decision for this job - all nodes with same job will use same decision
-          echo "${decision}" > "${_decision_file}"
+      if flock -x -w ${_lock_timeout_seconds} 200; then
+        # Check if decision already made for this job
+        if [[ -f "${_decision_file}" ]]; then
+          local decision=$(cat "${_decision_file}")
+          info "Decision already made for job ${SLURM_JOB_ID}: ${decision}"
           exit ${decision}
-        else
-          exit 2  # Lock failed
         fi
+
+        local current_content=""
+        [[ -f "${_file}" ]] && current_content=$(cat "${_file}")
+
+        # Make decision based on content comparison
+        local decision=0  # Default: update
+        if [[ "${current_content}" = "${_content}" ]]; then
+          decision=1  # Skip
+          info "File ${_file} content unchanged, decision: skip"
+        else
+          info "File ${_file} content changed, decision: update"
+          echo "${_content}" > "${_file}"
+        fi
+
+        # Record decision for this job - all nodes with same job will use same decision
+        echo "${decision}" > "${_decision_file}"
+        exit ${decision}
+      else
+        exit 2  # Lock failed
+      fi
     ) 200>"${_lock_file}"
     
     local _result=$?
@@ -221,9 +221,6 @@ PROCESS_LOG_FILE="${LOG_FILE_PATH}.${SLURM_JOB_ID}.$$"
   else
     info "IMEX nodes config unchanged, skipping service reload on all nodes"
   fi
-  
-  # Clean up decision file for this job
-  rm -f "${IMEX_NODES_CONFIG}.decision.${SLURM_JOB_ID}"
 
   prolog_end
 
