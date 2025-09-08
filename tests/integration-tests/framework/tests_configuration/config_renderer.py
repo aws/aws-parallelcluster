@@ -26,6 +26,7 @@ from pcluster.constants import (
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
+    UNSUPPORTED_OSES_FOR_NON_GPU_DCV,
 )
 
 
@@ -44,9 +45,13 @@ def _get_os_parameters(config=None, args=None):
     _propagate_os_jinja_variables("", result, today_number, SUPPORTED_OSES)
 
     # DCV doesn't support AL2023. Therefore, the following logic makes sure the DCV jinja parameter is not AL2023
-    dcv_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV]
+    dcv_supported_oses = [
+        os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
+    ]
     dcv_supported_arm_oses = [
-        os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV
+        os
+        for os in SUPPORTED_OSES
+        if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
     ]
     _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
 
