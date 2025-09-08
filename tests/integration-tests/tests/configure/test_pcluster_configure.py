@@ -198,7 +198,8 @@ def test_efa_and_placement_group(
         placement_group_config=placement_group_config["configuration"],
     )
     inject_additional_config_settings(config_path, request, region, architecture)
-    clusters_factory(config_path)
+    response = clusters_factory(config_path, dryrun=True, raise_on_error=False).creation_response
+    assert_that(response.get("message")).is_equal_to("Request would have succeeded, but DryRun flag is set.")
 
 
 def test_efa_unsupported(request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir):
