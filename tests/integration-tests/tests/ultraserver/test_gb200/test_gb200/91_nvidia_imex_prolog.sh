@@ -185,9 +185,6 @@ function reload_imex() {
   return 0
 }
 
-# Use process-specific log file to avoid concurrent write issues
-PROCESS_LOG_FILE="${LOG_FILE_PATH}.${SLURM_JOB_ID}.$$"
-
 {
   info "PROLOG Start JobId=${SLURM_JOB_ID}: $0"
 
@@ -224,10 +221,4 @@ PROCESS_LOG_FILE="${LOG_FILE_PATH}.${SLURM_JOB_ID}.$$"
 
   prolog_end
 
-} >> "${PROCESS_LOG_FILE}" 2>&1
-
-# Append to main log file with lock protection
-(
-  flock -x -w 10 202 && cat "${PROCESS_LOG_FILE}" >> "${LOG_FILE_PATH}"
-  rm -f "${PROCESS_LOG_FILE}"
-) 202>"${LOG_FILE_PATH}.append.lock" 2>/dev/null
+} >> "${LOG_FILE_PATH}" 2>&1
