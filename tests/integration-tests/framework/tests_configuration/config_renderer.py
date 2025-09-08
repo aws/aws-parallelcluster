@@ -80,6 +80,10 @@ def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_os
 
 def _get_instance_type_parameters():  # noqa: C901
     """Gets Instance jinja parameters."""
+    # Return cached result if available
+    if hasattr(_get_instance_type_parameters, "_cache"):
+        return _get_instance_type_parameters._cache
+
     result = {}
     excluded_instance_type_prefixes = [
         "m1",
@@ -104,7 +108,7 @@ def _get_instance_type_parameters():  # noqa: C901
         "p2",
         "p3",
     ]
-    for region in ["us-east-1", "us-west-2", "eu-west-1"]:  # Only populate instance type for big regions
+    for region in ["us-east-1", "us-west-2"]:  # Only populate instance type for big regions
         ec2_client = boto3.client("ec2", region_name=region)
         # The following conversion is required becase Python jinja doesn't like "-"
         region_jinja = region.replace("-", "_").upper()
@@ -175,6 +179,9 @@ def _get_instance_type_parameters():  # noqa: C901
             for index in range(10):
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = "g4dn.xlarge"
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}_AZ"] = region
+
+    # Cache the result
+    _get_instance_type_parameters._cache = result
     return result
 
 
