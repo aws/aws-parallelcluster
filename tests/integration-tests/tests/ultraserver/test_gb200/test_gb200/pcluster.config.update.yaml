@@ -36,7 +36,6 @@ Scheduling:
         DisableSimultaneousMultithreading: true
         Efa:
           Enabled: true
-          GdrSupport: true
         {% endif %}
         HealthChecks:
           Gpu:
