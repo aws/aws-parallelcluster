@@ -25,16 +25,7 @@ def install_and_run_nccl_benchmarks(remote_command_executor, mpi_module, schedul
         str(NCCL_COMMON_DATADIR / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True, timeout=600
     )
 
-    try:
-        gpu_per_node = get_instance_info(instance)["GpuInfo"]["Gpus"][0]["Count"]
-    except Exception as e:
-        # Getting information from us-east-1 is useful for p6e-GB200
-        # because it is only publicly available in us-east-1 while we are testing in other regions.
-        logging.warning(
-            f"Failed to get gpu count for {instance} from the current region. Exception: {e}. "
-            "Trying to retrieve the information from us-east-1..."
-        )
-        gpu_per_node = get_instance_info(instance, "us-east-1")["GpuInfo"]["Gpus"][0]["Count"]
+    gpu_per_node = get_instance_info(instance)["GpuInfo"]["Gpus"][0]["Count"]
 
     result = scheduler_commands.submit_script(
         str(NCCL_COMMON_DATADIR / "nccl_tests_submit_{0}.sh".format(mpi_module)),
