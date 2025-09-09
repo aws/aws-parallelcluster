@@ -84,70 +84,86 @@ function get_dna_parameter() {
   jq -r ".cluster.${1}" "${DNA_JSON_FILE}"
 }
 
-function check_and_write_file() {
+function check_imex_needs_reload() {
+  local _expected_ips=$1
+  local _imex_config_file=$2
+  
+  # Get current IMEX status
+  local imex_status_output
+  if ! imex_status_output=$(timeout 30 /usr/bin/nvidia-imex-ctl -N -j -c "${_imex_config_file}" 2>/dev/null); then
+    info "Failed to get IMEX status, assuming reload needed"
+    return 0  # Need reload
+  fi
+  
+  # Parse JSON to extract current IPs from IMEX status
+  local current_imex_ips
+  if ! current_imex_ips=$(echo "${imex_status_output}" | jq -r '.nodes[].host' 2>/dev/null | sort | tr '\n' ' '); then
+    info "Failed to parse IMEX status JSON, assuming reload needed"
+    return 0  # Need reload
+  fi
+  
+  # Convert expected IPs to sorted space-separated string
+  local expected_ips_sorted
+  expected_ips_sorted=$(echo "${_expected_ips}" | tr ',' '\n' | sort | tr '\n' ' ')
+  
+  info "Current IMEX IPs: ${current_imex_ips}"
+  info "Expected IPs: ${expected_ips_sorted}"
+  
+  # Compare IP lists
+  if [[ "${current_imex_ips}" = "${expected_ips_sorted}" ]]; then
+    info "IMEX already configured with correct IPs, skipping reload"
+    return 1  # Skip reload
+  else
+    info "IMEX IPs mismatch, reload needed"
+    return 0  # Need reload
+  fi
+}
+
+function write_file() {
   local _file=$1
   local _content=$2
   local _lock_file="${_file}.lock"
-  local _decision_file="${_file}.decision.${SLURM_JOB_ID}"
   local _lock_timeout_seconds=60
-  local _max_retries=3
-  local _retry_count=0
 
-  while [[ ${_retry_count} -lt ${_max_retries} ]]; do
-    (
-      if flock -x -w ${_lock_timeout_seconds} 200; then
-        # Check if decision already made for this job
-        if [[ -f "${_decision_file}" ]]; then
-          local decision=$(cat "${_decision_file}")
-          info "Decision already made for job ${SLURM_JOB_ID}: ${decision}"
-          exit ${decision}
-        fi
+  if [[ -f "${_file}" ]] && [[ "$(cat "${_file}")" = "${_content}" ]]; then
+    info "File ${_file} already has the expected content, skipping the write operation"
+    return 1 # Not Updated
+  fi
 
-        local current_content=""
-        [[ -f "${_file}" ]] && current_content=$(cat "${_file}")
-
-        # Make decision based on content comparison
-        local decision=0  # Default: update
-        if [[ "${current_content}" = "${_content}" ]]; then
-          decision=1  # Skip
-          info "File ${_file} content unchanged, decision: skip"
-        else
-          info "File ${_file} content changed, decision: update"
-          echo "${_content}" > "${_file}"
-        fi
-
-        # Record decision for this job - all nodes with same job will use same decision
-        echo "${decision}" > "${_decision_file}"
-        exit ${decision}
-      else
-        exit 2  # Lock failed
+  # Try to acquire lock with timeout
+  (
+      if ! flock -x -w ${_lock_timeout_seconds} 200; then
+        # If timeout, assume deadlock and try to recover
+        info "Lock timeout after ${_lock_timeout_seconds}s, attempting deadlock recovery"
+        exit 1
       fi
-    ) 200>"${_lock_file}"
-    
-    local _result=$?
-    
-    if [[ ${_result} -eq 0 ]]; then
-      return 0 # Updated
-    elif [[ ${_result} -eq 1 ]]; then
-      return 1 # Skipped
-    fi
-    
-    _retry_count=$((_retry_count + 1))
-    info "Lock acquisition failed for ${_file}, retry ${_retry_count}/${_max_retries}"
-    
-    # Clean stale locks and decisions
-    if [[ -f "${_lock_file}" ]]; then
-      local _lock_age=$(($(date +%s) - $(stat -c %Y "${_lock_file}" 2>/dev/null || echo 0)))
-      if [[ ${_lock_age} -gt $((${_lock_timeout_seconds} + 30)) ]]; then
-        info "Removing stale lock file ${_lock_file} (age: ${_lock_age}s)"
-        rm -f "${_lock_file}" "${_decision_file}"
+      echo "${_content}" > "${_file}"
+  ) 200>"${_lock_file}"
+
+  local _lock_result=$?
+
+  if [[ ${_lock_result} -eq 0 ]]; then
+    return 0 # Updated successfully
+  fi
+
+  # Deadlock recovery: remove stale lock file and retry once
+  error "Potential deadlock detected for ${_file}, attempting recovery"
+  rm -f "${_lock_file}"
+  sleep 1  # Brief pause to avoid race conditions
+
+  (
+      if ! flock -x -w 10 200; then
+        exit 1
       fi
-    fi
-    
-    sleep $((${_retry_count} * 2))
-  done
+      echo "${_content}" > "${_file}"
+  ) 200>"${_lock_file}"
+
+  if [[ $? -eq 0 ]]; then
+    info "Lock acquired after deadlock recovery for ${_file}"
+    return 0 # Updated
+  fi
   
-  error_exit "Failed to acquire lock for ${_file} after ${_max_retries} retries"
+  error_exit "Failed to acquire lock for ${_file} even after deadlock recovery"
 }
 
 function reload_imex() {
@@ -207,16 +223,32 @@ function reload_imex() {
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
 
   info "Checking IMEX nodes config ${IMEX_NODES_CONFIG}"
-  if check_and_write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
-    info "IMEX nodes config updated, reloading service on all nodes"
-    if reload_imex; then
-      info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
-      sleep ${WAIT_TIME_TO_STABILIZE}
+  if write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
+    info "IMEX nodes config updated, checking if reload is needed"
+    if check_imex_needs_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}"; then
+      info "IMEX reload needed, restarting service"
+      if reload_imex; then
+        info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
+        sleep ${WAIT_TIME_TO_STABILIZE}
+      else
+        error "Failed to reload IMEX service"
+      fi
     else
-      error "Failed to reload IMEX service"
+      info "IMEX already configured correctly, skipping reload"
     fi
   else
-    info "IMEX nodes config unchanged, skipping service reload on all nodes"
+    info "IMEX nodes config unchanged, checking if reload is still needed"
+    if check_imex_needs_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}"; then
+      info "IMEX reload needed despite unchanged config, restarting service"
+      if reload_imex; then
+        info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
+        sleep ${WAIT_TIME_TO_STABILIZE}
+      else
+        error "Failed to reload IMEX service"
+      fi
+    else
+      info "IMEX config unchanged and service correctly configured, skipping reload"
+    fi
   fi
 
   prolog_end
