@@ -465,7 +465,7 @@ def test_gb200(
         capacity_block_reservation_id=capacity_block_reservation_id,
     )
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    cluster = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config, suppress_validators=["type:UltraserverCapacityBlockSizeValidator"])
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
