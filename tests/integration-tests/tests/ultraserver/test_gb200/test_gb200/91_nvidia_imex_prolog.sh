@@ -88,6 +88,12 @@ function check_imex_needs_reload() {
   local _expected_ips=$1
   local _imex_config_file=$2
   
+  # First check if IMEX service is running
+  if ! systemctl is-active ${IMEX_SERVICE} &>/dev/null; then
+    info "IMEX service is not running, reload needed"
+    return 0  # Need reload
+  fi
+  
   # Get current IMEX status
   local imex_status_output
   if ! imex_status_output=$(timeout 30 /usr/bin/nvidia-imex-ctl -N -j -c "${_imex_config_file}" 2>/dev/null); then
@@ -111,7 +117,7 @@ function check_imex_needs_reload() {
   
   # Compare IP lists
   if [[ "${current_imex_ips}" = "${expected_ips_sorted}" ]]; then
-    info "IMEX already configured with correct IPs, skipping reload"
+    info "IMEX service running with correct IPs, skipping reload"
     return 1  # Skip reload
   else
     info "IMEX IPs mismatch, reload needed"
