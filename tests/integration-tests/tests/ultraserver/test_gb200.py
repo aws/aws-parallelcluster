@@ -373,6 +373,7 @@ def get_ultraserver_capacity_reservation_id(instance, region):
     return ultraserver_reservations_ids
 
 
+@pytest.mark.usefixtures("serial_execution_by_instance")
 @pytest.mark.usefixtures("os")
 def test_gb200(
     pcluster_config_reader,

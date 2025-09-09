@@ -285,7 +285,7 @@ test-suites:
           schedulers: [ "slurm" ]
         - regions: [ "usw2-az4" ] # do not move, unless instance type support is moved as well
           instances: [ "p6e-gb200.36xlarge" ]
-          oss: [ "ubuntu2204" ]
+          oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023" ]
           schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
