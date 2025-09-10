@@ -66,6 +66,9 @@ def _get_os_parameters(config=None, args=None):
 
     no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
     _propagate_os_jinja_variables("NO_ROCKY_", result, today_number, no_rocky_oss)
+
+    rhel_oss = [os for os in SUPPORTED_OSES if "rhel" in os]
+    _propagate_os_jinja_variables("RHEL_", result, today_number, rhel_oss)
     return result
 
 

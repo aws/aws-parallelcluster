@@ -15,7 +15,7 @@ test-suites:
       dimensions:
         - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_OS_X86_1 }}]
           instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
-          oss: [{{ OS_X86_1 }}]
+          oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
   capacity_reservations:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
@@ -334,9 +334,13 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: ["use1-az1"]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_rhel9 }}]
           instances: ["c6in.32xlarge"]
-          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          oss: {{ RHEL_OS_X86 }}
+          schedulers: ["slurm"]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+          instances: ["c6in.32xlarge"]
+          oss: {{ NO_RHEL_OS_X86 }}
           schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:
