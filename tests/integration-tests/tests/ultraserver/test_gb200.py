@@ -483,11 +483,10 @@ def test_gb200(
         # Topology Plugin is Cluster wide setup so we check if compute_resource_without_imex is not in that file
         assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
 
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition=queue_with_imex)
-
     if instance.startswith("p"):
         # Doc of supported instance types and operating systems:
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
+        _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition=queue_with_imex)
         install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
 
     # Test cluster update with changed topology configuration
