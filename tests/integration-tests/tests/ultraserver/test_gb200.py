@@ -22,13 +22,10 @@ from remote_command_executor import RemoteCommandExecutor
 from utils import wait_for_computefleet_changed
 
 from tests.common.assertions import assert_regex_in_file, wait_for_instances_in_compute_resource
+from tests.common.mpi_common import _test_mpi
+from tests.common.nccl_common import install_and_run_nccl_benchmarks
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import is_existing_remote_file, read_remote_file, terminate_nodes_manually
-
-# This is the capacity block reservation for p6e-gb200.36xlarge.
-# Given the limited availability of this capacity we test this instance type on demand,
-# hardwiring the reservation id here when we need it.
-CAPACITY_BLOCK_RESERVATION_ID = "cr-123456789"
+from tests.common.utils import fetch_instance_slots, is_existing_remote_file, read_remote_file, terminate_nodes_manually
 
 # We use placeholder IPs just to get IMEX started.
 # These values are hardwired in the cookbook.
@@ -349,9 +346,45 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     logging.info("TopologyPlugin correctly completely disabled")
 
 
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def get_ultraserver_capacity_reservation_id(instance, region):
+    ec2_client = boto3.client("ec2", region_name=region)
+    paginator = ec2_client.get_paginator("describe_capacity_block_status")
+
+    # List to store matching reservation IDs
+    ultraserver_reservations_ids = []
+
+    # Paginate through the results
+    for page in paginator.paginate():
+        for block in page.get("CapacityBlockStatuses", []):
+            for reservation in block.get("CapacityReservationStatuses", []):
+                # Check if TotalCapacity equals TotalAvailableCapacity
+                if (
+                    reservation.get("TotalCapacity") == reservation.get("TotalAvailableCapacity")
+                    and reservation.get("TotalCapacity") is not None
+                ):
+
+                    ultraserver_reservations_ids.append(
+                        {
+                            "CapacityReservationId": reservation["CapacityReservationId"],
+                            "TotalCapacity": reservation["TotalCapacity"],
+                        }
+                    )
+
+    return ultraserver_reservations_ids
+
+
+@pytest.mark.usefixtures("serial_execution_by_instance")
+@pytest.mark.usefixtures("os")
 def test_gb200(
-    pcluster_config_reader, file_reader, clusters_factory, test_datadir, s3_bucket_factory, region, instance
+    pcluster_config_reader,
+    file_reader,
+    clusters_factory,
+    test_datadir,
+    s3_bucket_factory,
+    region,
+    instance,
+    scheduler,
+    scheduler_commands_factory,
 ):
     """
     Test automated configuration of Nvidia IMEX and Slurm topology plugin.
@@ -383,9 +416,18 @@ def test_gb200(
     This is a reasonable approximation for the test because the focus of the test is on IMEX and topology configuration,
     which can be executed on g4dn as well.
     """
-    max_queue_size = 2
+    capacity_max_queue_size = capacity_reservation_id = None
+    if instance == "p6e-gb200.36xlarge":
+        ultraserver_reservations_ids = get_ultraserver_capacity_reservation_id(instance, region)
+        if ultraserver_reservations_ids:
+            capacity_reservation_id = ultraserver_reservations_ids[0].get("CapacityReservationId")
+            capacity_max_queue_size = ultraserver_reservations_ids[0].get("TotalCapacity")
+        else:
+            pytest.skip(f"Skipping the test No Capacity Block for {instance} was found in {region}")
+
+    max_queue_size = 2 if capacity_max_queue_size is None else capacity_max_queue_size
     min_queue_size_without_imex = 1 if instance != "p6e-gb200.36xlarge" else 0
-    capacity_block_reservation_id = CAPACITY_BLOCK_RESERVATION_ID if instance == "p6e-gb200.36xlarge" else None
+    capacity_block_reservation_id = capacity_reservation_id if instance == "p6e-gb200.36xlarge" else None
 
     # Create an S3 bucket for custom action scripts
     bucket_name = s3_bucket_factory()
@@ -422,7 +464,10 @@ def test_gb200(
         compute_resource_without_imex=compute_resource_without_imex,
         capacity_block_reservation_id=capacity_block_reservation_id,
     )
-    cluster = clusters_factory(cluster_config)
+    slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
+    cluster = clusters_factory(cluster_config, suppress_validators=["type:UltraserverCapacityBlockSizeValidator"])
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     # Test IMEX and topology configuration for queue with IMEX support
     assert_imex_healthy(cluster, queue_with_imex, compute_resource_with_imex, max_queue_size)
@@ -437,6 +482,12 @@ def test_gb200(
             assert_imex_not_configured(cluster, queue_without_imex, compute_resource_without_imex)
         # Topology Plugin is Cluster wide setup so we check if compute_resource_without_imex is not in that file
         assert_topology_plugin_not_configured_for_queue(cluster, queue_without_imex, compute_resource_without_imex)
+
+    if instance.startswith("p"):
+        # Doc of supported instance types and operating systems:
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
+        _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition=queue_with_imex)
+        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
 
     # Test cluster update with changed topology configuration
     if instance == "p6e-gb200.36xlarge":

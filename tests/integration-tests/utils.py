@@ -170,8 +170,20 @@ class InstanceTypesData:
                     0
                 ]
             except Exception as exception:
-                logging.error(f"Failed to get instance type info for instance type: {exception}")
-                raise
+                # Getting information from us-east-1 is useful for p6e-GB200
+                # because it is only publicly available in us-east-1 while we are testing in other regions.
+                logging.warning(
+                    f"Failed to get gpu count for {instance_type} from the current region. Exception: {exception}. "
+                    "Trying to retrieve the information from us-east-1..."
+                )
+                try:
+                    ec2_client = boto3.client("ec2", region_name="us-east-1")
+                    instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get(
+                        "InstanceTypes"
+                    )[0]
+                except Exception as exception:
+                    logging.error(f"Failed to get instance type info for instance type: {exception}")
+                    raise
 
         return instance_info
 
