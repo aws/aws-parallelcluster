@@ -13,9 +13,7 @@ WAIT_TIME_TO_STABILIZE=30
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
 
-# Global service lock to prevent concurrent service operations
-SERVICE_LOCK_FILE="/var/lock/nvidia-imex-service.lock"
-SERVICE_LOCK_TIMEOUT=120
+
 
 function info() {
   echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
@@ -96,14 +94,14 @@ function check_imex_needs_reload() {
   
   # Get current IMEX status
   local imex_status_output
-  if ! imex_status_output=$(timeout 30 /usr/bin/nvidia-imex-ctl -N -j -c "${_imex_config_file}" 2>/dev/null); then
+  if ! imex_status_output=$(timeout 15 /usr/bin/nvidia-imex-ctl -N -j -c "${_imex_config_file}" 2>/dev/null); then
     info "Failed to get IMEX status, assuming reload needed"
     return 0  # Need reload
   fi
   
   # Parse JSON to extract current IPs from IMEX status
   local current_imex_ips
-  if ! current_imex_ips=$(echo "${imex_status_output}" | jq -r '.nodes[].host' 2>/dev/null | sort | tr '\n' ' '); then
+  if ! current_imex_ips=$(echo "${imex_status_output}" | jq -r '.nodes | to_entries[].value.host' 2>/dev/null | sort | tr '\n' ' '); then
     info "Failed to parse IMEX status JSON, assuming reload needed"
     return 0  # Need reload
   fi
@@ -173,38 +171,43 @@ function write_file() {
 }
 
 function reload_imex() {
-  info "Attempting to acquire service lock for IMEX reload"
-  
-  # Use a global lock to prevent concurrent service operations
-  (
-    if ! flock -x -w ${SERVICE_LOCK_TIMEOUT} 201; then
-      error "Failed to acquire service lock within ${SERVICE_LOCK_TIMEOUT}s"
-      exit 1
-    fi
-    
-    info "Service lock acquired, proceeding with IMEX reload"
-    
-    info "Stopping IMEX"
-    timeout ${IMEX_STOP_TIMEOUT} systemctl stop ${IMEX_SERVICE}
-    pkill -9 ${IMEX_SERVICE}
+  info "Stopping IMEX"
+  timeout ${IMEX_STOP_TIMEOUT} systemctl stop ${IMEX_SERVICE}
+  pkill -9 ${IMEX_SERVICE}
 
-    #TODO Improvement: rotate server port to prevent race condition
-    # info "Rotating server port in IMEX config ${IMEX_MAIN_CONFIG}"
-    # NEW_SERVER_PORT=$((${SLURM_JOB_ID} % 16384 + 33792))
-    # sed -i "s/SERVER_PORT.*/SERVER_PORT=${NEW_SERVER_PORT}/" "${IMEX_MAIN_CONFIG}"
+  #TODO Improvement: rotate server port to prevent race condition
+  # info "Rotating server port in IMEX config ${IMEX_MAIN_CONFIG}"
+  # NEW_SERVER_PORT=$((${SLURM_JOB_ID} % 16384 + 33792))
+  # sed -i "s/SERVER_PORT.*/SERVER_PORT=${NEW_SERVER_PORT}/" "${IMEX_MAIN_CONFIG}"
 
-    info "Restarting IMEX"
-    timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}
-    
-  ) 201>"${SERVICE_LOCK_FILE}"
-  
-  local _service_result=$?
-  if [[ ${_service_result} -ne 0 ]]; then
+  info "Restarting IMEX"
+  if ! timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}; then
     error "IMEX service reload failed"
     return 1
   fi
   
   return 0
+}
+
+function handle_imex_reload() {
+  local _ips_from_cr=$1
+  local _imex_main_config=$2
+  local _reload_reason=$3
+  local _skip_message=$4
+  local _reload_message=$5
+  
+  info "${_reload_reason}"
+  if check_imex_needs_reload "${_ips_from_cr}" "${_imex_main_config}"; then
+    info "${_reload_message}"
+    if reload_imex; then
+      info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
+      sleep ${WAIT_TIME_TO_STABILIZE}
+    else
+      error "Failed to reload IMEX service"
+    fi
+  else
+    info "${_skip_message}"
+  fi
 }
 
 {
@@ -230,31 +233,9 @@ function reload_imex() {
 
   info "Checking IMEX nodes config ${IMEX_NODES_CONFIG}"
   if write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
-    info "IMEX nodes config updated, checking if reload is needed"
-    if check_imex_needs_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}"; then
-      info "IMEX reload needed, restarting service"
-      if reload_imex; then
-        info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
-        sleep ${WAIT_TIME_TO_STABILIZE}
-      else
-        error "Failed to reload IMEX service"
-      fi
-    else
-      info "IMEX already configured correctly, skipping reload"
-    fi
+    handle_imex_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}" "IMEX nodes config updated, checking if reload is needed" "IMEX already configured correctly, skipping reload" "IMEX reload needed, restarting service"
   else
-    info "IMEX nodes config unchanged, checking if reload is still needed"
-    if check_imex_needs_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}"; then
-      info "IMEX reload needed despite unchanged config, restarting service"
-      if reload_imex; then
-        info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
-        sleep ${WAIT_TIME_TO_STABILIZE}
-      else
-        error "Failed to reload IMEX service"
-      fi
-    else
-      info "IMEX config unchanged and service correctly configured, skipping reload"
-    fi
+    handle_imex_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}" "IMEX nodes config unchanged, checking if reload is still needed" "IMEX config unchanged and service correctly configured, skipping reload" "IMEX reload needed despite unchanged config, restarting service"
   fi
 
   prolog_end
