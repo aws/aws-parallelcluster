@@ -35,4 +35,4 @@ DeploymentSettings:
         SecurityGroupIds:
         - {{ default_vpc_security_group_id }}
 DevSettings:
-    TerminateInstanceOnFailure: True
+    TerminateInstanceOnFailure: False
