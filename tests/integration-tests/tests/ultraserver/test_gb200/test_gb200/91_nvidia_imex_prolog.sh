@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This prolog script configures the NVIDIA IMEX nodes config file and realods the nvidia-imex service.
+# This prolog script configures the NVIDIA IMEX nodes config file and reloads the nvidia-imex service.
 # This prolog is meant to be run by compute nodes.
 
 LOG_FILE_PATH="/var/log/parallelcluster/nvidia-imex-prolog.log"
@@ -13,12 +13,14 @@ WAIT_TIME_TO_STABILIZE=30
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
 
+
+
 function info() {
-  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] $1"
+  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
 }
 
 function error() {
-  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [ERROR] $1"
+  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [ERROR] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
 }
 
 function error_exit() {
@@ -80,6 +82,47 @@ function get_dna_parameter() {
   jq -r ".cluster.${1}" "${DNA_JSON_FILE}"
 }
 
+function check_imex_needs_reload() {
+  local _expected_ips=$1
+  local _imex_config_file=$2
+  
+  # First check if IMEX service is running
+  if ! systemctl is-active ${IMEX_SERVICE} &>/dev/null; then
+    info "IMEX service is not running, reload needed"
+    return 0  # Need reload
+  fi
+  
+  # Get current IMEX status
+  local imex_status_output
+  if ! imex_status_output=$(timeout 15 /usr/bin/nvidia-imex-ctl -N -j -c "${_imex_config_file}" 2>/dev/null); then
+    info "Failed to get IMEX status, assuming reload needed"
+    return 0  # Need reload
+  fi
+  
+  # Parse JSON to extract current IPs from IMEX status
+  local current_imex_ips
+  if ! current_imex_ips=$(echo "${imex_status_output}" | jq -r '.nodes | to_entries[].value.host' 2>/dev/null | sort | tr '\n' ' '); then
+    info "Failed to parse IMEX status JSON, assuming reload needed"
+    return 0  # Need reload
+  fi
+  
+  # Convert expected IPs to sorted space-separated string
+  local expected_ips_sorted
+  expected_ips_sorted=$(echo "${_expected_ips}" | tr ',' '\n' | sort | tr '\n' ' ')
+  
+  info "Current IMEX IPs: ${current_imex_ips}"
+  info "Expected IPs: ${expected_ips_sorted}"
+  
+  # Compare IP lists
+  if [[ "${current_imex_ips}" = "${expected_ips_sorted}" ]]; then
+    info "IMEX service running with correct IPs, skipping reload"
+    return 1  # Skip reload
+  else
+    info "IMEX IPs mismatch, reload needed"
+    return 0  # Need reload
+  fi
+}
+
 function write_file() {
   local _file=$1
   local _content=$2
@@ -138,7 +181,33 @@ function reload_imex() {
   # sed -i "s/SERVER_PORT.*/SERVER_PORT=${NEW_SERVER_PORT}/" "${IMEX_MAIN_CONFIG}"
 
   info "Restarting IMEX"
-  timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}
+  if ! timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}; then
+    error "IMEX service reload failed"
+    return 1
+  fi
+  
+  return 0
+}
+
+function handle_imex_reload() {
+  local _ips_from_cr=$1
+  local _imex_main_config=$2
+  local _reload_reason=$3
+  local _skip_message=$4
+  local _reload_message=$5
+  
+  info "${_reload_reason}"
+  if check_imex_needs_reload "${_ips_from_cr}" "${_imex_main_config}"; then
+    info "${_reload_message}"
+    if reload_imex; then
+      info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
+      sleep ${WAIT_TIME_TO_STABILIZE}
+    else
+      error "Failed to reload IMEX service"
+    fi
+  else
+    info "${_skip_message}"
+  fi
 }
 
 function create_default_imex_channel() {
@@ -183,14 +252,12 @@ function create_default_imex_channel() {
   info "IMEX Main Config: ${IMEX_MAIN_CONFIG}"
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
 
-  info "Updating IMEX nodes config ${IMEX_NODES_CONFIG}"
-  write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"
-
-  #TODO Improvement: reload IMEX only if the config has changed
-  reload_imex
-
-  info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
-  sleep ${WAIT_TIME_TO_STABILIZE}
+  info "Checking IMEX nodes config ${IMEX_NODES_CONFIG}"
+  if write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
+    handle_imex_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}" "IMEX nodes config updated, checking if reload is needed" "IMEX already configured correctly, skipping reload" "IMEX reload needed, restarting service"
+  else
+    handle_imex_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}" "IMEX nodes config unchanged, checking if reload is still needed" "IMEX config unchanged and service correctly configured, skipping reload" "IMEX reload needed despite unchanged config, restarting service"
+  fi
 
   prolog_end
 
