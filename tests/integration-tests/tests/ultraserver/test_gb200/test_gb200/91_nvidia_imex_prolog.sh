@@ -8,7 +8,6 @@ DNA_JSON_FILE="/etc/chef/dna.json"
 SCONTROL_CMD="/opt/slurm/bin/scontrol"
 IMEX_START_TIMEOUT=60
 IMEX_STOP_TIMEOUT=15
-WAIT_TIME_TO_STABILIZE=30
 #TODO In production, specify p6e-gb200, only. We added g5g only for testing purposes.
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
@@ -200,8 +199,7 @@ function handle_imex_reload() {
   if check_imex_needs_reload "${_ips_from_cr}" "${_imex_main_config}"; then
     info "${_reload_message}"
     if reload_imex; then
-      info "Sleeping ${WAIT_TIME_TO_STABILIZE} seconds to let IMEX stabilize"
-      sleep ${WAIT_TIME_TO_STABILIZE}
+      info "IMEX has been reloaded"
     else
       error "Failed to reload IMEX service"
     fi
