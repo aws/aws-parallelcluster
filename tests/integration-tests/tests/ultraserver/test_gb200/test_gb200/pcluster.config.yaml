@@ -37,9 +37,6 @@ Scheduling:
         Efa:
           Enabled: true
         {% endif %}
-        HealthChecks:
-          Gpu:
-            Enabled: True
     Networking:
       {% if instance == "p6e-gb200.36xlarge" %}
       PlacementGroup:
