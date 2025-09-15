@@ -66,6 +66,9 @@ def _get_os_parameters(config=None, args=None):
 
     no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
     _propagate_os_jinja_variables("NO_ROCKY_", result, today_number, no_rocky_oss)
+
+    rhel_oss = [os for os in SUPPORTED_OSES if "rhel" in os]
+    _propagate_os_jinja_variables("RHEL_", result, today_number, rhel_oss)
     return result
 
 
@@ -78,6 +81,8 @@ def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_os
     # If the intersection is empty, fallback to supported OS to prevent the framework from failing of div by 0
     available_amis_oss_x86 = sorted(list(set(supported_x86_oses) & set(available_amis_oss_x86))) or supported_x86_oses
     available_amis_oss_arm = sorted(list(set(supported_arm_oses) & set(available_amis_oss_arm))) or supported_arm_oses
+    result[f"{prefix}OS_X86"] = available_amis_oss_x86
+    result[f"{prefix}OS_ARM"] = available_amis_oss_arm
     for index in range(len(supported_x86_oses)):
         result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
         result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
