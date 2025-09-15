@@ -47,9 +47,13 @@ def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: in
     return job_id
 
 
-def assert_imex_nodes_config_is_correct(rce: RemoteCommandExecutor, launch_template_id: str, expected_ips: list):
+def assert_imex_nodes_config_is_correct(
+    rce: RemoteCommandExecutor, queue_name: str, compute_resource_name: str, expected_ips: list
+):
     logging.info(f"Checking IMEX nodes config contains the expected nodes: {expected_ips}")
-    imex_nodes_config_file = f"/opt/parallelcluster/shared/nvidia-imex/nodes_config_{launch_template_id}.cfg"
+    imex_nodes_config_file = (
+        f"/opt/parallelcluster/shared/nvidia-imex/nodes_config_{queue_name}_{compute_resource_name}.cfg"
+    )
     imex_config_content = read_remote_file(rce, imex_nodes_config_file)
     imex_config_content_clean = [line for line in imex_config_content.split("\n") if not line.strip().startswith("#")]
     actual_ips = [ip.strip() for ip in imex_config_content_clean]
@@ -189,12 +193,6 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
     def _check_imex_healthy():
         rce = RemoteCommandExecutor(cluster)
 
-        launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-        logging.info(
-            f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: "
-            f"{launch_template_id}"
-        )
-
         job_id = submit_job_imex_status(rce, queue, max_nodes)
 
         logging.info(
@@ -206,7 +204,7 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
             f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}"
         )
 
-        assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
+        assert_imex_nodes_config_is_correct(rce, queue, compute_resource, ips)
         assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
         assert_no_errors_in_logs(cluster, queue, compute_resource)
 
@@ -234,14 +232,9 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
 def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
     rce = RemoteCommandExecutor(cluster)
 
-    launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-    logging.info(
-        f"Launch template for nodes in queue {queue} and " f"compute resource {compute_resource}: {launch_template_id}"
-    )
-
     job_id = submit_job_imex_status(rce, queue, max_nodes)
 
-    assert_imex_nodes_config_is_correct(rce, launch_template_id, FAKE_IPS)
+    assert_imex_nodes_config_is_correct(rce, queue, compute_resource, FAKE_IPS)
     assert_imex_status(
         rce, job_id, FAKE_IPS, service_status="DOWN", node_status="UNAVAILABLE", connection_status="INVALID"
     )
