@@ -4,7 +4,6 @@
 # This prolog is meant to be run by compute nodes.
 
 LOG_FILE_PATH="/var/log/parallelcluster/nvidia-imex-prolog.log"
-DNA_JSON_FILE="/etc/chef/dna.json"
 SCONTROL_CMD="/opt/slurm/bin/scontrol"
 IMEX_START_TIMEOUT=60
 IMEX_STOP_TIMEOUT=15
@@ -77,8 +76,8 @@ function get_ips_from_node_names() {
   ${SCONTROL_CMD} -ao show node "${_nodes}" | sed 's/^.* NodeAddr=\([^ ]*\).*/\1/'
 }
 
-function get_dna_parameter() {
-  jq -r ".cluster.${1}" "${DNA_JSON_FILE}"
+function get_compute_resource_name() {
+  echo "${2}" | sed -E "s/${1}(.+)-[0-9]+$/\1/"
 }
 
 function check_imex_needs_reload() {
@@ -234,18 +233,16 @@ function create_default_imex_channel() {
 
   create_default_imex_channel
 
-  QUEUE_NAME=$(get_dna_parameter "scheduler_queue_name")
-  COMPUTE_RESOURCE_NAME=$(get_dna_parameter "scheduler_compute_resource_name")
-  LAUNCH_TEMPLATE_ID=$(get_dna_parameter "launch_template_id")
+  QUEUE_NAME=$SLURM_JOB_PARTITION
+  COMPUTE_RESOURCE_NAME=$(get_compute_resource_name "${QUEUE_NAME}-st-" $SLURMD_NODENAME)
   CR_NODES=$(get_node_names "${QUEUE_NAME}" "${COMPUTE_RESOURCE_NAME}")
   IPS_FROM_CR=$(get_ips_from_node_names "${CR_NODES}")
-  IMEX_MAIN_CONFIG="/opt/parallelcluster/shared/nvidia-imex/config_${LAUNCH_TEMPLATE_ID}.cfg"
-  IMEX_NODES_CONFIG="/opt/parallelcluster/shared/nvidia-imex/nodes_config_${LAUNCH_TEMPLATE_ID}.cfg"
+  IMEX_MAIN_CONFIG="/opt/parallelcluster/shared/nvidia-imex/config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
+  IMEX_NODES_CONFIG="/opt/parallelcluster/shared/nvidia-imex/nodes_config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
 
   info "Queue Name: ${QUEUE_NAME}"
   info "CR Name: ${COMPUTE_RESOURCE_NAME}"
   info "CR Nodes: ${CR_NODES}"
-  info "Launch Template Id: ${LAUNCH_TEMPLATE_ID}"
   info "Node IPs from CR: ${IPS_FROM_CR}"
   info "IMEX Main Config: ${IMEX_MAIN_CONFIG}"
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
