@@ -450,6 +450,17 @@ def test_instance_type_base_ami_compatible_validator(
             "It is not recommended to use instance type t3.nano with rocky9. "
             "If you want to use rocky9 it is recommended to use an instance type with at least 1.7 GB of memory.",
         ),
+        (
+            "p6e-gb200.36xlarge",
+            "rocky8",
+            "The instance type p6e-gb200.36xlarge is not officially supported with OS rocky8. "
+            "Please use one of the following OS",
+        ),
+        (
+            "p6e-gb200.36xlarge",
+            "rocky9",
+            None,
+        ),
     ],
 )
 def test_instance_type_os_compatible_validator(instance_type, os, expected_message):

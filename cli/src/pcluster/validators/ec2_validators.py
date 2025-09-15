@@ -23,9 +23,11 @@ from pcluster.constants import (
     CAPACITY_BLOCK_INACTIVE_STATES,
     CAPACITY_RESERVATION_OS_MAP,
     NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES,
+    SUPPORTED_OSES_FOR_P6E_GB200,
     ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT,
     ULTRASERVER_INSTANCE_PREFIX_LIST,
     UNSUPPORTED_OSES_FOR_MICRO_NANO,
+    UNSUPPORTED_OSES_FOR_P6E_GB200,
 )
 from pcluster.utils import get_needed_ultraserver_capacity_block_statuses, get_resource_name_from_resource_arn
 from pcluster.validators.common import FailureLevel, Validator
@@ -201,6 +203,13 @@ class InstanceTypeOSCompatibleValidator(Validator):
                         instance_type, os
                     ),
                     FailureLevel.WARNING,
+                )
+        if os in UNSUPPORTED_OSES_FOR_P6E_GB200:
+            if instance_type.startswith("p6e-gb200"):
+                self._add_failure(
+                    "The instance type {0} is not officially supported with OS {1}."
+                    " Please use one of the following OS: {2}".format(instance_type, os, SUPPORTED_OSES_FOR_P6E_GB200),
+                    FailureLevel.ERROR,
                 )
 
 
