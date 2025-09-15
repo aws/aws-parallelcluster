@@ -77,7 +77,9 @@ function get_ips_from_node_names() {
 }
 
 function get_compute_resource_name() {
-  echo "${2}" | sed -E "s/${1}(.+)-[0-9]+$/\1/"
+  local _queue_name_prefix=$1
+  local _slurmd_node_name=$2
+  echo "${_slurmd_node_name}" | sed -E "s/${_queue_name_prefix}(.+)-[0-9]+$/\1/"
 }
 
 function check_imex_needs_reload() {
