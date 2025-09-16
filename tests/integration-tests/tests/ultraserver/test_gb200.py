@@ -339,31 +339,23 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     logging.info("TopologyPlugin correctly completely disabled")
 
 
-def get_ultraserver_capacity_reservation_id(instance, region):
+def get_capacity_reservation_id(instance_type, region, count):
     ec2_client = boto3.client("ec2", region_name=region)
-    paginator = ec2_client.get_paginator("describe_capacity_block_status")
-
+    paginator = ec2_client.get_paginator("describe_capacity_reservations")
     # List to store matching reservation IDs
-    ultraserver_reservations_ids = []
-
+    reservations_ids = []
     # Paginate through the results
     for page in paginator.paginate():
-        for block in page.get("CapacityBlockStatuses", []):
-            for reservation in block.get("CapacityReservationStatuses", []):
-                # Check if TotalCapacity equals TotalAvailableCapacity
-                if (
-                    reservation.get("TotalCapacity") == reservation.get("TotalAvailableCapacity")
-                    and reservation.get("TotalCapacity") is not None
-                ):
-
-                    ultraserver_reservations_ids.append(
-                        {
-                            "CapacityReservationId": reservation["CapacityReservationId"],
-                            "TotalCapacity": reservation["TotalCapacity"],
-                        }
-                    )
-
-    return ultraserver_reservations_ids
+        for reservation in page.get("CapacityReservations", []):
+            if instance_type == reservation.get("InstanceType") and reservation.get("AvailableInstanceCount") >= count:
+                reservations_ids.append(
+                    {
+                        "CapacityReservationId": reservation["CapacityReservationId"],
+                        "TotalInstanceCount": reservation["TotalInstanceCount"],
+                        "AvailableInstanceCount": reservation["AvailableInstanceCount"],
+                    }
+                )
+    return reservations_ids
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -409,16 +401,15 @@ def test_gb200(
     This is a reasonable approximation for the test because the focus of the test is on IMEX and topology configuration,
     which can be executed on g4dn as well.
     """
-    capacity_max_queue_size = capacity_reservation_id = None
+    capacity_reservation_id = None
+    max_queue_size = 2
     if instance == "p6e-gb200.36xlarge":
-        ultraserver_reservations_ids = get_ultraserver_capacity_reservation_id(instance, region)
+        ultraserver_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size)
         if ultraserver_reservations_ids:
             capacity_reservation_id = ultraserver_reservations_ids[0].get("CapacityReservationId")
-            capacity_max_queue_size = ultraserver_reservations_ids[0].get("TotalCapacity")
         else:
             pytest.skip(f"Skipping the test No Capacity Block for {instance} was found in {region}")
 
-    max_queue_size = 2 if capacity_max_queue_size is None else capacity_max_queue_size
     min_queue_size_without_imex = 1 if instance != "p6e-gb200.36xlarge" else 0
     capacity_block_reservation_id = capacity_reservation_id if instance == "p6e-gb200.36xlarge" else None
 
