@@ -188,4 +188,4 @@ function create_default_imex_channel() {
 
   prolog_end
 
-} >> "${LOG_FILE_PATH}" 2>&1
+} 2>&1 | tee -a "${LOG_FILE_PATH}" | logger -t "91_nvidia_imex_prolog"
