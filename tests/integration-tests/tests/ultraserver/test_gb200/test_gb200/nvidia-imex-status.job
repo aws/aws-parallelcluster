@@ -4,6 +4,8 @@
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
 
+# TODO: Remove the sleep which is added for IMEX status STABALIZE and Converge
+sleep 45
 QUEUE_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_queue_name")
 COMPUTE_RES_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_compute_resource_name")
 IMEX_CONFIG_FILE="/opt/parallelcluster/shared/nvidia-imex/config_${QUEUE_NAME}_${COMPUTE_RES_NAME}.cfg"
