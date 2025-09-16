@@ -93,7 +93,7 @@ phases:
                   yum clean all
                 }
                 
-                PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r)"
+                PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-modules-extra-$(uname -r)"
                 Repository="BaseOS"
                 [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
                 
@@ -128,8 +128,8 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
-                apt-get -y install linux-headers-$(uname -r)
-                apt-mark hold linux-aws* linux-base* linux-headers* linux-image* 
+                apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
+                apt-mark hold linux-aws* linux-base* linux-headers* linux-image*
               fi
               echo "Kernel version is $(uname -a)"
 
