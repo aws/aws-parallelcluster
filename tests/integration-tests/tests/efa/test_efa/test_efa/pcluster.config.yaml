@@ -13,22 +13,22 @@ Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
     - Name: efa-enabled
+      {% if p6_b200_capacity_reservation_id %}
+      CapacityType: CAPACITY_BLOCK
+      CapacityReservationTarget:
+        CapacityReservationId: {{ p6_b200_capacity_reservation_id }}
+      {% endif %}
       Networking:
         PlacementGroup:
-          Enabled: {% if instance not in ["p4d.24xlarge"] %}true{% else %}false{% endif %}
+          Enabled: {% if instance not in ["p4d.24xlarge", "p6-b200.48xlarge"] %}true{% else %}false{% endif %}
           {% if instance in ["c5n.18xlarge", "c6gn.16xlarge"] %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: efa-enabled-i1
-          {% if "us-iso" in region %}
           InstanceType: {{ instance }}
-          {% else %}
-          Instances:
-            - InstanceType: {{ instance }}
-          {% endif %}
-          MaxCount: 2
-          MinCount: 2
+          MaxCount: {{ max_queue_size }}
+          MinCount: {{ max_queue_size }}
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true

@@ -25,7 +25,13 @@ from tests.common.assertions import assert_regex_in_file, wait_for_instances_in_
 from tests.common.mpi_common import _test_mpi
 from tests.common.nccl_common import install_and_run_nccl_benchmarks
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import fetch_instance_slots, is_existing_remote_file, read_remote_file, terminate_nodes_manually
+from tests.common.utils import (
+    fetch_instance_slots,
+    get_capacity_reservation_id,
+    is_existing_remote_file,
+    read_remote_file,
+    terminate_nodes_manually,
+)
 
 # We use placeholder IPs just to get IMEX started.
 # These values are hardwired in the cookbook.
@@ -337,25 +343,6 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     assert_that(topology_output).is_empty()
 
     logging.info("TopologyPlugin correctly completely disabled")
-
-
-def get_capacity_reservation_id(instance_type, region, count):
-    ec2_client = boto3.client("ec2", region_name=region)
-    paginator = ec2_client.get_paginator("describe_capacity_reservations")
-    # List to store matching reservation IDs
-    reservations_ids = []
-    # Paginate through the results
-    for page in paginator.paginate():
-        for reservation in page.get("CapacityReservations", []):
-            if instance_type == reservation.get("InstanceType") and reservation.get("AvailableInstanceCount") >= count:
-                reservations_ids.append(
-                    {
-                        "CapacityReservationId": reservation["CapacityReservationId"],
-                        "TotalInstanceCount": reservation["TotalInstanceCount"],
-                        "AvailableInstanceCount": reservation["AvailableInstanceCount"],
-                    }
-                )
-    return reservations_ids
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
