@@ -34,7 +34,7 @@ function get_instance_type() {
   curl -s -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/instance-type
 }
 
-function return_unless_gb200_with_imex() {
+function return_if_unsupported_instance_type() {
   local instance_type=$(get_instance_type)
 
   if [[ ! ${instance_type} =~ ${ALLOWED_INSTANCE_TYPES} ]]; then
@@ -163,7 +163,7 @@ function create_default_imex_channel() {
 {
   info "PROLOG Start JobId=${SLURM_JOB_ID}: $0"
 
-  return_unless_gb200_with_imex
+  return_if_unsupported_instance_type
 
   create_default_imex_channel
 
@@ -188,4 +188,4 @@ function create_default_imex_channel() {
 
   prolog_end
 
-} >> "${LOG_FILE_PATH}" 2>&1
+} 2>&1 | tee -a "${LOG_FILE_PATH}" | logger -t "91_nvidia_imex_prolog"
