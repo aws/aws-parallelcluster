@@ -267,7 +267,12 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
             str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
             encoding="utf-8",
         ) as result:
-            previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
+            previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", result.read())
+            previous_result = previous_result_match.group(1) if previous_result_match else None
+
+            if previous_result is None:
+                logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
+                continue
 
             if benchmark_name == "osu_bibw":
                 # Invert logic because osu_bibw is in MB/s
