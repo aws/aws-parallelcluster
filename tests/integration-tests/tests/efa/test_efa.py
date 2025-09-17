@@ -62,7 +62,9 @@ def test_efa(
         if capacity_reservations_ids:
             p6_b200_capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
         else:
-            pytest.skip(f"Skipping the test No Capacity Block for {instance} was found in {region}")
+            message = f"Skipping the test as no Capacity Block for {instance} and os {os} was found in {region}"
+            logging.warn(message)
+            pytest.skip(message)
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
@@ -75,9 +77,7 @@ def test_efa(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
-    if instance != "p6-b200.48xlarge":
-        # TODO: test MPI on p6-b200.48xlarge.
-        _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
+    _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
     run_system_analyzer(cluster, scheduler_commands_factory, request, partition="efa-enabled")
