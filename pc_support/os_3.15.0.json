@@ -1,0 +1,32 @@
+{
+  "os": [
+    {
+      "description": "Amazon Linux 2",
+      "name": "alinux2"
+    },
+    {
+      "description": "Amazon Linux 2023",
+      "name": "alinux2023"
+    },
+    {
+      "description": "Ubuntu 20.04 LTS",
+      "name": "ubuntu2004"
+    },
+    {
+      "description": "Ubuntu 22.04 LTS",
+      "name": "ubuntu2204"
+    },
+    {
+      "description": "CentOS 7",
+      "name": "centos7"
+    },
+    {
+      "description": "Red Hat Enterprise Linux 8",
+      "name": "rhel8"
+    },
+    {
+      "description": "Red Hat Enterprise Linux 9",
+      "name": "rhel9"
+    }
+  ]
+}
