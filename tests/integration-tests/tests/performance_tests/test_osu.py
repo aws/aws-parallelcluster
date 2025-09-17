@@ -115,7 +115,7 @@ def test_osu(
                 output_dir,
                 os,
                 instance,
-                num_instances=32,
+                num_instances=max_queue_size,
                 slots_per_instance=slots_per_instance,
                 partition="efa-enabled",
             )
