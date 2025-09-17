@@ -21,14 +21,15 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.utils import (
     fetch_instance_slots,
+    get_capacity_reservation_id,
     get_installed_parallelcluster_version,
     run_system_analyzer,
     write_file,
 )
 from tests.performance_tests.common import push_result_to_dynamodb
 
-# We collected OSU benchmarks results for c5n.18xlarge only.
-OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge"]
+# We collected OSU benchmarks results for c5n.18xlarge and p6-b200.48xlarge only.
+OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p6-b200.48xlarge"]
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -57,8 +58,29 @@ def test_osu(
     else:
         head_node_instance = "c6g.16xlarge"
 
+    max_queue_size = 32
+    capacity_type = "ONDEMAND"
+    capacity_reservation_id = None
+    placement_group_enabled = True
+
+    if instance == "p6-b200.48xlarge":
+        max_queue_size = 2
+        capacity_type = "CAPACITY_BLOCK"
+        placement_group_enabled = False
+        capacity_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size)
+        if capacity_reservations_ids:
+            capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
+        else:
+            pytest.skip(f"Skipping the test No Capacity Block for {instance} was found in {region}")
+
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    cluster_config = pcluster_config_reader(head_node_instance=head_node_instance)
+    cluster_config = pcluster_config_reader(
+        head_node_instance=head_node_instance,
+        max_queue_size=max_queue_size,
+        capacity_type=capacity_type,
+        capacity_reservation_id=capacity_reservation_id,
+        placement_group_enabled=placement_group_enabled,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -93,7 +115,7 @@ def test_osu(
                 output_dir,
                 os,
                 instance,
-                num_instances=32,
+                num_instances=max_queue_size,
                 slots_per_instance=slots_per_instance,
                 partition="efa-enabled",
             )
@@ -245,7 +267,12 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
             str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
             encoding="utf-8",
         ) as result:
-            previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
+            previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", result.read())
+            previous_result = previous_result_match.group(1) if previous_result_match else None
+
+            if previous_result is None:
+                logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
+                continue
 
             if benchmark_name == "osu_bibw":
                 # Invert logic because osu_bibw is in MB/s
