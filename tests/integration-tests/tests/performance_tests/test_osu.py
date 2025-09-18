@@ -67,11 +67,13 @@ def test_osu(
         max_queue_size = 2
         capacity_type = "CAPACITY_BLOCK"
         placement_group_enabled = False
-        capacity_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size)
+        capacity_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
         if capacity_reservations_ids:
             capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
         else:
-            pytest.skip(f"Skipping the test No Capacity Block for {instance} was found in {region}")
+            message = f"Skipping the test as no Capacity Block for {instance} and os {os} was found in {region}"
+            logging.warn(message)
+            pytest.skip(message)
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
@@ -102,6 +104,7 @@ def test_osu(
                 output_dir,
                 os,
                 instance,
+                network_interfaces_count,
                 slots_per_instance,
                 partition="efa-enabled",
             )
@@ -115,6 +118,7 @@ def test_osu(
                 output_dir,
                 os,
                 instance,
+                network_interfaces_count,
                 num_instances=max_queue_size,
                 slots_per_instance=slots_per_instance,
                 partition="efa-enabled",
@@ -129,6 +133,7 @@ def test_osu(
             scheduler_commands,
             test_datadir,
             slots_per_instance,
+            network_interfaces_count,
             partition="efa-enabled",
         )
 
@@ -143,6 +148,7 @@ def _test_osu_benchmarks_pt2pt(
     output_dir,
     os,
     instance,
+    network_interfaces_count,
     slots_per_instance,
     partition=None,
 ):
@@ -164,6 +170,7 @@ def _test_osu_benchmarks_pt2pt(
             scheduler_commands,
             num_instances,
             slots_per_instance,
+            network_interfaces_count,
             test_datadir,
         )
         failures = _check_osu_benchmarks_results(
@@ -183,6 +190,7 @@ def _test_osu_benchmarks_collective(
     output_dir,
     os,
     instance,
+    network_interfaces_count,
     num_instances,
     slots_per_instance,
     partition=None,
@@ -202,6 +210,7 @@ def _test_osu_benchmarks_collective(
             scheduler_commands,
             num_instances,
             slots_per_instance,
+            network_interfaces_count,
             test_datadir,
             timeout=24,
         )
@@ -215,7 +224,13 @@ def _test_osu_benchmarks_collective(
 
 
 def _test_osu_benchmarks_multiple_bandwidth(
-    instance, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
+        instance,
+        remote_command_executor,
+        scheduler_commands,
+        test_datadir,
+        slots_per_instance,
+        network_interfaces_count,
+        partition=None,
 ):
     instance_bandwidth_dict = {
         # Expected bandwidth for p4d and p4de (4 * 100 Gbps NICS -> declared NetworkPerformance 400 Gbps):
@@ -240,6 +255,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
         scheduler_commands,
         num_instances,
         slots_per_instance,
+        network_interfaces_count,
         test_datadir,
     )
     max_bandwidth = remote_command_executor.run_remote_command(
