@@ -1167,12 +1167,13 @@ def s3_bucket_key_prefix():
 
 
 @pytest.fixture(scope="class")
-def serial_execution_by_instance(request, instance, region):
+def serial_execution_by_instance(request, instance, region, os_platform):
     """Enforce serial execution of tests, according to the adopted instance."""
     if instance in ["c5n.18xlarge"] or instance.startswith("p"):
-        logging.info("Enforcing serial execution for instance %s", instance)
+        logging.info("Enforcing serial execution for instance %s, platform %s", instance, os_platform)
         outdir = request.config.getoption("output_dir")
-        lock_file = f"{outdir}/{instance}{region}.lock"
+        os_platform = os_platform.replace(" ", "")
+        lock_file = f"{outdir}/{instance}{os_platform}{region}.lock"
         lock = FileLock(lock_file=lock_file)
         logging.info("Acquiring lock file %s", lock.lock_file)
         with lock.acquire(poll_interval=15, timeout=12000):
@@ -1194,6 +1195,15 @@ def architecture(request, instance, region):
         supported_architecture = get_architecture_supported_by_instance_type(instance, region)
         request.config.cache.set(f"{instance}/architecture", supported_architecture)
     return supported_architecture
+
+
+@pytest.fixture(scope="class")
+def os_platform(os):
+    """Return platform according to OS."""
+    os_platform = "Linux/UNIX"
+    if "rhel" in os.lower():
+        os_platform = "Red Hat Enterprise Linux"
+    return os_platform
 
 
 @pytest.fixture()
