@@ -54,14 +54,14 @@ def _test_mpi(
             str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)),
             slots=2 * slots_per_instance,
             partition=partition,
-            script_args=[timeout],
+            script_args=[str(timeout)],
         )
     else:
         # submit script using additional files
         result = scheduler_commands.submit_script(
             str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)),
             slots=2 * slots_per_instance,
-            script_args=[timeout],
+            script_args=[str(timeout)],
         )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
 
