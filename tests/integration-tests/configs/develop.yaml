@@ -264,9 +264,9 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: [{{ NO_RHEL_OS_X86_1 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
-        - regions: [ "use1-az6" ]  # do not move, unless capacity reservation is moved as well
+        - regions: [ "use2-az2" ]  # do not move, unless capacity reservation is moved as well
           instances: [ "p6-b200.48xlarge" ]
-          oss: ["alinux2023", "ubuntu2204", "ubuntu2404", "rocky8", "rocky9"]
+          oss: ["alinux2023", "ubuntu2204", "ubuntu2404", "rocky8", "rocky9", "rhel8", "rhel9"]
           schedulers: [ "slurm" ]
         - regions: [{{ c6gn_16xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_ARM_0 }}]
           instances: ["c6gn.16xlarge"]
@@ -289,7 +289,7 @@ test-suites:
           schedulers: [ "slurm" ]
         - regions: [ "usw2-az4" ] # do not move, unless instance type support is moved as well
           instances: [ "p6e-gb200.36xlarge" ]
-          oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023" ]
+          oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023", "rhel9" ]
           schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
