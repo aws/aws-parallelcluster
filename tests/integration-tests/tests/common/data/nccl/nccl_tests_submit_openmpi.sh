@@ -28,5 +28,6 @@ mpirun \
 -x NCCL_TESTS_SPLIT_MASK=0x0 \
 -x NCCL_SOCKET_FAMILY=AF_INET \
 -x RDMAV_FORK_SAFE=1 \
+-x NCCL_SOCKET_FAMILY=AF_INET \
 --bind-to none \
 /shared/openmpi/nccl-tests-${NCCL_BENCHMARKS_VERSION}/build/all_reduce_perf -b 1024 -e 8G -f 2 -g 1 -c 1 > /shared/nccl_tests.out
