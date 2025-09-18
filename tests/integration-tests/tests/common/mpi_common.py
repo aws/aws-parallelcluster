@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import math
 
 from assertpy import assert_that
 
@@ -44,17 +45,23 @@ def _test_mpi(
         interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
         remote_command_executor.run_remote_command(interactive_command)
 
+    # Historically, we assumed a timeout of 20 seconds with 48 slots per instance.
+    timeout = math.ceil((20.0 / 48.0) * slots_per_instance)
+
     if partition:
         # submit script using additional files
         result = scheduler_commands.submit_script(
             str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)),
             slots=2 * slots_per_instance,
             partition=partition,
+            script_args=[timeout],
         )
     else:
         # submit script using additional files
         result = scheduler_commands.submit_script(
-            str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)), slots=2 * slots_per_instance
+            str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)),
+            slots=2 * slots_per_instance,
+            script_args=[timeout],
         )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
 
