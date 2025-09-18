@@ -69,6 +69,7 @@ def install_and_run_nccl_benchmarks(remote_command_executor, mpi_module, schedul
         "p4d.24xlarge": 26.0,
         # p5.48xlarge - Expected "in-place busbw" bandwidth with 2 nodes, 8 tasks per node is about 250GB/s
         "p5.48xlarge": 250.0,
+        "p6-b200.48xlarge": 300,
         "p6e-gb200.36xlarge": 500,
     }
 

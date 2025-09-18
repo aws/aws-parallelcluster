@@ -93,7 +93,7 @@ phases:
                   yum clean all
                 }
                 
-                PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r)"
+                PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-modules-extra-$(uname -r)"
                 Repository="BaseOS"
                 [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
                 
@@ -124,12 +124,12 @@ phases:
 
                 yum install -y yum-plugin-versionlock
                 # listing all the packages because wildcard does not work as expected
-                yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
+                yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules ${!KERNEL_PACKAGES_PREFIX}-modules-extra
                 [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
-                apt-get -y install linux-headers-$(uname -r)
-                apt-mark hold linux-aws* linux-base* linux-headers* linux-image* 
+                apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
+                apt-mark hold linux-aws* linux-base* linux-headers* linux-image* linux-modules-extra*
               fi
               echo "Kernel version is $(uname -a)"
 
@@ -245,11 +245,11 @@ phases:
               
               # Remove kernel version lock
               if [[ ${!PLATFORM} == RHEL ]]; then
-                yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
+                yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules ${!KERNEL_PACKAGES_PREFIX}-modules-extra
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
-                apt-mark unhold linux-aws* linux-base* linux-headers* linux-image* 
+                apt-mark unhold linux-aws* linux-base* linux-headers* linux-image* linux-modules-extra*
               fi
               
               # Handle SSM agent

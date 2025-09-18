@@ -4,7 +4,10 @@
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
 
-LAUNCH_TEMPLATE_ID=$(cat "/etc/chef/dna.json" | jq -r ".cluster.launch_template_id")
-IMEX_CONFIG_FILE="/opt/parallelcluster/shared/nvidia-imex/config_${LAUNCH_TEMPLATE_ID}.cfg"
+# TODO: Remove the sleep which is added for IMEX status STABALIZE and Converge
+sleep 45
+QUEUE_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_queue_name")
+COMPUTE_RES_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_compute_resource_name")
+IMEX_CONFIG_FILE="/opt/parallelcluster/shared/nvidia-imex/config_${QUEUE_NAME}_${COMPUTE_RES_NAME}.cfg"
 
 srun bash -c "/usr/bin/nvidia-imex-ctl -N -j -c ${IMEX_CONFIG_FILE} > result_\${SLURM_JOB_ID}_\$(hostname).out 2> result_\${SLURM_JOB_ID}_\$(hostname).err"

@@ -25,7 +25,13 @@ from tests.common.assertions import assert_regex_in_file, wait_for_instances_in_
 from tests.common.mpi_common import _test_mpi
 from tests.common.nccl_common import install_and_run_nccl_benchmarks
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import fetch_instance_slots, is_existing_remote_file, read_remote_file, terminate_nodes_manually
+from tests.common.utils import (
+    fetch_instance_slots,
+    get_capacity_reservation_id,
+    is_existing_remote_file,
+    read_remote_file,
+    terminate_nodes_manually,
+)
 
 # We use placeholder IPs just to get IMEX started.
 # These values are hardwired in the cookbook.
@@ -47,9 +53,13 @@ def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: in
     return job_id
 
 
-def assert_imex_nodes_config_is_correct(rce: RemoteCommandExecutor, launch_template_id: str, expected_ips: list):
+def assert_imex_nodes_config_is_correct(
+    rce: RemoteCommandExecutor, queue_name: str, compute_resource_name: str, expected_ips: list
+):
     logging.info(f"Checking IMEX nodes config contains the expected nodes: {expected_ips}")
-    imex_nodes_config_file = f"/opt/parallelcluster/shared/nvidia-imex/nodes_config_{launch_template_id}.cfg"
+    imex_nodes_config_file = (
+        f"/opt/parallelcluster/shared/nvidia-imex/nodes_config_{queue_name}_{compute_resource_name}.cfg"
+    )
     imex_config_content = read_remote_file(rce, imex_nodes_config_file)
     imex_config_content_clean = [line for line in imex_config_content.split("\n") if not line.strip().startswith("#")]
     actual_ips = [ip.strip() for ip in imex_config_content_clean]
@@ -189,12 +199,6 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
     def _check_imex_healthy():
         rce = RemoteCommandExecutor(cluster)
 
-        launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-        logging.info(
-            f"Launch template for nodes in queue {queue} and compute resource {compute_resource}: "
-            f"{launch_template_id}"
-        )
-
         job_id = submit_job_imex_status(rce, queue, max_nodes)
 
         logging.info(
@@ -206,7 +210,7 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
             f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}"
         )
 
-        assert_imex_nodes_config_is_correct(rce, launch_template_id, ips)
+        assert_imex_nodes_config_is_correct(rce, queue, compute_resource, ips)
         assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
         assert_no_errors_in_logs(cluster, queue, compute_resource)
 
@@ -234,14 +238,9 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
 def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
     rce = RemoteCommandExecutor(cluster)
 
-    launch_template_id = cluster.get_compute_nodes_launch_template_logical_id(queue, compute_resource)
-    logging.info(
-        f"Launch template for nodes in queue {queue} and " f"compute resource {compute_resource}: {launch_template_id}"
-    )
-
     job_id = submit_job_imex_status(rce, queue, max_nodes)
 
-    assert_imex_nodes_config_is_correct(rce, launch_template_id, FAKE_IPS)
+    assert_imex_nodes_config_is_correct(rce, queue, compute_resource, FAKE_IPS)
     assert_imex_status(
         rce, job_id, FAKE_IPS, service_status="DOWN", node_status="UNAVAILABLE", connection_status="INVALID"
     )
@@ -346,33 +345,6 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     logging.info("TopologyPlugin correctly completely disabled")
 
 
-def get_ultraserver_capacity_reservation_id(instance, region):
-    ec2_client = boto3.client("ec2", region_name=region)
-    paginator = ec2_client.get_paginator("describe_capacity_block_status")
-
-    # List to store matching reservation IDs
-    ultraserver_reservations_ids = []
-
-    # Paginate through the results
-    for page in paginator.paginate():
-        for block in page.get("CapacityBlockStatuses", []):
-            for reservation in block.get("CapacityReservationStatuses", []):
-                # Check if TotalCapacity equals TotalAvailableCapacity
-                if (
-                    reservation.get("TotalCapacity") == reservation.get("TotalAvailableCapacity")
-                    and reservation.get("TotalCapacity") is not None
-                ):
-
-                    ultraserver_reservations_ids.append(
-                        {
-                            "CapacityReservationId": reservation["CapacityReservationId"],
-                            "TotalCapacity": reservation["TotalCapacity"],
-                        }
-                    )
-
-    return ultraserver_reservations_ids
-
-
 @pytest.mark.usefixtures("serial_execution_by_instance")
 @pytest.mark.usefixtures("os")
 def test_gb200(
@@ -416,16 +388,15 @@ def test_gb200(
     This is a reasonable approximation for the test because the focus of the test is on IMEX and topology configuration,
     which can be executed on g4dn as well.
     """
-    capacity_max_queue_size = capacity_reservation_id = None
+    capacity_reservation_id = None
+    max_queue_size = 2
     if instance == "p6e-gb200.36xlarge":
-        ultraserver_reservations_ids = get_ultraserver_capacity_reservation_id(instance, region)
+        ultraserver_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size)
         if ultraserver_reservations_ids:
             capacity_reservation_id = ultraserver_reservations_ids[0].get("CapacityReservationId")
-            capacity_max_queue_size = ultraserver_reservations_ids[0].get("TotalCapacity")
         else:
             pytest.skip(f"Skipping the test No Capacity Block for {instance} was found in {region}")
 
-    max_queue_size = 2 if capacity_max_queue_size is None else capacity_max_queue_size
     min_queue_size_without_imex = 1 if instance != "p6e-gb200.36xlarge" else 0
     capacity_block_reservation_id = capacity_reservation_id if instance == "p6e-gb200.36xlarge" else None
 

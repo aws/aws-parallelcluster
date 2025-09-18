@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 
 # This prolog script configures the NVIDIA IMEX nodes config file and reloads the nvidia-imex service.
-# This prolog is meant to be run by compute nodes.
+# This prolog is meant to be run by compute nodes with exclusive jobs.
 
 LOG_FILE_PATH="/var/log/parallelcluster/nvidia-imex-prolog.log"
-DNA_JSON_FILE="/etc/chef/dna.json"
 SCONTROL_CMD="/opt/slurm/bin/scontrol"
 IMEX_START_TIMEOUT=60
 IMEX_STOP_TIMEOUT=15
 #TODO In production, specify p6e-gb200, only. We added g5g only for testing purposes.
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
-
-
 
 function info() {
   echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
@@ -37,7 +34,7 @@ function get_instance_type() {
   curl -s -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/instance-type
 }
 
-function return_unless_gb200_with_imex() {
+function return_if_unsupported_instance_type() {
   local instance_type=$(get_instance_type)
 
   if [[ ! ${instance_type} =~ ${ALLOWED_INSTANCE_TYPES} ]]; then
@@ -77,49 +74,10 @@ function get_ips_from_node_names() {
   ${SCONTROL_CMD} -ao show node "${_nodes}" | sed 's/^.* NodeAddr=\([^ ]*\).*/\1/'
 }
 
-function get_dna_parameter() {
-  jq -r ".cluster.${1}" "${DNA_JSON_FILE}"
-}
-
-function check_imex_needs_reload() {
-  local _expected_ips=$1
-  local _imex_config_file=$2
-  
-  # First check if IMEX service is running
-  if ! systemctl is-active ${IMEX_SERVICE} &>/dev/null; then
-    info "IMEX service is not running, reload needed"
-    return 0  # Need reload
-  fi
-  
-  # Get current IMEX status
-  local imex_status_output
-  if ! imex_status_output=$(timeout 15 /usr/bin/nvidia-imex-ctl -N -j -c "${_imex_config_file}" 2>/dev/null); then
-    info "Failed to get IMEX status, assuming reload needed"
-    return 0  # Need reload
-  fi
-  
-  # Parse JSON to extract current IPs from IMEX status
-  local current_imex_ips
-  if ! current_imex_ips=$(echo "${imex_status_output}" | jq -r '.nodes | to_entries[].value.host' 2>/dev/null | sort | tr '\n' ' '); then
-    info "Failed to parse IMEX status JSON, assuming reload needed"
-    return 0  # Need reload
-  fi
-  
-  # Convert expected IPs to sorted space-separated string
-  local expected_ips_sorted
-  expected_ips_sorted=$(echo "${_expected_ips}" | tr ',' '\n' | sort | tr '\n' ' ')
-  
-  info "Current IMEX IPs: ${current_imex_ips}"
-  info "Expected IPs: ${expected_ips_sorted}"
-  
-  # Compare IP lists
-  if [[ "${current_imex_ips}" = "${expected_ips_sorted}" ]]; then
-    info "IMEX service running with correct IPs, skipping reload"
-    return 1  # Skip reload
-  else
-    info "IMEX IPs mismatch, reload needed"
-    return 0  # Need reload
-  fi
+function get_compute_resource_name() {
+  local _queue_name_prefix=$1
+  local _slurmd_node_name=$2
+  echo "${_slurmd_node_name}" | sed -E "s/${_queue_name_prefix}(.+)-[0-9]+$/\1/"
 }
 
 function write_file() {
@@ -180,32 +138,7 @@ function reload_imex() {
   # sed -i "s/SERVER_PORT.*/SERVER_PORT=${NEW_SERVER_PORT}/" "${IMEX_MAIN_CONFIG}"
 
   info "Restarting IMEX"
-  if ! timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}; then
-    error "IMEX service reload failed"
-    return 1
-  fi
-  
-  return 0
-}
-
-function handle_imex_reload() {
-  local _ips_from_cr=$1
-  local _imex_main_config=$2
-  local _reload_reason=$3
-  local _skip_message=$4
-  local _reload_message=$5
-  
-  info "${_reload_reason}"
-  if check_imex_needs_reload "${_ips_from_cr}" "${_imex_main_config}"; then
-    info "${_reload_message}"
-    if reload_imex; then
-      info "IMEX has been reloaded"
-    else
-      error "Failed to reload IMEX service"
-    fi
-  else
-    info "${_skip_message}"
-  fi
+  timeout ${IMEX_START_TIMEOUT} systemctl start ${IMEX_SERVICE}
 }
 
 function create_default_imex_channel() {
@@ -230,33 +163,29 @@ function create_default_imex_channel() {
 {
   info "PROLOG Start JobId=${SLURM_JOB_ID}: $0"
 
-  return_unless_gb200_with_imex
+  return_if_unsupported_instance_type
 
   create_default_imex_channel
 
-  QUEUE_NAME=$(get_dna_parameter "scheduler_queue_name")
-  COMPUTE_RESOURCE_NAME=$(get_dna_parameter "scheduler_compute_resource_name")
-  LAUNCH_TEMPLATE_ID=$(get_dna_parameter "launch_template_id")
+  QUEUE_NAME=$SLURM_JOB_PARTITION
+  COMPUTE_RESOURCE_NAME=$(get_compute_resource_name "${QUEUE_NAME}-st-" $SLURMD_NODENAME)
   CR_NODES=$(get_node_names "${QUEUE_NAME}" "${COMPUTE_RESOURCE_NAME}")
   IPS_FROM_CR=$(get_ips_from_node_names "${CR_NODES}")
-  IMEX_MAIN_CONFIG="/opt/parallelcluster/shared/nvidia-imex/config_${LAUNCH_TEMPLATE_ID}.cfg"
-  IMEX_NODES_CONFIG="/opt/parallelcluster/shared/nvidia-imex/nodes_config_${LAUNCH_TEMPLATE_ID}.cfg"
+  IMEX_MAIN_CONFIG="/opt/parallelcluster/shared/nvidia-imex/config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
+  IMEX_NODES_CONFIG="/opt/parallelcluster/shared/nvidia-imex/nodes_config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
 
   info "Queue Name: ${QUEUE_NAME}"
   info "CR Name: ${COMPUTE_RESOURCE_NAME}"
   info "CR Nodes: ${CR_NODES}"
-  info "Launch Template Id: ${LAUNCH_TEMPLATE_ID}"
   info "Node IPs from CR: ${IPS_FROM_CR}"
   info "IMEX Main Config: ${IMEX_MAIN_CONFIG}"
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
 
-  info "Checking IMEX nodes config ${IMEX_NODES_CONFIG}"
-  if write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"; then
-    handle_imex_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}" "IMEX nodes config updated, checking if reload is needed" "IMEX already configured correctly, skipping reload" "IMEX reload needed, restarting service"
-  else
-    handle_imex_reload "${IPS_FROM_CR}" "${IMEX_MAIN_CONFIG}" "IMEX nodes config unchanged, checking if reload is still needed" "IMEX config unchanged and service correctly configured, skipping reload" "IMEX reload needed despite unchanged config, restarting service"
-  fi
+  info "Updating IMEX nodes config ${IMEX_NODES_CONFIG}"
+  write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"
+
+  reload_imex
 
   prolog_end
 
-} >> "${LOG_FILE_PATH}" 2>&1
+} 2>&1 | tee -a "${LOG_FILE_PATH}" | logger -t "91_nvidia_imex_prolog"
