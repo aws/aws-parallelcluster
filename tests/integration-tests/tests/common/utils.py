@@ -569,6 +569,7 @@ def get_capacity_reservation_id(instance_type, region, count, os):
                 instance_type == reservation.get("InstanceType")
                 and os_platform == reservation.get("InstancePlatform")
                 and reservation.get("AvailableInstanceCount") >= count
+                and reservation.get("State") == "active"
             ):
                 reservations_ids.append(
                     {
