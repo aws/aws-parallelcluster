@@ -554,7 +554,10 @@ def terminate_nodes_manually(instance_ids, region):
     logging.info("Terminated nodes: {}".format(instance_ids))
 
 
-def get_capacity_reservation_id(instance_type, region, count):
+def get_capacity_reservation_id(instance_type, region, count, os):
+    os_platform = "Linux/UNIX"
+    if "rhel" in os.lower():
+        os_platform = "Red Hat Enterprise Linux"
     ec2_client = boto3.client("ec2", region_name=region)
     paginator = ec2_client.get_paginator("describe_capacity_reservations")
     # List to store matching reservation IDs
@@ -562,7 +565,11 @@ def get_capacity_reservation_id(instance_type, region, count):
     # Paginate through the results
     for page in paginator.paginate():
         for reservation in page.get("CapacityReservations", []):
-            if instance_type == reservation.get("InstanceType") and reservation.get("AvailableInstanceCount") >= count:
+            if (
+                instance_type == reservation.get("InstanceType")
+                and os_platform == reservation.get("InstancePlatform")
+                and reservation.get("AvailableInstanceCount") >= count
+            ):
                 reservations_ids.append(
                     {
                         "CapacityReservationId": reservation["CapacityReservationId"],

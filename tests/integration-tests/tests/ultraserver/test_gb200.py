@@ -346,7 +346,6 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
-@pytest.mark.usefixtures("os")
 def test_gb200(
     pcluster_config_reader,
     file_reader,
@@ -356,6 +355,7 @@ def test_gb200(
     region,
     instance,
     scheduler,
+    os,
     scheduler_commands_factory,
 ):
     """
@@ -391,7 +391,7 @@ def test_gb200(
     capacity_reservation_id = None
     max_queue_size = 2
     if instance == "p6e-gb200.36xlarge":
-        ultraserver_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size)
+        ultraserver_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
         if ultraserver_reservations_ids:
             capacity_reservation_id = ultraserver_reservations_ids[0].get("CapacityReservationId")
         else:
