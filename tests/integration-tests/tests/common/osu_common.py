@@ -48,6 +48,7 @@ def run_individual_osu_benchmark(
     scheduler_commands,
     num_instances,
     slots_per_instance,
+    network_interfaces_count,
     test_datadir,
     submission_script_template_path=None,
     rendered_template_path=None,
@@ -65,6 +66,7 @@ def run_individual_osu_benchmark(
     :param scheduler_commands: SchedulerlurmCommands instance, used to submit jobs
     :param num_instances: int, number of instances to run benchmark across
     :param slots_per_instance: int, number of processes to run on each node
+    :param network_interfaces_count: int, number of network interfaces on each node
     :param test_datadir: Path, used to construct default output path when rendering submission script template
     :param submission_script_template_path: string, override default path for source submission script template
     :param rendered_template_path: string, override destination path when rendering submission script template
@@ -90,6 +92,7 @@ def run_individual_osu_benchmark(
         benchmark_name=benchmark_name,
         osu_benchmark_version=OSU_BENCHMARK_VERSION,
         num_of_processes=slots,
+        network_interfaces_count=network_interfaces_count,
     )
     if partition:
         result = scheduler_commands.submit_script(
