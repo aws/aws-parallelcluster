@@ -3,8 +3,8 @@
 #SBATCH --exclusive
 
 module load openmpi
-NCCL_VERSION='2.27.7-1'
-NCCL_BENCHMARKS_VERSION='2.16.7'
+NCCL_VERSION='2.28.3-1'
+NCCL_BENCHMARKS_VERSION='2.17.1'
 
 . /etc/os-release
 if [[ $ID==rhel || $ID==rocky ]]; then
