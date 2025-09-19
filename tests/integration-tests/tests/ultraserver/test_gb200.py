@@ -207,7 +207,7 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
             f"Private IP addresses for nodes in queue {queue} and compute resource {compute_resource}: " f"{ips}"
         )
 
-        assert_imex_nodes_config_is_correct(rce, queue, compute_resource, ips)
+        assert_imex_nodes_config_is_correct(cluster, queue, compute_resource, ips)
         assert_imex_status(rce, job_id, ips, service_status="UP", node_status="READY", connection_status="CONNECTED")
         assert_no_errors_in_logs(cluster, queue, compute_resource)
 
