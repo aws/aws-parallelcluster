@@ -237,7 +237,7 @@ def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: s
 
     job_id = submit_job_imex_status(rce, queue, max_nodes)
 
-    assert_imex_nodes_config_is_correct(rce, queue, compute_resource, FAKE_IPS)
+    assert_imex_nodes_config_is_correct(cluster, queue, compute_resource, FAKE_IPS)
     assert_imex_status(
         rce, job_id, FAKE_IPS, service_status="DOWN", node_status="UNAVAILABLE", connection_status="INVALID"
     )
