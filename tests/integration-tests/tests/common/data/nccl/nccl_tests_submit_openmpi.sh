@@ -19,5 +19,6 @@ mpirun \
 -x LD_LIBRARY_PATH=/shared/openmpi/nccl-${NCCL_VERSION}/build/lib/:${OFI_PATH}:$LD_LIBRARY_PATH \
 -x NCCL_DEBUG=WARNING \
 -x NCCL_TESTS_SPLIT_MASK=0x0 \
+-x RDMAV_FORK_SAFE=1 \
 --bind-to none \
 /shared/openmpi/nccl-tests-${NCCL_BENCHMARKS_VERSION}/build/all_reduce_perf -b 1024 -e 8G -f 2 -g 1 -c 1 > /shared/nccl_tests.out
