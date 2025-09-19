@@ -244,6 +244,8 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "hpc6id.32xlarge": 23000,  # Equivalent to a theoretical maximum of a single 184Gbps card
         # 8 100 Gbps NICS -> declared NetworkPerformance 800 Gbps
         "trn1.32xlarge": 80000,  # Equivalent to a theoretical maximum of a single 640Gbps card
+        # 8 200 Gbps NICS -> declared NetworkPerformance 16000 Gbps
+        "p6-b200.48xlarge": 16000,  # Equivalent to a theoretical maximum of a single 640Gbps card
     }
     num_instances = 2
     run_individual_osu_benchmark(
