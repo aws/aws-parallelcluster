@@ -273,6 +273,11 @@ def _test_osu_benchmarks_multiple_bandwidth(
 
 def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output):
     logging.info(output)
+    write_file(
+        dirname=f"{output_dir}/osu-results",
+        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}.out",
+        content=output,
+    )
     # Check avg latency for all packet sizes
     failures = 0
     metric_data = []
