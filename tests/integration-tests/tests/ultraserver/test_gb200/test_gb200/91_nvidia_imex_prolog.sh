@@ -91,40 +91,9 @@ function write_file() {
     return 1 # Not Updated
   fi
 
-  # Try to acquire lock with timeout
-  (
-      if ! flock -x -w ${_lock_timeout_seconds} 200; then
-        # If timeout, assume deadlock and try to recover
-        info "Lock timeout after ${_lock_timeout_seconds}s, attempting deadlock recovery"
-        exit 1
-      fi
-      echo "${_content}" > "${_file}"
-  ) 200>"${_lock_file}"
-
-  local _lock_result=$?
-
-  if [[ ${_lock_result} -eq 0 ]]; then
-    return 0 # Updated successfully
-  fi
-
-  # Deadlock recovery: remove stale lock file and retry once
-  error "Potential deadlock detected for ${_file}, attempting recovery"
-  rm -f "${_lock_file}"
-  sleep 1  # Brief pause to avoid race conditions
-
-  (
-      if ! flock -x -w 10 200; then
-        exit 1
-      fi
-      echo "${_content}" > "${_file}"
-  ) 200>"${_lock_file}"
-
-  if [[ $? -eq 0 ]]; then
-    info "Lock acquired after deadlock recovery for ${_file}"
-    return 0 # Updated
-  fi
-  
-  error_exit "Failed to acquire lock for ${_file} even after deadlock recovery"
+  echo "${_content}" > "${_file}"
+  info "File ${_file} updated"
+  return 0 # Updated
 }
 
 function reload_imex() {
@@ -171,8 +140,8 @@ function create_default_imex_channel() {
   COMPUTE_RESOURCE_NAME=$(get_compute_resource_name "${QUEUE_NAME}-st-" $SLURMD_NODENAME)
   CR_NODES=$(get_node_names "${QUEUE_NAME}" "${COMPUTE_RESOURCE_NAME}")
   IPS_FROM_CR=$(get_ips_from_node_names "${CR_NODES}")
-  IMEX_MAIN_CONFIG="/opt/parallelcluster/shared/nvidia-imex/config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
-  IMEX_NODES_CONFIG="/opt/parallelcluster/shared/nvidia-imex/nodes_config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
+  IMEX_MAIN_CONFIG="/etc/nvidia-imex/config.cfg"
+  IMEX_NODES_CONFIG="/etc/nvidia-imex/nodes_config.cfg"
 
   info "Queue Name: ${QUEUE_NAME}"
   info "CR Name: ${COMPUTE_RESOURCE_NAME}"
