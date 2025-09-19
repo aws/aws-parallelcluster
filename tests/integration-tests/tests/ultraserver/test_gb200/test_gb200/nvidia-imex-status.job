@@ -8,6 +8,5 @@
 sleep 45
 QUEUE_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_queue_name")
 COMPUTE_RES_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_compute_resource_name")
-IMEX_CONFIG_FILE="/etc/nvidia-imex/config.cfg"
 
-srun bash -c "/usr/bin/nvidia-imex-ctl -N -j -c ${IMEX_CONFIG_FILE} > result_\${SLURM_JOB_ID}_\$(hostname).out 2> result_\${SLURM_JOB_ID}_\$(hostname).err"
+srun bash -c "/usr/bin/nvidia-imex-ctl -N -j > result_\${SLURM_JOB_ID}_\$(hostname).out 2> result_\${SLURM_JOB_ID}_\$(hostname).err"
