@@ -13,7 +13,7 @@ export I_MPI_DEBUG=10
 # See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
 . /etc/os-release
 EFA_PATH=$([ "$ID" == "ubuntu" ] && echo "/opt/amazon/efa/lib" || echo "/opt/amazon/efa/lib64")
-export LD_LIBRARY_PATH="/opt/amazon/efa/lib:${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${EFA_PATH}:${LD_LIBRARY_PATH}"
 export FI_EFA_USE_DEVICE_RDMA=1
 {% endif %}
 
