@@ -73,7 +73,7 @@ def assert_no_errors_in_logs(cluster: Cluster, queue: str, compute_resource: str
             if log == "/var/log/nvidia-imex-verbose.log" and not is_existing_remote_file(rce, log):
                 logging.info("IMEX log file not found. Not an issue as IMEX writes logs there only in case of errors.")
                 continue
-            assert_regex_in_file(cluster, compute_node_ip, log, r"(warn|error|fail)", negate=True)
+            assert_regex_in_file(rce, compute_node_ip, log, r"(warn|error|fail)", negate=True)
 
 
 def assert_imex_status(
