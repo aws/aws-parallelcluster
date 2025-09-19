@@ -5,23 +5,22 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add support for P6e-GB200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
-- Add support for P6-B200 instances for all OSs except AL2.
-- Echo chef-client logs in the instance console when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
-- Add `build-image` support for Amazon Linux 2023 AMIs based on kernel 6.12 (in addition to 6.1).
+- Include drivers for P6e-GB200 and P6-B200 instances. ParallelCluster sets up Slurm topology plugin to handle P6e-GB200 UltraServers. See limitations section for important additional setup requirements.
 - Support `prioritized` and `capacity-optimized-prioritized` Allocation Strategy. This allows users to prioritize subnets for instance placement to optimize costs and performance.
+- Add `build-image` support for Amazon Linux 2023 AMIs based on kernel 6.12 (in addition to 6.1).
 - Support DCV on Amazon Linux 2023.
+- Echo chef-client logs in the instance console when a node fails to bootstrap. This helps with investigating bootstrap failures in cases CloudWatch logs are not available.
 
 **LIMITATIONS**
 - P6e-GB200 instances are only tested on Amazon Linux 2023, Ubuntu 22.04 and Ubuntu 24.04.
-- Using IMEX on P6e-GB200 requires additional setup. Please refer to <PLACE_HOLDER for the tutorial link>.
+- Using IMEX on P6e-GB200 requires additional setup. Please refer to the dedicated tutorial in our public documentation.
+- P6-B200 instances are only tested on Amazon Linux 2023, RHEL9, Ubuntu 22.04 and Ubuntu 24.04.
 
 **CHANGES**
-- Install nvidia-imex for all OSs except AL2.
+- Install nvidia-imex for all OSs except Amazon Linux 2.
 - Remove `UnkillableStepTimeout` from slurm.conf and let slurm set this value.
-- Upgrade Python runtime used by Lambda functions to python3.12 (from python3.9).
-- Remove `berkshelf`. All cookbooks are local and do not need `berkshelf` dependency management.
-- Add the configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted` to enable encryption on the EFS file system used for the head node internal shared storage.
+- Upgrade Python runtime used by Lambda functions to Python 3.12 (from 3.9). See Lambda Documentation for important information about Python 3.9 EOL: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+- Support encryption of EFS file system used for the head node internal shared storage via a new configuration parameter `HeadNode/SharedStorageEfsSettings/Encrypted`
 - Add validator that warns against using non GPU instances with DCV.
 - Upgrade Slurm to version 24.11.6 (from 24.05.8).
 - Upgrade EFA installer to 1.43.2 (from 1.41.0).
@@ -32,11 +31,11 @@ CHANGELOG
   - Rdma-core: rdma-core-58.0-1
   - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.6-11
 - Upgrade Cinc Client to version 18.4.12 (from 18.2.7).
-- Upgrade NVIDIA driver to version 570.172.08 (from 570.86.15) for all OSs except AL2.
-- Upgrade CUDA Toolkit to version 12.8.1 (from 12.8.0) for all OSs except AL2.
-- Upgrade DCGM to version 4.2.3 (from 3.3.6) for all OSs except AL2.
-- Upgrade Python to 3.12.11 (from 3.12.8) for all OSs except AL2.
-- Upgrade Python to 3.9.23 (from 3.9.20) for AL2.
+- Upgrade NVIDIA driver to version 570.172.08 (from 570.86.15) for all OSs except Amazon Linux 2.
+- Upgrade CUDA Toolkit to version 12.8.1 (from 12.8.0) for all OSs except Amazon Linux 2.
+- Upgrade DCGM to version 4.4.1 (from 3.3.6) for all OSs except Amazon Linux 2.
+- Upgrade Python to 3.12.11 (from 3.12.8) for all OSs except Amazon Linux 2.
+- Upgrade Python to 3.9.23 (from 3.9.20) for Amazon Linux 2.
 - Upgrade Intel MPI Library to 2021.16.0 (from 2021.13.1).
 - Upgrade DCV to version 2024.0-19030.
 - Upgrade the official ParallelCluster Amazon Linux 2023 AMIs to kernel 6.12 (from 6.1).
@@ -46,8 +45,8 @@ CHANGELOG
   The role is meant to exist even after the stack has been deleted. See https://github.com/aws/aws-parallelcluster/issues/5914.
 - Fix an issue where Security Group validation failed when a rule contained both IPv4 ranges (IpRanges) and security group references (UserIdGroupPairs).
 - Fix `build-image` failure on Rocky 9, occurring when the parent image does not ship the latest kernel version on the latest Rocky minor version.
-- Fix AWS Batch cluster creation failures in China when the OS is Amazon Linux 2023.
-- Fix cluster id mismatch issue by deleting the file `/var/spool/slurm.state/clustername` before configuring Slurm accounting.
+- Fix cluster id mismatch issue which causes cluster update failures when slurm accounting is used.
+- Fix a race condition in CloudWatch Agent startup that could cause node bootstrap failures.
 
 **DEPRECATIONS**
 - The configuration parameter `LoginNodes/Pools/Ssh/KeyName` has been deprecated, and it will be removed in future releases. The CLI now returns a warning message when it is used in the cluster configuration.
