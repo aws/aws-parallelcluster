@@ -13,6 +13,12 @@ else
   OFI_PATH=$(cat /etc/ld.so.conf.d/100_ofinccl.conf)
 fi
 
+# Adding a check to verify IMEX status is UP
+if [ -f "/opt/parallelcluster/shared/check_imex_status.sh" ]; then
+  srun bash -c "source /opt/parallelcluster/shared/check_imex_status.sh; verify_imex_is_up"
+fi
+
+
 #  -x NCCL_ALGO=ring is not needed after NCCL 2.12. NCCL autodetects which ALGO (ring or tree) to use
 # -x FI_EFA_USE_DEVICE_RDMA=1 is not needed from aws nccl pfi plugin version v1.6.0
 # -x NCCL_SOCKET_FAMILY=AF_INET forces NCCL to use IPv4. On Ubuntu 24 with p6-b200, without this parameter, NCCL hangs on IPv6, which is not supported by ParallelCluster
