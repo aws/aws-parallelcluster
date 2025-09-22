@@ -91,9 +91,40 @@ function write_file() {
     return 1 # Not Updated
   fi
 
-  echo "${_content}" > "${_file}"
-  info "File ${_file} updated"
-  return 0 # Updated
+  # Try to acquire lock with timeout
+  (
+      if ! flock -x -w ${_lock_timeout_seconds} 200; then
+        # If timeout, assume deadlock and try to recover
+        info "Lock timeout after ${_lock_timeout_seconds}s, attempting deadlock recovery"
+        exit 1
+      fi
+      echo "${_content}" > "${_file}"
+  ) 200>"${_lock_file}"
+
+  local _lock_result=$?
+
+  if [[ ${_lock_result} -eq 0 ]]; then
+    return 0 # Updated successfully
+  fi
+
+  # Deadlock recovery: remove stale lock file and retry once
+  error "Potential deadlock detected for ${_file}, attempting recovery"
+  rm -f "${_lock_file}"
+  sleep 1  # Brief pause to avoid race conditions
+
+  (
+      if ! flock -x -w 10 200; then
+        exit 1
+      fi
+      echo "${_content}" > "${_file}"
+  ) 200>"${_lock_file}"
+
+  if [[ $? -eq 0 ]]; then
+    info "Lock acquired after deadlock recovery for ${_file}"
+    return 0 # Updated
+  fi
+
+  error_exit "Failed to acquire lock for ${_file} even after deadlock recovery"
 }
 
 function reload_imex() {
