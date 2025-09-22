@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 
-# This prolog script configures the NVIDIA IMEX nodes config file and reloads the nvidia-imex service.
-# This prolog is meant to be run by compute nodes with exclusive jobs.
+# This prolog script configures the NVIDIA IMEX on compute nodes involved in the job execution.
+#
+# In particular:
+# - Checks whether the job is executed exclusively.
+#   If not, it exits immediately because it requires jobs to be executed exclusively.
+# - Writes the private IP addresses of compute nodes into /etc/nvidia-imex/nodes_config.cfg.
+# - Creates the IMEX default channel.
+#   For more information about IMEX channels, see https://docs.nvidia.com/multi-node-nvlink-systems/imex-guide/imexchannels.html
+# - Restarts the IMEX system service.
+#
+# REQUIREMENTS:
+#  - This prolog assumes to be run only with exclusive jobs.
 
 LOG_FILE_PATH="/var/log/parallelcluster/nvidia-imex-prolog.log"
 SCONTROL_CMD="/opt/slurm/bin/scontrol"
@@ -10,6 +20,7 @@ IMEX_STOP_TIMEOUT=15
 #TODO In production, specify p6e-gb200, only. We added g5g only for testing purposes.
 ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
 IMEX_SERVICE="nvidia-imex"
+IMEX_NODES_CONFIG="/etc/nvidia-imex/nodes_config.cfg"
 
 function info() {
   echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
@@ -48,24 +59,13 @@ function return_if_unsupported_instance_type() {
   fi
 }
 
-function get_node_names() {
-  local _queue_name=$1
-  local _compute_resource_name=$2
-
-  ${SCONTROL_CMD} show nodes --json | \
-    jq -r \
-      --arg queue_name "${_queue_name}" \
-      --arg compute_resource_name "${_compute_resource_name}" \
-      '[
-        .nodes[] |
-        select(
-          (.partitions[] | contains($queue_name)) and
-          (.features[] | contains($compute_resource_name)) and
-          (.features[] | contains("static"))
-        ) |
-        .name
-      ] |
-      join(",")'
+function return_if_job_is_not_exclusive() {
+  if [[ "${SLURM_JOB_OVERSUBSCRIBE}" = "NO" ]]; then
+    info "Job is exclusive, proceeding with IMEX configuration"
+  else
+    info "Skipping IMEX configuration because the job is not exclusive"
+    prolog_end
+  fi
 }
 
 function get_ips_from_node_names() {
@@ -78,53 +78,6 @@ function get_compute_resource_name() {
   local _queue_name_prefix=$1
   local _slurmd_node_name=$2
   echo "${_slurmd_node_name}" | sed -E "s/${_queue_name_prefix}(.+)-[0-9]+$/\1/"
-}
-
-function write_file() {
-  local _file=$1
-  local _content=$2
-  local _lock_file="${_file}.lock"
-  local _lock_timeout_seconds=60
-
-  if [[ -f "${_file}" ]] && [[ "$(cat "${_file}")" = "${_content}" ]]; then
-    info "File ${_file} already has the expected content, skipping the write operation"
-    return 1 # Not Updated
-  fi
-
-  # Try to acquire lock with timeout
-  (
-      if ! flock -x -w ${_lock_timeout_seconds} 200; then
-        # If timeout, assume deadlock and try to recover
-        info "Lock timeout after ${_lock_timeout_seconds}s, attempting deadlock recovery"
-        exit 1
-      fi
-      echo "${_content}" > "${_file}"
-  ) 200>"${_lock_file}"
-
-  local _lock_result=$?
-
-  if [[ ${_lock_result} -eq 0 ]]; then
-    return 0 # Updated successfully
-  fi
-
-  # Deadlock recovery: remove stale lock file and retry once
-  error "Potential deadlock detected for ${_file}, attempting recovery"
-  rm -f "${_lock_file}"
-  sleep 1  # Brief pause to avoid race conditions
-
-  (
-      if ! flock -x -w 10 200; then
-        exit 1
-      fi
-      echo "${_content}" > "${_file}"
-  ) 200>"${_lock_file}"
-
-  if [[ $? -eq 0 ]]; then
-    info "Lock acquired after deadlock recovery for ${_file}"
-    return 0 # Updated
-  fi
-  
-  error_exit "Failed to acquire lock for ${_file} even after deadlock recovery"
 }
 
 function reload_imex() {
@@ -142,9 +95,6 @@ function reload_imex() {
 }
 
 function create_default_imex_channel() {
-  # This configuration follows
-  # [Nvidia doc](https://docs.nvidia.com/multi-node-nvlink-systems/imex-guide/imexchannels.html)
-  # This configuration is only suitable for single user environment, and not compatible with multi-user environment.
   info "Creating IMEX default Channel"
   MAJOR_NUMBER=$(cat /proc/devices | grep nvidia-caps-imex-channels | cut -d' ' -f1)
   if [ ! -d "/dev/nvidia-caps-imex-channels" ]; then
@@ -163,27 +113,19 @@ function create_default_imex_channel() {
 {
   info "PROLOG Start JobId=${SLURM_JOB_ID}: $0"
 
+  return_if_job_is_not_exclusive
   return_if_unsupported_instance_type
 
   create_default_imex_channel
 
-  QUEUE_NAME=$SLURM_JOB_PARTITION
-  COMPUTE_RESOURCE_NAME=$(get_compute_resource_name "${QUEUE_NAME}-st-" $SLURMD_NODENAME)
-  CR_NODES=$(get_node_names "${QUEUE_NAME}" "${COMPUTE_RESOURCE_NAME}")
-  IPS_FROM_CR=$(get_ips_from_node_names "${CR_NODES}")
-  IMEX_MAIN_CONFIG="/opt/parallelcluster/shared/nvidia-imex/config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
-  IMEX_NODES_CONFIG="/opt/parallelcluster/shared/nvidia-imex/nodes_config_${QUEUE_NAME}_${COMPUTE_RESOURCE_NAME}.cfg"
+  IPS_FROM_CR=$(get_ips_from_node_names "${SLURM_NODELIST}")
 
-  info "Queue Name: ${QUEUE_NAME}"
-  info "CR Name: ${COMPUTE_RESOURCE_NAME}"
-  info "CR Nodes: ${CR_NODES}"
-  info "Node IPs from CR: ${IPS_FROM_CR}"
-  info "IMEX Main Config: ${IMEX_MAIN_CONFIG}"
+  info "Node Names: ${SLURM_NODELIST}"
+  info "Node IPs: ${IPS_FROM_CR}"
   info "IMEX Nodes Config: ${IMEX_NODES_CONFIG}"
 
   info "Updating IMEX nodes config ${IMEX_NODES_CONFIG}"
-  write_file "${IMEX_NODES_CONFIG}" "${IPS_FROM_CR}"
-
+  echo "${IPS_FROM_CR}" > "${IMEX_NODES_CONFIG}"
   reload_imex
 
   prolog_end
