@@ -5,9 +5,13 @@
 # In particular:
 # - Checks whether the job is executed exclusively.
 #   If not, it exits immediately because it requires jobs to be executed exclusively.
-# - Writes the private IP addresses of compute nodes into /etc/nvidia-imex/nodes_config.cfg.
+# - Checks if it is running on a p6e-gb200 instance type.
+#   If not, it exits immediately because IMEX must be configured only on that instance type.
+# - Checks if the IMEX service is enabled.
+#   If not, it exits immediately because IMEX must be enabled to get configured.
 # - Creates the IMEX default channel.
 #   For more information about IMEX channels, see https://docs.nvidia.com/multi-node-nvlink-systems/imex-guide/imexchannels.html
+# - Writes the private IP addresses of compute nodes into /etc/nvidia-imex/nodes_config.cfg.
 # - Restarts the IMEX system service.
 #
 # REQUIREMENTS:
@@ -24,6 +28,10 @@ IMEX_NODES_CONFIG="/etc/nvidia-imex/nodes_config.cfg"
 
 function info() {
   echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [INFO] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
+}
+
+function warn() {
+  echo "$(date "+%Y-%m-%dT%H:%M:%S.%3N") [WARN] [PID:$$] [JOB:${SLURM_JOB_ID}] $1"
 }
 
 function error() {
@@ -52,9 +60,11 @@ function return_if_unsupported_instance_type() {
     info "Skipping IMEX configuration because instance type ${instance_type} does not support it"
     prolog_end
   fi
+}
 
-  if ! systemctl is-enabled ${IMEX_SERVICE} &>/dev/null; then
-    info "Skipping IMEX configuration because system service ${IMEX_SERVICE} is not enabled"
+function return_if_imex_disabled() {
+  if ! systemctl is-enabled "${IMEX_SERVICE}" &>/dev/null; then
+    warn "Skipping IMEX configuration because system service ${IMEX_SERVICE} is not enabled"
     prolog_end
   fi
 }
@@ -95,7 +105,7 @@ function reload_imex() {
 }
 
 function create_default_imex_channel() {
-  info "Creating IMEX default Channel"
+  info "Creating IMEX default channel"
   MAJOR_NUMBER=$(cat /proc/devices | grep nvidia-caps-imex-channels | cut -d' ' -f1)
   if [ ! -d "/dev/nvidia-caps-imex-channels" ]; then
     sudo mkdir /dev/nvidia-caps-imex-channels
@@ -104,9 +114,9 @@ function create_default_imex_channel() {
   # Then check and create device node
   if [ ! -e "/dev/nvidia-caps-imex-channels/channel0" ]; then
     sudo mknod /dev/nvidia-caps-imex-channels/channel0 c $MAJOR_NUMBER 0
-    info "IMEX default Channel created"
+    info "IMEX default channel created"
   else
-    info "IMEX default Channel already exists"
+    info "IMEX default channel already exists"
   fi
 }
 
@@ -115,6 +125,7 @@ function create_default_imex_channel() {
 
   return_if_job_is_not_exclusive
   return_if_unsupported_instance_type
+  return_if_imex_disabled
 
   create_default_imex_channel
 
