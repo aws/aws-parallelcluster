@@ -177,12 +177,20 @@ def assert_imex_status(
         result_file_name = f"result_{job_id}_{reporting_node_name}"
         result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
         result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
+
         if service_status == "UP":
             assert_that(result_stderr).is_empty()
         logging.info(
             f"IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}: {result_stdout}"
         )
         imex_statuses.append(json.loads(result_stdout))
+
+    slurm_job_stdout = rce.run_remote_command(f"cat slurm-{job_id}.out").stdout
+    slurm_job_stderr = rce.run_remote_command(f"cat slurm-{job_id}.err").stdout
+
+    logging.info(f"Stdout of Slurm Job Id {job_id} is: {slurm_job_stdout}")
+    logging.info(f"Stderr of Slurm Job Id {job_id} is: {slurm_job_stderr}")
+
     latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
     logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
     assert_that(latest_imex_status["status"]).is_equal_to(service_status)
@@ -414,6 +422,7 @@ def test_gb200(
     job_filename = "nvidia-imex-status.job"
     bucket.upload_file(str(test_datadir / prolog_filename), prolog_filename)
     bucket.upload_file(str(test_datadir / job_filename), job_filename)
+    bucket.upload_file(str(test_datadir / check_imex_status_filename), check_imex_status_filename)
     head_node_start_script_rendered = file_reader(
         input_file=headnode_start_filename,
         output_file=f"{headnode_start_filename}.rendered",
