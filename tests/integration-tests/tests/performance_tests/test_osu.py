@@ -224,13 +224,13 @@ def _test_osu_benchmarks_collective(
 
 
 def _test_osu_benchmarks_multiple_bandwidth(
-        instance,
-        remote_command_executor,
-        scheduler_commands,
-        test_datadir,
-        slots_per_instance,
-        network_interfaces_count,
-        partition=None,
+    instance,
+    remote_command_executor,
+    scheduler_commands,
+    test_datadir,
+    slots_per_instance,
+    network_interfaces_count,
+    partition=None,
 ):
     instance_bandwidth_dict = {
         # Expected bandwidth for p4d and p4de (4 * 100 Gbps NICS -> declared NetworkPerformance 400 Gbps):
