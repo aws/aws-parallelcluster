@@ -31,6 +31,7 @@ def install_and_run_nccl_benchmarks(remote_command_executor, mpi_module, schedul
         str(NCCL_COMMON_DATADIR / "nccl_tests_submit_{0}.sh".format(mpi_module)),
         nodes=2,
         ntasks_per_node=gpu_per_node,
+        other_options=" --exclusive",
     )
 
     job_id = scheduler_commands.assert_job_submitted(result.stdout)

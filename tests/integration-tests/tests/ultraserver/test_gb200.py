@@ -46,6 +46,7 @@ def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: in
             "command": "/opt/parallelcluster/shared/nvidia-imex-status.job",
             "partition": queue,
             "nodes": max_nodes,
+            "other_options": " --exclusive=topo"
         }
     )
     slurm.wait_job_completed(job_id)
@@ -177,12 +178,18 @@ def assert_imex_status(
         result_file_name = f"result_{job_id}_{reporting_node_name}"
         result_stdout = rce.run_remote_command(f"cat {result_file_name}.out").stdout
         result_stderr = rce.run_remote_command(f"cat {result_file_name}.err").stdout
+
         if service_status == "UP":
             assert_that(result_stderr).is_empty()
         logging.info(
             f"IMEX status reported by node {reporting_node_ip} with hostname {reporting_node_name}: {result_stdout}"
         )
         imex_statuses.append(json.loads(result_stdout))
+
+    slurm_job_stdout = rce.run_remote_command(f"cat slurm-{job_id}.out").stdout
+
+    logging.info(f"Stdout of Slurm Job Id {job_id} is: {slurm_job_stdout}")
+
     latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
     logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
     assert_that(latest_imex_status["status"]).is_equal_to(service_status)
@@ -368,7 +375,6 @@ def test_gb200(
     1. On the compute resource supporting IMEX (q1-cr1):
        - The IMEX nodes file is configured by the prolog
        - IMEX service is healthy and no errors are reported in IMEX's or prolog's logs
-       - TopologyPlugin is set to topology/block
        - /opt/slurm/etc/topology.conf contains correct block configuration for q1-cr1 nodes
        - IMEX gets reconfigured when nodes belonging to the same compute resource get replaced
     2. On the compute resource not supporting IMEX (q2-cr2):
@@ -410,15 +416,18 @@ def test_gb200(
     # Upload files to test bucket
     headnode_start_filename = "head_node_start.sh"
     prolog_filename = "91_nvidia_imex_prolog.sh"
+    check_imex_status_filename = "check_imex_status.sh"
     job_filename = "nvidia-imex-status.job"
     bucket.upload_file(str(test_datadir / prolog_filename), prolog_filename)
     bucket.upload_file(str(test_datadir / job_filename), job_filename)
+    bucket.upload_file(str(test_datadir / check_imex_status_filename), check_imex_status_filename)
     head_node_start_script_rendered = file_reader(
         input_file=headnode_start_filename,
         output_file=f"{headnode_start_filename}.rendered",
         bucket_name=bucket_name,
         prolog_filename=prolog_filename,
         job_filename=job_filename,
+        check_imex_status_filename=check_imex_status_filename,
     )
     bucket.upload_file(head_node_start_script_rendered, headnode_start_filename)
 
