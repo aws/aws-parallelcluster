@@ -55,13 +55,19 @@ def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: in
 
 def assert_imex_nodes_config_is_correct(cluster: Cluster, queue: str, compute_resource: str, expected_ips: list):
     for compute_node_ip in cluster.get_compute_nodes_private_ip(queue, compute_resource):
-        logging.info(f"Checking IMEX nodes config for compute node {compute_node_ip} contains the expected nodes: {expected_ips}")
+        logging.info(
+            f"Checking IMEX nodes config for compute node {compute_node_ip} contains the expected nodes: {expected_ips}"
+        )
         rce = RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip)
         imex_config_content = read_remote_file(rce, "/etc/nvidia-imex/nodes_config.cfg")
-        imex_config_content_clean = [line for line in imex_config_content.split("\n") if not line.strip().startswith("#")]
+        imex_config_content_clean = [
+            line for line in imex_config_content.split("\n") if not line.strip().startswith("#")
+        ]
         actual_ips = [ip.strip() for ip in imex_config_content_clean]
         assert_that(actual_ips).contains_only(*expected_ips)
-        logging.info(f"IMEX nodes config for compute node {compute_node_ip} contains the expected nodes: {expected_ips}")
+        logging.info(
+            f"IMEX nodes config for compute node {compute_node_ip} contains the expected nodes: {expected_ips}"
+        )
 
 
 def assert_no_errors_in_logs(cluster: Cluster, queue: str, compute_resource: str):
