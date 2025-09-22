@@ -233,6 +233,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
     partition=None,
 ):
     instance_bandwidth_dict = {
+        # Bandwidth is expressed here in MBps.
         # Expected bandwidth for p4d and p4de (4 * 100 Gbps NICS -> declared NetworkPerformance 400 Gbps):
         # OMPI 4.1.0: ~330Gbps = 41250MB/s with Placement Group
         # OMPI 4.1.0: ~252Gbps = 31550MB/s without Placement Group
@@ -244,8 +245,8 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "hpc6id.32xlarge": 23000,  # Equivalent to a theoretical maximum of a single 184Gbps card
         # 8 100 Gbps NICS -> declared NetworkPerformance 800 Gbps
         "trn1.32xlarge": 80000,  # Equivalent to a theoretical maximum of a single 640Gbps card
-        # 8 200 Gbps NICS -> declared NetworkPerformance 16000 Gbps
-        "p6-b200.48xlarge": 16000,  # Equivalent to a theoretical maximum of a single 640Gbps card
+        # 8 200 Gbps NICS -> declared NetworkPerformance 1600 Gbps = 200000MBps (80% is 160000MBps)
+        "p6-b200.48xlarge": 160000,
     }
     num_instances = 2
     run_individual_osu_benchmark(
