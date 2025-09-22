@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 
 # Maximum number of attempts
 MAX_ATTEMPTS=10

@@ -3,7 +3,6 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
-#SBATCH --exclusive
 
 QUEUE_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_queue_name")
 COMPUTE_RES_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_compute_resource_name")

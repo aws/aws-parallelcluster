@@ -46,6 +46,7 @@ def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: in
             "command": "/opt/parallelcluster/shared/nvidia-imex-status.job",
             "partition": queue,
             "nodes": max_nodes,
+            "other_options": " --exclusive=topo"
         }
     )
     slurm.wait_job_completed(job_id)
@@ -186,10 +187,8 @@ def assert_imex_status(
         imex_statuses.append(json.loads(result_stdout))
 
     slurm_job_stdout = rce.run_remote_command(f"cat slurm-{job_id}.out").stdout
-    slurm_job_stderr = rce.run_remote_command(f"cat slurm-{job_id}.err").stdout
 
     logging.info(f"Stdout of Slurm Job Id {job_id} is: {slurm_job_stdout}")
-    logging.info(f"Stderr of Slurm Job Id {job_id} is: {slurm_job_stderr}")
 
     latest_imex_status = max(imex_statuses, key=lambda i: datetime.strptime(i["timestamp"], "%m/%d/%Y %H:%M:%S.%f"))
     logging.info(f"Checking IMEX connections according to the latest status: {latest_imex_status}")
@@ -376,7 +375,6 @@ def test_gb200(
     1. On the compute resource supporting IMEX (q1-cr1):
        - The IMEX nodes file is configured by the prolog
        - IMEX service is healthy and no errors are reported in IMEX's or prolog's logs
-       - TopologyPlugin is set to topology/block
        - /opt/slurm/etc/topology.conf contains correct block configuration for q1-cr1 nodes
        - IMEX gets reconfigured when nodes belonging to the same compute resource get replaced
     2. On the compute resource not supporting IMEX (q2-cr2):
