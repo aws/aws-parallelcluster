@@ -35,7 +35,7 @@ SUPPORTED_OSES = [
 ]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
-UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "alinux2"]
+UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "alinux2", "rhel9"]
 SUPPORTED_OSES_FOR_P6E_GB200 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6E_GB200))
 UNSUPPORTED_OSES_FOR_DCV = []
 UNSUPPORTED_OSES_FOR_NON_GPU_DCV = ["rocky9", "rhel9"]
