@@ -70,7 +70,7 @@ function return_if_imex_disabled() {
 }
 
 function return_if_job_is_not_exclusive() {
-  if [[ "${SLURM_JOB_OVERSUBSCRIBE}" = "NO" ]]; then
+  if [[ "${SLURM_JOB_OVERSUBSCRIBE}" =~ ^(NO|TOPO)$  ]]; then
     info "Job is exclusive, proceeding with IMEX configuration"
   else
     info "Skipping IMEX configuration because the job is not exclusive"
