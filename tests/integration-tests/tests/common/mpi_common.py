@@ -1,6 +1,6 @@
 import logging
-import pathlib
 import math
+import pathlib
 
 from assertpy import assert_that
 
