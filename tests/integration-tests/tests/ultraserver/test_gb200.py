@@ -410,6 +410,7 @@ def test_gb200(
     # Upload files to test bucket
     headnode_start_filename = "head_node_start.sh"
     prolog_filename = "91_nvidia_imex_prolog.sh"
+    check_imex_status_filename = "check_imex_status.sh"
     job_filename = "nvidia-imex-status.job"
     bucket.upload_file(str(test_datadir / prolog_filename), prolog_filename)
     bucket.upload_file(str(test_datadir / job_filename), job_filename)
@@ -419,6 +420,7 @@ def test_gb200(
         bucket_name=bucket_name,
         prolog_filename=prolog_filename,
         job_filename=job_filename,
+        check_imex_status_filename=check_imex_status_filename,
     )
     bucket.upload_file(head_node_start_script_rendered, headnode_start_filename)
 
