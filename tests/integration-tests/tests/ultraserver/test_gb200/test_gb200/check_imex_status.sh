@@ -16,7 +16,7 @@ verify_imex_is_up() {
         command_output=$(${command})
         echo "Output from IMEX for $i/$MAX_ATTEMPTS attempt: $command_output"
         # Check if the status is UP
-        if echo "$command_output" | jq -r '.status' ; then
+        if [ "$(echo "$command_output" | jq -r '.status')" == "UP" ] ; then
             echo "IMEX is UP. Exiting loop."
             echo "writing the output in ${file_name}.out"
             echo "$command_output" > ${file_name}.out 2> ${file_name}.err
