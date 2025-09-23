@@ -235,6 +235,10 @@ def pytest_addoption(parser):
         "--api-stack",
         help="Name of CFN stack providing the ParallelCluster API infrastructure.",
     )
+    parser.addoption(
+        "--capacity-reservation-id",
+        help="Use an existing capacity reservation.",
+    )
 
 
 def pytest_generate_tests(metafunc):
