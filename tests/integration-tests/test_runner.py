@@ -104,6 +104,7 @@ TEST_DEFAULTS = {
     "global_build_number": 0,
     "proxy_stack": None,
     "build_image_roles_stack": None,
+    "capacity_reservation_id": None,
 }
 
 
@@ -495,6 +496,11 @@ def _init_argparser():
         help="Name of CFN stack providing the ParallelCluster API infrastructure.",
         default=TEST_DEFAULTS.get("api_stack"),
     )
+    debug_group.add_argument(
+        "--capacity-reservation-id",
+        help="Use an existing capacity reservation.",
+        default=TEST_DEFAULTS.get("capacity_reservation_id"),
+    )
 
     return parser
 
@@ -735,6 +741,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.api_stack:
         pytest_args.extend(["--api-stack", args.api_stack])
+
+    if args.capacity_reservation_id:
+        pytest_args.extend(["--capacity-reservation-id", args.capacity_reservation_id])
 
 
 def _set_validate_instance_type_args(args, pytest_args):
