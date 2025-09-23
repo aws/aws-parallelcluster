@@ -46,7 +46,7 @@ def _test_mpi(
         remote_command_executor.run_remote_command(interactive_command)
 
     # Historically, we assumed a timeout of 20 seconds with 48 slots per instance.
-    timeout = math.ceil((20.0 / 48.0) * slots_per_instance)
+    timeout = max(math.ceil((20.0 / 48.0) * slots_per_instance), 20)
 
     if partition:
         # submit script using additional files
