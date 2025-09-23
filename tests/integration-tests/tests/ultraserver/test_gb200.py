@@ -46,7 +46,7 @@ def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: in
             "command": "/opt/parallelcluster/shared/nvidia-imex-status.job",
             "partition": queue,
             "nodes": max_nodes,
-            "other_options": " --exclusive=topo"
+            "other_options": " --exclusive=topo",
         }
     )
     slurm.wait_job_completed(job_id)
