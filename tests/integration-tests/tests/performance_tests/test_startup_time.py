@@ -5,6 +5,8 @@ from datetime import datetime
 import boto3
 import pytest
 from dateutil.relativedelta import relativedelta
+from retrying import retry
+from time_utils import seconds
 from utils import describe_cluster_instances
 
 MINIMUM_DATASET_SIZE = 5
@@ -76,6 +78,7 @@ def evaluate_data(value, os, instance_type):
     return True, distance
 
 
+@retry(retry_on_result=lambda result: result is None, wait_fixed=seconds(10), stop_max_delay=seconds(60))
 def get_metric(os, cluster, instance_type, instance_id, cw_client):
     startup_time_value = None
 
