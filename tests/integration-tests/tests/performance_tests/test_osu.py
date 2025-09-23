@@ -67,13 +67,16 @@ def test_osu(
         max_queue_size = 2
         capacity_type = "CAPACITY_BLOCK"
         placement_group_enabled = False
-        capacity_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
-        if capacity_reservations_ids:
-            capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
+        if request.config.getoption("capacity_reservation_id"):
+            capacity_reservation_id = request.config.getoption("capacity_reservation_id")
         else:
-            message = f"Skipping the test as no Capacity Block for {instance} and os {os} was found in {region}"
-            logging.warn(message)
-            pytest.skip(message)
+            capacity_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
+            if capacity_reservations_ids:
+                capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
+            else:
+                message = f"Skipping the test as no Capacity Block for {instance} and os {os} was found in {region}"
+                logging.warn(message)
+                pytest.skip(message)
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
