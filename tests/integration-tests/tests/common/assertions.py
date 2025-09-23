@@ -442,4 +442,4 @@ def _assert_build_image_stack_deleted(stack_name, region, timeout_seconds=600, p
 def assert_regex_in_file(rce: RemoteCommandExecutor, file_name: str, pattern: str, negate: bool = True):
     file_content = read_remote_file(rce, file_name)
     assertion = assert_that(bool(re.search(pattern, file_content, re.IGNORECASE)))
-    assertion.is_false() if negate else assertion.is_fals()
+    assertion.is_false() if negate else assertion.is_true()
