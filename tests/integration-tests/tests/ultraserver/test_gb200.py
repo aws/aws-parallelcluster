@@ -72,14 +72,11 @@ def assert_imex_nodes_config_is_correct(cluster: Cluster, queue: str, compute_re
 
 
 def assert_no_errors_in_logs(cluster: Cluster, queue: str, compute_resource: str):
-    logs = ["/var/log/nvidia-imex-verbose.log", "/var/log/parallelcluster/nvidia-imex-prolog.log"]
+    logs = ["/var/log/parallelcluster/nvidia-imex-prolog.log"]
     for compute_node_ip in cluster.get_compute_nodes_private_ip(queue, compute_resource):
         rce = RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip)
         for log in logs:
             logging.info(f"Checking file {log} log does not contain any error")
-            if log == "/var/log/nvidia-imex-verbose.log" and not is_existing_remote_file(rce, log):
-                logging.info("IMEX log file not found. Not an issue as IMEX writes logs there only in case of errors.")
-                continue
             assert_regex_in_file(rce, log, r"(error|fail)", negate=True)
 
 
