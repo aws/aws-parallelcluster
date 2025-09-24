@@ -282,7 +282,8 @@ def write_file_into_efs(
             ],
         )
     )
-    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IamTlsProfile", Roles=[Ref(role)]))
+    instance_profile_name = "IamTlsProfile"
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile(instance_profile_name, Roles=[Ref(role)]))
     launch_template = LaunchTemplate.from_dict(
         "LaunchTemplateIMDSv2",
         {
@@ -304,6 +305,7 @@ def write_file_into_efs(
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
             IamInstanceProfile=Ref(iam_instance_profile),
+            DependsOn=instance_profile_name,
         )
     )
     stack_name = generate_stack_name("integ-tests-efs-write-file", request.config.getoption("stackname_suffix"))
