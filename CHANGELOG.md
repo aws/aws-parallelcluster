@@ -14,7 +14,7 @@ CHANGELOG
 **LIMITATIONS**
 - P6e-GB200 instances are only tested on Amazon Linux 2023, Ubuntu 22.04 and Ubuntu 24.04.
 - Using IMEX on P6e-GB200 requires additional setup. Please refer to the dedicated tutorial in our public documentation.
-- P6-B200 instances are only tested on Amazon Linux 2023, RHEL 8/9, Rocky 8/9, Ubuntu 22.04 and Ubuntu 24.04.
+- P6-B200 instances are only tested on Amazon Linux 2023, RHEL 8 & 9, Rocky 8 & 9, Ubuntu 22.04 and Ubuntu 24.04.
 
 **CHANGES**
 - Install nvidia-imex for all OSs except Amazon Linux 2.
