@@ -513,7 +513,7 @@ test-suites:
           schedulers: ["slurm"]
     test_slurm_accounting.py::test_slurm_accounting:
       dimensions:
-        - regions: ["ap-south-1"]
+        - regions: ["aps1-az3"] # do not move, unless we have enough c5.xlarge capacity in ap-south-1 other AZ
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_1 }}]
           schedulers: ["slurm"]
