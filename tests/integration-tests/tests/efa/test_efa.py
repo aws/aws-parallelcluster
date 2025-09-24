@@ -58,7 +58,7 @@ def test_efa(
     max_queue_size = 2
     p6_b200_capacity_reservation_id = None
     if instance == "p6-b200.48xlarge":
-        capacity_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
+        capacity_reservations_ids = get_capacity_reservation_id(request,instance, region, max_queue_size, os)
         if capacity_reservations_ids:
             p6_b200_capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
         else:

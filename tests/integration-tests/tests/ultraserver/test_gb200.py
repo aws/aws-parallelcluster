@@ -364,6 +364,7 @@ def test_gb200(
     scheduler,
     os,
     scheduler_commands_factory,
+    request,
 ):
     """
     Test automated configuration of Nvidia IMEX and Slurm topology plugin.
@@ -397,7 +398,7 @@ def test_gb200(
     capacity_reservation_id = None
     max_queue_size = 2
     if instance == "p6e-gb200.36xlarge":
-        ultraserver_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
+        ultraserver_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if ultraserver_reservations_ids:
             capacity_reservation_id = ultraserver_reservations_ids[0].get("CapacityReservationId")
         else:
