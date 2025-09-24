@@ -582,6 +582,8 @@ def get_capacity_reservation_id(request, instance_type, region, count, os):
                     and os_platform == reservation.get("InstancePlatform")
                     and reservation.get("AvailableInstanceCount") >= count
                     and reservation.get("State") == "active"
+                    and reservation["CapacityReservationId"] != "cr-08be2f796cdaf5015"
+                    # Skip this Gb200 Capacity Reservation which fails NCCL benchmarks
                 ):
                     reservations_ids.append(
                         {
