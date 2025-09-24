@@ -8,4 +8,4 @@ QUEUE_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_queue_name")
 COMPUTE_RES_NAME=$(cat "/etc/chef/dna.json" | jq -r ".cluster.scheduler_compute_resource_name")
 
 # Run for NVIDIA IMEX
-srun bash -c "source /opt/parallelcluster/shared/check_imex_status.sh; verify_imex_is_up"
+srun bash -c "source /opt/parallelcluster/shared/check_imex_status.sh; verify_imex_is_up $1"
