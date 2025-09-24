@@ -28,8 +28,8 @@ from tests.common.utils import (
 )
 from tests.performance_tests.common import push_result_to_dynamodb
 
-# We collected OSU benchmarks results for c5n.18xlarge and p6-b200.48xlarge only.
-OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p6-b200.48xlarge"]
+# We collected OSU benchmarks results for these instance types
+OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -63,7 +63,7 @@ def test_osu(
     capacity_reservation_id = None
     placement_group_enabled = True
 
-    if instance == "p6-b200.48xlarge":
+    if instance in ["p6-b200.48xlarge", "p5en.48xlarge"]:
         max_queue_size = 2
         capacity_type = "CAPACITY_BLOCK"
         placement_group_enabled = False
@@ -246,6 +246,8 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "hpc6id.32xlarge": 23000,  # Equivalent to a theoretical maximum of a single 184Gbps card
         # 8 100 Gbps NICS -> declared NetworkPerformance 800 Gbps
         "trn1.32xlarge": 80000,  # Equivalent to a theoretical maximum of a single 640Gbps card
+        # 32 100 Gbps NICS -> declared NetworkPerformance 3200 Gbps = 400000MBps (80% is 320000MBps)
+        "p5en.48xlarge": 320000,
         # 8 200 Gbps NICS -> declared NetworkPerformance 1600 Gbps = 200000MBps (80% is 160000MBps)
         "p6-b200.48xlarge": 160000,
     }

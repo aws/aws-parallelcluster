@@ -282,7 +282,8 @@ def write_file_into_efs(
             ],
         )
     )
-    iam_instance_profile = write_file_template.add_resource(InstanceProfile("IamTlsProfile", Roles=[Ref(role)]))
+    instance_profile_name = "IamTlsProfile"
+    iam_instance_profile = write_file_template.add_resource(InstanceProfile(instance_profile_name, Roles=[Ref(role)]))
     launch_template = LaunchTemplate.from_dict(
         "LaunchTemplateIMDSv2",
         {
@@ -304,6 +305,7 @@ def write_file_into_efs(
             UserData=Base64(Sub(user_data)),
             KeyName=key_name,
             IamInstanceProfile=Ref(iam_instance_profile),
+            DependsOn=instance_profile_name,
         )
     )
     stack_name = generate_stack_name("integ-tests-efs-write-file", request.config.getoption("stackname_suffix"))
@@ -324,7 +326,7 @@ def _write_user_data(efs_id, random_file_name, access_point_id=None):
     access_point_mount_parameter = f",accesspoint={access_point_id}" if access_point_id is not None else ""
     return f"""
         - mkdir -p {mount_dir}
-        - mount -t efs -o tls,iam{access_point_mount_parameter} {efs_id}:/ {mount_dir}
+        - for i in {{1..10}}; do mount -t efs -o tls,iam{access_point_mount_parameter} {efs_id}:/ {mount_dir} && break || {{ echo "Attempt $i failed, retrying in 10s..."; sleep 10; }}; done
         - touch {mount_dir}/{random_file_name}
         - umount {mount_dir}
         """  # noqa: E501
