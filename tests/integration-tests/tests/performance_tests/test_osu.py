@@ -133,6 +133,8 @@ def test_osu(
             remote_command_executor,
             scheduler_commands,
             test_datadir,
+            output_dir,
+            os,
             slots_per_instance,
             network_interfaces_count,
             partition="efa-enabled",
@@ -229,6 +231,8 @@ def _test_osu_benchmarks_multiple_bandwidth(
     remote_command_executor,
     scheduler_commands,
     test_datadir,
+    output_dir,
+    os,
     slots_per_instance,
     network_interfaces_count,
     partition=None,
@@ -252,10 +256,12 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "p6-b200.48xlarge": 160000,
     }
     num_instances = 2
+    mpi_version = "openmpi"
+    benchmark_name = "osu_mbw_mr"
     run_individual_osu_benchmark(
-        "openmpi",
+        mpi_version,
         "mbw_mr",
-        "osu_mbw_mr",
+        benchmark_name,
         partition,
         remote_command_executor,
         scheduler_commands,
@@ -264,8 +270,19 @@ def _test_osu_benchmarks_multiple_bandwidth(
         network_interfaces_count,
         test_datadir,
     )
+
+    output_file = f"/shared/{benchmark_name}.out"
+    output = remote_command_executor.run_remote_command(f"cat {output_file}").stdout
+
+    logging.info(output)
+    write_file(
+        dirname=f"{output_dir}/osu-results",
+        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}.out",
+        content=output,
+    )
+
     max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/osu_mbw_mr.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
+        f"cat {output_file} | tail -n +4 | awk '{{print $2}}' | sort -n | tail -n 1"
     ).stdout
 
     expected_bandwidth = instance_bandwidth_dict.get(instance)
