@@ -23,16 +23,18 @@ Scheduling:
         SubnetIds:
           - {{ public_subnet_ids[0] }}
           - {{ public_subnet_ids[1] }}
-    - Name: queue2
-      CapacityType: SPOT
-      AllocationStrategy: capacity-optimized-prioritized
-      ComputeResources:
-        - Name: queue2-i1
-          Instances:
-            - InstanceType: {{ instance }}
-          MinCount: 0
-          MaxCount: 10
-      Networking:
-        SubnetIds:
-          - {{ public_subnet_ids[0] }}
-          - {{ public_subnet_ids[1] }}
+# Uncomment for testing SPOT + capacity-optimized-prioritized as EC2 Create Fleet
+#  optimizes capacity first and our priorities are taken on best-effort basis
+#    - Name: queue2
+#      CapacityType: SPOT
+#      AllocationStrategy: capacity-optimized-prioritized
+#      ComputeResources:
+#        - Name: queue2-i1
+#          Instances:
+#            - InstanceType: {{ instance }}
+#          MinCount: 0
+#          MaxCount: 10
+#      Networking:
+#        SubnetIds:
+#          - {{ public_subnet_ids[0] }}
+#          - {{ public_subnet_ids[1] }}
