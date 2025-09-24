@@ -30,7 +30,9 @@ Scheduling:
           MaxCount: 10
       Networking:
         SubnetIds:
+          {% for private_subnet_id in private_subnet_ids %}
           - {{ private_subnet_id }}
+          {% endfor %}
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
