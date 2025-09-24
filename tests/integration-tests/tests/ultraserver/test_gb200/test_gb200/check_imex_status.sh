@@ -7,6 +7,7 @@ MAX_ATTEMPTS=10
 
 # Function to run the command and check status
 verify_imex_is_up() {
+    local non_imex_job="$1"
     local command="/usr/bin/nvidia-imex-ctl -N -j"
     local file_name="result_${SLURM_JOB_ID}_$(hostname)"
 
@@ -16,7 +17,7 @@ verify_imex_is_up() {
         command_output=$(${command})
         echo "Output from IMEX for $i/$MAX_ATTEMPTS attempt: $command_output"
         # Check if the status is UP
-        if [ "$(echo "$command_output" | jq -r '.status')" == "UP" ] ; then
+        if [ "$(echo "$command_output" | jq -r '.status')" == "UP" ] || [ "$non_imex_job" == "ignore-imex-check" ] ; then
             echo "IMEX is UP. Exiting loop."
             echo "writing the output in ${file_name}.out"
             echo "$command_output" > ${file_name}.out 2> ${file_name}.err
