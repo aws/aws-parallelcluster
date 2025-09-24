@@ -38,12 +38,13 @@ from tests.common.utils import (
 FAKE_IPS = ["0.0.0.0"] * 9
 
 
-def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: int = 1):
+def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: int = 1, ignore_imex_check: bool = False):
     logging.info("Submitting job to check IMEX status")
     slurm = SlurmCommands(rce)
+    job_command = "/opt/parallelcluster/shared/nvidia-imex-status.job ignore-imex-check" if ignore_imex_check else "/opt/parallelcluster/shared/nvidia-imex-status.job"
     job_id = slurm.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "/opt/parallelcluster/shared/nvidia-imex-status.job",
+            "command": job_command,
             "partition": queue,
             "nodes": max_nodes,
             "other_options": " --exclusive=topo",
@@ -245,7 +246,7 @@ def assert_imex_healthy(cluster: Cluster, queue: str, compute_resource: str, max
 def assert_imex_not_configured(cluster: Cluster, queue: str, compute_resource: str, max_nodes: int = 1):
     rce = RemoteCommandExecutor(cluster)
 
-    job_id = submit_job_imex_status(rce, queue, max_nodes)
+    job_id = submit_job_imex_status(rce, queue, max_nodes, ignore_imex_check=True)
 
     assert_imex_nodes_config_is_correct(cluster, queue, compute_resource, FAKE_IPS)
     assert_imex_status(
@@ -364,6 +365,7 @@ def test_gb200(
     scheduler,
     os,
     scheduler_commands_factory,
+    request,
 ):
     """
     Test automated configuration of Nvidia IMEX and Slurm topology plugin.
@@ -397,7 +399,7 @@ def test_gb200(
     capacity_reservation_id = None
     max_queue_size = 2
     if instance == "p6e-gb200.36xlarge":
-        ultraserver_reservations_ids = get_capacity_reservation_id(instance, region, max_queue_size, os)
+        ultraserver_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if ultraserver_reservations_ids:
             capacity_reservation_id = ultraserver_reservations_ids[0].get("CapacityReservationId")
         else:

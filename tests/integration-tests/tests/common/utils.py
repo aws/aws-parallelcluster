@@ -554,28 +554,40 @@ def terminate_nodes_manually(instance_ids, region):
     logging.info("Terminated nodes: {}".format(instance_ids))
 
 
-def get_capacity_reservation_id(instance_type, region, count, os):
+def get_capacity_reservation_id(request, instance_type, region, count, os):
     os_platform = "Linux/UNIX"
     if "rhel" in os.lower():
         os_platform = "Red Hat Enterprise Linux"
-    ec2_client = boto3.client("ec2", region_name=region)
-    paginator = ec2_client.get_paginator("describe_capacity_reservations")
+
     # List to store matching reservation IDs
     reservations_ids = []
-    # Paginate through the results
-    for page in paginator.paginate():
-        for reservation in page.get("CapacityReservations", []):
-            if (
-                instance_type == reservation.get("InstanceType")
-                and os_platform == reservation.get("InstancePlatform")
-                and reservation.get("AvailableInstanceCount") >= count
-                and reservation.get("State") == "active"
-            ):
-                reservations_ids.append(
-                    {
-                        "CapacityReservationId": reservation["CapacityReservationId"],
-                        "TotalInstanceCount": reservation["TotalInstanceCount"],
-                        "AvailableInstanceCount": reservation["AvailableInstanceCount"],
-                    }
-                )
+    ec2_client = boto3.client("ec2", region_name=region)
+    if request.config.getoption("capacity_reservation_id"):
+        capacity_reservation = ec2_client.describe_capacity_reservations(CapacityReservationIds=[request.config.getoption("capacity_reservation_id")])
+        if capacity_reservation:
+            reservations_ids.append(
+                {
+                    "CapacityReservationId": capacity_reservation.get("CapacityReservations", [])[0]["CapacityReservationId"],
+                    "TotalInstanceCount": capacity_reservation.get("CapacityReservations", [])[0]["TotalInstanceCount"],
+                    "AvailableInstanceCount": capacity_reservation.get("CapacityReservations", [])[0]["AvailableInstanceCount"],
+                }
+            )
+    else:
+        paginator = ec2_client.get_paginator("describe_capacity_reservations")
+        # Paginate through the results
+        for page in paginator.paginate():
+            for reservation in page.get("CapacityReservations", []):
+                if (
+                    instance_type == reservation.get("InstanceType")
+                    and os_platform == reservation.get("InstancePlatform")
+                    and reservation.get("AvailableInstanceCount") >= count
+                    and reservation.get("State") == "active"
+                ):
+                    reservations_ids.append(
+                        {
+                            "CapacityReservationId": reservation["CapacityReservationId"],
+                            "TotalInstanceCount": reservation["TotalInstanceCount"],
+                            "AvailableInstanceCount": reservation["AvailableInstanceCount"],
+                        }
+                    )
     return reservations_ids
