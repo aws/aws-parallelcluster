@@ -239,6 +239,11 @@ def _test_osu_benchmarks_multiple_bandwidth(
 ):
     instance_bandwidth_dict = {
         # Bandwidth is expressed here in MBps.
+        # Baseline does not reflect the theoretical max bandwidth declared by EC2 because
+        # the way we run OSU with OpenMPI does not leverage the full bandwidth.
+        # As long as we do not fix the way we run OSU, this baseline reflects values
+        # that we considered ok with such limitation.
+        #
         # Expected bandwidth for p4d and p4de (4 * 100 Gbps NICS -> declared NetworkPerformance 400 Gbps):
         # OMPI 4.1.0: ~330Gbps = 41250MB/s with Placement Group
         # OMPI 4.1.0: ~252Gbps = 31550MB/s without Placement Group
@@ -252,8 +257,8 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "trn1.32xlarge": 80000,  # Equivalent to a theoretical maximum of a single 640Gbps card
         # 32 100 Gbps NICS -> declared NetworkPerformance 3200 Gbps = 400000MBps (80% is 320000MBps)
         "p5en.48xlarge": 320000,
-        # 8 200 Gbps NICS -> declared NetworkPerformance 1600 Gbps = 200000MBps (80% is 160000MBps)
-        "p6-b200.48xlarge": 160000,
+        # 8 200 Gbps NICS -> declared NetworkPerformance 3200 Gbps = 400000MBps (acceptable is 58% ~= 232000 MBps)
+        "p6-b200.48xlarge": 232000,
     }
     num_instances = 2
     mpi_version = "openmpi"
