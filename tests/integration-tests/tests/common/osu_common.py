@@ -92,6 +92,7 @@ def run_individual_osu_benchmark(
         benchmark_name=benchmark_name,
         osu_benchmark_version=OSU_BENCHMARK_VERSION,
         num_of_processes=slots,
+        num_of_processes_per_node=slots_per_instance,
         network_interfaces_count=network_interfaces_count,
     )
     if partition:
