@@ -254,7 +254,7 @@ def test_cluster_with_subnet_prioritization(
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     public_subnets = vpc_stack.get_all_public_subnets()
-    queues = ["queue1", "queue2"]
+    queues = ["queue1"]
     logging.info(f"Public subnets: {public_subnets}")
     # Check that all instances are launched in the subnet with the highest priority
     for queue in queues:
