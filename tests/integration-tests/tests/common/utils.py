@@ -563,13 +563,19 @@ def get_capacity_reservation_id(request, instance_type, region, count, os):
     reservations_ids = []
     ec2_client = boto3.client("ec2", region_name=region)
     if request.config.getoption("capacity_reservation_id"):
-        capacity_reservation = ec2_client.describe_capacity_reservations(CapacityReservationIds=[request.config.getoption("capacity_reservation_id")])
+        capacity_reservation = ec2_client.describe_capacity_reservations(
+            CapacityReservationIds=[request.config.getoption("capacity_reservation_id")]
+        )
         if capacity_reservation:
             reservations_ids.append(
                 {
-                    "CapacityReservationId": capacity_reservation.get("CapacityReservations", [])[0]["CapacityReservationId"],
+                    "CapacityReservationId": capacity_reservation.get("CapacityReservations", [])[0][
+                        "CapacityReservationId"
+                    ],
                     "TotalInstanceCount": capacity_reservation.get("CapacityReservations", [])[0]["TotalInstanceCount"],
-                    "AvailableInstanceCount": capacity_reservation.get("CapacityReservations", [])[0]["AvailableInstanceCount"],
+                    "AvailableInstanceCount": capacity_reservation.get("CapacityReservations", [])[0][
+                        "AvailableInstanceCount"
+                    ],
                 }
             )
     else:
