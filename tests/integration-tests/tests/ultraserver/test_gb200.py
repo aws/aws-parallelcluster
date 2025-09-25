@@ -41,7 +41,11 @@ FAKE_IPS = ["0.0.0.0"] * 9
 def submit_job_imex_status(rce: RemoteCommandExecutor, queue: str, max_nodes: int = 1, ignore_imex_check: bool = False):
     logging.info("Submitting job to check IMEX status")
     slurm = SlurmCommands(rce)
-    job_command = "/opt/parallelcluster/shared/nvidia-imex-status.job ignore-imex-check" if ignore_imex_check else "/opt/parallelcluster/shared/nvidia-imex-status.job"
+    job_command = (
+        "/opt/parallelcluster/shared/nvidia-imex-status.job ignore-imex-check"
+        if ignore_imex_check
+        else "/opt/parallelcluster/shared/nvidia-imex-status.job"
+    )
     job_id = slurm.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": job_command,
