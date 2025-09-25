@@ -50,7 +50,7 @@ from pcluster.imagebuilder_utils import (
     wrap_script_to_component,
 )
 from pcluster.models.s3_bucket import S3Bucket, S3FileType, create_s3_presigned_url, parse_bucket_url
-from pcluster.templates.cdk_builder_utils import apply_permissions_boundary, get_assume_role_policy_document
+from pcluster.templates.cdk_builder_utils import add_cluster_iam_resource_prefix, apply_permissions_boundary, get_assume_role_policy_document
 from pcluster.utils import get_http_tokens_setting
 
 
@@ -64,12 +64,14 @@ class ImageBuilderCdkStack(Stack):
         image_config: ImageBuilderConfig,
         image_id: str,
         bucket: S3Bucket,
+        resource_prefix: str = None,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.config = image_config
         self.image_id = image_id
         self.bucket = bucket
+        self.resource_prefix = resource_prefix
 
         self.custom_instance_role = (
             self.config.build.iam.instance_role
@@ -591,33 +593,46 @@ class ImageBuilderCdkStack(Stack):
                         ),
                     )
 
+        _, policy_name = add_cluster_iam_resource_prefix(
+            self.image_id, self.config, "InstanceRoleInlinePolicy", "Policy"
+        )
+
         instancerole_policy = iam.CfnRole.PolicyProperty(
-            policy_name="InstanceRoleInlinePolicy",
+            policy_name=policy_name,
             policy_document=instancerole_policy_document,
+        )
+
+        role_path, role_name = add_cluster_iam_resource_prefix(
+            self.image_id, self.config, self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX), "Role"
         )
 
         instance_role_resource = iam.CfnRole(
             self,
             "InstanceRole",
-            path=IAM_ROLE_PATH,
+            path=role_path or IAM_ROLE_PATH,
             managed_policy_arns=managed_policy_arns,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
             policies=[
                 instancerole_policy,
             ],
             tags=build_tags,
-            role_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
+            role_name=role_name,
         )
         return instance_role_resource
 
     def _add_instance_profile(self, instance_role=None):
         """Set default instance profile in imagebuilder cfn template."""
+        
+        instance_profile_path, instance_profile_name = add_cluster_iam_resource_prefix(
+            self.image_id, self.config, self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX), "InstanceProfile"
+        )
+
         instance_profile_resource = iam.CfnInstanceProfile(
             self,
             "InstanceProfile",
-            path=IAM_ROLE_PATH,
+            path=instance_profile_path or IAM_ROLE_PATH,
             roles=[instance_role.split("/")[-1] if instance_role else Fn.ref("InstanceRole")],
-            instance_profile_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
+            instance_profile_name=instance_profile_name,
         )
         return instance_profile_resource
 

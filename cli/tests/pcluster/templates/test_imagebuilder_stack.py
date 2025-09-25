@@ -2705,3 +2705,108 @@ def _lambda_functions_vpc_config_with_camel_cased_keys(resource):
 )
 def test_parse_bucket_url(url, expect_output):
     assert_that(parse_bucket_url(url)).is_equal_to(expect_output)
+
+
+@pytest.mark.parametrize(
+    "resource, response, expected_role_path, expected_role_name, expected_profile_path, expected_profile_name",
+    [
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-12345678",
+                        "instance_type": "c5.large",
+                        "iam": {"resource_prefix": "/test-path/test-prefix"},
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 25,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            "/test-path/",  # Expected role path
+            "test-prefix-ParallelClusterImageBuilderRole-fakestackid",  # Expected role name with prefix
+            "/test-path/",  # Expected instance profile path
+            "test-prefix-ParallelClusterImageBuilderInstanceProfile-fakestackid",  # Expected instance profile name with prefix
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-87654321",
+                        "instance_type": "c5.xlarge",
+                        "iam": {"resource_prefix": "name-prefix-only"},
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 25,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            "/",  # Default path when only name prefix provided
+            "name-prefix-only-ParallelClusterImageBuilderRole-fakestackid",  # Expected role name with prefix
+            "/",  # Default path when only name prefix provided
+            "name-prefix-only-ParallelClusterImageBuilderInstanceProfile-fakestackid",  # Expected instance profile name with prefix
+        ),
+    ],
+)
+def test_imagebuilder_resource_prefix(
+    mocker, resource, response, expected_role_path, expected_role_name, expected_profile_path, expected_profile_name
+):
+    """Test ImageBuilder ResourcePrefix support in IAM resources."""
+    # Mock image describe response
+    image_mock = ImageInfo({**response, "ImageId": "ami-12345678"})
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image", return_value=image_mock)
+    mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="123456789012")
+
+    # Mock stack unique id to make test deterministic
+    mocker.patch("pcluster.templates.imagebuilder_stack.ImageBuilderCdkStack._stack_unique_id", return_value="fakestackid")
+
+    # Create imagebuilder config and build template
+    imagebuilder_config = imagebuilder_factory(resource).get("imagebuilder")
+    bucket = dummy_imagebuilder_bucket()
+
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        image_config=imagebuilder_config,
+        image_id="test-image",
+        bucket=bucket,
+    )
+
+    # Assert Role has correct path and name with ResourcePrefix
+    assert_that(generated_template["Resources"]["InstanceRole"]["Properties"]["Path"]).is_equal_to(expected_role_path)
+    assert_that(generated_template["Resources"]["InstanceRole"]["Properties"]["RoleName"]).is_equal_to(expected_role_name)
+
+    # Assert InstanceProfile has correct path and name with ResourcePrefix
+    assert_that(generated_template["Resources"]["InstanceProfile"]["Properties"]["Path"]).is_equal_to(expected_profile_path)
+    assert_that(generated_template["Resources"]["InstanceProfile"]["Properties"]["InstanceProfileName"]).is_equal_to(expected_profile_name)
+
+    # Assert inline policy name includes ResourcePrefix
+    policies = generated_template["Resources"]["InstanceRole"]["Properties"]["Policies"]
+    assert_that(len(policies)).is_equal_to(1)
+    if "test-prefix" in expected_role_name:
+        assert_that(policies[0]["PolicyName"]).starts_with("test-prefix")
+    elif "name-prefix-only" in expected_role_name:
+        assert_that(policies[0]["PolicyName"]).starts_with("name-prefix-only")
