@@ -289,3 +289,14 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
+  ultraserver:
+    test_gb200.py::test_gb200:
+      dimensions:
+        - regions: [ "use1-az1" ] # do not move, unless instance type support is moved as well
+          instances: [ "g5g.xlarge" ]
+          oss: [ "alinux2023" ]
+          schedulers: [ "slurm" ]
+        - regions: [ "usw2-az4" ] # do not move, unless instance type support is moved as well
+          instances: [ "p6e-gb200.36xlarge" ]
+          oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023", "rhel9" ]
+          schedulers: [ "slurm" ]
