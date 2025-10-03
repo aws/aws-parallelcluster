@@ -33,6 +33,7 @@ OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
+@pytest.mark.flaky(reruns=0)
 def test_osu(
     os,
     region,

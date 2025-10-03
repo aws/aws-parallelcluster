@@ -58,6 +58,7 @@ def calculate_observed_value(result, remote_command_executor, scheduler_commands
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
+@pytest.mark.flaky(reruns=0)
 def test_starccm(
     vpc_stack,
     instance,
@@ -108,8 +109,9 @@ def test_starccm(
         instance_slots = fetch_instance_slots(region, instance, multithreading_disabled=True)
         run_command = f'sbatch --ntasks={num_of_nodes * instance_slots} starccm.slurm.sh "{podkey}" "{licpath}"'
         multiple_runs = []
-        # Run at least twice up to whatever parallelism allows to maximize usage of available nodes
-        number_of_runs = max(parallelism, 2)
+        # Run at least four times up to whatever parallelism allows to maximize usage of available nodes
+        # Running the test multiple times reduces and get the average value improves stability of the result.
+        number_of_runs = max(parallelism, 4)
         for _ in range(number_of_runs):
             multiple_runs.append(remote_command_executor.run_remote_command(run_command))
         for run in multiple_runs:
