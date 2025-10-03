@@ -45,6 +45,12 @@ from tests.common.utils import (
 )
 
 
+class ImageNotFound(Exception):
+    """Exception when image is not found."""
+
+    pass
+
+
 @pytest.mark.usefixtures("instance")
 def test_invalid_config(
     region,
@@ -95,6 +101,7 @@ def test_invalid_config(
     assert_that(suppressed.message).contains("Request would have succeeded")
 
 
+@pytest.mark.flaky(only_rerun=["ImageNotFound"])
 @pytest.mark.usefixtures("scheduler")
 def test_build_image(
     region,
@@ -419,6 +426,8 @@ def _test_image_tag_and_volume(image):
         .get("Images")
     )
     logging.info(f"Image List: {image_list}, length {len(image_list)}")
+    if not image_list:
+        raise ImageNotFound()
     assert_that(len(image_list)).is_equal_to(1)
 
     created_image = image_list[0]
