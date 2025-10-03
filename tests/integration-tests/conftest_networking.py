@@ -91,32 +91,33 @@ ZONE_ID_MAPPING = {
 }
 
 
-# Split the VPC address space into 16 subnets of 4,096 (/20) addresses
-# to ensure that each subnets has enough IP addresses to support enough tests parallelism and scaling tests.
-# The first 6 are used for public subnets
-# The second 6 are used for private subnets
+# Split the VPC address space into 22 CIDRs.
+# Each public subnet has 1024 addresses.
+# Each private subnet or custom subnet has 4096 addresses to ensure enough IP addresses for scaling tests.
+# The first 9 are used for public subnets
+# The second 9 are used for private subnets
 # The remaining 4 are left for custom subnets
 CIDR_FOR_PUBLIC_SUBNETS = [
-    "192.168.0.0/20",
-    "192.168.16.0/20",
-    "192.168.32.0/20",
+    "192.168.0.0/22",
+    "192.168.4.0/22",
+    "192.168.8.0/22",
+    "192.168.12.0/22",
+    "192.168.16.0/22",
+    "192.168.20.0/22",
+    "192.168.24.0/22",
+    "192.168.28.0/22",
+    "192.168.32.0/22",  # There are more space left in this block
+]
+CIDR_FOR_PRIVATE_SUBNETS = [
     "192.168.48.0/20",
     "192.168.64.0/20",
     "192.168.80.0/20",
-]
-CIDR_FOR_PRIVATE_SUBNETS = [
     "192.168.96.0/20",
     "192.168.112.0/20",
     "192.168.128.0/20",
     "192.168.144.0/20",
     "192.168.160.0/20",
     "192.168.176.0/20",
-]
-CIDR_FOR_PRIVATE_SUBNETS_SCALING = [
-    "192.168.64.0/20",
-    "192.168.80.0/20",
-    "192.168.96.0/20",
-    "192.168.112.0/20",
 ]
 CIDR_FOR_CUSTOM_SUBNETS = [
     "192.168.192.0/20",
