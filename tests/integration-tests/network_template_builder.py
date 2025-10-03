@@ -52,6 +52,7 @@ class SubnetConfig(NamedTuple):
     has_nat_gateway: bool = True
     availability_zone: str = None
     default_gateway: Gateways = Gateways.INTERNET_GATEWAY
+    zone_type: str = "availability-zone"
 
     def tags(self):
         """Get the tags for the subnet"""
@@ -156,6 +157,7 @@ class NetworkTemplateBuilder:
         subnet_refs = []
         bastion_subnet_ref = None
         no_internet_subnet_ref = None
+        first_nat_gateway = None  # Any NAT gateway in parent AZ to be used by private subnets in local zones
         for subnet_config in self.__vpc_subnets:
             subnet = self.__build_subnet(subnet_config, self.__vpc, self.__additional_vpc_cidr_blocks)
             subnets.append(subnet)
@@ -164,7 +166,15 @@ class NetworkTemplateBuilder:
                 nat_gateway_per_az_map[subnet_config.availability_zone] = self.__build_nat_gateway(
                     subnet_config, subnet
                 )
-            if subnet_config.default_gateway == Gateways.INTERNET_GATEWAY:
+                if first_nat_gateway is None:
+                    first_nat_gateway = nat_gateway_per_az_map[subnet_config.availability_zone]
+            if subnet_config.zone_type == "local-zone":
+                # NAT is not available in local zone. Route connection to a NAT in parent AZ.
+                nat_gateway_per_az_map[subnet_config.availability_zone] = first_nat_gateway
+            if (
+                subnet_config.zone_type == "availability-zone"
+                and subnet_config.default_gateway == Gateways.INTERNET_GATEWAY
+            ):
                 bastion_subnet_ref = Ref(subnet)
             if subnet_config.default_gateway == Gateways.NONE:
                 no_internet_subnet_ref = Ref(subnet)
