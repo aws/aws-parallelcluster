@@ -343,7 +343,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         ):
             # Subnets visual representation:
             # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
-            index = len(az_id_name_dict) + index - 1
+            index = len(az_id_name_dict) + index
             subnets.append(
                 SubnetConfig(
                     name=subnet_name(visibility="Public", az_id=az_id),
