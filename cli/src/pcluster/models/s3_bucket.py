@@ -133,9 +133,12 @@ class S3Bucket:
         """
         return hashlib.sha256((account_id + region).encode()).hexdigest()[0:16]
 
-    def check_bucket_exists(self):
+    def check_bucket_exists(self, default_bucket=None):
         """Check bucket existence by bucket name."""
-        AWSApi.instance().s3.head_bucket(bucket_name=self.name)
+        if default_bucket:
+            AWSApi.instance().s3.head_bucket(bucket_name=self.name, expected_bucket_owner=self.account_id)
+        else:
+            AWSApi.instance().s3.head_bucket(bucket_name=self.name)
 
     def create_bucket(self):
         """Create a new S3 bucket."""
@@ -457,7 +460,7 @@ class S3BucketFactory:
     def _check_default_bucket(cls, service_name: str, artifact_directory: str, stack_name: str):
         bucket = S3Bucket(service_name=service_name, artifact_directory=artifact_directory, stack_name=stack_name)
         try:
-            bucket.check_bucket_exists()
+            bucket.check_bucket_exists(default_bucket=True)
         except AWSClientError as e:
             cls._create_bucket(bucket, e)
 
