@@ -91,32 +91,33 @@ ZONE_ID_MAPPING = {
 }
 
 
-# Split the VPC address space into 16 subnets of 4,096 (/20) addresses
-# to ensure that each subnets has enough IP addresses to support enough tests parallelism and scaling tests.
-# The first 6 are used for public subnets
-# The second 6 are used for private subnets
+# Split the VPC address space into 22 CIDRs.
+# Each public subnet has 1024 addresses.
+# Each private subnet or custom subnet has 4096 addresses to ensure enough IP addresses for scaling tests.
+# The first 9 are used for public subnets
+# The second 9 are used for private subnets
 # The remaining 4 are left for custom subnets
 CIDR_FOR_PUBLIC_SUBNETS = [
-    "192.168.0.0/20",
-    "192.168.16.0/20",
-    "192.168.32.0/20",
+    "192.168.0.0/22",
+    "192.168.4.0/22",
+    "192.168.8.0/22",
+    "192.168.12.0/22",
+    "192.168.16.0/22",
+    "192.168.20.0/22",
+    "192.168.24.0/22",
+    "192.168.28.0/22",
+    "192.168.32.0/22",  # There are more space left in this block
+]
+CIDR_FOR_PRIVATE_SUBNETS = [
     "192.168.48.0/20",
     "192.168.64.0/20",
     "192.168.80.0/20",
-]
-CIDR_FOR_PRIVATE_SUBNETS = [
     "192.168.96.0/20",
     "192.168.112.0/20",
     "192.168.128.0/20",
     "192.168.144.0/20",
     "192.168.160.0/20",
     "192.168.176.0/20",
-]
-CIDR_FOR_PRIVATE_SUBNETS_SCALING = [
-    "192.168.64.0/20",
-    "192.168.80.0/20",
-    "192.168.96.0/20",
-    "192.168.112.0/20",
 ]
 CIDR_FOR_CUSTOM_SUBNETS = [
     "192.168.192.0/20",
@@ -186,7 +187,7 @@ def subnet_name(visibility="Public", az_id=None, flavor=None):
     return f"{az_id_pascal_case}{visibility}{flavor_string}"
 
 
-def describe_availability_zones(region, credential):
+def describe_availability_zones(region, credential, zone_types=("availability-zone",)):
     """
     Return the response of boto3 describe_availability_zones.
 
@@ -199,14 +200,9 @@ def describe_availability_zones(region, credential):
         return client.describe_availability_zones(
             Filters=[
                 {"Name": "region-name", "Values": [str(region)]},
-                {"Name": "zone-type", "Values": ["availability-zone"]},
+                {"Name": "zone-type", "Values": zone_types},
             ]
         ).get("AvailabilityZones")
-
-
-def get_availability_zones(region, credential):
-    """Return a list of availability zones for the given region."""
-    return [az.get("ZoneName") for az in describe_availability_zones(region, credential)]
 
 
 def get_az_setup_for_region(region: str, credential: list):
@@ -222,9 +218,13 @@ def get_az_setup_for_region(region: str, credential: list):
     return default_az_id, default_az_name, az_id_to_az_name_map
 
 
-def get_az_id_to_az_name_map(region, credential):
+def get_az_id_to_az_name_map(region, credential, zone_types=None):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
-    return {entry.get("ZoneId"): entry.get("ZoneName") for entry in describe_availability_zones(region, credential)}
+    kwargs = {"zone_types": zone_types} if zone_types else {}
+    return {
+        entry.get("ZoneId"): entry.get("ZoneName")
+        for entry in describe_availability_zones(region, credential, **kwargs)
+    }
 
 
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
@@ -337,6 +337,34 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
                         default_gateway=Gateways.NONE,
                     )
                 )
+        zone_type = "local-zone"
+        for index, (az_id, az_name) in enumerate(
+            get_az_id_to_az_name_map(region, credential, zone_types=[zone_type]).items()
+        ):
+            # Subnets visual representation:
+            # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
+            index = len(az_id_name_dict) + index - 1
+            subnets.append(
+                SubnetConfig(
+                    name=subnet_name(visibility="Public", az_id=az_id),
+                    cidr=CIDR_FOR_PUBLIC_SUBNETS[index],
+                    map_public_ip_on_launch=True,
+                    has_nat_gateway=False,  # Local Zones don't support NAT gateway
+                    availability_zone=az_name,
+                    default_gateway=Gateways.INTERNET_GATEWAY,
+                    zone_type=zone_type,
+                )
+            )
+            subnets.append(
+                SubnetConfig(
+                    name=subnet_name(visibility="Private", az_id=az_id),
+                    cidr=CIDR_FOR_PRIVATE_SUBNETS[index],
+                    map_public_ip_on_launch=False,
+                    has_nat_gateway=False,
+                    availability_zone=az_name,
+                    default_gateway=Gateways.NAT_GATEWAY,
+                )
+            )
 
         vpc_config = VPCConfig(
             cidr="192.168.0.0/17",
