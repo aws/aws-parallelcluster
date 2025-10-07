@@ -62,6 +62,7 @@ def _mock_cluster(
         "mock_generated_bucket_name",
         "expected_bucket_name",
         "provided_bucket_name",
+        "default_bucket",
     ),
     [
         (
@@ -74,6 +75,7 @@ def _mock_cluster(
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             None,
+            True,
         ),
         (
             "awsbatch",
@@ -85,6 +87,7 @@ def _mock_cluster(
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             None,
+            True,
         ),
         (
             "slurm",
@@ -96,6 +99,7 @@ def _mock_cluster(
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             None,
+            True,
         ),
         (
             "slurm",
@@ -107,6 +111,7 @@ def _mock_cluster(
             None,
             "user_provided_bucket",
             "user_provided_bucket",
+            False,
         ),
     ],
 )
@@ -121,6 +126,7 @@ def test_setup_bucket_with_resources_success(
     mock_generated_bucket_name,
     expected_bucket_name,
     provided_bucket_name,
+    default_bucket,
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected."""
     # mock calls for bucket property in cluster object
@@ -154,7 +160,10 @@ def test_setup_bucket_with_resources_success(
     for dir in expected_dirs:
         cluster.bucket.upload_resources(dir)
 
-    check_bucket_mock.assert_called_with()
+    if default_bucket:
+        check_bucket_mock.assert_called_with(default_bucket=default_bucket)
+    else:
+        check_bucket_mock.assert_called_with()
 
     # assert upload has been called
     upload_config_mock.assert_called_with(expected_config, "fake_config_name")
@@ -339,4 +348,7 @@ def test_setup_bucket_with_resources_upload_failure(
     with pytest.raises(ClusterActionError, match=upload_instance_types_data_action_error):
         cluster._upload_instance_types_data()
 
-    check_bucket_mock.assert_called_with()
+    if provided_bucket_name:
+        check_bucket_mock.assert_called_with(default_bucket=True)
+    else:
+        check_bucket_mock.assert_called_with()
