@@ -79,6 +79,7 @@ from utils import (
     get_instance_info,
     get_metadata,
     get_network_interfaces_count,
+    get_similar_instance_types,
     get_vpc_snakecase_value,
     random_alphanumeric,
     to_pascal_case,
@@ -634,6 +635,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
         default_values = _get_default_template_values(vpc_stack, request)
         inject_internal_storage_settings(kwargs)
         inject_placement_group_settings(vpc_stack, instance, kwargs)
+        inject_flexible_instance_types_settings(instance, region, kwargs)
         file_loader = FileSystemLoader(str(test_datadir))
         env = SandboxedEnvironment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
@@ -656,6 +658,9 @@ def inject_placement_group_settings(vpc_stack, instance, kwargs):
     if vpc_stack.az_override:
         kwargs["capacity_reservation_framework_placement_group"] = f"{instance}_placement_group_{vpc_stack.az_override}"
 
+
+def inject_flexible_instance_types_settings(instance, region, kwargs):
+    kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
 
 def inject_additional_image_configs_settings(image_config, request):
     with open(image_config, encoding="utf-8") as conf_file:

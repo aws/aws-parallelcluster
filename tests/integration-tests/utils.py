@@ -995,3 +995,57 @@ def get_free_tier_instance_types(region: str = None):
 
 def or_regex(items: list):
     return "|".join(map(re.escape, items))
+
+
+def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
+    ec2 = boto3.client('ec2', region_name=region)
+
+    # First, get the target instance details to use as filter criteria
+    target_response = ec2.describe_instance_types(
+        InstanceTypes=[instance_type]
+    )
+
+    if not target_response['InstanceTypes']:
+        return []
+
+    target = target_response['InstanceTypes'][0]
+    target_arch = target['ProcessorInfo']['SupportedArchitectures'][0]
+    target_vcpus = target['VCpuInfo']['DefaultVCpus']
+    target_threads = target['VCpuInfo']['DefaultThreadsPerCore']
+    target_has_efa = target.get('NetworkInfo', {}).get('EfaSupported', False)
+    target_has_gpu = 'GpuInfo' in target
+
+    # Now query for similar instances using filters
+    paginator = ec2.get_paginator('describe_instance_types')
+    similar_instances = []
+
+    for page in paginator.paginate(
+            Filters=[
+                {
+                    'Name': 'processor-info.supported-architecture',
+                    'Values': [target_arch]
+                },
+                {
+                    'Name': 'vcpu-info.default-vcpus',
+                    'Values': [str(target_vcpus)]
+                },
+                {
+                    'Name': 'vcpu-info.default-threads-per-core',
+                    'Values': [str(target_threads)]
+                }
+            ],
+            PaginationConfig={'MaxItems': max_items} if max_items else {}
+    ):
+        # Filter for EFA support and GPU presence here
+        for instance in page['InstanceTypes']:
+            instance_has_efa = instance.get('NetworkInfo', {}).get('EfaSupported', False)
+            instance_has_gpu = 'GpuInfo' in instance
+            if instance_has_efa == target_has_efa and instance_has_gpu == target_has_gpu:
+                similar_instances.append(instance['InstanceType'])
+
+        # Check if we've reached max_items
+        if max_items and len(similar_instances) >= max_items:
+            similar_instances = similar_instances[:max_items]
+            break
+
+    return similar_instances
