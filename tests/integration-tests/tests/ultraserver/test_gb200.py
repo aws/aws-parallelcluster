@@ -402,6 +402,7 @@ def test_gb200(
     """
     capacity_reservation_id = None
     max_queue_size = 2
+    headnode_instance_type = "c7g.4xlarge"
     if instance == "p6e-gb200.36xlarge":
         ultraserver_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if ultraserver_reservations_ids:
@@ -449,6 +450,7 @@ def test_gb200(
         queue_without_imex=queue_without_imex,
         compute_resource_without_imex=compute_resource_without_imex,
         capacity_block_reservation_id=capacity_block_reservation_id,
+        headnode_instance_type=headnode_instance_type,
     )
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     suppress_validators = ["type:UltraserverCapacityBlockSizeValidator"]
@@ -494,6 +496,7 @@ def test_gb200(
             compute_resource_with_imex=compute_resource_with_imex,
             queue_without_imex=queue_without_imex,
             compute_resource_without_imex=compute_resource_without_imex,
+            headnode_instance_type=headnode_instance_type,
         )
 
         cluster.stop()
@@ -540,6 +543,7 @@ def test_gb200(
         compute_resource_with_imex=compute_resource_with_imex,
         queue_without_imex=queue_without_imex,
         compute_resource_without_imex=compute_resource_without_imex,
+        headnode_instance_type=headnode_instance_type,
     )
 
     cluster.stop()
