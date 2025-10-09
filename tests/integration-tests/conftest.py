@@ -662,6 +662,7 @@ def inject_placement_group_settings(vpc_stack, instance, kwargs):
 def inject_flexible_instance_types_settings(instance, region, kwargs):
     kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
 
+
 def inject_additional_image_configs_settings(image_config, request):
     with open(image_config, encoding="utf-8") as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
