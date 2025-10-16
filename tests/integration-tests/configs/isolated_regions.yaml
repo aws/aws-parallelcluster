@@ -234,6 +234,12 @@ test-suites:
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
   networking:
+    test_cluster_networking.py::test_cluster_with_subnet_prioritization:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_cluster_networking.py::test_cluster_in_private_subnet:
       dimensions:
         - regions: {{ REGIONS }}
