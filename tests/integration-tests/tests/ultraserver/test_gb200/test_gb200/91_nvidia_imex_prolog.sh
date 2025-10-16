@@ -22,7 +22,7 @@ SCONTROL_CMD="/opt/slurm/bin/scontrol"
 IMEX_START_TIMEOUT=60
 IMEX_STOP_TIMEOUT=15
 #TODO In production, specify p6e-gb200, only. We added g5g only for testing purposes.
-ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g)"
+ALLOWED_INSTANCE_TYPES="^(p6e-gb200|g5g|g4d)"
 IMEX_SERVICE="nvidia-imex"
 IMEX_NODES_CONFIG="/etc/nvidia-imex/nodes_config.cfg"
 
