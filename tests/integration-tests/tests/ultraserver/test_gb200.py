@@ -404,6 +404,9 @@ def test_gb200(
     capacity_reservation_id = None
     max_queue_size = 2
     headnode_instance_type = ""
+    if os == "alinux2":
+        pytest.skip(f"Skipping the test as nvidia-imex is not installed in {os}")
+
     if architecture == "x86_64":
         headnode_instance_type = "c5.xlarge"
     else:
