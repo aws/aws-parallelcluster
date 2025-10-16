@@ -48,9 +48,13 @@ Scheduling:
     ComputeResources:
       - Name: {{ compute_resource_without_imex }}
         Instances:
+  {% if architecture=="x86_64" %}
+          - InstanceType: {{ headnode_instance_type }}
+  {% else %}
           - InstanceType: m6g.xlarge
           - InstanceType: t4g.xlarge
           - InstanceType: c6gn.xlarge
+  {% endif %}
         MinCount: {{ min_queue_size_without_imex }}
         MaxCount: 1
     Networking:
