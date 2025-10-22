@@ -129,7 +129,7 @@ phases:
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
                 apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
-                apt-mark hold linux-aws* linux-base* linux-headers* linux-image* linux-modules-extra*
+                apt-mark hold linux-aws-$(uname -r)* linux-base-$(uname -r)* linux-headers-$(uname -r)* linux-image-$(uname -r)* linux-modules-extra-$(uname -r)*
               fi
               echo "Kernel version is $(uname -a)"
 
