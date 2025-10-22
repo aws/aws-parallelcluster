@@ -68,14 +68,14 @@ phases:
               
               # Output all variables to persistent location
               mkdir -p /opt/parallelcluster
-              echo "OS=$OS" > /opt/parallelcluster/system_info
-              echo "PLATFORM=$PLATFORM" >> /opt/parallelcluster/system_info
-              echo "RELEASE=$RELEASE" >> /opt/parallelcluster/system_info
-              echo "VERSION_ID=$VERSION_ID" >> /opt/parallelcluster/system_info
-              echo "COOKBOOK_URL=$COOKBOOK_URL" >> /opt/parallelcluster/system_info
-              echo "CINC_URL=$CINC_URL" >> /opt/parallelcluster/system_info
-              echo "COOKBOOK_NAME=$COOKBOOK_NAME" >> /opt/parallelcluster/system_info
-              echo "KERNEL_PACKAGES_PREFIX=$KERNEL_PACKAGES_PREFIX" >> /opt/parallelcluster/system_info
+              echo "OS='$OS'" > /opt/parallelcluster/system_info
+              echo "PLATFORM='$PLATFORM'" >> /opt/parallelcluster/system_info
+              echo "RELEASE='$RELEASE'" >> /opt/parallelcluster/system_info
+              echo "VERSION_ID='$VERSION_ID'" >> /opt/parallelcluster/system_info
+              echo "COOKBOOK_URL='$COOKBOOK_URL'" >> /opt/parallelcluster/system_info
+              echo "CINC_URL='$CINC_URL'" >> /opt/parallelcluster/system_info
+              echo "COOKBOOK_NAME='$COOKBOOK_NAME'" >> /opt/parallelcluster/system_info
+              echo "KERNEL_PACKAGES_PREFIX='$KERNEL_PACKAGES_PREFIX'" >> /opt/parallelcluster/system_info
 
       - name: PinVersion
         action: ExecuteBash
