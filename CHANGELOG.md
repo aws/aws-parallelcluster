@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.15.0
+------
+
+**BUG FIXES**
+- Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
+
 3.14.0
 ------
 
