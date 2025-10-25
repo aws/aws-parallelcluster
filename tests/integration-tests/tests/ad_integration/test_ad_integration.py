@@ -11,10 +11,13 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import io
+import json
 import logging
+import os
 import os as os_lib
 import random
 import string
+import tempfile
 import time
 import zipfile
 from collections import defaultdict
@@ -23,6 +26,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
+from filelock import FileLock
 from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -34,6 +38,9 @@ from tests.common.utils import run_system_analyzer
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
+_REG_DIR = "/var/tmp/.pcluster_tests"
+_REG_PATH = os.path.join(_REG_DIR, "ad_directory_registry.json")
+_LOCK_PATH = _REG_PATH + ".lock"
 
 
 def get_infra_stack_outputs(stack_name):
@@ -226,23 +233,61 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     ).is_true()
 
 
+def _ensure_regdir():
+    os.makedirs(_REG_DIR, exist_ok=True)
+
+
+def _load_registry():
+    try:
+        with open(_REG_PATH, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_registry_atomic(data: dict):
+    _ensure_regdir()
+    fd, tmppath = tempfile.mkstemp(prefix="adreg_", dir=_REG_DIR)
+    try:
+        with os.fdopen(fd, "w") as tmpf:
+            json.dump(data, tmpf)
+        os.replace(tmppath, _REG_PATH)  # atomic replace
+    finally:
+        try:
+            if os.path.exists(tmppath):
+                os.remove(tmppath)
+        except Exception:
+            pass
+
+
 @pytest.fixture(scope="class")
 def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
-    # TODO: use external data file and file locking in order to share directories across processes
-    created_directory_stacks = defaultdict(dict)
+    """
+    - Sharing and reference counting using (region, directory_type) as the key
+    - Single JSON registry + file lock, only deletes the stack if refs == 0 and not retain/no-delete
+    - When explicitly set existing_directory_stack_name, use it, no deletion nor counting
+    """
+    local_refs = defaultdict(int)
 
-    def _directory_factory(
-        existing_directory_stack_name,
-        directory_type,
-        region,
-    ):
+    _ensure_regdir()
+    lock = FileLock(_LOCK_PATH, timeout=1200)
+
+    def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
+        key = f"{region}:{directory_type}"
+
         if existing_directory_stack_name:
-            directory_stack_name = existing_directory_stack_name
-            logging.info("Using pre-existing directory stack named %s", directory_stack_name)
-        elif created_directory_stacks.get(region, {}).get("directory"):
-            directory_stack_name = created_directory_stacks.get(region, {}).get("directory")
-            logging.info("Using directory stack named %s created by another test", directory_stack_name)
-        else:
+            return existing_directory_stack_name
+
+        with lock:
+            reg = _load_registry()
+
+            if key in reg:
+                directory_stack_name = reg[key]["name"]
+                reg[key]["refs"] = int(reg[key].get("refs", 0)) + 1
+                _save_registry_atomic(reg)
+                local_refs[key] += 1
+                return directory_stack_name
+
             stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
             directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
 
@@ -255,26 +300,36 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
                     vpc_stack,
                 )
                 directory_stack_name = directory_stack.name
-                created_directory_stacks[region]["directory"] = directory_stack_name
-                if request.config.getoption("retain_ad_stack"):
-                    add_tag_to_stack(vpc_stack.name, "DO-NOT-DELETE", "Retained for integration testing")
-        return directory_stack_name
 
-    yield _directory_factory
+            # Initial refs=1
+            reg[key] = {"name": directory_stack_name, "refs": 1}
+            _save_registry_atomic(reg)
+            local_refs[key] += 1
+            return directory_stack_name
 
-    for region, stack_dict in created_directory_stacks.items():
-        for stack_type in stack_dict:
-            stack_name = stack_dict[stack_type]
-            if request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack"):
-                logging.info(
-                    "Not deleting %s stack named %s in region %s because --no-delete option was specified",
-                    stack_type,
-                    stack_name,
-                    region,
-                )
-            else:
-                logging.info("Deleting %s stack named %s in region %s", stack_type, stack_name, region)
-                cfn_stacks_factory.delete_stack(stack_name, region)
+    yield _factory
+
+    # teardown: Reduce the references added by this class
+    # if it is 0 and deletion is allowed, delete the stack and remove the registry key
+    with lock:
+        reg = _load_registry()
+        for key, release_count in local_refs.items():
+            if key not in reg:
+                continue
+            reg[key]["refs"] = max(0, int(reg[key].get("refs", 0)) - release_count)
+            directory_stack_name = reg[key]["name"]
+            region, directory_type = key.split(":", 1)
+
+            if reg[key]["refs"] == 0:
+                # Only delete if no_delete / retain_ad_stack is not set
+                if not (request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack")):
+                    try:
+                        cfn_stacks_factory.delete_stack(directory_stack_name, region)
+                    except Exception:
+                        pass
+                reg.pop(key, None)
+
+        _save_registry_atomic(reg)
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
