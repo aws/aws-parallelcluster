@@ -1024,7 +1024,6 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             {"Name": "vcpu-info.default-vcpus", "Values": [str(target_vcpus)]},
             {"Name": "vcpu-info.default-threads-per-core", "Values": [str(target_threads)]},
         ],
-        PaginationConfig={"MaxItems": max_items} if max_items else {},
     ):
         # Filter for EFA support, GPU presence, and inference accelerator types
         for instance in page["InstanceTypes"]:
@@ -1037,10 +1036,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
                 and instance_inference_accelerators == target_inference_accelerators
             ):
                 similar_instances.append(instance["InstanceType"])
-
-        # Check if we've reached max_items
-        if max_items and len(similar_instances) >= max_items:
-            similar_instances = similar_instances[:max_items]
-            break
+                if max_items and len(similar_instances) >= max_items:
+                    return similar_instances
 
     return similar_instances
