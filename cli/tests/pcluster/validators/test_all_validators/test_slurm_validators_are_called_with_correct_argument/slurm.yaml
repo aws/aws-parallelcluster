@@ -101,3 +101,7 @@ Tags:
     Value: String
   - Key: cluster_tag2
     Value: String
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: |
+      {"attr1": {"attr2": "value"}}
