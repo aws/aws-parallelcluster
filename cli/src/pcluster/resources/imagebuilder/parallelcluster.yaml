@@ -249,7 +249,7 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
-                apt-mark unhold linux-aws* linux-base* linux-headers* linux-image* linux-modules-extra*
+                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
               fi
               
               # Handle SSM agent
