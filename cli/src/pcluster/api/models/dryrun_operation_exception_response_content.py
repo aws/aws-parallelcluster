@@ -65,7 +65,8 @@ class DryrunOperationExceptionResponseContent(Model):
     def validation_messages(self):
         """Gets the validation_messages of this DryrunOperationExceptionResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
+        List of messages collected during cluster config validation whose level is lower
+        than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :return: The validation_messages of this DryrunOperationExceptionResponseContent.
         :rtype: List[ConfigValidationMessage]
@@ -76,7 +77,8 @@ class DryrunOperationExceptionResponseContent(Model):
     def validation_messages(self, validation_messages):
         """Sets the validation_messages of this DryrunOperationExceptionResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
+        List of messages collected during cluster config validation whose level is lower
+        than the 'validationFailureLevel' set by the user.  # noqa: E501
 
         :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.
         :type validation_messages: List[ConfigValidationMessage]
