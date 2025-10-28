@@ -181,7 +181,8 @@ class LogStream(Model):
     def last_event_timestamp(self):
         """Gets the last_event_timestamp of this LogStream.
 
-        The time of the last event of the stream. The lastEventTime value updates on an eventual consistency basis. It typically updates in less than an hour from ingestion, but in rare situations might take longer.  # noqa: E501
+        The time of the last event of the stream. The lastEventTime value updates on an eventual consistency basis.
+        It typically updates in less than an hour from ingestion, but in rare situations might take longer.
 
         :return: The last_event_timestamp of this LogStream.
         :rtype: datetime
@@ -192,7 +193,8 @@ class LogStream(Model):
     def last_event_timestamp(self, last_event_timestamp):
         """Sets the last_event_timestamp of this LogStream.
 
-        The time of the last event of the stream. The lastEventTime value updates on an eventual consistency basis. It typically updates in less than an hour from ingestion, but in rare situations might take longer.  # noqa: E501
+        The time of the last event of the stream. The lastEventTime value updates on an eventual consistency basis.
+        It typically updates in less than an hour from ingestion, but in rare situations might take longer.
 
         :param last_event_timestamp: The last_event_timestamp of this LogStream.
         :type last_event_timestamp: datetime
