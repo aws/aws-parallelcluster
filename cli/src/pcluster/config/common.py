@@ -21,6 +21,7 @@ from enum import Enum
 from typing import List, Set
 
 from pcluster.validators.common import AsyncValidator, FailureLevel, ValidationResult, Validator, ValidatorContext
+from pcluster.validators.dev_settings_validators import ExtraChefAttributesValidator
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
 from pcluster.validators.networking_validators import LambdaFunctionsVpcConfigValidator
 from pcluster.validators.s3_validators import UrlValidator
@@ -333,6 +334,8 @@ class Cookbook(Resource):
     def _register_validators(self, context: ValidatorContext = None):
         if self.chef_cookbook is not None:
             self._register_validator(UrlValidator, url=self.chef_cookbook)
+        if self.extra_chef_attributes:
+            self._register_validator(ExtraChefAttributesValidator, extra_chef_attributes=self.extra_chef_attributes)
 
 
 class LambdaFunctionsVpcConfig(Resource):
