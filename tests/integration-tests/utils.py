@@ -1012,6 +1012,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     target_threads = target["VCpuInfo"]["DefaultThreadsPerCore"]
     target_has_efa = target.get("NetworkInfo", {}).get("EfaSupported", False)
     target_has_gpu = "GpuInfo" in target
+    target_inference_accelerators = target.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
 
     # Now query for similar instances using filters
     paginator = ec2.get_paginator("describe_instance_types")
@@ -1025,11 +1026,16 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
         ],
         PaginationConfig={"MaxItems": max_items} if max_items else {},
     ):
-        # Filter for EFA support and GPU presence here
+        # Filter for EFA support, GPU presence, and inference accelerator types
         for instance in page["InstanceTypes"]:
             instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
             instance_has_gpu = "GpuInfo" in instance
-            if instance_has_efa == target_has_efa and instance_has_gpu == target_has_gpu:
+            instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
+            if (
+                instance_has_efa == target_has_efa
+                and instance_has_gpu == target_has_gpu
+                and instance_inference_accelerators == target_inference_accelerators
+            ):
                 similar_instances.append(instance["InstanceType"])
 
         # Check if we've reached max_items
