@@ -41,6 +41,9 @@ NUM_USERS_TO_TEST = 3
 _REG_DIR = "/var/tmp/.pcluster_tests"
 _REG_PATH = os.path.join(_REG_DIR, "ad_directory_registry.json")
 _LOCK_PATH = _REG_PATH + ".lock"
+_LOCK_TIMEOUT_SEC = 30
+_CREATE_WAIT_TIMEOUT_SEC = 1800  # 30 minutes
+_CREATE_WAIT_INTERVAL_SEC = 2    # seconds
 
 
 def get_infra_stack_outputs(stack_name):
@@ -238,6 +241,7 @@ def _ensure_regdir():
 
 
 def _load_registry():
+    """Read registry JSON; return {} if file is missing or invalid."""
     try:
         with open(_REG_PATH, "r") as f:
             return json.load(f)
@@ -246,12 +250,13 @@ def _load_registry():
 
 
 def _save_registry_atomic(data: dict):
+    """Atomic write: write to a temp file then os.replace to avoid torn writes."""
     _ensure_regdir()
     fd, tmppath = tempfile.mkstemp(prefix="adreg_", dir=_REG_DIR)
     try:
         with os.fdopen(fd, "w") as tmpf:
             json.dump(data, tmpf)
-        os.replace(tmppath, _REG_PATH)  # atomic replace
+        os.replace(tmppath, _REG_PATH)
     finally:
         try:
             if os.path.exists(tmppath):
@@ -263,14 +268,18 @@ def _save_registry_atomic(data: dict):
 @pytest.fixture(scope="class")
 def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
     """
-    - Sharing and reference counting using (region, directory_type) as the key
-    - Single JSON registry + file lock, only deletes the stack if refs == 0 and not retain/no-delete
-    - When explicitly set existing_directory_stack_name, use it, no deletion nor counting
+    Parallel-safe factory for AD Directory CFN stacks.
+
+    Behavior:
+      - Share stacks across workers using (region, directory_type) as the key.
+      - Registry entry: { "name": <stack_name or None>, "refs": <int>, "creating": <bool> }.
+      - Only delete the stack when refs drops to 0 and neither --no-delete nor --retain_ad_stack is set.
+      - If existing_directory_stack_name is provided, return it and do NOT track or delete it.
     """
     local_refs = defaultdict(int)
 
     _ensure_regdir()
-    lock = FileLock(_LOCK_PATH, timeout=1200)
+    lock = FileLock(_LOCK_PATH, timeout=_LOCK_TIMEOUT_SEC)
 
     def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
         key = f"{region}:{directory_type}"
@@ -280,14 +289,26 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
 
         with lock:
             reg = _load_registry()
+            entry = reg.get(key)
 
-            if key in reg:
-                directory_stack_name = reg[key]["name"]
-                reg[key]["refs"] = int(reg[key].get("refs", 0)) + 1
+            if entry and entry.get("name"):
+                entry["refs"] = int(entry.get("refs", 0)) + 1
+                reg[key] = entry
                 _save_registry_atomic(reg)
                 local_refs[key] += 1
-                return directory_stack_name
+                return entry["name"]
 
+            # Not present → mark as "creating" so others wait; then create outside the lock
+            if not entry:
+                reg[key] = {"name": None, "refs": 0, "creating": True, "ts": time.time()}
+                _save_registry_atomic(reg)
+                creating_flag = True
+            else:
+                creating_flag = False
+
+        # -------- Phase 2: Slow work (outside lock) --------
+        if creating_flag:
+            # Try to reuse an existing stack of the same type; otherwise create a new one
             stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
             directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
 
@@ -301,32 +322,62 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
                 )
                 directory_stack_name = directory_stack.name
 
-            # Initial refs=1
-            reg[key] = {"name": directory_stack_name, "refs": 1}
-            _save_registry_atomic(reg)
-            local_refs[key] += 1
-            return directory_stack_name
+            # Record the created stack name and take the first reference
+            with lock:
+                reg = _load_registry()
+                entry = reg.get(key, {})
+                entry["name"] = directory_stack_name
+                entry["refs"] = int(entry.get("refs", 0)) + 1
+                entry["creating"] = False
+                reg[key] = entry
+                _save_registry_atomic(reg)
+                local_refs[key] += 1
+                return directory_stack_name
+
+        else:
+            # Wait until the creator sets the name and clears "creating"
+            deadline = time.time() + _CREATE_WAIT_TIMEOUT_SEC
+            while True:
+                with lock:
+                    reg = _load_registry()
+                    entry = reg.get(key)
+                    if entry and entry.get("name") and not entry.get("creating"):
+                        entry["refs"] = int(entry.get("refs", 0)) + 1
+                        reg[key] = entry
+                        _save_registry_atomic(reg)
+                        local_refs[key] += 1
+                        return entry["name"]
+                if time.time() > deadline:
+                    raise TimeoutError(f"Timed out waiting for directory stack creation for key={key}")
+                time.sleep(_CREATE_WAIT_INTERVAL_SEC)
 
     yield _factory
 
-    # teardown: Reduce the references added by this class
-    # if it is 0 and deletion is allowed, delete the stack and remove the registry key
+    # Teardown: decrement this class's refs; delete when refs reaches 0
     with lock:
         reg = _load_registry()
         for key, release_count in local_refs.items():
-            if key not in reg:
+            entry = reg.get(key)
+            if not entry:
                 continue
-            reg[key]["refs"] = max(0, int(reg[key].get("refs", 0)) - release_count)
-            directory_stack_name = reg[key]["name"]
-            region, directory_type = key.split(":", 1)
+            # If still "creating" (rare; e.g., creator crashed), skip and leave for next run to clean up
+            if entry.get("creating"):
+                continue
 
-            if reg[key]["refs"] == 0:
-                # Only delete if no_delete / retain_ad_stack is not set
-                if not (request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack")):
+            entry["refs"] = max(0, int(entry.get("refs", 0)) - release_count)
+            reg[key] = entry
+
+            if entry["refs"] == 0:
+                name = entry.get("name")
+                region, _directory_type = key.split(":", 1)
+                # Only delete if not retained / not no-delete
+                if name and not (request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack")):
                     try:
-                        cfn_stacks_factory.delete_stack(directory_stack_name, region)
+                        cfn_stacks_factory.delete_stack(name, region)
                     except Exception:
+                        # Ignore deletion errors to avoid leaving stale registry entries
                         pass
+                # Remove registry entry when no references remain
                 reg.pop(key, None)
 
         _save_registry_atomic(reg)
