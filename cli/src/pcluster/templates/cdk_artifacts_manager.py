@@ -153,7 +153,7 @@ class CDKArtifactsManager:
                     "content": asset_file_content,
                 }
             )
-            LOGGER.info(f"Uploading asset {asset_id} to S3")
+            LOGGER.info("Uploading asset %s to S3", asset_id)
 
             bucket.upload_cfn_asset(
                 asset_file_content=asset_file_content, asset_name=asset_id, format=S3FileFormat.MINIFIED_JSON
