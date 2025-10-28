@@ -82,7 +82,7 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             return self._export_cluster_logs(args, args.output_file)
         except Exception as e:
             utils.error(f"Unable to export cluster's logs.\n{e}")
-            return None
+            return None  # pylint: disable=unreachable
 
     @staticmethod
     def _export_cluster_logs(args: Namespace, output_file: str = None):
