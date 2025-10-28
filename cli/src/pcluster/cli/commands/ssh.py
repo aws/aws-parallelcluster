@@ -31,7 +31,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _ssh(args, extra_args):
-    # pylint: disable=import-outside-toplevel
+    # FIXME we should remove the dependency to pipes as it is deprecated (pointed out by PyLint deprecated-module).
+    # pylint: disable=import-outside-toplevel,deprecated-module
     """
     Execute an SSH command to the head node instance, according to the [aliases] section if there.
 
