@@ -43,7 +43,7 @@ _REG_PATH = os.path.join(_REG_DIR, "ad_directory_registry.json")
 _LOCK_PATH = _REG_PATH + ".lock"
 _LOCK_TIMEOUT_SEC = 30
 _CREATE_WAIT_TIMEOUT_SEC = 5400
-_CREATE_WAIT_INTERVAL_SEC = 2    # seconds
+_CREATE_WAIT_INTERVAL_SEC = 2  # seconds
 
 
 def get_infra_stack_outputs(stack_name):
@@ -262,6 +262,7 @@ def _save_registry_atomic(data: dict):
             if os.path.exists(tmppath):
                 os.remove(tmppath)
         except Exception:
+            # Safe to ignore: does not affect the successfully replaced registry file.
             pass
 
 
@@ -306,7 +307,6 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
             else:
                 creating_flag = False
 
-        # -------- Phase 2: Slow work (outside lock) --------
         if creating_flag:
             # Try to reuse an existing stack of the same type; otherwise create a new one
             stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
