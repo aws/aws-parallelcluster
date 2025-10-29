@@ -21,7 +21,10 @@ ignore =
     # B028: Consider replacing f"'{foo}'" with f"{foo!r}".
     # Currently being disabled by flake8-bugbear. See https://github.com/PyCQA/flake8-bugbear/pull/333
     B028,
-    T499
+    T499,
+    # B042: Exception class with `__init__` should pass all args to `super().__init__()` in order to work with `copy.copy()`.
+    # Affected by false positive, https://github.com/PyCQA/flake8-bugbear/issues/525
+    B042
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
 # D202 No blank lines allowed after function docstring

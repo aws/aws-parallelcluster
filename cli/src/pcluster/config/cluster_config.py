@@ -1361,7 +1361,7 @@ class LoginNodesNetworking(_BaseNetworking, SubnetsMixin):
     @property
     def is_subnet_public(self):
         """Get if the subnet is public or private."""
-        return AWSApi.instance().ec2.is_subnet_public(self.subnet_ids[0])
+        return AWSApi.instance().ec2.is_subnet_public(self.subnet_ids[0])  # pylint: disable=unsubscriptable-object
 
 
 class LoginNodesPool(Resource):
