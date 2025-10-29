@@ -42,7 +42,7 @@ _REG_DIR = "/var/tmp/.pcluster_tests"
 _REG_PATH = os.path.join(_REG_DIR, "ad_directory_registry.json")
 _LOCK_PATH = _REG_PATH + ".lock"
 _LOCK_TIMEOUT_SEC = 30
-_CREATE_WAIT_TIMEOUT_SEC = 3600
+_CREATE_WAIT_TIMEOUT_SEC = 5400
 _CREATE_WAIT_INTERVAL_SEC = 2    # seconds
 
 
