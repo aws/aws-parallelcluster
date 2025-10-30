@@ -21,29 +21,25 @@ import tempfile
 import time
 import zipfile
 from collections import defaultdict
+from pathlib import Path
 
 import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
-from filelock import FileLock
 from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
 from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, random_alphanumeric
+from xdist import get_xdist_worker_id
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
+from framework.fixture_utils import SharedFixture
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
-_REG_DIR = "/var/tmp/.pcluster_tests"
-_REG_PATH = os.path.join(_REG_DIR, "ad_directory_registry.json")
-_LOCK_PATH = _REG_PATH + ".lock"
-_LOCK_TIMEOUT_SEC = 30
-_CREATE_WAIT_TIMEOUT_SEC = 5400
-_CREATE_WAIT_INTERVAL_SEC = 2  # seconds
 
 
 def get_infra_stack_outputs(stack_name):
@@ -236,151 +232,98 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     ).is_true()
 
 
-def _ensure_regdir():
-    os.makedirs(_REG_DIR, exist_ok=True)
-
-
-def _load_registry():
-    """Read registry JSON; return {} if file is missing or invalid."""
-    try:
-        with open(_REG_PATH, "r") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def _save_registry_atomic(data: dict):
-    """Atomic write: write to a temp file then os.replace to avoid torn writes."""
-    _ensure_regdir()
-    fd, tmppath = tempfile.mkstemp(prefix="adreg_", dir=_REG_DIR)
-    try:
-        with os.fdopen(fd, "w") as tmpf:
-            json.dump(data, tmpf)
-        os.replace(tmppath, _REG_PATH)
-    finally:
+class DirectoryStackSharedFixture(SharedFixture):
+    """SharedFixture subclass for CloudFormation stack management."""
+    
+    def __init__(self, cfn_stacks_factory, request, region, *args, **kwargs):
+        self.cfn_stacks_factory = cfn_stacks_factory
+        self.request = request
+        self.region = region
+        super().__init__(*args, **kwargs)
+    
+    def _destroy_fixture(self):
+        """Override to delete CloudFormation stack."""
+        logging.info("Deleting shared directory stack fixture %s.", self.name)
+        
         try:
-            if os.path.exists(tmppath):
-                os.remove(tmppath)
-        except Exception:
-            # Safe to ignore: does not affect the successfully replaced registry file.
-            pass
+            data = self._load_fixture_data()
+            stack_name = data.fixture_return_value
+            
+            if stack_name and not (self.request.config.getoption("no_delete") or self.request.config.getoption("retain_ad_stack")):
+                try:
+                    self.cfn_stacks_factory.delete_stack(stack_name, self.region)
+                    logging.info(f"Successfully deleted stack {stack_name}")
+                except Exception as e:
+                    logging.warning(f"Failed to delete stack {stack_name}: {e}")
+        except Exception as e:
+            logging.error(f"Error during CloudFormation stack destruction: {e}")
+        
+        # Call parent cleanup
+        super()._destroy_fixture()
+
+
+def _create_directory_stack_wrapper(existing_directory_stack_name, directory_type, region, vpc_stack, cfn_stacks_factory, request):
+    """Wrapper function for SharedFixture compatibility."""
+    if existing_directory_stack_name:
+        return existing_directory_stack_name
+    
+    # Try to reuse existing stack
+    stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
+    directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
+    
+    if not directory_stack_name:
+        directory_stack = _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack)
+        directory_stack_name = directory_stack.name
+    
+    return directory_stack_name
 
 
 @pytest.fixture(scope="class")
-def directory_factory(request, cfn_stacks_factory, vpc_stack):  # noqa: C901
+def directory_factory(request, cfn_stacks_factory, vpc_stack):
     """
-    Parallel-safe factory for AD Directory CFN stacks.
-
-    Behavior:
-      - Share stacks across workers using (region, directory_type) as the key.
-      - Registry entry: { "name": <stack_name or None>, "refs": <int>, "creating": <bool> }.
-      - Only delete the stack when refs drops to 0 and neither --no-delete nor --retain_ad_stack is set.
-      - If existing_directory_stack_name is provided, return it and do NOT track or delete it.
+    Parallel-safe factory for AD Directory CFN stacks using SharedFixture.
     """
-    local_refs = defaultdict(int)
-
-    _ensure_regdir()
-    lock = FileLock(_LOCK_PATH, timeout=_LOCK_TIMEOUT_SEC)
-
+    local_fixtures = {}
+    shared_save_location = Path("/var/tmp/.pcluster_tests")
+    shared_save_location.mkdir(parents=True, exist_ok=True)
+    
     def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
-        key = f"{region}:{directory_type}"
-
         if existing_directory_stack_name:
             return existing_directory_stack_name
-
-        with lock:
-            reg = _load_registry()
-            entry = reg.get(key)
-
-            if entry and entry.get("name"):
-                entry["refs"] = int(entry.get("refs", 0)) + 1
-                reg[key] = entry
-                _save_registry_atomic(reg)
-                local_refs[key] += 1
-                return entry["name"]
-
-            # Not present → mark as "creating" so others wait; then create outside the lock
-            if not entry:
-                reg[key] = {"name": None, "refs": 0, "creating": True, "ts": time.time()}
-                _save_registry_atomic(reg)
-                creating_flag = True
-            else:
-                creating_flag = False
-
-        if creating_flag:
-            # Try to reuse an existing stack of the same type; otherwise create a new one
-            stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
-            directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
-
-            if not directory_stack_name:
-                directory_stack = _create_directory_stack(
-                    cfn_stacks_factory,
-                    request,
-                    directory_type,
-                    region,
-                    vpc_stack,
-                )
-                directory_stack_name = directory_stack.name
-
-            # Record the created stack name and take the first reference
-            with lock:
-                reg = _load_registry()
-                entry = reg.get(key, {})
-                entry["name"] = directory_stack_name
-                entry["refs"] = int(entry.get("refs", 0)) + 1
-                entry["creating"] = False
-                reg[key] = entry
-                _save_registry_atomic(reg)
-                local_refs[key] += 1
-                return directory_stack_name
-
-        else:
-            # Wait until the creator sets the name and clears "creating"
-            deadline = time.time() + _CREATE_WAIT_TIMEOUT_SEC
-            while True:
-                with lock:
-                    reg = _load_registry()
-                    entry = reg.get(key)
-                    if entry and entry.get("name") and not entry.get("creating"):
-                        entry["refs"] = int(entry.get("refs", 0)) + 1
-                        reg[key] = entry
-                        _save_registry_atomic(reg)
-                        local_refs[key] += 1
-                        return entry["name"]
-                if time.time() > deadline:
-                    raise TimeoutError(f"Timed out waiting for directory stack creation for key={key}")
-                time.sleep(_CREATE_WAIT_INTERVAL_SEC)
-
+            
+        key = f"{region}:{directory_type}"
+        
+        if key not in local_fixtures:
+            xdist_worker_id = get_xdist_worker_id(request)
+            pid = os.getpid()
+            xdist_worker_id_and_pid = f"{xdist_worker_id}: {pid}"
+            
+            shared_fixture = DirectoryStackSharedFixture(
+                cfn_stacks_factory=cfn_stacks_factory,
+                request=request,
+                region=region,
+                name=f"directory_stack_{key.replace(':', '_')}",
+                shared_save_location=shared_save_location,
+                fixture_func=_create_directory_stack_wrapper,
+                fixture_func_args=(existing_directory_stack_name, directory_type, region, vpc_stack, cfn_stacks_factory, request),
+                fixture_func_kwargs={},
+                xdist_worker_id_and_pid=xdist_worker_id_and_pid,
+                log_file=request.config.getoption('tests_log_file', '/tmp/pytest.log')
+            )
+            
+            local_fixtures[key] = shared_fixture
+        
+        fixture_data = local_fixtures[key].acquire()
+        return fixture_data.fixture_return_value
+    
     yield _factory
-
-    # Teardown: decrement this class's refs; delete when refs reaches 0
-    with lock:
-        reg = _load_registry()
-        for key, release_count in local_refs.items():
-            entry = reg.get(key)
-            if not entry:
-                continue
-            # If still "creating" (rare; e.g., creator crashed), skip and leave for next run to clean up
-            if entry.get("creating"):
-                continue
-
-            entry["refs"] = max(0, int(entry.get("refs", 0)) - release_count)
-            reg[key] = entry
-
-            if entry["refs"] == 0:
-                name = entry.get("name")
-                region, _directory_type = key.split(":", 1)
-                # Only delete if not retained / not no-delete
-                if name and not (request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack")):
-                    try:
-                        cfn_stacks_factory.delete_stack(name, region)
-                    except Exception:
-                        # Ignore deletion errors to avoid leaving stale registry entries
-                        pass
-                # Remove registry entry when no references remain
-                reg.pop(key, None)
-
-        _save_registry_atomic(reg)
+    
+    # Cleanup
+    for shared_fixture in local_fixtures.values():
+        try:
+            shared_fixture.release()
+        except Exception as e:
+            logging.warning(f"Error releasing shared fixture: {e}")
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
