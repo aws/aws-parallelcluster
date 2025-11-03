@@ -25,9 +25,8 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
 from conftest_networking import unmarshal_az_override
 from framework.fixture_utils import xdist_session_fixture
-from paramiko import Ed25519Key
-
 from framework.tests_configuration.config_utils import get_all_regions
+from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -231,7 +230,7 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
 
 
 @xdist_session_fixture(autouse=True)
-def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):
+def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):  # noqa C901
     """
     Build and share AD Directory CFN stacks across xdist workers (session-scoped).
 
@@ -244,13 +243,12 @@ def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):
     """
     # Collect regions from CLI (same style as vpc_stacks_shared)
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-    credential = request.config.getoption("credential")
 
     # AD types you need to support in tests. If you have a CLI to limit types, you can read it here.
     directory_types = ["SimpleAD", "MicrosoftAD"]
 
-    stacks = {}              # (region, dir_type) -> stack_name
-    created_by_this_fixture = set()  # track which stacks were created here
+    stacks = {}  # (region, dir_type) -> stack_name
+    created_by_this_fixture = set()
 
     # Build per-region stacks
     for region in regions:
@@ -263,23 +261,19 @@ def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):
                 logging.info("Directory type %s not supported in region %s, skipping.", dir_type, region)
                 continue
 
-            # If user provided a pre-existing stack, just use it and do not manage its lifecycle
             existing_name = request.config.getoption("directory_stack_name")
             if existing_name:
                 stacks[(region, dir_type)] = existing_name
                 logging.info("Using pre-existing directory stack %s for (%s, %s).", existing_name, region, dir_type)
                 continue
 
-            # Try to find a pre-existing shared stack by tag+prefix (reuse if present)
             stack_prefix = f"integ-tests-MultiUserInfraStack{dir_type}"
             name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
 
             if not name:
                 # Create a new stack bound to the region's shared VPC
                 vpc_stack = vpc_stacks_shared[region]
-                directory_stack = _create_directory_stack(
-                    cfn_stacks_factory, request, dir_type, region, vpc_stack
-                )
+                directory_stack = _create_directory_stack(cfn_stacks_factory, request, dir_type, region, vpc_stack)
                 name = directory_stack.name
                 created_by_this_fixture.add((region, dir_type))
                 logging.info("Created directory stack %s for (%s, %s).", name, region, dir_type)
@@ -294,7 +288,7 @@ def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):
         logging.info("Retain/no-delete set; not deleting directory stacks created by this fixture.")
         return
 
-    for (region, dir_type) in created_by_this_fixture:
+    for region, dir_type in created_by_this_fixture:
         name = stacks.get((region, dir_type))
         if not name:
             continue
@@ -314,6 +308,7 @@ def directory_factory(directory_stacks_shared):
       - If an explicit existing stack name is provided, return it (use-only).
       - Otherwise, look up the stack from the session-shared directory_stacks_shared mapping.
     """
+
     def _factory(existing_directory_stack_name, directory_type, region):
         # Use-only path if explicitly specified by the test/CLI
         if existing_directory_stack_name:
@@ -322,8 +317,9 @@ def directory_factory(directory_stacks_shared):
         key = (region, directory_type)
         # Fail fast if the key is not present (e.g., unsupported region/type)
         if key not in directory_stacks_shared:
-            raise RuntimeError(f"No directory stack available for key={key}. "
-                               f"Check is_directory_supported and session setup.")
+            raise RuntimeError(
+                f"No directory stack available for key={key}. " f"Check is_directory_supported and session setup."
+            )
         return directory_stacks_shared[key]
 
     return _factory
