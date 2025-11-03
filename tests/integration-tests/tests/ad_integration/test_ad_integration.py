@@ -11,22 +11,20 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import io
-import json
 import logging
 import os
 import os as os_lib
 import random
 import string
-import tempfile
 import time
 import zipfile
-from collections import defaultdict
 from pathlib import Path
 
 import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
+from framework.fixture_utils import SharedFixture
 from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -36,7 +34,6 @@ from xdist import get_xdist_worker_id
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
-from framework.fixture_utils import SharedFixture
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
@@ -233,71 +230,87 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
 
 
 class DirectoryStackSharedFixture(SharedFixture):
-    """SharedFixture subclass for CloudFormation stack management."""
-    
+    """SharedFixture subclass that deletes the CFN stack when the last user releases it."""
+
     def __init__(self, cfn_stacks_factory, request, region, *args, **kwargs):
         self.cfn_stacks_factory = cfn_stacks_factory
         self.request = request
         self.region = region
         super().__init__(*args, **kwargs)
-    
+
     def _destroy_fixture(self):
-        """Override to delete CloudFormation stack."""
+        """Delete the CFN stack (if not retained/no-delete), then run parent cleanup."""
         logging.info("Deleting shared directory stack fixture %s.", self.name)
-        
+
         try:
+            # Load the stored return value (stack name) without creating anything new.
             data = self._load_fixture_data()
-            stack_name = data.fixture_return_value
-            
-            if stack_name and not (self.request.config.getoption("no_delete") or self.request.config.getoption("retain_ad_stack")):
+            stack_name = getattr(data, "fixture_return_value", None)
+
+            if stack_name and not (
+                self.request.config.getoption("no_delete") or self.request.config.getoption("retain_ad_stack")
+            ):
                 try:
                     self.cfn_stacks_factory.delete_stack(stack_name, self.region)
-                    logging.info(f"Successfully deleted stack {stack_name}")
+                    logging.info("Successfully deleted stack %s", stack_name)
                 except Exception as e:
-                    logging.warning(f"Failed to delete stack {stack_name}: {e}")
+                    logging.warning("Failed to delete stack %s: %s", stack_name, e)
         except Exception as e:
-            logging.error(f"Error during CloudFormation stack destruction: {e}")
-        
+            logging.error("Error during CloudFormation stack destruction: %s", e)
+
         # Call parent cleanup
         super()._destroy_fixture()
 
 
-def _create_directory_stack_wrapper(existing_directory_stack_name, directory_type, region, vpc_stack, cfn_stacks_factory, request):
-    """Wrapper function for SharedFixture compatibility."""
+def _create_directory_stack_wrapper(
+    existing_directory_stack_name,
+    directory_type,
+    region,
+    vpc_stack,
+    cfn_stacks_factory,
+    request,
+):
+    """Function used by SharedFixture to produce the shared value (the stack name)."""
     if existing_directory_stack_name:
         return existing_directory_stack_name
-    
-    # Try to reuse existing stack
+
+    # Try to reuse an existing stack of the same type; otherwise create a new one.
     stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
     directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
-    
+
     if not directory_stack_name:
         directory_stack = _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack)
         directory_stack_name = directory_stack.name
-    
+
     return directory_stack_name
 
 
 @pytest.fixture(scope="class")
 def directory_factory(request, cfn_stacks_factory, vpc_stack):
     """
-    Parallel-safe factory for AD Directory CFN stacks using SharedFixture.
+    Parallel-safe factory for AD Directory CFN stacks using the existing SharedFixture infra.
+
+    Key points:
+    - One shared fixture per (region, directory_type) across xdist workers.
+    - Each worker must call `acquire()` exactly once per key (we cache the value locally).
+    - At class teardown we call `release()` once per key so the last releaser triggers deletion.
     """
+    # Local cache: key -> (shared_fixture_obj, stack_name)
     local_fixtures = {}
+
     shared_save_location = Path("/var/tmp/.pcluster_tests")
     shared_save_location.mkdir(parents=True, exist_ok=True)
-    
+
     def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
         if existing_directory_stack_name:
             return existing_directory_stack_name
-            
+
         key = f"{region}:{directory_type}"
-        
         if key not in local_fixtures:
             xdist_worker_id = get_xdist_worker_id(request)
             pid = os.getpid()
             xdist_worker_id_and_pid = f"{xdist_worker_id}: {pid}"
-            
+
             shared_fixture = DirectoryStackSharedFixture(
                 cfn_stacks_factory=cfn_stacks_factory,
                 request=request,
@@ -305,25 +318,32 @@ def directory_factory(request, cfn_stacks_factory, vpc_stack):
                 name=f"directory_stack_{key.replace(':', '_')}",
                 shared_save_location=shared_save_location,
                 fixture_func=_create_directory_stack_wrapper,
-                fixture_func_args=(existing_directory_stack_name, directory_type, region, vpc_stack, cfn_stacks_factory, request),
+                fixture_func_args=(
+                    existing_directory_stack_name,
+                    directory_type,
+                    region,
+                    vpc_stack,
+                    cfn_stacks_factory,
+                    request,
+                ),
                 fixture_func_kwargs={},
                 xdist_worker_id_and_pid=xdist_worker_id_and_pid,
-                log_file=request.config.getoption('tests_log_file', '/tmp/pytest.log')
+                log_file=(request.config.getoption("tests_log_file") or "/tmp/pytest.log"),
             )
-            
-            local_fixtures[key] = shared_fixture
-        
-        fixture_data = local_fixtures[key].acquire()
-        return fixture_data.fixture_return_value
-    
+
+            data = shared_fixture.acquire()
+            local_fixtures[key] = (shared_fixture, data.fixture_return_value)
+
+        return local_fixtures[key][1]
+
     yield _factory
-    
-    # Cleanup
-    for shared_fixture in local_fixtures.values():
+
+    # Release once per key so the SharedFixture refcount decrements correctly.
+    for shared_fixture, _stack_name in local_fixtures.values():
         try:
             shared_fixture.release()
         except Exception as e:
-            logging.warning(f"Error releasing shared fixture: {e}")
+            logging.warning("Error releasing shared fixture: %s", e)
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
