@@ -18,19 +18,20 @@ import random
 import string
 import time
 import zipfile
-from pathlib import Path
 
 import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
-from framework.fixture_utils import SharedFixture
+from conftest_networking import unmarshal_az_override
+from framework.fixture_utils import xdist_session_fixture
 from paramiko import Ed25519Key
+
+from framework.tests_configuration.config_utils import get_all_regions
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
 from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, random_alphanumeric
-from xdist import get_xdist_worker_id
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
@@ -229,121 +230,103 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     ).is_true()
 
 
-class DirectoryStackSharedFixture(SharedFixture):
-    """SharedFixture subclass that deletes the CFN stack when the last user releases it."""
+@xdist_session_fixture(autouse=True)
+def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):
+    """
+    Build and share AD Directory CFN stacks across xdist workers (session-scoped).
 
-    def __init__(self, cfn_stacks_factory, request, region, *args, **kwargs):
-        self.cfn_stacks_factory = cfn_stacks_factory
-        self.request = request
-        self.region = region
-        super().__init__(*args, **kwargs)
+    Returns:
+        dict with keys as (region, directory_type) and values as CFN stack names.
 
-    def _destroy_fixture(self):
-        """Delete the CFN stack (if not retained/no-delete), then run parent cleanup."""
-        logging.info("Deleting shared directory stack fixture %s.", self.name)
+    Cleanup:
+        After yield, delete only the stacks created by this fixture (not the pre-existing ones),
+        and only if neither --no-delete nor --retain_ad_stack is set.
+    """
+    # Collect regions from CLI (same style as vpc_stacks_shared)
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    credential = request.config.getoption("credential")
 
+    # AD types you need to support in tests. If you have a CLI to limit types, you can read it here.
+    directory_types = ["SimpleAD", "MicrosoftAD"]
+
+    stacks = {}              # (region, dir_type) -> stack_name
+    created_by_this_fixture = set()  # track which stacks were created here
+
+    # Build per-region stacks
+    for region in regions:
+        # In case region can contain an AZ override, normalize to the region only
+        region = unmarshal_az_override(region)
+
+        for dir_type in directory_types:
+            # Respect region capability, keep the test's behavior consistent
+            if not is_directory_supported(region, dir_type):
+                logging.info("Directory type %s not supported in region %s, skipping.", dir_type, region)
+                continue
+
+            # If user provided a pre-existing stack, just use it and do not manage its lifecycle
+            existing_name = request.config.getoption("directory_stack_name")
+            if existing_name:
+                stacks[(region, dir_type)] = existing_name
+                logging.info("Using pre-existing directory stack %s for (%s, %s).", existing_name, region, dir_type)
+                continue
+
+            # Try to find a pre-existing shared stack by tag+prefix (reuse if present)
+            stack_prefix = f"integ-tests-MultiUserInfraStack{dir_type}"
+            name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
+
+            if not name:
+                # Create a new stack bound to the region's shared VPC
+                vpc_stack = vpc_stacks_shared[region]
+                directory_stack = _create_directory_stack(
+                    cfn_stacks_factory, request, dir_type, region, vpc_stack
+                )
+                name = directory_stack.name
+                created_by_this_fixture.add((region, dir_type))
+                logging.info("Created directory stack %s for (%s, %s).", name, region, dir_type)
+            else:
+                logging.info("Reusing existing directory stack %s for (%s, %s).", name, region, dir_type)
+
+            stacks[(region, dir_type)] = name
+
+    yield stacks
+
+    if request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack"):
+        logging.info("Retain/no-delete set; not deleting directory stacks created by this fixture.")
+        return
+
+    for (region, dir_type) in created_by_this_fixture:
+        name = stacks.get((region, dir_type))
+        if not name:
+            continue
         try:
-            # Load the stored return value (stack name) without creating anything new.
-            data = self._load_fixture_data()
-            stack_name = getattr(data, "fixture_return_value", None)
-
-            if stack_name and not (
-                self.request.config.getoption("no_delete") or self.request.config.getoption("retain_ad_stack")
-            ):
-                try:
-                    self.cfn_stacks_factory.delete_stack(stack_name, self.region)
-                    logging.info("Successfully deleted stack %s", stack_name)
-                except Exception as e:
-                    logging.warning("Failed to delete stack %s: %s", stack_name, e)
+            logging.info("Deleting directory stack %s in region %s (%s).", name, region, dir_type)
+            cfn_stacks_factory.delete_stack(name, region)
         except Exception as e:
-            logging.error("Error during CloudFormation stack destruction: %s", e)
-
-        # Call parent cleanup
-        super()._destroy_fixture()
-
-
-def _create_directory_stack_wrapper(
-    existing_directory_stack_name,
-    directory_type,
-    region,
-    vpc_stack,
-    cfn_stacks_factory,
-    request,
-):
-    """Function used by SharedFixture to produce the shared value (the stack name)."""
-    if existing_directory_stack_name:
-        return existing_directory_stack_name
-
-    # Try to reuse an existing stack of the same type; otherwise create a new one.
-    stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
-    directory_stack_name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
-
-    if not directory_stack_name:
-        directory_stack = _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack)
-        directory_stack_name = directory_stack.name
-
-    return directory_stack_name
+            logging.warning("Failed to delete directory stack %s: %s", name, e)
 
 
 @pytest.fixture(scope="class")
-def directory_factory(request, cfn_stacks_factory, vpc_stack):
+def directory_factory(directory_stacks_shared):
     """
-    Parallel-safe factory for AD Directory CFN stacks using the existing SharedFixture infra.
+    Parallel-safe factory for AD Directory CFN stacks using the SharedFixture infra.
 
-    Key points:
-    - One shared fixture per (region, directory_type) across xdist workers.
-    - Each worker must call `acquire()` exactly once per key (we cache the value locally).
-    - At class teardown we call `release()` once per key so the last releaser triggers deletion.
+    Behavior:
+      - If an explicit existing stack name is provided, return it (use-only).
+      - Otherwise, look up the stack from the session-shared directory_stacks_shared mapping.
     """
-    # Local cache: key -> (shared_fixture_obj, stack_name)
-    local_fixtures = {}
-
-    shared_save_location = Path("/var/tmp/.pcluster_tests")
-    shared_save_location.mkdir(parents=True, exist_ok=True)
-
-    def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
+    def _factory(existing_directory_stack_name, directory_type, region):
+        # Use-only path if explicitly specified by the test/CLI
         if existing_directory_stack_name:
             return existing_directory_stack_name
 
-        key = f"{region}:{directory_type}"
-        if key not in local_fixtures:
-            xdist_worker_id = get_xdist_worker_id(request)
-            pid = os.getpid()
-            xdist_worker_id_and_pid = f"{xdist_worker_id}: {pid}"
+        key = (region, directory_type)
+        # Fail fast if the key is not present (e.g., unsupported region/type)
+        if key not in directory_stacks_shared:
+            raise RuntimeError(f"No directory stack available for key={key}. "
+                               f"Check is_directory_supported and session setup.")
+        return directory_stacks_shared[key]
 
-            shared_fixture = DirectoryStackSharedFixture(
-                cfn_stacks_factory=cfn_stacks_factory,
-                request=request,
-                region=region,
-                name=f"directory_stack_{key.replace(':', '_')}",
-                shared_save_location=shared_save_location,
-                fixture_func=_create_directory_stack_wrapper,
-                fixture_func_args=(
-                    existing_directory_stack_name,
-                    directory_type,
-                    region,
-                    vpc_stack,
-                    cfn_stacks_factory,
-                    request,
-                ),
-                fixture_func_kwargs={},
-                xdist_worker_id_and_pid=xdist_worker_id_and_pid,
-                log_file=(request.config.getoption("tests_log_file") or "/tmp/pytest.log"),
-            )
-
-            data = shared_fixture.acquire()
-            local_fixtures[key] = (shared_fixture, data.fixture_return_value)
-
-        return local_fixtures[key][1]
-
-    yield _factory
-
-    # Release once per key so the SharedFixture refcount decrements correctly.
-    for shared_fixture, _stack_name in local_fixtures.values():
-        try:
-            shared_fixture.release()
-        except Exception as e:
-            logging.warning("Error releasing shared fixture: %s", e)
+    return _factory
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
