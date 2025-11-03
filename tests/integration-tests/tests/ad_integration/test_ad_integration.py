@@ -12,7 +12,6 @@
 
 import io
 import logging
-import os
 import os as os_lib
 import random
 import string
