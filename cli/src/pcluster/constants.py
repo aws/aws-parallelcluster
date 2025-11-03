@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+# FIXME
+# pylint: disable=invalid-name
 from enum import Enum
 
 PCLUSTER_NAME_MAX_LENGTH = 60
@@ -35,7 +37,10 @@ SUPPORTED_OSES = [
 ]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
 UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
+UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "alinux2", "rhel9"]
+SUPPORTED_OSES_FOR_P6E_GB200 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6E_GB200))
 UNSUPPORTED_OSES_FOR_DCV = []
+UNSUPPORTED_OSES_FOR_NON_GPU_DCV = ["rocky9", "rhel9"]
 UNSUPPORTED_ARM_OSES_FOR_DCV = []
 UNSUPPORTED_OSES_FOR_LUSTRE = []
 DELETE_POLICY = "Delete"
@@ -162,8 +167,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.14.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.14.0",
+    "parallelcluster": "3.15.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.15.0",
     "chef": "18.4.12",
     "ami": "dev",
 }

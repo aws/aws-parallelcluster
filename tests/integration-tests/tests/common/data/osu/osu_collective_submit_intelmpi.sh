@@ -8,6 +8,15 @@ NUM_OF_PROCESSES={{ num_of_processes }}
 module load intelmpi
 export I_MPI_DEBUG=10
 
+{% if network_interfaces_count > 1 %}
+# Multi NICs instances require extra environment variables.
+# See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
+. /etc/os-release
+EFA_PATH=$([ "$ID" == "ubuntu" ] && echo "/opt/amazon/efa/lib" || echo "/opt/amazon/efa/lib64")
+export LD_LIBRARY_PATH="${EFA_PATH}:${LD_LIBRARY_PATH}"
+export FI_EFA_USE_DEVICE_RDMA=1
+{% endif %}
+
 env
 
 # Run collective benchmark. The collective operations are close to what a real application looks like.

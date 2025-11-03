@@ -95,8 +95,8 @@ def test_pcluster_configure_avoid_bad_subnets(
             PROMPTS["vpc_creation"]("n"),
             PROMPTS["vpc_id"](vpc_stack.cfn_outputs["VpcId"]),
             PROMPTS["subnet_creation"]("n"),
-            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=3),
-            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=3),
+            prompt_head_node_subnet_id(subnet_id="", no_of_omitted_subnets=".*"),
+            prompt_compute_node_subnet_id(subnet_id="", head_node_subnet_id="", no_of_omitted_subnets=".*"),
         ]
     )
     stages = orchestrate_pcluster_configure_stages(prompts=bad_subnets_prompts, scheduler=scheduler)
@@ -198,7 +198,8 @@ def test_efa_and_placement_group(
         placement_group_config=placement_group_config["configuration"],
     )
     inject_additional_config_settings(config_path, request, region, architecture)
-    clusters_factory(config_path)
+    response = clusters_factory(config_path, dryrun=True, raise_on_error=False).creation_response
+    assert_that(response.get("message")).is_equal_to("Request would have succeeded, but DryRun flag is set.")
 
 
 def test_efa_unsupported(request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir):

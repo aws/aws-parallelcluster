@@ -170,8 +170,20 @@ class InstanceTypesData:
                     0
                 ]
             except Exception as exception:
-                logging.error(f"Failed to get instance type info for instance type: {exception}")
-                raise
+                # Getting information from us-east-1 is useful for p6e-GB200
+                # because it is only publicly available in us-east-1 while we are testing in other regions.
+                logging.warning(
+                    f"Failed to get gpu count for {instance_type} from the current region. Exception: {exception}. "
+                    "Trying to retrieve the information from us-east-1..."
+                )
+                try:
+                    ec2_client = boto3.client("ec2", region_name="us-east-1")
+                    instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get(
+                        "InstanceTypes"
+                    )[0]
+                except Exception as exception:
+                    logging.error(f"Failed to get instance type info for instance type: {exception}")
+                    raise
 
         return instance_info
 
@@ -983,3 +995,48 @@ def get_free_tier_instance_types(region: str = None):
 
 def or_regex(items: list):
     return "|".join(map(re.escape, items))
+
+
+def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
+    ec2 = boto3.client("ec2", region_name=region)
+
+    # First, get the target instance details to use as filter criteria
+    target_response = ec2.describe_instance_types(InstanceTypes=[instance_type])
+
+    if not target_response["InstanceTypes"]:
+        return []
+
+    target = target_response["InstanceTypes"][0]
+    target_arch = target["ProcessorInfo"]["SupportedArchitectures"][0]
+    target_vcpus = target["VCpuInfo"]["DefaultVCpus"]
+    target_threads = target["VCpuInfo"]["DefaultThreadsPerCore"]
+    target_has_efa = target.get("NetworkInfo", {}).get("EfaSupported", False)
+    target_has_gpu = "GpuInfo" in target
+    target_inference_accelerators = target.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
+
+    # Now query for similar instances using filters
+    paginator = ec2.get_paginator("describe_instance_types")
+    similar_instances = []
+
+    for page in paginator.paginate(
+        Filters=[
+            {"Name": "processor-info.supported-architecture", "Values": [target_arch]},
+            {"Name": "vcpu-info.default-vcpus", "Values": [str(target_vcpus)]},
+            {"Name": "vcpu-info.default-threads-per-core", "Values": [str(target_threads)]},
+        ],
+    ):
+        # Filter for EFA support, GPU presence, and inference accelerator types
+        for instance in page["InstanceTypes"]:
+            instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
+            instance_has_gpu = "GpuInfo" in instance
+            instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
+            if (
+                instance_has_efa == target_has_efa
+                and instance_has_gpu == target_has_gpu
+                and instance_inference_accelerators == target_inference_accelerators
+            ):
+                similar_instances.append(instance["InstanceType"])
+                if max_items and len(similar_instances) >= max_items:
+                    return similar_instances
+
+    return similar_instances

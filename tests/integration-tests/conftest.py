@@ -79,6 +79,7 @@ from utils import (
     get_instance_info,
     get_metadata,
     get_network_interfaces_count,
+    get_similar_instance_types,
     get_vpc_snakecase_value,
     random_alphanumeric,
     to_pascal_case,
@@ -234,6 +235,10 @@ def pytest_addoption(parser):
     parser.addoption(
         "--api-stack",
         help="Name of CFN stack providing the ParallelCluster API infrastructure.",
+    )
+    parser.addoption(
+        "--capacity-reservation-id",
+        help="Use an existing capacity reservation.",
     )
 
 
@@ -630,6 +635,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
         default_values = _get_default_template_values(vpc_stack, request)
         inject_internal_storage_settings(kwargs)
         inject_placement_group_settings(vpc_stack, instance, kwargs)
+        inject_flexible_instance_types_settings(instance, region, kwargs)
         file_loader = FileSystemLoader(str(test_datadir))
         env = SandboxedEnvironment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
@@ -651,6 +657,10 @@ def inject_internal_storage_settings(kwargs):
 def inject_placement_group_settings(vpc_stack, instance, kwargs):
     if vpc_stack.az_override:
         kwargs["capacity_reservation_framework_placement_group"] = f"{instance}_placement_group_{vpc_stack.az_override}"
+
+
+def inject_flexible_instance_types_settings(instance, region, kwargs):
+    kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
 
 
 def inject_additional_image_configs_settings(image_config, request):
@@ -1167,12 +1177,13 @@ def s3_bucket_key_prefix():
 
 
 @pytest.fixture(scope="class")
-def serial_execution_by_instance(request, instance, region):
+def serial_execution_by_instance(request, instance, region, os_platform):
     """Enforce serial execution of tests, according to the adopted instance."""
-    if instance in ["c5n.18xlarge", "p4d.24xlarge"]:
-        logging.info("Enforcing serial execution for instance %s", instance)
+    if instance in ["c5n.18xlarge"] or instance.startswith("p"):
+        logging.info("Enforcing serial execution for instance %s, platform %s", instance, os_platform)
         outdir = request.config.getoption("output_dir")
-        lock_file = f"{outdir}/{instance}{region}.lock"
+        os_platform = os_platform.replace(" ", "")
+        lock_file = f"{outdir}/{instance}{os_platform}{region}.lock"
         lock = FileLock(lock_file=lock_file)
         logging.info("Acquiring lock file %s", lock.lock_file)
         with lock.acquire(poll_interval=15, timeout=12000):
@@ -1194,6 +1205,15 @@ def architecture(request, instance, region):
         supported_architecture = get_architecture_supported_by_instance_type(instance, region)
         request.config.cache.set(f"{instance}/architecture", supported_architecture)
     return supported_architecture
+
+
+@pytest.fixture(scope="class")
+def os_platform(os):
+    """Return platform according to OS."""
+    os_platform = "Linux/UNIX"
+    if "rhel" in os.lower():
+        os_platform = "Red Hat Enterprise Linux"
+    return os_platform
 
 
 @pytest.fixture()

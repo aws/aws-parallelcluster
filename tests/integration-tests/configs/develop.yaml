@@ -15,7 +15,7 @@ test-suites:
       dimensions:
         - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_OS_X86_1 }}]
           instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
-          oss: [{{ OS_X86_1 }}]
+          oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
   capacity_reservations:
     test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
@@ -145,7 +145,7 @@ test-suites:
           oss: [{{ OS_X86_3 }}]
     test_createami.py::test_build_image:
       dimensions:
-        - regions: ["euw3-az1"]
+        - regions: ["usw2-az1"]
           instances: ["g4dn.2xlarge"]
           schedulers: [ "slurm" ]
           oss: {{ common.OSS_COMMERCIAL_X86 }}
@@ -238,7 +238,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ DCV_OS_X86_6 }}]
+          oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
@@ -264,6 +264,10 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: [{{ NO_RHEL_OS_X86_1 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
+        - regions: [ "use2-az2" ]  # do not move, unless capacity reservation is moved as well
+          instances: [ "p6-b200.48xlarge" ]
+          oss: ["alinux2023", "ubuntu2204", "ubuntu2404", "rocky8", "rocky9", "rhel8", "rhel9"]
+          schedulers: [ "slurm" ]
         - regions: [{{ c6gn_16xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_ARM_0 }}]
           instances: ["c6gn.16xlarge"]
           oss: [{{ OS_ARM_0 }}]
@@ -279,9 +283,13 @@ test-suites:
   ultraserver:
     test_gb200.py::test_gb200:
       dimensions:
-        - regions: [ "us-east-1" ]
-          instances: [ "g4dn.2xlarge" ]
+        - regions: [ "use1-az1" ] # do not move, unless instance type support is moved as well
+          instances: [ "g5g.xlarge" ]
           oss: [ "alinux2023" ]
+          schedulers: [ "slurm" ]
+        - regions: [ "usw2-az4" ] # do not move, unless instance type support is moved as well
+          instances: [ "p6e-gb200.36xlarge" ]
+          oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023", "rhel9" ]
           schedulers: [ "slurm" ]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
@@ -330,9 +338,13 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: ["use1-az1"]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_rhel9 }}]
           instances: ["c6in.32xlarge"]
-          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          oss: {{ RHEL_OS_X86 }}
+          schedulers: ["slurm"]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+          instances: ["c6in.32xlarge"]
+          oss: {{ NO_RHEL_OS_X86 }}
           schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:

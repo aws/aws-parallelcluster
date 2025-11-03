@@ -19,6 +19,7 @@ from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
     cluster_validators,
     database_validators,
+    dev_settings_validators,
     ebs_validators,
     ec2_validators,
     feature_validators,
@@ -67,6 +68,7 @@ def _mock_all_validators(mocker, additional_modules=None):
     modules = [
         cluster_validators,
         database_validators,
+        dev_settings_validators,
         ebs_validators,
         ec2_validators,
         fsx_validators,
@@ -282,6 +284,10 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     compute_resource_tags_validator = mocker.patch(
         tags_validators + ".ComputeResourceTagsValidator._validate", return_value=[]
     )
+    dev_settings_validators = validators_path + ".dev_settings_validators"
+    extra_chef_attributes_validator = mocker.patch(
+        dev_settings_validators + ".ExtraChefAttributesValidator._validate", return_value=[]
+    )
     mocker.patch(
         "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
     )
@@ -450,6 +456,8 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         ],
         any_order=True,
     )
+
+    extra_chef_attributes_validator.assert_has_calls([call(extra_chef_attributes='{"attr1": {"attr2": "value"}}')])
 
     # No assertion on the argument for minor validators
     name_validator.assert_called()

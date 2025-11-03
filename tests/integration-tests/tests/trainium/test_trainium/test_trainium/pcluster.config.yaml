@@ -7,12 +7,9 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
   Iam:
-    # Policy to access to Trainium beta repository info
-    AdditionalIamPolicies:
-      - Policy: arn:aws:iam::447714826191:policy/TrainiumPreviewPolicy
     S3Access:
       - BucketName: {{ bucket_name }}
-      # Needed to download neuronx packages and neff file --> FIXME to be removed once packages are public available
+      # Needed to download neff file --> FIXME to be removed once we create our own neff files
       - BucketName: aws-parallelcluster-beta
 Scheduling:
   Scheduler: slurm
@@ -34,13 +31,10 @@ Scheduling:
         OnNodeConfigured:
           Script: s3://{{ bucket_name }}/neuron-installation.sh
       Iam:
-        # Policy to access to Trainium beta repository info
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::447714826191:policy/TrainiumPreviewPolicy
         S3Access:
           # Needed to download post install script
           - BucketName: {{ bucket_name }}
-          # Needed to download neuronx packages and neff file --> FIXME to be removed once packages are public available
+          # Needed to download neff file --> FIXME to be removed once we create our own neff files
           - BucketName: aws-parallelcluster-beta
     - Name: queue-trn2
       ComputeResources:
@@ -55,11 +49,8 @@ Scheduling:
         OnNodeConfigured:
           Script: s3://{{ bucket_name }}/neuron-installation.sh
       Iam:
-        # Policy to access to Trainium beta repository info
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::447714826191:policy/TrainiumPreviewPolicy
         S3Access:
           # Needed to download post install script
           - BucketName: {{ bucket_name }}
-          # Needed to download neuronx packages and neff file --> FIXME to be removed once packages are public available
+          # Needed to download neff file --> FIXME to be removed once we create our own neff files
           - BucketName: aws-parallelcluster-beta

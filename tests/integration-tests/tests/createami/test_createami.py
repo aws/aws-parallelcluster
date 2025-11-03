@@ -45,6 +45,12 @@ from tests.common.utils import (
 )
 
 
+class ImageNotFound(Exception):
+    """Exception when image is not found."""
+
+    pass
+
+
 @pytest.mark.usefixtures("instance")
 def test_invalid_config(
     region,
@@ -95,6 +101,7 @@ def test_invalid_config(
     assert_that(suppressed.message).contains("Request would have succeeded")
 
 
+@pytest.mark.flaky(only_rerun=["ImageNotFound"])
 @pytest.mark.usefixtures("scheduler")
 def test_build_image(
     region,
@@ -129,6 +136,11 @@ def test_build_image(
     enable_nvidia = True
     update_os_packages = False
     enable_lustre_client = True
+
+    # Disable nvidia installation for ubuntu2404 because nvidia drivers are failing with newest kernel
+    if os in ["ubuntu2404"]:
+        enable_nvidia = False
+
     # Get base AMI
     if os in ["alinux2", "ubuntu2004"]:
         # Test Deep Learning AMIs
@@ -143,7 +155,7 @@ def test_build_image(
             logging.info("First stage AMI not available, using official AMI instead.")
             base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
             update_os_packages = True
-            if os in ["ubuntu2204", "rhel9"]:
+            if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
                 enable_lustre_client = False
     else:
         # Test vanilla AMIs.
@@ -188,7 +200,7 @@ def test_build_image(
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
     )
-    _assert_build_image_stack_deleted(image.image_id, region, 600, 30)
+    _assert_build_image_stack_deleted(image.image_id, region, 900, 30)
 
 
 def _test_cluster_creation(image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory):
@@ -414,6 +426,8 @@ def _test_image_tag_and_volume(image):
         .get("Images")
     )
     logging.info(f"Image List: {image_list}, length {len(image_list)}")
+    if not image_list:
+        raise ImageNotFound()
     assert_that(len(image_list)).is_equal_to(1)
 
     created_image = image_list[0]

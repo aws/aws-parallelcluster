@@ -851,3 +851,188 @@ class TestUltraserverUtils:
         # Verify the results
         assert_that(instance_type).is_equal_to(expected_instance_type)
         assert_that(reservation_type).is_equal_to(expected_reservation_type)
+
+
+@pytest.mark.parametrize(
+    "statuses, capacity_reservation_ids, expected_result",
+    [
+        # Test with matching capacity reservation IDs
+        (
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "TotalCapacity": 100,
+                    "CapacityReservationStatuses": [
+                        {"CapacityReservationId": "cr-123456", "TotalCapacity": 50, "TotalAvailableCapacity": 30}
+                    ],
+                },
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "TotalCapacity": 200,
+                    "CapacityReservationStatuses": [
+                        {"CapacityReservationId": "cr-789012", "TotalCapacity": 100, "TotalAvailableCapacity": 80}
+                    ],
+                },
+            ],
+            ["cr-123456", "cr-789012"],
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "TotalCapacity": 100,
+                    "CapacityReservationStatuses": [
+                        {"CapacityReservationId": "cr-123456", "TotalCapacity": 50, "TotalAvailableCapacity": 30}
+                    ],
+                },
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "TotalCapacity": 200,
+                    "CapacityReservationStatuses": [
+                        {"CapacityReservationId": "cr-789012", "TotalCapacity": 100, "TotalAvailableCapacity": 80}
+                    ],
+                },
+            ],
+        ),
+        # Test with partial matching
+        (
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                },
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "impaired",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-999999", "TotalCapacity": 100}],
+                },
+            ],
+            ["cr-123456"],
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                }
+            ],
+        ),
+        # Test with no matching capacity reservation IDs
+        (
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-999999", "TotalCapacity": 50}],
+                }
+            ],
+            ["cr-123456"],
+            [],
+        ),
+        # Test with empty statuses list
+        ([], ["cr-123456"], []),
+        # Test with empty capacity_reservation_ids list
+        (
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                }
+            ],
+            [],
+            [],
+        ),
+        # Test with status missing CapacityReservationStatuses
+        (
+            [
+                {"CapacityBlockId": "cb-123", "InterconnectStatus": "ok"},
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                },
+            ],
+            ["cr-123456"],
+            [
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                }
+            ],
+        ),
+        # Test with empty CapacityReservationStatuses list
+        (
+            [
+                {"CapacityBlockId": "cb-123", "InterconnectStatus": "ok", "CapacityReservationStatuses": []},
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                },
+            ],
+            ["cr-123456"],
+            [
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 50}],
+                }
+            ],
+        ),
+        # Test with CapacityReservationStatuses missing CapacityReservationId
+        (
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"TotalCapacity": 50, "TotalAvailableCapacity": 30}],
+                },
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 100}],
+                },
+            ],
+            ["cr-123456"],
+            [
+                {
+                    "CapacityBlockId": "cb-456",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [{"CapacityReservationId": "cr-123456", "TotalCapacity": 100}],
+                }
+            ],
+        ),
+        # Test with multiple CapacityReservationStatuses in one block
+        (
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [
+                        {"CapacityReservationId": "cr-123456", "TotalCapacity": 50},
+                        {"CapacityReservationId": "cr-789012", "TotalCapacity": 100},
+                    ],
+                }
+            ],
+            ["cr-123456"],
+            [
+                {
+                    "CapacityBlockId": "cb-123",
+                    "InterconnectStatus": "ok",
+                    "CapacityReservationStatuses": [
+                        {"CapacityReservationId": "cr-123456", "TotalCapacity": 50},
+                        {"CapacityReservationId": "cr-789012", "TotalCapacity": 100},
+                    ],
+                }
+            ],
+        ),
+    ],
+)
+def test_get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reservation_ids, expected_result):
+    """Test get_needed_ultraserver_capacity_block_statuses function."""
+    result = utils.get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reservation_ids)
+    assert_that(result).is_equal_to(expected_result)

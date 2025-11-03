@@ -18,7 +18,9 @@ Scheduling:
       ComputeResources:
         - Name: cit
           Instances:
-            - InstanceType: {{ instance }}
+            - InstanceType: c5.xlarge
+            - InstanceType: m5.xlarge
+            - InstanceType: c5d.xlarge
           MinCount: 0
           MaxCount: 10
       Networking:

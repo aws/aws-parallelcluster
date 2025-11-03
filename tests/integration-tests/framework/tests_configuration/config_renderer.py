@@ -26,6 +26,7 @@ from pcluster.constants import (
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
+    UNSUPPORTED_OSES_FOR_NON_GPU_DCV,
 )
 
 
@@ -44,9 +45,13 @@ def _get_os_parameters(config=None, args=None):
     _propagate_os_jinja_variables("", result, today_number, SUPPORTED_OSES)
 
     # DCV doesn't support AL2023. Therefore, the following logic makes sure the DCV jinja parameter is not AL2023
-    dcv_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV]
+    dcv_supported_oses = [
+        os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
+    ]
     dcv_supported_arm_oses = [
-        os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV
+        os
+        for os in SUPPORTED_OSES
+        if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
     ]
     _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
 
@@ -61,6 +66,9 @@ def _get_os_parameters(config=None, args=None):
 
     no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
     _propagate_os_jinja_variables("NO_ROCKY_", result, today_number, no_rocky_oss)
+
+    rhel_oss = [os for os in SUPPORTED_OSES if "rhel" in os]
+    _propagate_os_jinja_variables("RHEL_", result, today_number, rhel_oss)
     return result
 
 
@@ -73,6 +81,8 @@ def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_os
     # If the intersection is empty, fallback to supported OS to prevent the framework from failing of div by 0
     available_amis_oss_x86 = sorted(list(set(supported_x86_oses) & set(available_amis_oss_x86))) or supported_x86_oses
     available_amis_oss_arm = sorted(list(set(supported_arm_oses) & set(available_amis_oss_arm))) or supported_arm_oses
+    result[f"{prefix}OS_X86"] = available_amis_oss_x86
+    result[f"{prefix}OS_ARM"] = available_amis_oss_arm
     for index in range(len(supported_x86_oses)):
         result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
         result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
@@ -80,6 +90,10 @@ def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_os
 
 def _get_instance_type_parameters():  # noqa: C901
     """Gets Instance jinja parameters."""
+    # Return cached result if available
+    if hasattr(_get_instance_type_parameters, "_cache"):
+        return _get_instance_type_parameters._cache
+
     result = {}
     excluded_instance_type_prefixes = [
         "m1",
@@ -104,7 +118,7 @@ def _get_instance_type_parameters():  # noqa: C901
         "p2",
         "p3",
     ]
-    for region in ["us-east-1", "us-west-2", "eu-west-1"]:  # Only populate instance type for big regions
+    for region in ["us-east-1", "us-west-2"]:  # Only populate instance type for big regions
         ec2_client = boto3.client("ec2", region_name=region)
         # The following conversion is required becase Python jinja doesn't like "-"
         region_jinja = region.replace("-", "_").upper()
@@ -175,6 +189,9 @@ def _get_instance_type_parameters():  # noqa: C901
             for index in range(10):
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = "g4dn.xlarge"
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}_AZ"] = region
+
+    # Cache the result
+    _get_instance_type_parameters._cache = result
     return result
 
 

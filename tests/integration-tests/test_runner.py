@@ -104,6 +104,7 @@ TEST_DEFAULTS = {
     "global_build_number": 0,
     "proxy_stack": None,
     "build_image_roles_stack": None,
+    "capacity_reservation_id": None,
 }
 
 
@@ -495,6 +496,11 @@ def _init_argparser():
         help="Name of CFN stack providing the ParallelCluster API infrastructure.",
         default=TEST_DEFAULTS.get("api_stack"),
     )
+    debug_group.add_argument(
+        "--capacity-reservation-id",
+        help="Use an existing capacity reservation.",
+        default=TEST_DEFAULTS.get("capacity_reservation_id"),
+    )
 
     return parser
 
@@ -563,7 +569,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
 
     pytest_args.append("--tests-log-file={0}/{1}".format(args.output_dir, log_file))
     pytest_args.append("--output-dir={0}/{1}".format(args.output_dir, out_dir))
-    pytest_args.append("--timeout=14400")
+    pytest_args.append("--timeout=21600")
     pytest_args.append(f"--key-name={args.key_name}")
     pytest_args.append(f"--key-path={args.key_path}")
     pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
@@ -736,6 +742,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
     if args.api_stack:
         pytest_args.extend(["--api-stack", args.api_stack])
 
+    if args.capacity_reservation_id:
+        pytest_args.extend(["--capacity-reservation-id", args.capacity_reservation_id])
+
 
 def _set_validate_instance_type_args(args, pytest_args):
     if args.force_elastic_ip:
@@ -845,15 +854,6 @@ def _get_config_arguments(args):
 
 
 def _check_args(args):
-    # If --cluster is set only one os, scheduler, instance type and region can be provided
-    if args.cluster:
-        if len(args.oss) > 1 or len(args.schedulers) > 1 or len(args.instances) > 1 or len(args.regions) > 1:
-            logger.error(
-                "when cluster option is specified, you can have a single value for oss, regions, instances "
-                "and schedulers and you need to make sure they match the cluster specific ones"
-            )
-            exit(1)
-
     if not args.tests_config:
         assert_that(args.regions).described_as("--regions cannot be empty").is_not_empty()
         assert_that(args.instances).described_as("--instances cannot be empty").is_not_empty()

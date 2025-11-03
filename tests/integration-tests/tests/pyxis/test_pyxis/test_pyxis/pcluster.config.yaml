@@ -20,7 +20,7 @@ Scheduling:
     ComputeResources:
       - Name: compute-resource-0
         Instances:
-          - InstanceType: t3.small
+          - InstanceType: t3.large
         MinCount: 0
         MaxCount: {{ max_queue_size }}
     Networking:

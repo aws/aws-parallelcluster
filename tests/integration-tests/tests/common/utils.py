@@ -67,7 +67,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
     "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.8*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
@@ -552,3 +552,50 @@ def terminate_nodes_manually(instance_ids, region):
         assert_that(instance_states.get("InstanceId")).is_equal_to(instance_id)
         assert_that(instance_states.get("CurrentState").get("Name")).is_in("shutting-down", "terminated")
     logging.info("Terminated nodes: {}".format(instance_ids))
+
+
+def get_capacity_reservation_id(request, instance_type, region, count, os):
+    os_platform = "Linux/UNIX"
+    if "rhel" in os.lower():
+        os_platform = "Red Hat Enterprise Linux"
+
+    # List to store matching reservation IDs
+    reservations_ids = []
+    ec2_client = boto3.client("ec2", region_name=region)
+    if request.config.getoption("capacity_reservation_id"):
+        capacity_reservation = ec2_client.describe_capacity_reservations(
+            CapacityReservationIds=[request.config.getoption("capacity_reservation_id")]
+        )
+        if capacity_reservation:
+            reservations_ids.append(
+                {
+                    "CapacityReservationId": capacity_reservation.get("CapacityReservations", [])[0][
+                        "CapacityReservationId"
+                    ],
+                    "TotalInstanceCount": capacity_reservation.get("CapacityReservations", [])[0]["TotalInstanceCount"],
+                    "AvailableInstanceCount": capacity_reservation.get("CapacityReservations", [])[0][
+                        "AvailableInstanceCount"
+                    ],
+                }
+            )
+    else:
+        paginator = ec2_client.get_paginator("describe_capacity_reservations")
+        # Paginate through the results
+        for page in paginator.paginate():
+            for reservation in page.get("CapacityReservations", []):
+                if (
+                    instance_type == reservation.get("InstanceType")
+                    and os_platform == reservation.get("InstancePlatform")
+                    and reservation.get("AvailableInstanceCount") >= count
+                    and reservation.get("State") == "active"
+                    and reservation["CapacityReservationId"] != "cr-08be2f796cdaf5015"
+                    # Skip this Gb200 Capacity Reservation which fails NCCL benchmarks
+                ):
+                    reservations_ids.append(
+                        {
+                            "CapacityReservationId": reservation["CapacityReservationId"],
+                            "TotalInstanceCount": reservation["TotalInstanceCount"],
+                            "AvailableInstanceCount": reservation["AvailableInstanceCount"],
+                        }
+                    )
+    return reservations_ids

@@ -21,17 +21,19 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.utils import (
     fetch_instance_slots,
+    get_capacity_reservation_id,
     get_installed_parallelcluster_version,
     run_system_analyzer,
     write_file,
 )
 from tests.performance_tests.common import push_result_to_dynamodb
 
-# We collected OSU benchmarks results for c5n.18xlarge only.
-OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge"]
+# We collected OSU benchmarks results for these instance types
+OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
+@pytest.mark.flaky(reruns=0)
 def test_osu(
     os,
     region,
@@ -57,8 +59,32 @@ def test_osu(
     else:
         head_node_instance = "c6g.16xlarge"
 
+    max_queue_size = 32
+    capacity_type = "ONDEMAND"
+    capacity_reservation_id = None
+    placement_group_enabled = True
+
+    if instance in ["p6-b200.48xlarge", "p5en.48xlarge"]:
+        max_queue_size = 2
+        capacity_type = "CAPACITY_BLOCK"
+        placement_group_enabled = False
+
+        capacity_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
+        if capacity_reservations_ids:
+            capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
+        else:
+            message = f"Skipping the test as no Capacity Block for {instance} and os {os} was found in {region}"
+            logging.warn(message)
+            pytest.skip(message)
+
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
-    cluster_config = pcluster_config_reader(head_node_instance=head_node_instance)
+    cluster_config = pcluster_config_reader(
+        head_node_instance=head_node_instance,
+        max_queue_size=max_queue_size,
+        capacity_type=capacity_type,
+        capacity_reservation_id=capacity_reservation_id,
+        placement_group_enabled=placement_group_enabled,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -80,6 +106,7 @@ def test_osu(
                 output_dir,
                 os,
                 instance,
+                network_interfaces_count,
                 slots_per_instance,
                 partition="efa-enabled",
             )
@@ -93,7 +120,8 @@ def test_osu(
                 output_dir,
                 os,
                 instance,
-                num_instances=32,
+                network_interfaces_count,
+                num_instances=max_queue_size,
                 slots_per_instance=slots_per_instance,
                 partition="efa-enabled",
             )
@@ -106,7 +134,10 @@ def test_osu(
             remote_command_executor,
             scheduler_commands,
             test_datadir,
+            output_dir,
+            os,
             slots_per_instance,
+            network_interfaces_count,
             partition="efa-enabled",
         )
 
@@ -121,6 +152,7 @@ def _test_osu_benchmarks_pt2pt(
     output_dir,
     os,
     instance,
+    network_interfaces_count,
     slots_per_instance,
     partition=None,
 ):
@@ -142,6 +174,7 @@ def _test_osu_benchmarks_pt2pt(
             scheduler_commands,
             num_instances,
             slots_per_instance,
+            network_interfaces_count,
             test_datadir,
         )
         failures = _check_osu_benchmarks_results(
@@ -161,6 +194,7 @@ def _test_osu_benchmarks_collective(
     output_dir,
     os,
     instance,
+    network_interfaces_count,
     num_instances,
     slots_per_instance,
     partition=None,
@@ -180,6 +214,7 @@ def _test_osu_benchmarks_collective(
             scheduler_commands,
             num_instances,
             slots_per_instance,
+            network_interfaces_count,
             test_datadir,
             timeout=24,
         )
@@ -193,9 +228,23 @@ def _test_osu_benchmarks_collective(
 
 
 def _test_osu_benchmarks_multiple_bandwidth(
-    instance, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
+    instance,
+    remote_command_executor,
+    scheduler_commands,
+    test_datadir,
+    output_dir,
+    os,
+    slots_per_instance,
+    network_interfaces_count,
+    partition=None,
 ):
     instance_bandwidth_dict = {
+        # Bandwidth is expressed here in MBps.
+        # Baseline does not reflect the theoretical max bandwidth declared by EC2 because
+        # the way we run OSU with OpenMPI does not leverage the full bandwidth.
+        # As long as we do not fix the way we run OSU, this baseline reflects values
+        # that we considered ok with such limitation.
+        #
         # Expected bandwidth for p4d and p4de (4 * 100 Gbps NICS -> declared NetworkPerformance 400 Gbps):
         # OMPI 4.1.0: ~330Gbps = 41250MB/s with Placement Group
         # OMPI 4.1.0: ~252Gbps = 31550MB/s without Placement Group
@@ -207,21 +256,39 @@ def _test_osu_benchmarks_multiple_bandwidth(
         "hpc6id.32xlarge": 23000,  # Equivalent to a theoretical maximum of a single 184Gbps card
         # 8 100 Gbps NICS -> declared NetworkPerformance 800 Gbps
         "trn1.32xlarge": 80000,  # Equivalent to a theoretical maximum of a single 640Gbps card
+        # 32 100 Gbps NICS -> declared NetworkPerformance 3200 Gbps = 400000MBps (80% is 320000MBps)
+        "p5en.48xlarge": 320000,
+        # 8 200 Gbps NICS -> declared NetworkPerformance 3200 Gbps = 400000MBps (acceptable is 58% ~= 232000 MBps)
+        "p6-b200.48xlarge": 232000,
     }
     num_instances = 2
+    mpi_version = "openmpi"
+    benchmark_name = "osu_mbw_mr"
     run_individual_osu_benchmark(
-        "openmpi",
+        mpi_version,
         "mbw_mr",
-        "osu_mbw_mr",
+        benchmark_name,
         partition,
         remote_command_executor,
         scheduler_commands,
         num_instances,
         slots_per_instance,
+        network_interfaces_count,
         test_datadir,
     )
+
+    output_file = f"/shared/{benchmark_name}.out"
+    output = remote_command_executor.run_remote_command(f"cat {output_file}").stdout
+
+    logging.info(output)
+    write_file(
+        dirname=f"{output_dir}/osu-results",
+        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}.out",
+        content=output,
+    )
+
     max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/osu_mbw_mr.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
+        f"cat {output_file} | tail -n +4 | awk '{{print $2}}' | sort -n | tail -n 1"
     ).stdout
 
     expected_bandwidth = instance_bandwidth_dict.get(instance)
@@ -233,6 +300,11 @@ def _test_osu_benchmarks_multiple_bandwidth(
 
 def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output):
     logging.info(output)
+    write_file(
+        dirname=f"{output_dir}/osu-results",
+        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}.out",
+        content=output,
+    )
     # Check avg latency for all packet sizes
     failures = 0
     metric_data = []
@@ -245,7 +317,12 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
             str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
             encoding="utf-8",
         ) as result:
-            previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
+            previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", result.read())
+            previous_result = previous_result_match.group(1) if previous_result_match else None
+
+            if previous_result is None:
+                logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
+                continue
 
             if benchmark_name == "osu_bibw":
                 # Invert logic because osu_bibw is in MB/s

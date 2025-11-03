@@ -23,7 +23,6 @@ from aws_cdk import core
 from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
 from aws_cdk.core import Arn, ArnFormat, CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
-from pcluster.api.errors import BadRequestException
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
@@ -44,13 +43,13 @@ from pcluster.constants import (
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
-    ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT,
     ULTRASERVER_INSTANCE_PREFIX_LIST,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.utils import (
     get_installed_version,
+    get_needed_ultraserver_capacity_block_statuses,
     get_resource_name_from_resource_arn,
     policy_name_to_arn,
     split_resource_prefix,
@@ -375,44 +374,35 @@ def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource)
 
 def process_ultraserver_capacity_block_sizes(cluster_ultraserver_capacity_block_dict):
     """
-    Process ultraserver capacity block sizes and validate them.
+    Process ultraserver capacity block sizes and return sizes dictionary.
+
+    Note: Validation is now handled by UltraserverCapacityBlockSizeValidator.
+    This function only processes and returns the sizes for template generation.
 
     Returns:
         Dictionary mapping ultraserver instance prefixes to comma-separated size strings
-    Raises:
-        BadRequestException: If any capacity block sizes are invalid
     """
     cluster_ultraserver_capacity_block_sizes_dict = {}
-    invalid_capacity_blocks = []
 
     for ultraserver_instance_prefix in ULTRASERVER_INSTANCE_PREFIX_LIST:
         cluster_ultraserver_capacity_block_sizes_dict[ultraserver_instance_prefix] = []
-        allowed_sizes_list = ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT.get(ultraserver_instance_prefix)
 
         capacity_reservation_ids = cluster_ultraserver_capacity_block_dict.get(ultraserver_instance_prefix)
         if capacity_reservation_ids:
-            statuses = AWSApi.instance().ec2.describe_capacity_block_status(capacity_reservation_ids)
+            statuses = AWSApi.instance().ec2.describe_capacity_block_status()
+            needed_capacity_block_statuses = get_needed_ultraserver_capacity_block_statuses(
+                statuses, capacity_reservation_ids
+            )
 
-            for status in statuses:
+            for status in needed_capacity_block_statuses:
                 size = status.get("TotalCapacity")
                 if size is not None:
-                    if size not in allowed_sizes_list:
-                        invalid_capacity_blocks.append(
-                            f"{status.get('CapacityBlockId')} (size: {size}, allowed: {allowed_sizes_list})"
-                        )
-                    else:
-                        cluster_ultraserver_capacity_block_sizes_dict.get(ultraserver_instance_prefix).append(size)
+                    cluster_ultraserver_capacity_block_sizes_dict.get(ultraserver_instance_prefix).append(size)
 
         unique_sizes = sorted(set(cluster_ultraserver_capacity_block_sizes_dict.get(ultraserver_instance_prefix)))
 
         cluster_ultraserver_capacity_block_sizes_dict[ultraserver_instance_prefix] = ", ".join(
             str(unique_size) for unique_size in unique_sizes
-        )
-
-    # Raise exception with all invalid capacity blocks if any found
-    if invalid_capacity_blocks:
-        raise BadRequestException(
-            f"The following capacity blocks have invalid block sizes: {'; '.join(invalid_capacity_blocks)}."
         )
 
     return cluster_ultraserver_capacity_block_sizes_dict

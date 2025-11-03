@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: c5.xlarge
+  InstanceType: {{ headnode_instance_type }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -14,6 +14,12 @@ HeadNode:
       - BucketName: {{ bucket_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
+  {% if instance == "p6e-gb200.36xlarge" %}
+  SlurmSettings:
+    CustomSlurmSettings:
+      - PrologFlags: "Alloc,NoHold"
+      - MessageTimeout: 200
+  {% endif %}
   SlurmQueues:
   - Name: {{ queue_with_imex }}
     {% if capacity_block_reservation_id %}
@@ -23,22 +29,29 @@ Scheduling:
     {% endif %}
     ComputeResources:
       - Name: {{ compute_resource_with_imex }}
-        Instances:
-          - InstanceType: {{ instance }}
+        InstanceType: {{ instance }}
         MinCount: {{ max_queue_size }}
         MaxCount: {{ max_queue_size }}
-        HealthChecks:
-          Gpu:
-            Enabled: True
+        {% if instance == "p6e-gb200.36xlarge" %}
+        DisableSimultaneousMultithreading: true
+        Efa:
+          Enabled: true
+        {% endif %}
     Networking:
+      {% if instance == "p6e-gb200.36xlarge" %}
+      PlacementGroup:
+        Enabled: false
+      {% endif %}
       SubnetIds:
         - {{ private_subnet_id }}
   - Name: {{ queue_without_imex }}
     ComputeResources:
       - Name: {{ compute_resource_without_imex }}
         Instances:
-          - InstanceType: t3.medium
-        MinCount: 1
+          - InstanceType: m6g.xlarge
+          - InstanceType: t4g.xlarge
+          - InstanceType: c6gn.xlarge
+        MinCount: {{ min_queue_size_without_imex }}
         MaxCount: 1
     Networking:
       SubnetIds:
@@ -52,3 +65,7 @@ DevSettings:
     ExtraChefAttributes: |
       { "cluster": { "nvidia": { "imex": { "force_configuration": "true" } }, "p6egb200_block_sizes": "{{ max_queue_size }}", "slurm":{"block_topology":{"force_configuration":"true"}} } }
 {% endif %}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

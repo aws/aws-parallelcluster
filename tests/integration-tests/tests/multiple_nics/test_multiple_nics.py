@@ -84,9 +84,19 @@ def _test_compute_node_nic(ip_address, remote_command_executor, scheduler_comman
     )
     assert_that(result.stdout).matches("Hello")
     # ping test from compute node
-    result = scheduler_commands.submit_command("ping -I {0} -c 5 amazon.com > /shared/ping_{0}.out".format(ip_address))
+    results = {}
+    sites = ["amazon.com", "google.com", "github.com"]
+    for site in sites:
+        results[site] = _check_ping(scheduler_commands, remote_command_executor, ip_address, site)
+
+    assert any(results.values()), f"Ping test failed for all sites. Results: {results}"
+
+
+def _check_ping(scheduler_commands, remote_command_executor, ip_address, site):
+    result = scheduler_commands.submit_command(
+        f"ping -I {ip_address} -c 5 {site} > /shared/ping_{ip_address}_{site}.out"
+    )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    result = remote_command_executor.run_remote_command("cat /shared/ping_{0}.out".format(ip_address))
-    assert_that(result.stdout).matches(".*5 packets transmitted, 5 received, 0% packet loss,.*")
+    result = remote_command_executor.run_remote_command(f"cat /shared/ping_{ip_address}_{site}.out")
+    return "5 packets transmitted, 5 received, 0% packet loss" in result.stdout

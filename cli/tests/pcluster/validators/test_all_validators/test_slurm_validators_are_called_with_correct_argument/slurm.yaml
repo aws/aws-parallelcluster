@@ -9,8 +9,6 @@ LoginNodes:
     Networking:
       SubnetIds:
         - subnet-12345678
-    Ssh:
-      KeyName: ec2-key-name
 HeadNode:
   InstanceType: c5d.xlarge
   Networking:
@@ -103,3 +101,7 @@ Tags:
     Value: String
   - Key: cluster_tag2
     Value: String
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: |
+      {"attr1": {"attr2": "value"}}
