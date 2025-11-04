@@ -25,7 +25,7 @@ CDK_VERSION = "1.164"
 REQUIRES = [
     "setuptools",
     "boto3>=1.39.4",
-    "tabulate>=0.8.8,<=0.8.10",
+    "tabulate>=0.8.8,<=0.9.0",
     "PyYAML>=5.3.1,!=5.4",
     "jinja2~=3.0",
     "marshmallow~=3.10",
@@ -48,7 +48,7 @@ REQUIRES = [
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
     "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "connexion~=2.15.1",
-    "jmespath~=0.10",
+    "jmespath~=1.0",
     "jsii==1.85.0",
     "werkzeug~=3.1",
     "flask~=3.1.0",

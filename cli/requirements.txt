@@ -17,11 +17,11 @@ aws_cdk.aws-cloudwatch~=1.164
 aws_cdk.aws-lambda~=1.164
 boto3>=1.39.4
 jinja2~=3.0
-jmespath~=0.10
+jmespath~=1.0
 jsii==1.85.0
 marshmallow~=3.10
 PyYAML>=5.3.1,!=5.4
-tabulate>=0.8.8,<=0.8.10
+tabulate>=0.8.8,<=0.9.0
 connexion~=2.15.1
 werkzeug~=3.1
 flask~=3.1.0
