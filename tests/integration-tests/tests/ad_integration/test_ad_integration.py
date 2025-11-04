@@ -12,24 +12,25 @@
 
 import io
 import logging
+import os
 import os as os_lib
 import random
 import string
 import time
 import zipfile
+from pathlib import Path
 
 import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
-from conftest_networking import unmarshal_az_override
-from framework.fixture_utils import xdist_session_fixture
-from framework.tests_configuration.config_utils import get_all_regions
+from framework.fixture_utils import SharedFixture, xdist_session_fixture
 from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
 from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, random_alphanumeric
+from xdist import get_xdist_worker_id
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
@@ -228,98 +229,131 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     ).is_true()
 
 
-@xdist_session_fixture(autouse=True)
-def directory_stacks_shared(cfn_stacks_factory, request, vpc_stacks_shared):  # noqa C901
+def _directory_stack_resource_generator(
+    existing_directory_stack_name,
+    directory_type,
+    region,
+    vpc_stack,
+    cfn_stacks_factory,
+    request,
+):
     """
-    Build and share AD Directory CFN stacks across xdist workers (session-scoped).
-
-    Returns:
-        dict with keys as (region, directory_type) and values as CFN stack names.
-
-    Cleanup:
-        After yield, delete only the stacks created by this fixture (not the pre-existing ones),
-        and only if neither --no-delete nor --retain_ad_stack is set.
+    Generator used by SharedFixture to provide a shared value (stack info) and run cleanup.
+    Yields: {"name": <stack_name>, "managed": <bool>} where managed=True iff we created it here.
     """
-    # Collect regions from CLI (same style as vpc_stacks_shared)
-    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-
-    # AD types you need to support in tests. If you have a CLI to limit types, you can read it here.
-    directory_types = ["SimpleAD", "MicrosoftAD"]
-
-    stacks = {}  # (region, dir_type) -> stack_name
-    created_by_this_fixture = set()
-
-    # Build per-region stacks
-    for region in regions:
-        # In case region can contain an AZ override, normalize to the region only
-        region = unmarshal_az_override(region)
-
-        for dir_type in directory_types:
-            # Respect region capability, keep the test's behavior consistent
-            if not is_directory_supported(region, dir_type):
-                logging.info("Directory type %s not supported in region %s, skipping.", dir_type, region)
-                continue
-
-            existing_name = request.config.getoption("directory_stack_name")
-            if existing_name:
-                stacks[(region, dir_type)] = existing_name
-                logging.info("Using pre-existing directory stack %s for (%s, %s).", existing_name, region, dir_type)
-                continue
-
-            stack_prefix = f"integ-tests-MultiUserInfraStack{dir_type}"
-            name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
-
-            if not name:
-                # Create a new stack bound to the region's shared VPC
-                vpc_stack = vpc_stacks_shared[region]
-                directory_stack = _create_directory_stack(cfn_stacks_factory, request, dir_type, region, vpc_stack)
-                name = directory_stack.name
-                created_by_this_fixture.add((region, dir_type))
-                logging.info("Created directory stack %s for (%s, %s).", name, region, dir_type)
-            else:
-                logging.info("Reusing existing directory stack %s for (%s, %s).", name, region, dir_type)
-
-            stacks[(region, dir_type)] = name
-
-    yield stacks
-
-    if request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack"):
-        logging.info("Retain/no-delete set; not deleting directory stacks created by this fixture.")
-        return
-
-    for region, dir_type in created_by_this_fixture:
-        name = stacks.get((region, dir_type))
+    # Resolve name and whether we own its lifecycle (managed)
+    managed = False
+    if existing_directory_stack_name:
+        name = existing_directory_stack_name
+    else:
+        stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
+        name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
         if not name:
-            continue
-        try:
-            logging.info("Deleting directory stack %s in region %s (%s).", name, region, dir_type)
-            cfn_stacks_factory.delete_stack(name, region)
-        except Exception as e:
-            logging.warning("Failed to delete directory stack %s: %s", name, e)
+            directory_stack = _create_directory_stack(cfn_stacks_factory, request, directory_type, region, vpc_stack)
+            name = directory_stack.name
+            managed = True
+
+    try:
+        yield {"name": name, "managed": managed}
+    finally:
+        # Only delete stacks created by this fixture, and only if not retained/no-delete.
+        if managed and not (request.config.getoption("no_delete") or request.config.getoption("retain_ad_stack")):
+            try:
+                cfn_stacks_factory.delete_stack(name, region)
+                logging.info("Deleted directory stack %s in %s", name, region)
+            except Exception as e:
+                logging.warning("Failed deleting directory stack %s: %s", name, e)
 
 
-@pytest.fixture(scope="class")
-def directory_factory(directory_stacks_shared):
+class _LazyDirectoryRegistry:
     """
-    Parallel-safe factory for AD Directory CFN stacks using the SharedFixture infra.
-
-    Behavior:
-      - If an explicit existing stack name is provided, return it (use-only).
-      - Otherwise, look up the stack from the session-shared directory_stacks_shared mapping.
+    Session-shared registry that lazily creates/acquires per-(region, directory_type) SharedFixture.
+    Each worker acquires exactly once per key and caches the stack name.
     """
 
-    def _factory(existing_directory_stack_name, directory_type, region):
-        # Use-only path if explicitly specified by the test/CLI
+    def __init__(self, shared_dir: Path, cfn_stacks_factory, request, vpc_stacks_shared):
+        self._dir = shared_dir
+        self._dir.mkdir(parents=True, exist_ok=True)
+        self._cfn = cfn_stacks_factory
+        self._request = request
+        self._vpcs = vpc_stacks_shared
+        self._local = {}  # key -> (SharedFixture, stack_name)
+
+    def get_stack_name(self, existing_directory_stack_name: str, directory_type: str, region: str) -> str:
         if existing_directory_stack_name:
             return existing_directory_stack_name
 
-        key = (region, directory_type)
-        # Fail fast if the key is not present (e.g., unsupported region/type)
-        if key not in directory_stacks_shared:
-            raise RuntimeError(
-                f"No directory stack available for key={key}. " f"Check is_directory_supported and session setup."
-            )
-        return directory_stacks_shared[key]
+        if not is_directory_supported(region, directory_type):
+            raise RuntimeError(f"Directory type {directory_type} not supported in {region}")
+
+        key = f"{region}:{directory_type}"
+        if key in self._local:
+            return self._local[key][1]
+
+        # Build one SharedFixture per key and acquire exactly once
+        xdist_worker_id = get_xdist_worker_id(self._request)
+        pid = os.getpid()
+        xdist_worker_id_and_pid = f"{xdist_worker_id}: {pid}"
+
+        vpc_stack = self._vpcs[region]  # one VPC per region (from vpc_stacks_shared)
+
+        shared_fixture = SharedFixture(
+            name=f"directory_stack_{region}_{directory_type}",
+            shared_save_location=self._dir,
+            fixture_func=_directory_stack_resource_generator,
+            fixture_func_args=(
+                existing_directory_stack_name,
+                directory_type,
+                region,
+                vpc_stack,
+                self._cfn,
+                self._request,
+            ),
+            fixture_func_kwargs={},
+            xdist_worker_id_and_pid=xdist_worker_id_and_pid,
+            log_file=self._request.config.getoption("tests_log_file"),
+        )
+
+        data = shared_fixture.acquire()
+        payload = data.fixture_return_value or {}
+        stack_name = payload.get("name")
+        self._local[key] = (shared_fixture, stack_name)
+        return stack_name
+
+    def release_all(self):
+        # Release once per key so the last releaser triggers generator cleanup (deletion if managed=True).
+        for shared_fixture, _ in self._local.values():
+            try:
+                shared_fixture.release()
+            except Exception as e:
+                logging.warning("Error releasing shared fixture: %s", e)
+
+
+@xdist_session_fixture(autouse=True)
+def directory_shared_registry(cfn_stacks_factory, request, vpc_stacks_shared):
+    """
+    Session-scoped, cross-worker shared registry for directory stacks (lazy).
+    Each (region, directory_type) is provisioned on first request.
+    """
+    base_dir = Path(f"{request.config.getoption('output_dir', '')}/tmp/shared_fixtures")
+    registry = _LazyDirectoryRegistry(
+        shared_dir=base_dir,
+        cfn_stacks_factory=cfn_stacks_factory,
+        request=request,
+        vpc_stacks_shared=vpc_stacks_shared,
+    )
+    try:
+        yield registry
+    finally:
+        registry.release_all()
+
+
+@pytest.fixture(scope="class")
+def directory_factory(directory_shared_registry):
+    """Thin adapter to match existing call signature in tests."""
+
+    def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
+        return directory_shared_registry.get_stack_name(existing_directory_stack_name, directory_type, region)
 
     return _factory
 
