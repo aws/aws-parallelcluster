@@ -12,9 +12,10 @@
 import logging
 import os as operating_system
 import re
+import stat
 import subprocess
 from pathlib import Path
-import stat
+
 import pytest
 import requests
 from assertpy import assert_that
@@ -158,7 +159,7 @@ def _check_error_cases(remote_command_executor, dcv_authenticator_port):
     )
 
 
-def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False):
+def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False):  # noqa: C901
     """Test dcv-connect with --show-url."""
     env = operating_system.environ.copy()
     env["AWS_DEFAULT_REGION"] = region
