@@ -229,6 +229,19 @@ def _check_ssm_success(ssm_client, command_id, instance_id):
     ).is_true()
 
 
+@xdist_session_fixture(autouse=True)
+def directory_shared_namespace(request):
+    """
+    Session-scoped, cross-worker shared namespace (a directory path) for per-key SharedFixtures.
+    IMPORTANT: This fixture does NOT create any AD stacks. It only returns a path that all workers can use.
+    Returning a plain string keeps it picklable for SharedFixture.
+    """
+    base_dir = Path(f"{request.config.getoption('output_dir', '')}/tmp/shared_fixtures")
+    base_dir.mkdir(parents=True, exist_ok=True)
+    # Return a simple, picklable value (string path)
+    return str(base_dir)
+
+
 def _directory_stack_resource_generator(
     existing_directory_stack_name,
     directory_type,
@@ -239,13 +252,13 @@ def _directory_stack_resource_generator(
 ):
     """
     Generator used by SharedFixture to provide a shared value (stack info) and run cleanup.
-    Yields: {"name": <stack_name>, "managed": <bool>} where managed=True iff we created it here.
+    Yields a picklable dict: {"name": <stack_name>, "managed": <bool>}
     """
-    # Resolve name and whether we own its lifecycle (managed)
     managed = False
     if existing_directory_stack_name:
         name = existing_directory_stack_name
     else:
+        # Try to reuse an existing tagged stack; if not found, create a new one.
         stack_prefix = f"integ-tests-MultiUserInfraStack{directory_type}"
         name = find_stack_by_tag("parallelcluster:integ-tests-ad-stack", region, stack_prefix)
         if not name:
@@ -265,21 +278,17 @@ def _directory_stack_resource_generator(
                 logging.warning("Failed deleting directory stack %s: %s", name, e)
 
 
-class _LazyDirectoryRegistry:
+@pytest.fixture(scope="class")
+def directory_factory(directory_shared_namespace, vpc_stacks_shared, cfn_stacks_factory, request):
     """
-    Session-shared registry that lazily creates/acquires per-(region, directory_type) SharedFixture.
-    Each worker acquires exactly once per key and caches the stack name.
+    Class-scoped factory that lazily creates per-(region, directory_type) SharedFixtures on first use.
+    For each key we 'acquire()' exactly once per worker, cache the stack name, and 'release()' at teardown.
     """
+    base_dir = Path(directory_shared_namespace)  # shared path provided by the session fixture
+    local_cache = {}  # key -> (shared_fixture_obj, stack_name)
 
-    def __init__(self, shared_dir: Path, cfn_stacks_factory, request, vpc_stacks_shared):
-        self._dir = shared_dir
-        self._dir.mkdir(parents=True, exist_ok=True)
-        self._cfn = cfn_stacks_factory
-        self._request = request
-        self._vpcs = vpc_stacks_shared
-        self._local = {}  # key -> (SharedFixture, stack_name)
-
-    def get_stack_name(self, existing_directory_stack_name: str, directory_type: str, region: str) -> str:
+    def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
+        # Use-only path: explicit stack name, no sharing/cleanup
         if existing_directory_stack_name:
             return existing_directory_stack_name
 
@@ -287,75 +296,47 @@ class _LazyDirectoryRegistry:
             raise RuntimeError(f"Directory type {directory_type} not supported in {region}")
 
         key = f"{region}:{directory_type}"
-        if key in self._local:
-            return self._local[key][1]
+        if key in local_cache:
+            return local_cache[key][1]
 
-        # Build one SharedFixture per key and acquire exactly once
-        xdist_worker_id = get_xdist_worker_id(self._request)
+        # Build a per-key SharedFixture with a stable name so all workers rendezvous on the same files.
+        xdist_worker_id = get_xdist_worker_id(request)
         pid = os.getpid()
         xdist_worker_id_and_pid = f"{xdist_worker_id}: {pid}"
 
-        vpc_stack = self._vpcs[region]  # one VPC per region (from vpc_stacks_shared)
+        vpc_stack = vpc_stacks_shared[region]  # one VPC per region (from vpc_stacks_shared)
 
         shared_fixture = SharedFixture(
             name=f"directory_stack_{region}_{directory_type}",
-            shared_save_location=self._dir,
+            shared_save_location=base_dir,
             fixture_func=_directory_stack_resource_generator,
             fixture_func_args=(
                 existing_directory_stack_name,
                 directory_type,
                 region,
                 vpc_stack,
-                self._cfn,
-                self._request,
+                cfn_stacks_factory,
+                request,
             ),
             fixture_func_kwargs={},
             xdist_worker_id_and_pid=xdist_worker_id_and_pid,
-            log_file=self._request.config.getoption("tests_log_file"),
+            log_file=request.config.getoption("tests_log_file"),
         )
 
         data = shared_fixture.acquire()
         payload = data.fixture_return_value or {}
         stack_name = payload.get("name")
-        self._local[key] = (shared_fixture, stack_name)
+        local_cache[key] = (shared_fixture, stack_name)
         return stack_name
 
-    def release_all(self):
-        # Release once per key so the last releaser triggers generator cleanup (deletion if managed=True).
-        for shared_fixture, _ in self._local.values():
-            try:
-                shared_fixture.release()
-            except Exception as e:
-                logging.warning("Error releasing shared fixture: %s", e)
+    yield _factory
 
-
-@xdist_session_fixture(autouse=True)
-def directory_shared_registry(cfn_stacks_factory, request, vpc_stacks_shared):
-    """
-    Session-scoped, cross-worker shared registry for directory stacks (lazy).
-    Each (region, directory_type) is provisioned on first request.
-    """
-    base_dir = Path(f"{request.config.getoption('output_dir', '')}/tmp/shared_fixtures")
-    registry = _LazyDirectoryRegistry(
-        shared_dir=base_dir,
-        cfn_stacks_factory=cfn_stacks_factory,
-        request=request,
-        vpc_stacks_shared=vpc_stacks_shared,
-    )
-    try:
-        yield registry
-    finally:
-        registry.release_all()
-
-
-@pytest.fixture(scope="class")
-def directory_factory(directory_shared_registry):
-    """Thin adapter to match existing call signature in tests."""
-
-    def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
-        return directory_shared_registry.get_stack_name(existing_directory_stack_name, directory_type, region)
-
-    return _factory
+    # release once per key so the last releaser triggers generator cleanup when managed=True
+    for shared_fixture, _ in local_cache.values():
+        try:
+            shared_fixture.release()
+        except Exception as e:
+            logging.warning("Error releasing shared fixture: %s", e)
 
 
 def _run_user_workloads(users, test_datadir, shared_storage_mount_dirs):
