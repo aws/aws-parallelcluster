@@ -11,6 +11,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
+- Add GetFunction and GetPolicy permissions to PClusterBuildImageCleanupRole to prevent AccessDenied errors during build image stack deletion.
 
 3.14.1
 ------
