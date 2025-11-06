@@ -17,10 +17,10 @@ import io
 import json
 import os
 import sys
+from urllib.parse import unquote, unquote_plus, urlencode
 
-from werkzeug.datastructures import Headers, MultiDict, iter_multi_items
+from werkzeug.datastructures import Headers, iter_multi_items
 from werkzeug.http import HTTP_STATUS_CODES
-from werkzeug.urls import url_encode, url_unquote, url_unquote_plus
 from werkzeug.wrappers import Response
 
 # List of MIME types that should not be base64 encoded. MIME types within `text/*`
@@ -95,8 +95,8 @@ def encode_query_string(event):
     if not params:
         params = ""
     if is_alb_event(event):
-        params = MultiDict((url_unquote_plus(k), url_unquote_plus(v)) for k, v in iter_multi_items(params))
-    return url_encode(params)
+        params = [(unquote_plus(k), unquote_plus(v)) for k, v in iter_multi_items(params)]
+    return urlencode(params, doseq=True)
 
 
 def get_script_name(headers, request_context):
@@ -108,7 +108,7 @@ def get_script_name(headers, request_context):
         "1",
     ]
 
-    if headers.get("Host", "").endswith(".amazonaws.com") and not strip_stage_path:
+    if "amazonaws.com" in headers.get("Host", "") and not strip_stage_path:
         script_name = "/{}".format(request_context.get("stage", ""))
     else:
         script_name = ""
@@ -138,7 +138,7 @@ def setup_environ_items(environ, headers):
 def generate_response(response, event):
     returndict = {"statusCode": response.status_code}
 
-    if "multiValueHeaders" in event:
+    if "multiValueHeaders" in event and event["multiValueHeaders"]:
         returndict["multiValueHeaders"] = group_headers(response.headers)
     else:
         returndict["headers"] = split_headers(response.headers)
@@ -164,12 +164,27 @@ def generate_response(response, event):
     return returndict
 
 
+def strip_express_gateway_query_params(path):
+    """Contrary to regular AWS lambda HTTP events, Express Gateway
+    (https://github.com/ExpressGateway/express-gateway-plugin-lambda)
+    adds query parameters to the path, which we need to strip.
+    """
+    if "?" in path:
+        path = path.split("?")[0]
+    return path
+
+
 def handle_request(app, event, context):
     if event.get("source") in ["aws.events", "serverless-plugin-warmup"]:
         print("Lambda warming event received, skipping handler")
         return {}
 
-    if event.get("version") is None and event.get("isBase64Encoded") is None and not is_alb_event(event):
+    if (
+        event.get("version") is None
+        and event.get("isBase64Encoded") is None
+        and event.get("requestPath") is not None
+        and not is_alb_event(event)
+    ):
         return handle_lambda_integration(app, event, context)
 
     if event.get("version") == "2.0":
@@ -179,7 +194,7 @@ def handle_request(app, event, context):
 
 
 def handle_payload_v1(app, event, context):
-    if "multiValueHeaders" in event:
+    if "multiValueHeaders" in event and event["multiValueHeaders"]:
         headers = Headers(event["multiValueHeaders"])
     else:
         headers = Headers(event["headers"])
@@ -189,7 +204,7 @@ def handle_payload_v1(app, event, context):
     # If a user is using a custom domain on API Gateway, they may have a base
     # path in their URL. This allows us to strip it out via an optional
     # environment variable.
-    path_info = event["path"]
+    path_info = strip_express_gateway_query_params(event["path"])
     base_path = os.environ.get("API_GATEWAY_BASE_PATH")
     if base_path:
         script_name = "/" + base_path
@@ -197,27 +212,27 @@ def handle_payload_v1(app, event, context):
         if path_info.startswith(script_name):
             path_info = path_info[len(script_name) :]  # noqa: E203
 
-    body = event["body"] or ""
+    body = event.get("body") or ""
     body = get_body_bytes(event, body)
 
     environ = {
         "CONTENT_LENGTH": str(len(body)),
         "CONTENT_TYPE": headers.get("Content-Type", ""),
-        "PATH_INFO": url_unquote(path_info),
+        "PATH_INFO": unquote(path_info),
         "QUERY_STRING": encode_query_string(event),
         "REMOTE_ADDR": event.get("requestContext", {}).get("identity", {}).get("sourceIp", ""),
-        "REMOTE_USER": event.get("requestContext", {}).get("authorizer", {}).get("principalId", ""),
+        "REMOTE_USER": (event.get("requestContext", {}).get("authorizer") or {}).get("principalId", ""),
         "REQUEST_METHOD": event.get("httpMethod", {}),
         "SCRIPT_NAME": script_name,
         "SERVER_NAME": headers.get("Host", "lambda"),
-        "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
+        "SERVER_PORT": headers.get("X-Forwarded-Port", "443"),
         "SERVER_PROTOCOL": "HTTP/1.1",
         "wsgi.errors": sys.stderr,
         "wsgi.input": io.BytesIO(body),
         "wsgi.multiprocess": False,
         "wsgi.multithread": False,
         "wsgi.run_once": False,
-        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
+        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "https"),
         "wsgi.version": (1, 0),
         "serverless.authorizer": event.get("requestContext", {}).get("authorizer"),
         "serverless.event": event,
@@ -237,7 +252,13 @@ def handle_payload_v2(app, event, context):
 
     script_name = get_script_name(headers, event.get("requestContext", {}))
 
-    path_info = event["rawPath"]
+    path_info = strip_express_gateway_query_params(event["rawPath"])
+    base_path = os.environ.get("API_GATEWAY_BASE_PATH")
+    if base_path:
+        script_name = "/" + base_path
+
+        if path_info.startswith(script_name):
+            path_info = path_info[len(script_name) :]  # noqa: E203
 
     body = event.get("body", "")
     body = get_body_bytes(event, body)
@@ -245,23 +266,23 @@ def handle_payload_v2(app, event, context):
     headers["Cookie"] = "; ".join(event.get("cookies", []))
 
     environ = {
-        "CONTENT_LENGTH": str(len(body)),
+        "CONTENT_LENGTH": str(len(body or "")),
         "CONTENT_TYPE": headers.get("Content-Type", ""),
-        "PATH_INFO": url_unquote(path_info),
+        "PATH_INFO": unquote(path_info),
         "QUERY_STRING": event.get("rawQueryString", ""),
         "REMOTE_ADDR": event.get("requestContext", {}).get("http", {}).get("sourceIp", ""),
         "REMOTE_USER": event.get("requestContext", {}).get("authorizer", {}).get("principalId", ""),
         "REQUEST_METHOD": event.get("requestContext", {}).get("http", {}).get("method", ""),
         "SCRIPT_NAME": script_name,
         "SERVER_NAME": headers.get("Host", "lambda"),
-        "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
+        "SERVER_PORT": headers.get("X-Forwarded-Port", "443"),
         "SERVER_PROTOCOL": "HTTP/1.1",
         "wsgi.errors": sys.stderr,
         "wsgi.input": io.BytesIO(body),
         "wsgi.multiprocess": False,
         "wsgi.multithread": False,
         "wsgi.run_once": False,
-        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
+        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "https"),
         "wsgi.version": (1, 0),
         "serverless.authorizer": event.get("requestContext", {}).get("authorizer"),
         "serverless.event": event,
@@ -282,7 +303,7 @@ def handle_lambda_integration(app, event, context):
 
     script_name = get_script_name(headers, event)
 
-    path_info = event["requestPath"]
+    path_info = strip_express_gateway_query_params(event["requestPath"])
 
     for key, value in event.get("path", {}).items():
         path_info = path_info.replace("{%s}" % key, value)
@@ -293,23 +314,23 @@ def handle_lambda_integration(app, event, context):
     body = get_body_bytes(event, body)
 
     environ = {
-        "CONTENT_LENGTH": str(len(body)),
+        "CONTENT_LENGTH": str(len(body or "")),
         "CONTENT_TYPE": headers.get("Content-Type", ""),
-        "PATH_INFO": url_unquote(path_info),
-        "QUERY_STRING": url_encode(event.get("query", {})),
+        "PATH_INFO": unquote(path_info),
+        "QUERY_STRING": urlencode(event.get("query", {}), doseq=True),
         "REMOTE_ADDR": event.get("identity", {}).get("sourceIp", ""),
         "REMOTE_USER": event.get("principalId", ""),
         "REQUEST_METHOD": event.get("method", ""),
         "SCRIPT_NAME": script_name,
         "SERVER_NAME": headers.get("Host", "lambda"),
-        "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
+        "SERVER_PORT": headers.get("X-Forwarded-Port", "443"),
         "SERVER_PROTOCOL": "HTTP/1.1",
         "wsgi.errors": sys.stderr,
         "wsgi.input": io.BytesIO(body),
         "wsgi.multiprocess": False,
         "wsgi.multithread": False,
         "wsgi.run_once": False,
-        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
+        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "https"),
         "wsgi.version": (1, 0),
         "serverless.authorizer": event.get("enhancedAuthContext"),
         "serverless.event": event,

@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+3.14.1
+------
+
+**CHANGES**
+- Upgrade Connexion to ~=2.15.1 (from ~=2.13.0).
+- Upgrade Flask to ~=3.1.0 (from >=2.2.5,<2.3).
+- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
+
 3.14.0
 ------
 
