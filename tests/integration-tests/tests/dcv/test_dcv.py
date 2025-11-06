@@ -12,7 +12,9 @@
 import logging
 import os as operating_system
 import re
+import stat
 import subprocess
+from pathlib import Path
 
 import pytest
 import requests
@@ -141,6 +143,14 @@ def _check_no_crashes(remote_command_executor, test_datadir):
     remote_command_executor.run_remote_script(str(test_datadir / "verify_no_core_files.sh"))
 
 
+def _get_known_hosts_content(host_keys_file):
+    """Get content of known_hosts file, returning empty bytes if file doesn't exist or can't be read."""
+    try:
+        return subprocess.check_output(f"cat {host_keys_file}", shell=True)
+    except subprocess.CalledProcessError:
+        return b""
+
+
 def _check_error_cases(remote_command_executor, dcv_authenticator_port):
     """Check DCV errors for both head and login nodes."""
     _check_auth_ko(
@@ -157,7 +167,7 @@ def _check_error_cases(remote_command_executor, dcv_authenticator_port):
     )
 
 
-def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False):
+def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False):  # noqa: C901
     """Test dcv-connect with --show-url."""
     env = operating_system.environ.copy()
     env["AWS_DEFAULT_REGION"] = region
@@ -165,15 +175,24 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
     node_ip = cluster.get_login_node_public_ip() if use_login_node else cluster.head_node_ip
 
     # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
+    # Ensure known_hosts path exists to avoid `cat` command returning non-zero exit when testing in ADC region.
     host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
-    logging.info(f"Add ip address {node_ip} to known hosts file {host_keys_file}")
+    host_keys_path = Path(host_keys_file)
+    try:
+        host_keys_path.parent.mkdir(parents=True, exist_ok=True)
+        if not host_keys_path.exists():
+            host_keys_path.touch()
+            host_keys_path.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0600
+    except Exception as e:
+        logging.warning(f"Failed to prepare known_hosts file {host_keys_file}: {e}")
 
-    result = subprocess.check_output("cat {0}".format(host_keys_file), shell=True)
-    logging.info(f"Original content of known hosts file {host_keys_file}: {result}")
+    before_content = _get_known_hosts_content(host_keys_file)
+    logging.info(f"Original content of known hosts file {host_keys_file}: {before_content}")
 
     add_keys_to_known_hosts(node_ip, host_keys_file)
-    result = subprocess.check_output("cat {0}".format(host_keys_file), shell=True)
-    logging.info(f"New content of known hosts file {host_keys_file}: {result}")
+
+    after_content = _get_known_hosts_content(host_keys_file)
+    logging.info(f"New content of known hosts file {host_keys_file}: {after_content}")
 
     dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
 
