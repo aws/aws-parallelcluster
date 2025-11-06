@@ -281,26 +281,28 @@ def _directory_stack_resource_generator(
 @pytest.fixture(scope="class")
 def directory_factory(directory_shared_namespace, vpc_stacks_shared, cfn_stacks_factory, request):
     """
-    Class-scoped factory that lazily creates per-(region, directory_type) SharedFixtures on first use.
-    For each key we 'acquire()' exactly once per worker, cache the stack name, and 'release()' at teardown.
+    Class-scoped factory: build a per-(region, directory_type) SharedFixture and acquire it on call.
+    We purposely track only the last acquire (per worker) and release it once in teardown,
+    based on the current assumption that each worker invokes this factory only once.
     """
     base_dir = Path(directory_shared_namespace)  # shared path provided by the session fixture
-    local_cache = {}  # key -> (shared_fixture_obj, stack_name)
+    last_shared_fixture = None
 
     def _factory(existing_directory_stack_name: str, directory_type: str, region: str) -> str:
-        # Use-only path: explicit stack name, no sharing/cleanup
+        xdist_worker_id = get_xdist_worker_id(request)
+        nodeid = getattr(request.node, "nodeid", "N/A")
+        logging.info(
+            "directory_factory invoked: region=%s, directory_type=%s, existing_provided=%s, worker=%s, nodeid=%s",
+            region, directory_type, bool(existing_directory_stack_name), xdist_worker_id, nodeid
+        )
+
+        # Use-only path: explicit stack name, no sharing/cleanup.
         if existing_directory_stack_name:
             return existing_directory_stack_name
 
         if not is_directory_supported(region, directory_type):
             raise RuntimeError(f"Directory type {directory_type} not supported in {region}")
 
-        key = f"{region}:{directory_type}"
-        if key in local_cache:
-            return local_cache[key][1]
-
-        # Build a per-key SharedFixture with a stable name so all workers rendezvous on the same files.
-        xdist_worker_id = get_xdist_worker_id(request)
         pid = os.getpid()
         xdist_worker_id_and_pid = f"{xdist_worker_id}: {pid}"
 
@@ -309,7 +311,7 @@ def directory_factory(directory_shared_namespace, vpc_stacks_shared, cfn_stacks_
         shared_fixture = SharedFixture(
             name=f"directory_stack_{region}_{directory_type}",
             shared_save_location=base_dir,
-            fixture_func=_directory_stack_resource_generator,
+            fixture_func=_directory_stack_resource_generator,  # generator does find-or-create + cleanup
             fixture_func_args=(
                 existing_directory_stack_name,
                 directory_type,
@@ -324,17 +326,19 @@ def directory_factory(directory_shared_namespace, vpc_stacks_shared, cfn_stacks_
         )
 
         data = shared_fixture.acquire()
+        nonlocal last_shared_fixture
+        last_shared_fixture = shared_fixture
         payload = data.fixture_return_value or {}
         stack_name = payload.get("name")
-        local_cache[key] = (shared_fixture, stack_name)
         return stack_name
 
     yield _factory
 
-    # release once per key so the last releaser triggers generator cleanup when managed=True
-    for shared_fixture, _ in local_cache.values():
+    # Release once (per worker). If future changes call this factory multiple times per worker,
+    # switch to tracking all acquisitions and releasing each.
+    if last_shared_fixture:
         try:
-            shared_fixture.release()
+            last_shared_fixture.release()
         except Exception as e:
             logging.warning("Error releasing shared fixture: %s", e)
 
