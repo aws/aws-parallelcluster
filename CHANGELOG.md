@@ -6,14 +6,19 @@ CHANGELOG
 
 **CHANGES**
 - Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
-- Upgrade Connexion to ~=2.15.1 (from ~=2.13.0).
-- Upgrade Flask to ~=3.1.0 (from >=2.2.5,<2.3).
-- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
 - Upgrade jmespath to ~=1.0 (from ~=0.10).
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
 
 **BUG FIXES**
 - Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
+
+3.14.1
+------
+
+**CHANGES**
+- Upgrade Connexion to ~=2.15.1 (from ~=2.13.0).
+- Upgrade Flask to ~=3.1.0 (from >=2.2.5,<2.3).
+- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
 
 3.14.0
 ------
