@@ -293,7 +293,11 @@ def directory_factory(directory_shared_namespace, vpc_stacks_shared, cfn_stacks_
         nodeid = getattr(request.node, "nodeid", "N/A")
         logging.info(
             "directory_factory invoked: region=%s, directory_type=%s, existing_provided=%s, worker=%s, nodeid=%s",
-            region, directory_type, bool(existing_directory_stack_name), xdist_worker_id, nodeid
+            region,
+            directory_type,
+            bool(existing_directory_stack_name),
+            xdist_worker_id,
+            nodeid,
         )
 
         # Use-only path: explicit stack name, no sharing/cleanup.
