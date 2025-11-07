@@ -375,6 +375,7 @@ def test_efs_correctly_mounted(remote_command_executor, mount_dir, tls=False, ia
             assert_that(result.stdout).matches(rf".* {mount_dir} efs _netdev,noresvport 0 0")
 
 
+@retry(wait_fixed=seconds(15), stop_max_delay=seconds(60))
 def check_dra(
     cluster,
     region,

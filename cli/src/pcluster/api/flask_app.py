@@ -8,9 +8,9 @@
 import functools
 import logging
 
-import connexion
-from connexion import ProblemException
+from connexion.apps.flask_app import FlaskApp
 from connexion.decorators.validation import ParameterValidator
+from connexion.exceptions import ProblemException
 from flask import Response, jsonify, request
 from werkzeug.exceptions import HTTPException
 
@@ -74,9 +74,10 @@ class ParallelClusterFlaskApp:
         assert_valid_node_js()
         options = {"swagger_ui": swagger_ui}
 
-        self.app = connexion.FlaskApp(__name__, specification_dir="openapi/", skip_error_handlers=True)
+        self.app = FlaskApp(__name__, specification_dir="openapi/", skip_error_handlers=True)
         self.flask_app = self.app.app
-        self.flask_app.json_encoder = encoder.JSONEncoder
+        self.flask_app.json_provider_class = encoder.FlaskJSONEncoder
+        self.flask_app.json = encoder.FlaskJSONEncoder(self.flask_app)
         self.app.add_api(
             "openapi.yaml",
             arguments={"title": "ParallelCluster"},

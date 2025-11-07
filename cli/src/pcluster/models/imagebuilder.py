@@ -76,7 +76,7 @@ from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_installed_version, get_partition
 from pcluster.validators.common import FailureLevel, ValidationResult
 
-ImageBuilderStatusMapping = {
+ImageBuilderStatusMapping = {  # pylint: disable=invalid-name
     "BUILD_IN_PROGRESS": [
         "CREATE_IN_PROGRESS",
         "UPDATE_IN_PROGRESS",

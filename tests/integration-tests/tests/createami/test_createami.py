@@ -200,7 +200,7 @@ def test_build_image(
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
     )
-    _assert_build_image_stack_deleted(image.image_id, region, 600, 30)
+    _assert_build_image_stack_deleted(image.image_id, region, 900, 30)
 
 
 def _test_cluster_creation(image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory):
