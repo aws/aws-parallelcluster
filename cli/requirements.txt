@@ -22,7 +22,7 @@ jsii==1.85.0
 marshmallow~=3.10
 PyYAML>=5.3.1,!=5.4
 tabulate>=0.8.8,<=0.9.0
-connexion~=2.15.1
+connexion~=3.3.0
 werkzeug~=3.1
 flask~=3.1.0
 packaging~=25.0
