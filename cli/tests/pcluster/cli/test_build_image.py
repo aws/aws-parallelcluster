@@ -283,19 +283,25 @@ class TestBuildImageCommand:
         aws_api_mock.iam.tag_role.assert_not_called()
 
     @pytest.mark.parametrize(
-        "account_id, partition",
+        "account_id, partition, actions",
         [
-            ("123456789012", "aws"),
-            ("000000000000", "aws-us-gov"),
+            ("123456789012", "aws", ["lambda:DeleteFunction", "lambda:RemovePermission", "lambda:GetFunction", "lambda:GetPolicy"]),
+            ("000000000000", "aws-us-gov", ["lambda:DeleteFunction", "lambda:RemovePermission", "lambda:GetFunction", "lambda:GetPolicy"]),
         ],
     )
-    def test_expected_inline_policy_dynamic_fields(self, account_id, partition):
+    def test_expected_inline_policy_dynamic_fields(self, account_id, partition, actions):
         raw = _expected_inline_policy(account_id, partition)
         policy = json.loads(raw)
         assert policy["Version"] == "2012-10-17"
         assert len(policy["Statement"]) == 13
         for statement in policy["Statement"]:
             resources = statement["Resource"]
+            action = statement["Action"]
+            action = action if isinstance(action, list) else [action]
+            for act in action:
+                if act in actions:
+                    actions.remove(act)
+
             resources = resources if isinstance(resources, list) else [resources]
             for res in resources:
                 if res == "*":
@@ -303,6 +309,8 @@ class TestBuildImageCommand:
                 assert f"arn:{partition}" in res
                 if not res == f"arn:{partition}:ec2:*::image/*":
                     assert f":{account_id}:" in res
+        if len(actions) != 0:
+            assert False, f"Actions {actions} are not in the policy"
 
     def _build_args(self, args):
         args = [[k, v] if v is not None else [k] for k, v in args.items()]
