@@ -140,7 +140,12 @@ def _expected_inline_policy(account_id: str, partition: str):
                 {"Action": "ec2:CreateTags", "Resource": f"arn:{partition}:ec2:*::image/*", "Effect": "Allow"},
                 {"Action": "tag:TagResources", "Resource": "*", "Effect": "Allow"},
                 {
-                    "Action": ["lambda:DeleteFunction", "lambda:RemovePermission"],
+                    "Action": [
+                        "lambda:DeleteFunction",
+                        "lambda:RemovePermission",
+                        "lambda:GetFunction",
+                        "lambda:GetPolicy",
+                    ],
                     "Resource": f"arn:{partition}:lambda:*:{account_id}:function:ParallelClusterImage-*",
                     "Effect": "Allow",
                 },

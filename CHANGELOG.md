@@ -9,6 +9,11 @@ CHANGELOG
 - Upgrade Flask to ~=3.1.0 (from >=2.2.5,<2.3).
 - Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
 
+**BUG FIXES**
+- Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
+- Add GetFunction and GetPolicy permissions to PClusterBuildImageCleanupRole to prevent AccessDenied errors during build image stack deletion.
+
+
 3.14.0
 ------
 
