@@ -757,6 +757,7 @@ def test_slurm_memory_based_scheduling(
         remote_command_executor,
         slurm_commands,
         test_datadir,
+        os,
     )
 
     _test_memory_based_scheduling_with_multiple_instance_types(slurm_commands)
@@ -2448,6 +2449,7 @@ def _test_memory_based_scheduling_enabled_true(
     remote_command_executor,
     slurm_commands,
     test_datadir,
+    os,
 ):
     """Test Slurm with memory-based scheduling feature enabled"""
 
@@ -2517,12 +2519,14 @@ def _test_memory_based_scheduling_enabled_true(
             "raise_on_error": False,
         }
     )
+    # For RHEL8, allocate more memory to avoid OOM kills in isolated regions
+    mem_allocation = "3000" if os == "rhel8" else "2500"
     job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
             "slots": 1,
             "command": "srun ./a.out 2000000000",
-            "other_options": "--mem=2500 -w queue1-st-ondemand1-i1-1",
+            "other_options": f"--mem={mem_allocation} -w queue1-st-ondemand1-i1-1",
             "raise_on_error": False,
         }
     )
