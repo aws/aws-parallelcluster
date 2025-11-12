@@ -147,7 +147,7 @@ def _get_instance_type_parameters():  # noqa: C901
             paginator = ec2_client.get_paginator("describe_instance_types")
             for page in paginator.paginate(InstanceTypes=xlarge_instances):
                 for instance_type in page["InstanceTypes"]:
-                    if _is_nvidia_gpu_instance_type(instance_type):
+                    if _is_nvidia_gpu_instance_type(instance_type) and "g6f" not in instance_type["InstanceType"]:
                         gpu_instances.append(instance_type["InstanceType"])
 
             for page in paginator.paginate():
