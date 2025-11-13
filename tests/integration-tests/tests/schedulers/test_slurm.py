@@ -724,7 +724,7 @@ def test_slurm_custom_config_parameters(
     assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
 
-@pytest.mark.usefixtures("region", "instance", "scheduler")
+@pytest.mark.usefixtures("instance", "scheduler")
 @pytest.mark.slurm_memory_based_scheduling
 def test_slurm_memory_based_scheduling(
     pcluster_config_reader,
@@ -732,6 +732,7 @@ def test_slurm_memory_based_scheduling(
     test_datadir,
     scheduler_commands_factory,
     os,
+    region,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -759,6 +760,7 @@ def test_slurm_memory_based_scheduling(
         slurm_commands,
         test_datadir,
         os,
+        region,
     )
 
     _test_memory_based_scheduling_with_multiple_instance_types(slurm_commands)
@@ -2451,6 +2453,7 @@ def _test_memory_based_scheduling_enabled_true(
     slurm_commands,
     test_datadir,
     os,
+    region,
 ):
     """Test Slurm with memory-based scheduling feature enabled"""
 
@@ -2521,7 +2524,7 @@ def _test_memory_based_scheduling_enabled_true(
         }
     )
     # For RHEL8, allocate more memory to avoid OOM kills in isolated regions
-    mem_allocation = "3000" if os == "rhel8" else "2500"
+    mem_allocation = "3000" if os == "rhel8" and "us-iso" in region else "2500"
     job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
