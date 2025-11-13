@@ -2523,6 +2523,8 @@ def _test_memory_based_scheduling_enabled_true(
             "raise_on_error": False,
         }
     )
+
+    # FIXME: This is a short term way to unblock the test in isolated regions under conditions we do not fully get.
     # For RHEL8, allocate more memory to avoid OOM kills in isolated regions
     mem_allocation = "3000" if os == "rhel8" and "us-iso" in region else "2500"
     job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
