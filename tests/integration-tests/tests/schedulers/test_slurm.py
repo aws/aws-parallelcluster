@@ -724,13 +724,14 @@ def test_slurm_custom_config_parameters(
     assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
 
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.usefixtures("region", "instance", "scheduler")
 @pytest.mark.slurm_memory_based_scheduling
 def test_slurm_memory_based_scheduling(
     pcluster_config_reader,
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    os,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
