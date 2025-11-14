@@ -29,13 +29,12 @@ Scheduling:
             - InstanceType: c5.xlarge
             - InstanceType: m5.xlarge
             - InstanceType: c5d.xlarge
+            - InstanceType: t3.xlarge
           MinCount: 0
           MaxCount: 12
       Networking:
         SubnetIds:
-          {% for private_subnet_id in private_subnet_ids %}
           - {{ private_subnet_id }}
-          {% endfor %}
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore

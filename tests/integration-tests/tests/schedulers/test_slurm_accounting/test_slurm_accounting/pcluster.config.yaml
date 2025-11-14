@@ -21,6 +21,7 @@ Scheduling:
             - InstanceType: c5.xlarge
             - InstanceType: m5.xlarge
             - InstanceType: c5d.xlarge
+            - InstanceType: t3.xlarge
           MinCount: 0
           MaxCount: 10
       Networking:
