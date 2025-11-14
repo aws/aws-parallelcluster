@@ -651,5 +651,9 @@ def _test_build_image_failed(image):
 def _keep_recent_logs(image):
     """Keep several lines of recent log to the console when creating an image fails."""
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
-    failure_logs = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=200)
-    logging.info(f"Image built failed for {image.image_id}, the last 200 lines of the log are: {failure_logs}")
+    nlines = 200
+    log_events = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=nlines)
+    log_messages = [event["message"] for event in log_events]
+    logging.info(
+        f"Image built failed for {image.image_id}, the last {nlines} lines of the log are:\n" + "\n".join(log_messages)
+    )
