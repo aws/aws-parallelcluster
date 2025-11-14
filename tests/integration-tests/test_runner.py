@@ -70,6 +70,7 @@ TEST_DEFAULTS = {
     "api_uri": None,
     "cluster": None,
     "policies_uri": None,
+    "api_stack": None,
     "api_definition_s3_uri": None,
     "api_infrastructure_s3_uri": None,
     "no_delete": False,
@@ -99,6 +100,7 @@ TEST_DEFAULTS = {
     "retain_ad_stack": False,
     "global_build_number": 0,
     "proxy_stack": None,
+    "build_image_roles_stack": None,
 }
 
 
@@ -461,6 +463,16 @@ def _init_argparser():
         help="Name of CFN stack providing a Proxy environment.",
         default=TEST_DEFAULTS.get("proxy_stack"),
     )
+    debug_group.add_argument(
+        "--build-image-roles-stack",
+        help="Name of CFN stack providing build image permissions.",
+        default=TEST_DEFAULTS.get("build_image_roles_stack"),
+    )
+    debug_group.add_argument(
+        "--api-stack",
+        help="Name of CFN stack providing the ParallelCluster API infrastructure.",
+        default=TEST_DEFAULTS.get("api_stack"),
+    )
 
     return parser
 
@@ -684,6 +696,12 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.proxy_stack:
         pytest_args.extend(["--proxy-stack", args.proxy_stack])
+
+    if args.build_image_roles_stack:
+        pytest_args.extend(["--build-image-roles-stack", args.build_image_roles_stack])
+
+    if args.api_stack:
+        pytest_args.extend(["--api-stack", args.api_stack])
 
 
 def _set_validate_instance_type_args(args, pytest_args):

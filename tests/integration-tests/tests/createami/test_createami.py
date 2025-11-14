@@ -418,7 +418,6 @@ def build_image_custom_resource(cfn_stacks_factory, region, request):
                 ]
             },
         )
-        role_name = "".join(["dummyInstanceRole", generate_random_string()])
         instance_role = iam.Role(
             "CustomInstanceRole",
             AssumeRolePolicyDocument={
@@ -430,7 +429,6 @@ def build_image_custom_resource(cfn_stacks_factory, region, request):
             ManagedPolicyArns=managed_policy_arns,
             Path="/parallelcluster/",
             Policies=[policy_document],
-            RoleName=role_name,
         )
 
         custom_resource_template.add_resource(instance_role)
@@ -442,6 +440,7 @@ def build_image_custom_resource(cfn_stacks_factory, region, request):
         )
         cfn_stacks_factory.create_stack(custom_resource_stack)
 
+        role_name = custom_resource_stack.cfn_resources["CustomInstanceRole"]
         instance_role_arn = boto3.client("iam").get_role(RoleName=role_name).get("Role").get("Arn")
         logging.info("Custom instance role arn %s", instance_role_arn)
 

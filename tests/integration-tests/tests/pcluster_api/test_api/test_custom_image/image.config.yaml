@@ -1,4 +1,6 @@
 Build:
+  Iam:
+    CleanupLambdaRole: {{ cleanup_lambda_role }}
   InstanceType: {{ instance }}
   ParentImage: {{ parent_image }}
   UpdateOsPackages:
