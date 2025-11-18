@@ -16,7 +16,7 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.aws.aws_resources import CapacityReservationInfo
+from pcluster.aws.aws_resources import CapacityReservationInfo, InstanceTypeInfo
 
 
 @pytest.fixture()
@@ -77,3 +77,96 @@ class TestCapacityReservationInfo:
     )
     def test_reservation_type(self, capacity_reservation_data, expected_value):
         assert_that(CapacityReservationInfo(capacity_reservation_data).reservation_type()).is_equal_to(expected_value)
+
+
+class TestInstanceTypeInfo:
+    @pytest.mark.parametrize(
+        ("instance_type_data", "expected_network_cards", "expected_error"),
+        [
+            # Success cases
+            ({"InstanceType": "aInstanceType", "NetworkInfo": {"NetworkCards": []}}, [], None),
+            (
+                {
+                    "InstanceType": "aInstanceType",
+                    "NetworkInfo": {"NetworkCards": [{"aField": "aValue"}, {"anotherField": "anotherValue"}]},
+                },
+                [{"aField": "aValue"}, {"anotherField": "anotherValue"}],
+                None,
+            ),
+            # Error cases
+            ({}, None, "Could not determine network cards for instance type unknown."),
+            ({"NetworkInfo": {}}, None, "Could not determine network cards for instance type unknown."),
+            (
+                {"InstanceType": "aInstanceType"},
+                None,
+                "Could not determine network cards for instance type aInstanceType.",
+            ),
+            (
+                {"InstanceType": "aInstanceType", "NetworkInfo": {}},
+                None,
+                "Could not determine network cards for instance type aInstanceType.",
+            ),
+        ],
+    )
+    def test_network_cards(self, instance_type_data, expected_network_cards, expected_error):
+        if expected_error:
+            with pytest.raises(RuntimeError, match=expected_error):
+                InstanceTypeInfo(instance_type_data).network_cards()
+        else:
+            assert_that(InstanceTypeInfo(instance_type_data).network_cards()).is_equal_to(expected_network_cards)
+
+    @pytest.mark.parametrize(
+        ("instance_type_data", "expected_count", "expected_error"),
+        [
+            ({"NetworkInfo": {"NetworkCards": []}}, 0, None),
+            ({"NetworkInfo": {"NetworkCards": [{"NetworkCardIndex": 0}, {"NetworkCardIndex": 1}]}}, 2, None),
+            (
+                {
+                    "NetworkInfo": {
+                        "NetworkCards": [
+                            {"NetworkCardIndex": 0},
+                            {"NetworkCardIndex": 1},
+                            {"NetworkCardIndex": None},
+                            {"aField": "aValue"},
+                        ]
+                    }
+                },
+                4,
+                None,
+            ),
+        ],
+    )
+    def test_max_network_cards(self, instance_type_data, expected_count, expected_error):
+        if expected_error:
+            with pytest.raises(expected_error):
+                InstanceTypeInfo(instance_type_data).max_network_cards()
+        else:
+            assert_that(InstanceTypeInfo(instance_type_data).max_network_cards()).is_equal_to(expected_count)
+
+    @pytest.mark.parametrize(
+        ("instance_type_data", "expected_count", "expected_error"),
+        [
+            ({"NetworkInfo": {"NetworkCards": []}}, 0, None),
+            ({"NetworkInfo": {"NetworkCards": [{"NetworkCardIndex": 0}, {"NetworkCardIndex": 1}]}}, 2, None),
+            (
+                {
+                    "NetworkInfo": {
+                        "NetworkCards": [
+                            {"NetworkCardIndex": 0},
+                            {"NetworkCardIndex": 1},
+                            {"NetworkCardIndex": None},
+                            {"aField": "aValue"},
+                        ]
+                    }
+                },
+                2,
+                None,
+            ),
+        ],
+    )
+    def test_network_cards_list(self, instance_type_data, expected_count, expected_error):
+        if expected_error:
+            with pytest.raises(expected_error):
+                InstanceTypeInfo(instance_type_data).network_cards_list()
+        else:
+            assert_that(InstanceTypeInfo(instance_type_data).network_cards_list()).is_length(expected_count)
