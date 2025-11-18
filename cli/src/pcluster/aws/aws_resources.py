@@ -255,17 +255,21 @@ class InstanceTypeInfo:
 
         return cores
 
+    def network_cards(self) -> list:
+        """Return the list of network cards."""
+        try:
+            return self.instance_type_data["NetworkInfo"]["NetworkCards"]
+        except KeyError:
+            instance_type = self.instance_type_data.get("InstanceType", "unknown")
+            raise RuntimeError(f"Could not determine network cards for instance type {instance_type}.")
+
     def max_network_cards(self) -> int:
         """Max number of NICs for the instance."""
-        return len(self.instance_type_data.get("NetworkInfo", {}).get("NetworkCards"))
+        return len(self.network_cards())
 
     def network_cards_list(self) -> list:
         """List of NICs for the instance."""
-        return [
-            NetworkCardInfo(nic)
-            for nic in self.instance_type_data.get("NetworkInfo", {}).get("NetworkCards")
-            if nic.get("NetworkCardIndex") is not None
-        ]
+        return [NetworkCardInfo(nic) for nic in self.network_cards() if nic.get("NetworkCardIndex") is not None]
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
