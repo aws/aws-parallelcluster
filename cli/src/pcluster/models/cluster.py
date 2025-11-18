@@ -61,6 +61,7 @@ from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, Com
 from pcluster.models.login_nodes_status import LoginNodesStatus
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.schemas.common_schema import validate_json_format
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.import_cdk import start as start_cdk_import
 from pcluster.utils import (
@@ -506,11 +507,11 @@ class Cluster:
 
     @staticmethod
     def _load_additional_instance_type_data(cluster_config_dict):
-        if "DevSettings" in cluster_config_dict:
-            instance_types_data = cluster_config_dict["DevSettings"].get("InstanceTypesData")
-            if instance_types_data:
-                # Set additional instance types data in AWSApi. Schema load will use the information.
-                AWSApi.instance().ec2.additional_instance_types_data = json.loads(instance_types_data)
+        instance_types_data = (cluster_config_dict.get("DevSettings") or {}).get("InstanceTypesData")
+        if instance_types_data:
+            if not validate_json_format(instance_types_data):
+                raise ValidationError(message="DevSettings/InstanceTypesData is not a valid JSON.")
+            AWSApi.instance().ec2.additional_instance_types_data = json.loads(instance_types_data)
 
     def _upload_config(self):
         """Upload source config and save config version."""
