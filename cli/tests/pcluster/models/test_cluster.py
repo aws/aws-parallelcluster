@@ -29,6 +29,7 @@ from pcluster.models.cluster import BadRequestClusterActionError, Cluster, Clust
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.schemas.common_schema import ValidationError
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
@@ -841,6 +842,33 @@ class TestCluster:
         mocker.patch("pcluster.models.cluster_resources.ClusterStack.scheduler", return_value="awsbatch")
         lns = cluster.login_nodes_status
         assert_that(lns.get_login_nodes_pool_available()).is_false()
+
+    @pytest.mark.parametrize(
+        "cluster_config_dict, expected_error",
+        [
+            ({}, None),
+            ({"DevSettings": {}}, None),
+            ({"DevSettings": {"InstanceTypesData": '{"valid": "json"}'}}, None),
+            (
+                {"DevSettings": {"InstanceTypesData": "invalid json"}},
+                "DevSettings/InstanceTypesData is not a valid JSON.",
+            ),
+        ],
+    )
+    def test_load_additional_instance_type_data(self, mocker, cluster_config_dict, expected_error):
+        mock_aws_api(mocker)
+        mock_api_instance = mocker.patch("pcluster.models.cluster.AWSApi.instance")
+
+        if expected_error:
+            with pytest.raises(ValidationError, match=expected_error):
+                Cluster._load_additional_instance_type_data(cluster_config_dict)
+        else:
+            Cluster._load_additional_instance_type_data(cluster_config_dict)
+
+            if cluster_config_dict.get("DevSettings", {}).get("InstanceTypesData"):
+                # Verify that additional_instance_types_data was set when valid JSON provided
+                expected_data = json.loads(cluster_config_dict["DevSettings"]["InstanceTypesData"])
+                mock_api_instance.return_value.ec2.additional_instance_types_data = expected_data
 
 
 OLD_CONFIGURATION = """
