@@ -80,8 +80,8 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2204, alinux2023 yet
-    if os not in ["ubuntu2204", "alinux2023"]:
+    # Get base AMI -- remarkable AL2 AMIs are failing because of conflicts between openssl-devel packages
+    if os not in ["alinux2"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
@@ -143,8 +143,12 @@ def test_build_image(
 
     # Get base AMI
     if os in ["alinux2", "ubuntu2004"]:
+        # Using patched DLAMI AMI so it does not conflict with pcluster build image.
+        allow_private_ami = True if os == "alinux2" else False
         # Test Deep Learning AMIs
-        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+        base_ami = retrieve_latest_ami(
+            region, os, ami_type="remarkable", architecture=architecture, allow_private_ami=allow_private_ami
+        )
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
     elif "rhel" in os or "ubuntu" in os or os == "rocky8":
         # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
