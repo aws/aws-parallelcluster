@@ -171,7 +171,7 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 2400
-      WeeklyMaintenanceStartTime: "3:02:30" # New parameter
+#     WeeklyMaintenanceStartTime: "3:02:30" #Initially not set
 Monitoring:
   DetailedMonitoring: false
   Logs:
