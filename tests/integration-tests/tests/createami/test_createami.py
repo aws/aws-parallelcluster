@@ -135,13 +135,9 @@ def test_build_image(
         enable_nvidia = False
 
     # Get base AMI
-    if os in ["alinux2", "ubuntu2004"]:
-        # Using patched DLAMI AMI so it does not conflict with pcluster build image.
-        allow_private_ami = True if os == "alinux2" else False
+    if os in ["alinux2023", "ubuntu2004"]:
         # Test Deep Learning AMIs
-        base_ami = retrieve_latest_ami(
-            region, os, ami_type="remarkable", architecture=architecture, allow_private_ami=allow_private_ami
-        )
+        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
     elif "rhel" in os or "ubuntu" in os or os == "rocky8":
         # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
