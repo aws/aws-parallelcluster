@@ -83,10 +83,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
-    spot_instance_types = ["t3.small", "t3.medium"]
+    spot_instance_types = ["t3.medium"]
     try:
-        boto3.client("ec2").describe_instance_types(InstanceTypes=["t3a.small"])
-        spot_instance_types.extend(["t3a.small", "t3a.medium"])
+        boto3.client("ec2").describe_instance_types(InstanceTypes=["t3a.medium"])
+        spot_instance_types.extend(["t3a.medium"])
     except Exception:
         pass
 
