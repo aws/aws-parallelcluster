@@ -135,7 +135,7 @@ def test_build_image(
         enable_nvidia = False
 
     # Get base AMI
-    if os in ["alinux2023", "ubuntu2004"]:
+    if os in ["ubuntu2204"]:
         # Test Deep Learning AMIs
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
