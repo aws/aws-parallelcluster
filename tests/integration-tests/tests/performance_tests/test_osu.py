@@ -54,11 +54,6 @@ def test_osu(
             f"Only these instances are supported: {OSU_BENCHMARKS_INSTANCES}"
         )
 
-    if architecture == "x86_64":
-        head_node_instance = "c5.18xlarge"
-    else:
-        head_node_instance = "c6g.16xlarge"
-
     max_queue_size = 32
     capacity_type = "ONDEMAND"
     capacity_reservation_id = None
@@ -79,7 +74,6 @@ def test_osu(
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
-        head_node_instance=head_node_instance,
         max_queue_size=max_queue_size,
         capacity_type=capacity_type,
         capacity_reservation_id=capacity_reservation_id,
