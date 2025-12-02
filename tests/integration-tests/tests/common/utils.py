@@ -84,9 +84,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
         "owners": ["099720109477"],
     },
     # Simple redhat8 to be able to build in remarkable test
-    # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
-    # the kernel released in 20231127 RHEL 8.8 AMI
-    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
+    "rhel8": {"name": "RHEL-8.8*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
