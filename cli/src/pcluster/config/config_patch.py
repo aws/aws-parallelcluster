@@ -176,6 +176,8 @@ class ConfigPatch:
     def _compare_list(self, base_section, target_section, param_path, data_key, field_obj, change_update_policy):
         """
         Compare list of nested section (e.g. list of queues) by comparing the items with the same update_key.
+
+        If update_key is not set we're considering Name as identifier.
         """
         update_key = field_obj.metadata.get("update_key")
 
