@@ -51,10 +51,15 @@ def test_efa(
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    if architecture == "x86_64":
-        head_node_instance = "c5.18xlarge"
+    if instance.startswith("p") or instance.startswith("hpc"):
+        if architecture == "x86_64":
+            head_node_instance = "c5.18xlarge"
+        else:
+            head_node_instance = "c6g.16xlarge"
     else:
-        head_node_instance = "c6g.16xlarge"
+        # Use the same instance type for both compute node and head node
+        # when the instance type is available in open capacity pool
+        head_node_instance = instance
     max_queue_size = 2
     p6_b200_capacity_reservation_id = None
     if instance == "p6-b200.48xlarge":
