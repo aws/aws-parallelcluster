@@ -176,19 +176,50 @@ class ConfigPatch:
     def _compare_list(self, base_section, target_section, param_path, data_key, field_obj, change_update_policy):
         """
         Compare list of nested section (e.g. list of queues) by comparing the items with the same update_key.
-
-        If update_key is not set we're considering Name as identifier.
         """
         update_key = field_obj.metadata.get("update_key")
 
+        # Get the lists
+        base_list = base_section.get(data_key, []) if base_section else []
+        target_list = target_section.get(data_key, []) if target_section else []
+
+        # For Tags, check if this is ONLY an order change (same content, different order)
+        if data_key == "Tags" and base_list != target_list:
+            # Check if it's an order-only change
+            try:
+                base_set = {frozenset(item.items()) for item in base_list}
+                target_set = {frozenset(item.items()) for item in target_list}
+                is_order_only_change = (base_set == target_set)
+            except (TypeError, AttributeError):
+                is_order_only_change = False
+
+            # If it's ONLY an order change, block it here and return
+            if is_order_only_change:
+                self.changes.append(
+                    Change(
+                        param_path,
+                        data_key,
+                        base_list,
+                        target_list,
+                        change_update_policy,
+                        is_list=True,
+                    )
+                )
+                return  # Don't process individual items
+            # Otherwise, fall through to item-by-item comparison below
+            # The reason I check if it is an order only change first is because if I just do I order dependent
+            # comparison and fail if there is a difference, then we don't get the item by item comparison in the
+            # change set if the modification was not the order.
+
+
         # Compare items in the list by searching the right item to compare through update_key value
         # First, compare all sections from target vs base config and mark visited base sections.
-        for target_nested_section in target_section.get(data_key, []):
+        for target_nested_section in target_list:  # Changed from target_section.get(data_key, [])
             update_key_value = target_nested_section.get(update_key)
             base_nested_section = next(
                 (
                     nested_section
-                    for nested_section in base_section.get(data_key, [])
+                    for nested_section in base_list  # Changed from base_section.get(data_key, [])
                     if nested_section.get(update_key) == update_key_value
                 ),
                 None,

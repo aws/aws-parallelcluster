@@ -86,7 +86,12 @@ def _compare_changes(changes, expected_changes):
     def _sorting_func(change):
         if change.is_list:
             if isinstance(change.new_value, dict):
-                return change.new_value["Name"]
+                if "Key" in change.new_value:
+                    return change.new_value["Key"]
+                elif "Name" in change.new_value:
+                    return change.new_value["Name"]
+                else:
+                    return "-"
             else:
                 return "-"
         else:
@@ -1133,3 +1138,111 @@ def test_patch_check_cluster_resource_bucket(
         line = ["{0}".format(element) if isinstance(element, str) else element for element in line]
         assert_that(expected_message_rows).contains(line)
     assert_that(patch_allowed).is_equal_to(not expected_error_row)
+
+@pytest.mark.parametrize(
+    "base_tags, target_tags, expected_changes, expected_policy",
+    [
+        pytest.param(
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+            [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
+            [
+                Change(
+                    [],
+                    "Tags",
+                    [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+                    [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
+                    UpdatePolicy.UNSUPPORTED,
+                    is_list=True,
+                )
+            ],
+            UpdatePolicy.UNSUPPORTED,
+            id="order_only_change",
+        ),
+        pytest.param(
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}, {"Key": "test3", "Value": "val3"}],
+            [
+                Change(
+                    [],
+                    "Tags",
+                    None,
+                    {"Key": "test3", "Value": "val3"},
+                    UpdatePolicy.UNSUPPORTED,
+                    is_list=True,
+                )
+            ],
+            UpdatePolicy.UNSUPPORTED,
+            id="tag_addition",
+        ),
+        pytest.param(
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+            [{"Key": "test1", "Value": "val1"}],
+            [
+                Change(
+                    [],
+                    "Tags",
+                    {"Key": "test2", "Value": "val2"},
+                    None,
+                    UpdatePolicy.UNSUPPORTED,
+                    is_list=True,
+                )
+            ],
+            UpdatePolicy.UNSUPPORTED,
+            id="tag_removal",
+        ),
+        pytest.param(
+            [{"Key": "test1", "Value": "old_value"}],
+            [{"Key": "test1", "Value": "new_value"}],
+            [
+                Change(
+                    ["Tags[test1]"],
+                    "Value",
+                    "old_value",
+                    "new_value",
+                    UpdatePolicy.UNSUPPORTED,
+                    is_list=False,
+                )
+            ],
+            UpdatePolicy.UNSUPPORTED,
+            id="tag_value_modification",
+        ),
+        pytest.param(
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+            [{"Key": "test3", "Value": "val3"}, {"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
+            [
+                Change(
+                    [],
+                    "Tags",
+                    None,
+                    {"Key": "test3", "Value": "val3"},
+                    UpdatePolicy.UNSUPPORTED,
+                    is_list=True,
+                )
+            ],
+            UpdatePolicy.UNSUPPORTED,
+            id="order_change_plus_addition",
+        ),
+        pytest.param(
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+            [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
+            [],
+            UpdatePolicy.SUPPORTED,
+            id="no_change_identical_tags",
+        ),
+    ],
+)
+def test_tag_updates(mocker, test_datadir, pcluster_config_reader, base_tags, target_tags, expected_changes, expected_policy):
+    """Test various tag update scenarios including order changes, additions, and modifications."""
+    mock_aws_api(mocker)
+    dst_config_file = "pcluster.config.dst.yaml"
+    _duplicate_config_file(dst_config_file, test_datadir)
+
+    src_dict = {"tags": base_tags}
+    src_config_file = pcluster_config_reader(**src_dict)
+    src_conf = _load_config(src_config_file)
+
+    dst_dict = {"tags": target_tags}
+    dst_config_file = pcluster_config_reader(dst_config_file, **dst_dict)
+    dst_conf = _load_config(dst_config_file)
+
+    _check_patch(src_conf.source_config, dst_conf.source_config, expected_changes, expected_policy)
