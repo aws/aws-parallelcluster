@@ -67,7 +67,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     },
     "alinux2023": {
         "name": {
-            "x86_64": "Deep Learning OSS Nvidia Driver AMI (Amazon Linux 2023)*",
+            "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
             "arm64": "Deep Learning ARM64 Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
         },
         "owners": ["amazon"],
