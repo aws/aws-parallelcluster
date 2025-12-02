@@ -1151,11 +1151,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
                     [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
             id="order_only_change",
         ),
         pytest.param(

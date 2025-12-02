@@ -203,7 +203,7 @@ class ConfigPatch:
                         data_key,
                         base_list,
                         target_list,
-                        change_update_policy,
+                        UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
                         is_list=True,
                     )
                 )
