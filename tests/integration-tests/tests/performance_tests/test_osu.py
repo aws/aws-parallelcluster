@@ -34,10 +34,12 @@ OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
 @pytest.mark.flaky(reruns=0)
+@pytest.mark.parametrize("in_place_update_on_fleet_enabled", ["true", "false"])
 def test_osu(
     os,
     region,
     scheduler,
+    in_place_update_on_fleet_enabled,
     instance,
     pcluster_config_reader,
     clusters_factory,
@@ -59,6 +61,9 @@ def test_osu(
     capacity_reservation_id = None
     placement_group_enabled = True
 
+    extra_chef_attributes = '{{"cluster": {{"in_place_update_on_fleet_enabled": "{}"}}}}'.format(
+        in_place_update_on_fleet_enabled
+    )
     if instance in ["p6-b200.48xlarge", "p5en.48xlarge"]:
         max_queue_size = 2
         capacity_type = "CAPACITY_BLOCK"
@@ -78,6 +83,7 @@ def test_osu(
         capacity_type=capacity_type,
         capacity_reservation_id=capacity_reservation_id,
         placement_group_enabled=placement_group_enabled,
+        extra_chef_attributes=extra_chef_attributes,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
