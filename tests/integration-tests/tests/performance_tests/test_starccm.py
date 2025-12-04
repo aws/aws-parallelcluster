@@ -59,11 +59,13 @@ def calculate_observed_value(result, remote_command_executor, scheduler_commands
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
 @pytest.mark.flaky(reruns=0)
+@pytest.mark.parametrize("in_place_update_on_fleet_enabled", ["true", "false"])
 def test_starccm(
     vpc_stack,
     instance,
     os,
     region,
+    in_place_update_on_fleet_enabled,
     scheduler,
     pcluster_config_reader,
     clusters_factory,
@@ -77,10 +79,15 @@ def test_starccm(
     s3 = boto3.client("s3")
     s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
 
+    extra_chef_attributes = '{{"cluster": {{"in_place_update_on_fleet_enabled": "{}"}}}}'.format(
+        in_place_update_on_fleet_enabled
+    )
+
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         install_extra_deps=os in OSS_REQUIRING_EXTRA_DEPS,
         number_of_nodes=max(number_of_nodes),
+        extra_chef_attributes=extra_chef_attributes,
     )
     cluster = clusters_factory(cluster_config)
     logging.info("Cluster Created")
