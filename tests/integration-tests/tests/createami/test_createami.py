@@ -74,8 +74,8 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2204, alinux2023 yet
-    if os not in ["ubuntu2204", "alinux2023"]:
+    # Get base AMI -- remarkable AL2 AMIs are failing because of conflicts between openssl-devel packages
+    if os not in ["alinux2"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
@@ -135,7 +135,7 @@ def test_build_image(
         enable_nvidia = False
 
     # Get base AMI
-    if os in ["alinux2", "ubuntu2004"]:
+    if os in ["ubuntu2204"]:
         # Test Deep Learning AMIs
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed

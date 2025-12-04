@@ -58,15 +58,33 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
+    # Using a patched DLAMI which has uninstalled openssl11-devel, openssl11-libs and openssl11-pkcs
+    # so that it will not conflict with pcluster build image.
+    "alinux2": {
+        "name": "Deep Learning OSS Nvidia Driver AMI (Amazon Linux 2) Version 83.9 for ParallelCluster*",
+        # If you are running in your personal account, then you must have this patched AMI
+        "owners": ["self"],
+    },
+    "alinux2023": {
+        "name": {
+            "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
+            "arm64": "Deep Learning ARM64 Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
+        },
+        "owners": ["amazon"],
+    },
+    "ubuntu2204": {
+        "name": {
+            "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
+            "arm64": "Deep Learning ARM64 Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
+        },
+        "owners": ["amazon"],
+    },
     "ubuntu2404": {
         "name": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*-server-*",
         "owners": ["099720109477"],
     },
     # Simple redhat8 to be able to build in remarkable test
-    # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
-    # the kernel released in 20231127 RHEL 8.8 AMI
-    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
+    "rhel8": {"name": "RHEL-8.8*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
@@ -128,7 +146,7 @@ def retrieve_latest_ami(
         if ami_type == "pcluster":
             ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
                 version=get_installed_parallelcluster_version(),
-                ami_name=_get_ami_for_os(ami_type, os).get("name"),
+                ami_name=_get_ami_for_os(ami_type, os, architecture).get("name"),
             )
             if (
                 request
@@ -141,14 +159,14 @@ def retrieve_latest_ami(
                 # Then retrieve public pcluster AMIs
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})
         else:
-            ami_name = _get_ami_for_os(ami_type, os).get("name")
+            ami_name = _get_ami_for_os(ami_type, os, architecture).get("name")
         logging.info("Parent image name %s" % ami_name)
         paginator = boto3.client("ec2", region_name=region).get_paginator("describe_images")
         page_iterator = paginator.paginate(
             Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
-            Owners=_get_ami_for_os(ami_type, os).get("owners"),
-            IncludeDeprecated=_get_ami_for_os(ami_type, os).get("includeDeprecated", False),
+            Owners=_get_ami_for_os(ami_type, os, architecture).get("owners"),
+            IncludeDeprecated=_get_ami_for_os(ami_type, os, architecture).get("includeDeprecated", False),
         )
         images = []
         for page in page_iterator:
@@ -166,13 +184,19 @@ def retrieve_latest_ami(
         raise
 
 
-def _get_ami_for_os(ami_type, os):
+def _get_ami_for_os(ami_type, os, architecture="x86_64"):
     ami_dict = AMI_TYPE_DICT.get(ami_type)
     if not ami_dict:
         raise Exception(f"'{ami_type}' not found in the dict 'AMI_TYPE_DICT'")
     os_ami = ami_dict.get(os)
     if not os_ami:
         raise Exception(f"'{os}' not found in the '{ami_type}' mapping referenced in the 'AMI_TYPE_DICT'")
+
+    # Get correct AMI names as per architecture
+    if isinstance(os_ami.get("name"), dict):
+        name = os_ami["name"].get(architecture)
+        return {"name": name, "owners": os_ami["owners"]}
+
     return os_ami
 
 
