@@ -16,6 +16,7 @@ from collections import namedtuple
 from typing import List
 
 from pcluster.config.update_policy import UpdatePolicy
+from pcluster.constants import ORDER_SENSITIVE_PARAMETERS
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.schemas.common_schema import BaseSchema
 
@@ -181,14 +182,48 @@ class ConfigPatch:
         """
         update_key = field_obj.metadata.get("update_key")
 
+        # Get the lists
+        base_list = base_section.get(data_key, []) if base_section else []
+        target_list = target_section.get(data_key, []) if target_section else []
+
+        # For Tags, check if this is ONLY an order change (same content, different order)
+        if data_key in ORDER_SENSITIVE_PARAMETERS and base_list != target_list:
+            # Check if it's an order-only change
+            try:
+                # We can assume there are no duplicates due to a validator
+                base_set = {frozenset(item.items()) for item in base_list}
+                target_set = {frozenset(item.items()) for item in target_list}
+                is_order_only_change = base_set == target_set
+            except (TypeError, AttributeError):
+                LOGGER.warning("Unable to compare order sensitive parameters.")
+                is_order_only_change = False
+
+            # If it's ONLY an order change, block it here and return
+            if is_order_only_change:
+                self.changes.append(
+                    Change(
+                        param_path,
+                        data_key,
+                        base_list,
+                        target_list,
+                        UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
+                        is_list=True,
+                    )
+                )
+                return  # Don't process individual items
+            # Otherwise, fall through to item-by-item comparison below
+            # The reason I check if it is an order only change first is because if I just do I order dependent
+            # comparison and fail if there is a difference, then we don't get the item by item comparison in the
+            # change set if the modification was not the order.
+
         # Compare items in the list by searching the right item to compare through update_key value
         # First, compare all sections from target vs base config and mark visited base sections.
-        for target_nested_section in target_section.get(data_key, []):
+        for target_nested_section in target_list:
             update_key_value = target_nested_section.get(update_key)
             base_nested_section = next(
                 (
                     nested_section
-                    for nested_section in base_section.get(data_key, [])
+                    for nested_section in base_list
                     if nested_section.get(update_key) == update_key_value
                 ),
                 None,
