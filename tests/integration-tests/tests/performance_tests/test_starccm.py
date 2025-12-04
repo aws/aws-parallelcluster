@@ -73,15 +73,23 @@ def test_starccm(
     scheduler_commands_factory,
     s3_bucket_factory,
 ):
+    if in_place_update_on_fleet_enabled == "true":
+        message = f"Skipping the test as we want to compare performance when cfn-hup is disabled"
+        logging.warn(message)
+        pytest.skip(message)
+
     number_of_nodes = [8, 16, 32]
     # Create S3 bucket for custom actions scripts
     bucket_name = s3_bucket_factory()
     s3 = boto3.client("s3")
     s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
 
-    extra_chef_attributes = '{{"cluster": {{"in_place_update_on_fleet_enabled": "{}"}}}}'.format(
-        in_place_update_on_fleet_enabled
-    )
+    chef_attributes_dict = {
+        "cluster": {
+            "in_place_update_on_fleet_enabled": in_place_update_on_fleet_enabled
+        }
+    }
+    extra_chef_attributes = json.dumps(chef_attributes_dict)
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
