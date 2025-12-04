@@ -62,3 +62,6 @@ SharedStorage:
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 100
       StorageType: SSD
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: '{{ extra_chef_attributes }}'
