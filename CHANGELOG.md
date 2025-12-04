@@ -10,7 +10,7 @@ CHANGELOG
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
 
 **BUG FIXES**
-- Add validation to block updates that change tag order.
+- Add validation to block updates that change tag order. Blocking such change prevents update failures.
 
 3.14.1
 ------

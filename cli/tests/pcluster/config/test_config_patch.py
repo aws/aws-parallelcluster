@@ -1139,6 +1139,7 @@ def test_patch_check_cluster_resource_bucket(
         assert_that(expected_message_rows).contains(line)
     assert_that(patch_allowed).is_equal_to(not expected_error_row)
 
+
 @pytest.mark.parametrize(
     "base_tags, target_tags, expected_changes, expected_policy",
     [
@@ -1231,7 +1232,9 @@ def test_patch_check_cluster_resource_bucket(
         ),
     ],
 )
-def test_tag_updates(mocker, test_datadir, pcluster_config_reader, base_tags, target_tags, expected_changes, expected_policy):
+def test_tag_updates(
+    mocker, test_datadir, pcluster_config_reader, base_tags, target_tags, expected_changes, expected_policy
+):
     """Test various tag update scenarios including order changes, additions, and modifications."""
     mock_aws_api(mocker)
     dst_config_file = "pcluster.config.dst.yaml"

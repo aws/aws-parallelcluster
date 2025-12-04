@@ -687,7 +687,7 @@ UpdatePolicy.UNSUPPORTED_ORDER_CHANGE = UpdatePolicy(
     level=1000,  # Same level as UNSUPPORTED since it should also block updates
     fail_reason=lambda change, patch: (
         f"Update actions are not currently supported for the '{change.key}' parameter. "
-        f"The order of {change.key.lower()} has changed, but order changes are not supported"
+        f"The order of {change.key} has changed, but order changes are not supported"
     ),
     action_needed=lambda change, patch: (
         f"Restore the original order of '{change.key}' to match the current configuration."
