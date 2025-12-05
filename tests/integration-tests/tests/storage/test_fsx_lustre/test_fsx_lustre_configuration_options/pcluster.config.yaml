@@ -1,3 +1,6 @@
+DevSettings:
+  Timeouts:
+    HeadNodeBootstrapTimeout: 2400  # Increasing Timeout as FSX takes 20+ minutes to create if throttled
 Image:
   Os: {{ os }}
 HeadNode:
