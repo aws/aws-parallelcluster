@@ -50,7 +50,7 @@ SLURM_SETTINGS_DENY_LIST = {
         "Global": ["nodes", "partitionname", "resumetimeout", "state", "suspendtime", "oversubscribe"],
     },
     "ComputeResource": {
-        "Global": ["cpus", "features", "gres", "nodeaddr", "nodehostname", "nodename", "state", "weight"],
+        "Global": ["cpus", "gres", "nodeaddr", "nodehostname", "nodename", "state", "weight"],
     },
 }
 

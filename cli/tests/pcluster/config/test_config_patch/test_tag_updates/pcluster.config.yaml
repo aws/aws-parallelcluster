@@ -1,0 +1,28 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t3.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: test-key
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: t3.micro
+          MinCount: 1
+          MaxCount: 10
+  {% if tags %}
+Tags:
+  {% for tag in tags %}
+- Key: {{ tag.Key }}
+  Value: {{ tag.Value }}
+  {% endfor %}
+  {% endif %}
+
