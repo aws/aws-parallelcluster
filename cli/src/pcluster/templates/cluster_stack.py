@@ -1496,6 +1496,13 @@ class ClusterCdkStack:
             "chefUpdate": {
                 "commands": {
                     "chef": {
+                        # This command runs the update recipe and signals CloudFormation with the result.
+                        # The trailing "; exit 0" ensures cfn-hup always updates its local metadata cache
+                        # (metadata_db.json) regardless of whether cfn-signal succeeds or fails.
+                        # Without this, if cfn-signal fails (e.g., due to an expired wait condition handle
+                        # after a rollback to a state older than 24h), cfn-hup would not update its cache
+                        # and would enter an endless loop, re-triggering the update recipe every minute.
+                        # See: https://issues.amazon.com/issues/PCLUSTER-XXXX
                         "command": (
                             ". /etc/parallelcluster/pcluster_cookbook_environment.sh; "
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
@@ -1508,7 +1515,8 @@ class ClusterCdkStack:
                             f" '{self.wait_condition_handle.ref}' ||"
                             f" $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-signal --exit-code=1 --reason='Update failed'"
                             f" --region {self.stack.region} --url {cloudformation_url}"
-                            f" '{self.wait_condition_handle.ref}'"
+                            f" '{self.wait_condition_handle.ref}';"
+                            " exit 0"
                         ),
                         "cwd": "/etc/chef",
                     }
