@@ -69,7 +69,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
-    python_requires=">=3.9",
+    python_requires=">=3.9, <=3.13",
     install_requires=REQUIRES,
     extras_require={
         "awslambda": LAMBDA_REQUIRES,
@@ -92,6 +92,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
     ],
