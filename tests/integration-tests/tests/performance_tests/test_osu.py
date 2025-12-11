@@ -51,7 +51,7 @@ def test_osu(
     request,
 ):
     if in_place_update_on_fleet_enabled == "true":
-        message = f"Skipping the test as we want to compare performance when cfn-hup is disabled"
+        message = "Skipping the test as we want to compare performance when cfn-hup is disabled"
         logging.warn(message)
         pytest.skip(message)
 
@@ -66,11 +66,7 @@ def test_osu(
     capacity_reservation_id = None
     placement_group_enabled = True
 
-    chef_attributes_dict = {
-        "cluster": {
-            "in_place_update_on_fleet_enabled": in_place_update_on_fleet_enabled
-        }
-    }
+    chef_attributes_dict = {"cluster": {"in_place_update_on_fleet_enabled": in_place_update_on_fleet_enabled}}
     extra_chef_attributes = json.dumps(chef_attributes_dict)
 
     if instance in ["p6-b200.48xlarge", "p5en.48xlarge"]:
