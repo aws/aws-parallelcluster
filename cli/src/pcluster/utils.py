@@ -483,6 +483,18 @@ def batch_by_property_callback(items, property_callback: Callable[..., int], bat
             yield current_batch
 
 
+def get_or_create_event_loop():
+    """Get the current event loop or create a new one.
+
+    This approach is required to support Python 3.14 and maintain retrocompatibility with Python 3.8+."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+
+
 class AsyncUtils:
     """Utility class for async functions."""
 
@@ -559,7 +571,7 @@ class AsyncUtils:
 
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
-            return await asyncio.get_event_loop().run_in_executor(
+            return await get_or_create_event_loop().run_in_executor(
                 AsyncUtils._thread_pool_executor, lambda: func(self, *args, **kwargs)
             )
 

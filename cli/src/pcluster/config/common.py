@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Set
 
+from pcluster.utils import get_or_create_event_loop
 from pcluster.validators.common import AsyncValidator, FailureLevel, ValidationResult, Validator, ValidatorContext
 from pcluster.validators.dev_settings_validators import ExtraChefAttributesValidator
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
@@ -210,7 +211,7 @@ class Resource:
         # does not cascade to child resources
         return list(
             itertools.chain.from_iterable(
-                asyncio.get_event_loop().run_until_complete(asyncio.gather(*self._validation_futures))
+                get_or_create_event_loop().run_until_complete(asyncio.gather(*self._validation_futures))
             )
         )
 

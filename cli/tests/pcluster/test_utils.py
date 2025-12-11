@@ -565,7 +565,7 @@ class TestAsyncUtils(unittest.TestCase):
                 executions.append(FakeAsyncMethodProvider().async_method(i))
                 expected_results.append(i)
 
-        results = asyncio.get_event_loop().run_until_complete(asyncio.gather(*executions))
+        results = utils.get_or_create_event_loop().run_until_complete(asyncio.gather(*executions))
 
         assert_that(expected_results).contains_sequence(*results)
         assert_that(unique_calls).is_equal_to(total_calls)
