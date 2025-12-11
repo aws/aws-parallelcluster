@@ -73,7 +73,7 @@ def test_starccm(
     s3_bucket_factory,
 ):
     if in_place_update_on_fleet_enabled == "true":
-        message = f"Skipping the test as we want to compare performance when cfn-hup is disabled"
+        message = "Skipping the test as we want to compare performance when cfn-hup is disabled"
         logging.warn(message)
         pytest.skip(message)
 
@@ -83,11 +83,7 @@ def test_starccm(
     s3 = boto3.client("s3")
     s3.upload_file(str(test_datadir / "dependencies.install.sh"), bucket_name, "scripts/dependencies.install.sh")
 
-    chef_attributes_dict = {
-        "cluster": {
-            "in_place_update_on_fleet_enabled": in_place_update_on_fleet_enabled
-        }
-    }
+    chef_attributes_dict = {"cluster": {"in_place_update_on_fleet_enabled": in_place_update_on_fleet_enabled}}
     extra_chef_attributes = json.dumps(chef_attributes_dict)
 
     cluster_config = pcluster_config_reader(
