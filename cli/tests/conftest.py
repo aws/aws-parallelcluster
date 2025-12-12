@@ -252,15 +252,15 @@ def normalize_argparse_help_text(text, target_version):
 
     if target_version >= (3, 10):
         # Convert 'optional arguments:' to 'options:'
-        text = text.replace('optional arguments:', 'options:')
+        text = text.replace("optional arguments:", "options:")
     else:
         # Convert 'options:' to 'optional arguments:'
-        text = text.replace('options:', 'optional arguments:')
+        text = text.replace("options:", "optional arguments:")
 
     if target_version >= (3, 13):
         # Convert '-X METAVAR, --long-option METAVAR' to '-X, --long-option METAVAR'
         # Pattern matches: -X METAVAR, --long-option METAVAR (where METAVAR is uppercase with possible underscores)
-        text = re.sub(r'(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2', r'\1, \3 \2', text)
+        text = re.sub(r"(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2", r"\1, \3 \2", text)
 
     return text
 

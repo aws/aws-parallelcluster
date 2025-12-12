@@ -39,7 +39,7 @@ class CfnResource():
             polling_interval=2,
             sleep_on_delete=120
     ):
-        self._sleep_on_delete= sleep_on_delete
+        self._sleep_on_delete = sleep_on_delete
         self._create_func = None
         self._update_func = None
         self._delete_func = None
@@ -93,7 +93,7 @@ class CfnResource():
             else:
                 logger.debug("enabling send_response")
                 self._send_response = True
-            logger.debug("_send_response: %s",  self._send_response)
+            logger.debug("_send_response: %s", self._send_response)
             if self._send_response:
                 if self.RequestType == 'Delete':
                     self._wait_for_cwlogs()

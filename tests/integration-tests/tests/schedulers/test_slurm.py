@@ -169,7 +169,7 @@ def test_slurm_ticket_17399(
             "partition": "gpu",
             "test_only": True,
             "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
-            f"--cpus-per-task={cpus_per_instance//gpus_per_instance}",
+            f"--cpus-per-task={cpus_per_instance // gpus_per_instance}",
         }
     )
 
@@ -180,7 +180,7 @@ def test_slurm_ticket_17399(
             "partition": "gpu",
             "test_only": True,
             "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
-            f"--cpus-per-task={cpus_per_instance//gpus_per_instance + 1}",
+            f"--cpus-per-task={cpus_per_instance // gpus_per_instance + 1}",
         }
     )
 
