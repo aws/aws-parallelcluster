@@ -237,30 +237,30 @@ def run_cli(mocker, capsys):
     return _run_cli
 
 
-def normalize_argparse_help_text(text, target_version):
+def normalize_argparse_help_text(text):
     """
-    Normalize argparse help text to match the format of the target Python version.
+    Normalize argparse help text to be version-agnostic for comparison.
 
     Python version differences in argparse help output:
     - Python 3.10+: Changed 'optional arguments:' to 'options:'
     - Python 3.13+: Changed '-r REGION, --region REGION' to '-r, --region REGION'
       (the metavar is no longer repeated for the short option)
+    - Python 3.13+: Changed help text alignment/wrapping
 
-    This function converts text to match the target version's format.
+    This function normalizes text to enable comparison across Python versions.
     """
     import re
 
-    if target_version >= (3, 10):
-        # Convert 'optional arguments:' to 'options:'
-        text = text.replace("optional arguments:", "options:")
-    else:
-        # Convert 'options:' to 'optional arguments:'
-        text = text.replace("options:", "optional arguments:")
+    # Normalize 'optional arguments:' vs 'options:' (Python 3.10 change)
+    text = text.replace("optional arguments:", "options:")
 
-    if target_version >= (3, 13):
-        # Convert '-X METAVAR, --long-option METAVAR' to '-X, --long-option METAVAR'
-        # Pattern matches: -X METAVAR, --long-option METAVAR (where METAVAR is uppercase with possible underscores)
-        text = re.sub(r"(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2", r"\1, \3 \2", text)
+    # Normalize short option format: '-X METAVAR, --long' -> '-X, --long'
+    # This handles the Python 3.13 change where metavar is no longer repeated
+    text = re.sub(r"(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2", r"\1, \3 \2", text)
+
+    # Normalize whitespace: collapse multiple spaces/newlines into single space
+    # This handles alignment differences across Python versions
+    text = re.sub(r"\s+", " ", text)
 
     return text
 
@@ -271,11 +271,12 @@ def assert_out_err(capsys):
         out_err = capsys.readouterr()
         actual_out = out_err.out.strip()
 
-        # Normalize expected output to match the current Python version's argparse format
-        expected_out = normalize_argparse_help_text(expected_out, sys.version_info[:2])
+        # Normalize both expected and actual output for version-agnostic comparison
+        normalized_expected = normalize_argparse_help_text(expected_out)
+        normalized_actual = normalize_argparse_help_text(actual_out)
 
         with soft_assertions():
-            assert_that(actual_out).is_equal_to(expected_out)
+            assert_that(normalized_actual).is_equal_to(normalized_expected)
             assert_that(out_err.err.strip()).contains(expected_err)
 
     return _assert_out_err
