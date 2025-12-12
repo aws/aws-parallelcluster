@@ -10,6 +10,8 @@ ignore =
     D107,
     # D103: Missing docstring in public function
     D103,
+    # D209: Multi-line docstring closing quotes should be on a separate line => Conflicts with black style.
+    D209,
     # W503: line break before binary operator => Conflicts with black style.
     W503,
     # D413: Missing blank line after last section
