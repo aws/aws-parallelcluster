@@ -237,14 +237,37 @@ def run_cli(mocker, capsys):
     return _run_cli
 
 
+def normalize_expected_argparse_help_for_py313(text):
+    """
+    Normalize expected argparse help text to match Python 3.13+ format.
+
+    Python 3.13 changed the short option format from '-r REGION, --region REGION' to '-r, --region REGION'
+    (the metavar is no longer repeated for the short option).
+
+    This function converts the expected text (pre-3.13 format) to 3.13+ format for comparison.
+    """
+    import re
+
+    # Convert '-X METAVAR, --long-option METAVAR' to '-X, --long-option METAVAR'
+    # Pattern matches: -X METAVAR, --long-option METAVAR (where METAVAR is uppercase with possible underscores)
+    text = re.sub(r'(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2', r'\1, \3 \2', text)
+
+    return text
+
+
 @pytest.fixture()
 def assert_out_err(capsys):
     def _assert_out_err(expected_out, expected_err):
         out_err = capsys.readouterr()
-        # In Python 3.10 ArgParse renamed the 'optional arguments' section in the helper to 'option'
-        expected_out_alternative = expected_out.replace("options", "optional arguments")
+        actual_out = out_err.out.strip()
+
+        # Python 3.13+ changed argparse help format for short options
+        # Expected files use pre-3.13 format, so convert expected to 3.13+ format when running on 3.13+
+        if sys.version_info >= (3, 13):
+            expected_out = normalize_expected_argparse_help_for_py313(expected_out)
+
         with soft_assertions():
-            assert_that(out_err.out.strip()).is_in(expected_out, expected_out_alternative)
+            assert_that(actual_out).is_equal_to(expected_out)
             assert_that(out_err.err.strip()).contains(expected_err)
 
     return _assert_out_err
