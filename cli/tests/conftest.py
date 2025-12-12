@@ -237,20 +237,30 @@ def run_cli(mocker, capsys):
     return _run_cli
 
 
-def normalize_expected_argparse_help_for_py313(text):
+def normalize_argparse_help_text(text, target_version):
     """
-    Normalize expected argparse help text to match Python 3.13+ format.
+    Normalize argparse help text to match the format of the target Python version.
 
-    Python 3.13 changed the short option format from '-r REGION, --region REGION' to '-r, --region REGION'
-    (the metavar is no longer repeated for the short option).
+    Python version differences in argparse help output:
+    - Python 3.10+: Changed 'optional arguments:' to 'options:'
+    - Python 3.13+: Changed '-r REGION, --region REGION' to '-r, --region REGION'
+      (the metavar is no longer repeated for the short option)
 
-    This function converts the expected text (pre-3.13 format) to 3.13+ format for comparison.
+    This function converts text to match the target version's format.
     """
     import re
 
-    # Convert '-X METAVAR, --long-option METAVAR' to '-X, --long-option METAVAR'
-    # Pattern matches: -X METAVAR, --long-option METAVAR (where METAVAR is uppercase with possible underscores)
-    text = re.sub(r'(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2', r'\1, \3 \2', text)
+    if target_version >= (3, 10):
+        # Convert 'optional arguments:' to 'options:'
+        text = text.replace('optional arguments:', 'options:')
+    else:
+        # Convert 'options:' to 'optional arguments:'
+        text = text.replace('options:', 'optional arguments:')
+
+    if target_version >= (3, 13):
+        # Convert '-X METAVAR, --long-option METAVAR' to '-X, --long-option METAVAR'
+        # Pattern matches: -X METAVAR, --long-option METAVAR (where METAVAR is uppercase with possible underscores)
+        text = re.sub(r'(-[a-zA-Z]) ([A-Z][A-Z_]*), (--[a-z][a-z-]*) \2', r'\1, \3 \2', text)
 
     return text
 
@@ -261,10 +271,8 @@ def assert_out_err(capsys):
         out_err = capsys.readouterr()
         actual_out = out_err.out.strip()
 
-        # Python 3.13+ changed argparse help format for short options
-        # Expected files use pre-3.13 format, so convert expected to 3.13+ format when running on 3.13+
-        if sys.version_info >= (3, 13):
-            expected_out = normalize_expected_argparse_help_for_py313(expected_out)
+        # Normalize expected output to match the current Python version's argparse format
+        expected_out = normalize_argparse_help_text(expected_out, sys.version_info[:2])
 
         with soft_assertions():
             assert_that(actual_out).is_equal_to(expected_out)
