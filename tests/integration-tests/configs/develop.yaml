@@ -825,6 +825,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_3 }}]
           schedulers: ["slurm"]
+    test_update_rollback_fixes.py::test_update_rollback_fixes:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [{{ OS_X86_2 }}]
+          schedulers: ["slurm"]
   users:
     test_default_user_home.py::test_default_user_local_home:
       dimensions:
