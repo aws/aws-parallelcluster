@@ -11,18 +11,8 @@ HeadNode:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 Scheduling:
   Scheduler: slurm
-  SlurmSettings:
-    ScaledownIdletime: 60
   SlurmQueues:
     - Name: queue1
-      ComputeSettings:
-        LocalStorage:
-          RootVolume:
-            Size: 45
-      CapacityType: ONDEMAND
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       ComputeResources:
         - Name: queue1-cr1
           Instances:
@@ -34,11 +24,6 @@ Scheduling:
           - {{ private_subnet_id }}
     # New queue added to trigger update
     - Name: queue2
-      ComputeSettings:
-        LocalStorage:
-          RootVolume:
-            Size: 45
-      CapacityType: ONDEMAND
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -51,7 +36,3 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-Monitoring:
-  Logs:
-    CloudWatch:
-      Enabled: true

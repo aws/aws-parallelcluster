@@ -10,34 +10,6 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-"""
-Integration tests for verifying fixes related to cluster update rollback scenarios.
-
-This test validates the following fixes:
-- [F1] clustermgtd remains running after both update and rollback fail
-- [F2] cfn-hup does not enter an endless loop after rollback to a state older than 24h
-- [F3] dna.json files are cleaned up after update failure
-
-Test Plan:
-1. Create cluster with 3 static compute nodes
-2. Inject cfn-signal failure on head node (simulating expired wait condition)
-3. Inject failure on CN1 (disable cfn-hup) BEFORE update
-4. Update cluster config by adding a new queue
-5. Update fails because CN1 won't apply update (cluster readiness check fails)
-6. During update's cluster readiness check (before rollback starts): inject failure on CN2
-   - CN2 has already applied the update at this point
-   - Disabling cfn-hup prevents CN2 from rolling back
-   - Cluster readiness check has 10 attempts (~15 min window)
-7. Rollback starts after update fails
-8. Rollback fails because CN2 won't rollback (still has update target config)
-9. Verify fixes:
-   - clustermgtd is running
-   - dna.json files are deleted
-   - CN3 (healthy node) has correct config version (source config before update)
-   - metadata_db.json is updated
-   - cfn-hup is not in endless loop
-"""
-
 import logging
 import time
 
@@ -55,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_update_rollback_fixes(
+def test_update_rollback_failure(
     region,
     pcluster_config_reader,
     clusters_factory,
@@ -63,12 +35,34 @@ def test_update_rollback_fixes(
     scheduler_commands_factory,
 ):
     """
-    Test that cluster update rollback fixes work correctly.
+    Test that cluster update rollback failure is handled correctly.
 
-    This test verifies:
-    1. clustermgtd remains running after update and rollback failures
-    2. cfn-hup does not enter endless loop when cfn-signal fails
-    3. dna.json files are cleaned up properly
+    This test validates the following fixes:
+    - [F1] clustermgtd remains running after both update and rollback fail
+           (expected when failure occurs after slurm reconfiguration, which is the safe section)
+    - [F2] cfn-hup does not enter an endless loop after rollback to a state older than 24h
+    - [F3] dna.json files are cleaned up after update and rollback failure
+
+    Test Plan:
+    1. Create cluster with 3 static compute nodes
+    2. Inject cfn-signal failure on head node (simulating expired wait condition)
+    3. Inject failure on CN1 (disable cfn-hup) BEFORE update
+    4. Update cluster config by adding a new queue
+    5. Update fails because CN1 won't apply update (cluster readiness check fails)
+    6. During update's cluster readiness check (before rollback starts): inject failure on CN2
+       - CN2 has already applied the update at this point
+       - Disabling cfn-hup prevents CN2 from rolling back
+       - Cluster readiness check has 10 attempts (~15 min window)
+    7. Rollback starts after update fails
+    8. Rollback fails because CN2 won't rollback (still has update target config)
+    9. Verify fixes:
+       - clustermgtd is running
+       - dna.json files are deleted
+       - CN1 (unhealthy) has source config version (never applied update, cfn-hup disabled before update)
+       - CN2 (unhealthy) has target config version (applied update, cfn-hup disabled before rollback)
+       - CN3 (healthy node) has correct config version (source config before update)
+       - metadata_db.json is updated
+       - cfn-hup is not in endless loop
     """
     # Create cluster with initial configuration (3 static compute nodes)
     init_config_file = pcluster_config_reader()
@@ -82,7 +76,6 @@ def test_update_rollback_fixes(
 
     # Get compute node hostnames
     compute_nodes = slurm_commands.get_compute_nodes()
-    assert_that(len(compute_nodes)).is_greater_than_or_equal_to(3)
     logger.info(f"Compute nodes: {compute_nodes}")
 
     cn1, cn2, cn3 = compute_nodes[0], compute_nodes[1], compute_nodes[2]
@@ -117,9 +110,8 @@ def test_update_rollback_fixes(
     logger.info("Triggering cluster update (non-blocking)...")
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
 
-    # Get the target config version from the update config file
-    # We'll use this to verify CN2 has applied the update before disabling its cfn-hup
-    cluster.update(str(updated_config_file), wait=False, raise_on_error=False, log_error=False)
+    # Trigger update (non-blocking) - failure is expected due to CN1 not applying update
+    cluster.update(str(updated_config_file), wait=False, raise_on_error=False)
 
     # Step 6: Wait for CN2 to complete the update, then disable its cfn-hup
     # CN2 needs to successfully apply the update first (have the new config version in DDB)
@@ -129,13 +121,20 @@ def test_update_rollback_fixes(
         region, cluster.name, cn2_instance_id, initial_config_version, timeout_minutes=15
     )
 
-    logger.info(f"CN2 has applied the update. Disabling cfn-hup on CN2 ({cn2})...")
+    logger.info(f"CN2 has applied the update. Disabling cfn-hup on CN2 ({cn2}) to inject rollback failure...")
     _disable_cfn_hup_on_compute_node(remote_command_executor, cn2)
 
     # Wait for stack to reach UPDATE_ROLLBACK_COMPLETE state
     logger.info("Waiting for stack to reach UPDATE_ROLLBACK_COMPLETE...")
     final_status = _wait_for_stack_rollback_complete(cluster, region)
     logger.info(f"Stack final status: {final_status}")
+
+    # Wait for head node rollback to complete
+    # Note: CFN stack reaches UPDATE_ROLLBACK_COMPLETE before head node finishes rollback recipe
+    # Sleep briefly to ensure rollback recipe has started writing to chef-client.log
+    time.sleep(10)
+    logger.info("Waiting for head node rollback recipe to complete...")
+    _wait_for_head_node_rollback_complete(remote_command_executor)
 
     # Step 9: Verify fixes
     logger.info("Verifying fixes...")
@@ -158,16 +157,23 @@ def test_update_rollback_fixes(
     logger.info("All verifications passed!")
 
 
-def _wait_for_static_nodes_ready(slurm_commands, expected_count, timeout_minutes=10):
+def _get_supervisorctl_path(remote_command_executor):
+    """Get the path to supervisorctl on the cluster."""
+    result = remote_command_executor.run_remote_command(
+        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
+    )
+    path = result.stdout.strip()
+    if not path:
+        path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
+    return path
+
+
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(10))
+def _wait_for_static_nodes_ready(slurm_commands, expected_count):
     """Wait for static compute nodes to be ready."""
-
-    @retry(wait_fixed=seconds(30), stop_max_delay=minutes(timeout_minutes))
-    def _check_nodes():
-        nodes = slurm_commands.get_compute_nodes()
-        assert_that(len(nodes)).is_greater_than_or_equal_to(expected_count)
-        return nodes
-
-    return _check_nodes()
+    nodes = slurm_commands.get_compute_nodes()
+    assert_that(len(nodes)).is_greater_than_or_equal_to(expected_count)
+    return nodes
 
 
 def _get_instance_id_for_node(region, remote_command_executor, node_name, instance_ids):
@@ -266,13 +272,7 @@ def _disable_cfn_hup_on_compute_node(remote_command_executor, node_name):
     """
     logger.info(f"Disabling cfn-hup on compute node {node_name}...")
 
-    # Get supervisorctl path
-    result = remote_command_executor.run_remote_command(
-        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
-    )
-    supervisorctl_path = result.stdout.strip()
-    if not supervisorctl_path:
-        supervisorctl_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
+    supervisorctl_path = _get_supervisorctl_path(remote_command_executor)
 
     # Stop cfn-hup using srun
     remote_command_executor.run_remote_command(f"srun -w {node_name} sudo {supervisorctl_path} stop cfn-hup")
@@ -287,41 +287,40 @@ def _disable_cfn_hup_on_compute_node(remote_command_executor, node_name):
     logger.info(f"cfn-hup stopped on {node_name} ✓")
 
 
-def _wait_for_stack_rollback_complete(cluster, region, timeout_minutes=60):
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(60))
+def _wait_for_stack_rollback_complete(cluster, region):
     """Wait for CloudFormation stack to reach UPDATE_ROLLBACK_COMPLETE state."""
     client = boto3.client("cloudformation", region_name=region)
-
-    @retry(wait_fixed=seconds(30), stop_max_delay=minutes(timeout_minutes))
-    def _check_rollback_complete():
-        stack_status = client.describe_stacks(StackName=cluster.name)["Stacks"][0]["StackStatus"]
-        logger.info(f"Current stack status: {stack_status}")
-        if stack_status != "UPDATE_ROLLBACK_COMPLETE":
-            raise Exception(f"Stack not in UPDATE_ROLLBACK_COMPLETE state: {stack_status}")
-        return stack_status
-
-    return _check_rollback_complete()
+    stack_status = client.describe_stacks(StackName=cluster.name)["Stacks"][0]["StackStatus"]
+    logger.info(f"Current stack status: {stack_status}")
+    if stack_status != "UPDATE_ROLLBACK_COMPLETE":
+        raise Exception(f"Stack not in UPDATE_ROLLBACK_COMPLETE state: {stack_status}")
+    return stack_status
 
 
-def _verify_clustermgtd_running(remote_command_executor, timeout_minutes=20):
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
+def _wait_for_head_node_rollback_complete(remote_command_executor):
+    """
+    Wait for head node rollback recipe to complete.
+
+    CFN stack reaches UPDATE_ROLLBACK_COMPLETE before head node finishes rollback recipe.
+    We check the last line of chef-client.log for check_cluster_ready.py output which indicates
+    rollback completion.
+    """
+    result = remote_command_executor.run_remote_command("tail -1 /var/log/chef-client.log")
+    last_line = result.stdout.strip()
+    if "check_cluster_ready.py" not in last_line or "returned" not in last_line:
+        raise Exception(f"Rollback recipe not yet complete. Last line: {last_line}")
+    logger.info(f"Head node rollback recipe completed: {last_line}")
+    return last_line
+
+
+def _verify_clustermgtd_running(remote_command_executor):
     """Verify that clustermgtd is running."""
     logger.info("Verifying clustermgtd is running...")
-
-    # Find the supervisorctl path
-    result = remote_command_executor.run_remote_command(
-        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
-    )
-    supervisorctl_path = result.stdout.strip()
-
-    if not supervisorctl_path:
-        supervisorctl_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
-
-    @retry(wait_fixed=seconds(30), stop_max_delay=minutes(timeout_minutes))
-    def _check_clustermgtd():
-        result = remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} status clustermgtd")
-        assert_that(result.stdout).contains("RUNNING")
-        return result
-
-    _check_clustermgtd()
+    supervisorctl_path = _get_supervisorctl_path(remote_command_executor)
+    result = remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} status clustermgtd")
+    assert_that(result.stdout).contains("RUNNING")
     logger.info("clustermgtd is running ✓")
 
 
