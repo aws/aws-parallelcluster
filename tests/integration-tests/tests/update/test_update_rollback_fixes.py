@@ -221,26 +221,25 @@ def _inject_cfn_signal_failure(remote_command_executor):
 
     This simulates the scenario where the wait condition handle has expired.
     """
-    # First, get the actual path of cfn-signal
-    # Need to source the environment file to get the variable
+    # Get the cfn-signal path from environment variable
     result = remote_command_executor.run_remote_command(
         "bash -c 'source /etc/parallelcluster/pcluster_cookbook_environment.sh 2>/dev/null && echo $CFN_BOOTSTRAP_VIRTUALENV_PATH'"
     )
-    cfn_path = result.stdout.strip()
+    cfn_bin_path = result.stdout.strip()
 
-    if not cfn_path:
+    if not cfn_bin_path:
         # Fallback: find the path
         result = remote_command_executor.run_remote_command(
             "find /opt -name cfn-signal -type f 2>/dev/null | head -1"
         )
         cfn_signal_path = result.stdout.strip()
         if cfn_signal_path:
-            cfn_path = cfn_signal_path.rsplit("/bin/cfn-signal", 1)[0]
+            cfn_bin_path = cfn_signal_path.rsplit("/cfn-signal", 1)[0]
         else:
             # Default path
-            cfn_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cfn_bootstrap_virtualenv"
+            cfn_bin_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cfn_bootstrap_virtualenv/bin"
 
-    logger.info(f"CFN bootstrap path: {cfn_path}")
+    logger.info(f"CFN bin path: {cfn_bin_path}")
 
     # Create a wrapper script that makes cfn-signal fail
     # This simulates an expired wait condition handle
@@ -258,11 +257,12 @@ exit 1
     remote_command_executor.run_remote_command("sudo chmod +x /tmp/cfn-signal-wrapper.sh")
 
     # Backup original cfn-signal and replace with wrapper
+    # Note: CFN_BOOTSTRAP_VIRTUALENV_PATH already points to bin dir, so just append /cfn-signal
     remote_command_executor.run_remote_command(
-        f"sudo cp {cfn_path}/bin/cfn-signal {cfn_path}/bin/cfn-signal.bak"
+        f"sudo cp {cfn_bin_path}/cfn-signal {cfn_bin_path}/cfn-signal.bak"
     )
     remote_command_executor.run_remote_command(
-        f"sudo cp /tmp/cfn-signal-wrapper.sh {cfn_path}/bin/cfn-signal"
+        f"sudo cp /tmp/cfn-signal-wrapper.sh {cfn_bin_path}/cfn-signal"
     )
     logger.info("cfn-signal wrapper installed")
 
