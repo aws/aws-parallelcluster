@@ -278,7 +278,11 @@ def _disable_cfn_hup_on_compute_node(remote_command_executor, node_name):
     remote_command_executor.run_remote_command(f"srun -w {node_name} sudo {supervisorctl_path} stop cfn-hup")
 
     # Verify cfn-hup is stopped
-    result = remote_command_executor.run_remote_command(f"srun -w {node_name} sudo {supervisorctl_path} status cfn-hup")
+    # Note: supervisorctl status returns exit code 3 when process is STOPPED, so we use raise_on_error=False
+    result = remote_command_executor.run_remote_command(
+        f"srun -w {node_name} sudo {supervisorctl_path} status cfn-hup",
+        raise_on_error=False,
+    )
     assert_that(result.stdout).contains("STOPPED")
     logger.info(f"cfn-hup stopped on {node_name} ✓")
 
