@@ -51,7 +51,6 @@ from utils import get_compute_nodes_instance_ids
 
 from tests.common.schedulers_common import SlurmCommands
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -88,7 +87,7 @@ def test_update_rollback_fixes(
 
     cn1, cn2, cn3 = compute_nodes[0], compute_nodes[1], compute_nodes[2]
 
-    # Get instance IDs for SSM access
+    # Get instance IDs for DynamoDB queries
     instance_ids = get_compute_nodes_instance_ids(cluster.name, region)
     logger.info(f"Compute node instance IDs: {instance_ids}")
 
@@ -111,8 +110,8 @@ def test_update_rollback_fixes(
 
     # Step 3: Disable cfn-hup on CN1 BEFORE update
     # This ensures CN1 won't apply the update, causing cluster readiness check to fail
-    logger.info(f"Disabling cfn-hup on CN1 ({cn1_instance_id}) before update...")
-    _disable_cfn_hup_via_ssm(region, cn1_instance_id)
+    logger.info(f"Disabling cfn-hup on CN1 ({cn1}) before update...")
+    _disable_cfn_hup_on_compute_node(remote_command_executor, cn1)
 
     # Step 4: Trigger cluster update with wait=False (non-blocking)
     logger.info("Triggering cluster update (non-blocking)...")
@@ -130,12 +129,12 @@ def test_update_rollback_fixes(
         region, cluster.name, cn2_instance_id, initial_config_version, timeout_minutes=15
     )
 
-    logger.info(f"CN2 has applied the update. Disabling cfn-hup on CN2 ({cn2_instance_id})...")
-    _disable_cfn_hup_via_ssm(region, cn2_instance_id)
+    logger.info(f"CN2 has applied the update. Disabling cfn-hup on CN2 ({cn2})...")
+    _disable_cfn_hup_on_compute_node(remote_command_executor, cn2)
 
-    # Wait for stack to reach final state
-    logger.info("Waiting for stack to reach final state...")
-    final_status = _wait_for_stack_final_state(cluster, region)
+    # Wait for stack to reach UPDATE_ROLLBACK_COMPLETE state
+    logger.info("Waiting for stack to reach UPDATE_ROLLBACK_COMPLETE...")
+    final_status = _wait_for_stack_rollback_complete(cluster, region)
     logger.info(f"Stack final status: {final_status}")
 
     # Step 9: Verify fixes
@@ -148,9 +147,7 @@ def test_update_rollback_fixes(
     _verify_dna_json_cleaned_up(remote_command_executor)
 
     # Verify CN3 has correct config version in DynamoDB (should be initial/rollback version)
-    _verify_compute_node_config_version_in_ddb(
-        region, cluster.name, cn3_instance_id, initial_config_version
-    )
+    _verify_compute_node_config_version_in_ddb(region, cluster.name, cn3_instance_id, initial_config_version)
 
     # Verify metadata_db.json is updated (cfn-hup processed the change)
     _verify_metadata_db_updated(remote_command_executor)
@@ -163,6 +160,7 @@ def test_update_rollback_fixes(
 
 def _wait_for_static_nodes_ready(slurm_commands, expected_count, timeout_minutes=10):
     """Wait for static compute nodes to be ready."""
+
     @retry(wait_fixed=seconds(30), stop_max_delay=minutes(timeout_minutes))
     def _check_nodes():
         nodes = slurm_commands.get_compute_nodes()
@@ -203,10 +201,7 @@ def _get_config_version_from_ddb(region, cluster_name, instance_id):
     table_name = f"parallelcluster-{cluster_name}"
     ddb_key = f"CLUSTER_CONFIG.{instance_id}"
 
-    response = dynamodb.get_item(
-        TableName=table_name,
-        Key={"Id": {"S": ddb_key}}
-    )
+    response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
 
     if "Item" in response:
         data = response["Item"].get("Data", {}).get("M", {})
@@ -222,16 +217,16 @@ def _inject_cfn_signal_failure(remote_command_executor):
     This simulates the scenario where the wait condition handle has expired.
     """
     # Get the cfn-signal path from environment variable
-    result = remote_command_executor.run_remote_command(
-        "bash -c 'source /etc/parallelcluster/pcluster_cookbook_environment.sh 2>/dev/null && echo $CFN_BOOTSTRAP_VIRTUALENV_PATH'"
+    cmd = (
+        "bash -c 'source /etc/parallelcluster/pcluster_cookbook_environment.sh 2>/dev/null "
+        "&& echo $CFN_BOOTSTRAP_VIRTUALENV_PATH'"
     )
+    result = remote_command_executor.run_remote_command(cmd)
     cfn_bin_path = result.stdout.strip()
 
     if not cfn_bin_path:
         # Fallback: find the path
-        result = remote_command_executor.run_remote_command(
-            "find /opt -name cfn-signal -type f 2>/dev/null | head -1"
-        )
+        result = remote_command_executor.run_remote_command("find /opt -name cfn-signal -type f 2>/dev/null | head -1")
         cfn_signal_path = result.stdout.strip()
         if cfn_signal_path:
             cfn_bin_path = cfn_signal_path.rsplit("/cfn-signal", 1)[0]
@@ -258,82 +253,52 @@ exit 1
 
     # Backup original cfn-signal and replace with wrapper
     # Note: CFN_BOOTSTRAP_VIRTUALENV_PATH already points to bin dir, so just append /cfn-signal
-    remote_command_executor.run_remote_command(
-        f"sudo cp {cfn_bin_path}/cfn-signal {cfn_bin_path}/cfn-signal.bak"
-    )
-    remote_command_executor.run_remote_command(
-        f"sudo cp /tmp/cfn-signal-wrapper.sh {cfn_bin_path}/cfn-signal"
-    )
+    remote_command_executor.run_remote_command(f"sudo cp {cfn_bin_path}/cfn-signal {cfn_bin_path}/cfn-signal.bak")
+    remote_command_executor.run_remote_command(f"sudo cp /tmp/cfn-signal-wrapper.sh {cfn_bin_path}/cfn-signal")
     logger.info("cfn-signal wrapper installed")
 
 
-def _disable_cfn_hup_via_ssm(region, instance_id):
-    """Disable cfn-hup on a compute node using SSM."""
-    logger.info(f"Disabling cfn-hup on instance {instance_id} via SSM...")
+def _disable_cfn_hup_on_compute_node(remote_command_executor, node_name):
+    """
+    Disable cfn-hup on a compute node using srun.
 
-    ssm = boto3.client("ssm", region_name=region)
+    Uses supervisorctl to stop cfn-hup service on the compute node.
+    """
+    logger.info(f"Disabling cfn-hup on compute node {node_name}...")
 
-    # Stop and disable cfn-hup service
-    commands = [
-        "systemctl stop cfn-hup",
-        "systemctl disable cfn-hup",
-        "echo 'cfn-hup disabled at $(date)' >> /tmp/cfn-hup-disabled.log"
-    ]
-
-    response = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": commands},
-        TimeoutSeconds=120,
+    # Get supervisorctl path
+    result = remote_command_executor.run_remote_command(
+        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
     )
+    supervisorctl_path = result.stdout.strip()
+    if not supervisorctl_path:
+        supervisorctl_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
 
-    command_id = response["Command"]["CommandId"]
+    # Stop cfn-hup using srun
+    remote_command_executor.run_remote_command(f"srun -w {node_name} sudo {supervisorctl_path} stop cfn-hup")
 
-    # Wait for command to complete
-    @retry(wait_fixed=seconds(5), stop_max_delay=minutes(2))
-    def _wait_for_command():
-        result = ssm.get_command_invocation(
-            CommandId=command_id,
-            InstanceId=instance_id,
-        )
-        status = result["Status"]
-        if status in ["Pending", "InProgress", "Delayed"]:
-            raise Exception(f"Command still running: {status}")
-        return result
-
-    result = _wait_for_command()
-    logger.info(f"SSM command result for {instance_id}: {result['Status']}")
-
-    if result["Status"] != "Success":
-        logger.warning(f"SSM command stderr: {result.get('StandardErrorContent', '')}")
+    # Verify cfn-hup is stopped
+    result = remote_command_executor.run_remote_command(f"srun -w {node_name} sudo {supervisorctl_path} status cfn-hup")
+    assert_that(result.stdout).contains("STOPPED")
+    logger.info(f"cfn-hup stopped on {node_name} ✓")
 
 
-def _wait_for_stack_final_state(cluster, region, timeout_minutes=60):
-    """Wait for CloudFormation stack to reach a final state."""
+def _wait_for_stack_rollback_complete(cluster, region, timeout_minutes=60):
+    """Wait for CloudFormation stack to reach UPDATE_ROLLBACK_COMPLETE state."""
     client = boto3.client("cloudformation", region_name=region)
 
-    final_states = [
-        "CREATE_COMPLETE",
-        "UPDATE_COMPLETE",
-        "UPDATE_ROLLBACK_COMPLETE",
-        "UPDATE_ROLLBACK_FAILED",
-        "UPDATE_FAILED",
-        "DELETE_COMPLETE",
-        "DELETE_FAILED",
-    ]
-
     @retry(wait_fixed=seconds(30), stop_max_delay=minutes(timeout_minutes))
-    def _check_final_state():
+    def _check_rollback_complete():
         stack_status = client.describe_stacks(StackName=cluster.name)["Stacks"][0]["StackStatus"]
         logger.info(f"Current stack status: {stack_status}")
-        if stack_status not in final_states:
-            raise Exception(f"Stack not in final state: {stack_status}")
+        if stack_status != "UPDATE_ROLLBACK_COMPLETE":
+            raise Exception(f"Stack not in UPDATE_ROLLBACK_COMPLETE state: {stack_status}")
         return stack_status
 
-    return _check_final_state()
+    return _check_rollback_complete()
 
 
-def _verify_clustermgtd_running(remote_command_executor):
+def _verify_clustermgtd_running(remote_command_executor, timeout_minutes=10):
     """Verify that clustermgtd is running."""
     logger.info("Verifying clustermgtd is running...")
 
@@ -346,10 +311,13 @@ def _verify_clustermgtd_running(remote_command_executor):
     if not supervisorctl_path:
         supervisorctl_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
 
-    result = remote_command_executor.run_remote_command(
-        f"sudo {supervisorctl_path} status clustermgtd"
-    )
-    assert_that(result.stdout).contains("RUNNING")
+    @retry(wait_fixed=seconds(30), stop_max_delay=minutes(timeout_minutes))
+    def _check_clustermgtd():
+        result = remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} status clustermgtd")
+        assert_that(result.stdout).contains("RUNNING")
+        return result
+
+    _check_clustermgtd()
     logger.info("clustermgtd is running ✓")
 
 
@@ -371,6 +339,7 @@ def _wait_for_node_config_version_change(region, cluster_name, instance_id, old_
 
     This ensures the node has completed applying the update before we disable its cfn-hup.
     """
+
     @retry(wait_fixed=seconds(10), stop_max_delay=minutes(timeout_minutes))
     def _check_version():
         try:
@@ -402,10 +371,7 @@ def _verify_compute_node_config_version_in_ddb(region, cluster_name, instance_id
     ddb_key = f"CLUSTER_CONFIG.{instance_id}"
 
     try:
-        response = dynamodb.get_item(
-            TableName=table_name,
-            Key={"Id": {"S": ddb_key}}
-        )
+        response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
 
         if "Item" in response:
             item = response["Item"]
@@ -428,11 +394,11 @@ def _verify_compute_node_config_version_in_ddb(region, cluster_name, instance_id
         logger.warning(f"Error querying DynamoDB: {e}")
 
     # Fallback: try scanning if direct query fails
-    logger.warning(f"Direct DDB query failed, trying scan...")
+    logger.warning("Direct DDB query failed, trying scan...")
     response = dynamodb.scan(
         TableName=table_name,
         FilterExpression="contains(Id, :instance_id)",
-        ExpressionAttributeValues={":instance_id": {"S": instance_id}}
+        ExpressionAttributeValues={":instance_id": {"S": instance_id}},
     )
 
     if response.get("Items"):
@@ -458,9 +424,7 @@ def _verify_metadata_db_updated(remote_command_executor):
     assert_that(result.stdout.strip()).is_equal_to("exists")
 
     # Also check the modification time is recent (within last hour)
-    result = remote_command_executor.run_remote_command(
-        "stat -c %Y /var/lib/cfn-hup/data/metadata_db.json"
-    )
+    result = remote_command_executor.run_remote_command("stat -c %Y /var/lib/cfn-hup/data/metadata_db.json")
     mtime = int(result.stdout.strip())
     current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
     age_seconds = current_time - mtime
