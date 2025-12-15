@@ -302,7 +302,7 @@ def _wait_for_stack_rollback_complete(cluster, region, timeout_minutes=60):
     return _check_rollback_complete()
 
 
-def _verify_clustermgtd_running(remote_command_executor, timeout_minutes=10):
+def _verify_clustermgtd_running(remote_command_executor, timeout_minutes=20):
     """Verify that clustermgtd is running."""
     logger.info("Verifying clustermgtd is running...")
 
