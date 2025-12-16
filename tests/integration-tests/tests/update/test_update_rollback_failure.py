@@ -366,17 +366,25 @@ def _verify_metadata_db_updated(remote_command_executor):
     logger.info("Verifying metadata_db.json is updated...")
 
     metadata_db_path = "/var/lib/cfn-hup/data/metadata_db.json"
-    result = remote_command_executor.run_remote_command(
-        f"test -f {metadata_db_path} && echo 'exists' || echo 'not found'"
-    )
-    assert_that(result.stdout.strip()).is_equal_to("exists")
 
-    # Check the modification time is recent (within last hour)
+    # Wait for metadata_db.json to exist (it may be temporarily removed during update)
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
+    def _wait_for_metadata_db_exists():
+        result = remote_command_executor.run_remote_command(
+            f"test -f {metadata_db_path} && echo 'exists' || echo 'not found'"
+        )
+        if result.stdout.strip() != "exists":
+            raise Exception(f"metadata_db.json not found yet at {metadata_db_path}")
+        return True
+
+    _wait_for_metadata_db_exists()
+
+    # Check the modification time is recent (within last 10 minutes)
     age_seconds = get_file_mtime_age_seconds(remote_command_executor, metadata_db_path)
     logger.info(f"metadata_db.json age: {age_seconds} seconds")
-    # Should have been updated within the last hour (during the test)
-    assert_that(age_seconds).is_less_than(3600)
-    logger.info("metadata_db.json exists and was recently updated ✓")
+    # Should have been updated within the last 10 minutes
+    assert_that(age_seconds).is_less_than(600)
+    logger.info("metadata_db.json exists and was recently updated.")
 
 
 def _verify_no_cfn_hup_endless_loop(remote_command_executor):
