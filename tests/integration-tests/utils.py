@@ -1040,3 +1040,80 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
                     return similar_instances
 
     return similar_instances
+
+
+def verify_cluster_node_config_version_in_ddb(region, cluster_name, instance_id, expected_version):
+    """
+    Verify that a cluster node has the correct config version in DynamoDB.
+
+    DynamoDB key format: CLUSTER_CONFIG.{instance_id}
+    Data structure: Data.M.cluster_config_version.S
+
+    Args:
+        region: AWS region
+        cluster_name: Name of the cluster
+        instance_id: EC2 instance ID of the node
+        expected_version: Expected config version string
+    """
+    logging.info(f"Verifying config version for instance {instance_id} in DynamoDB...")
+
+    dynamodb = boto3.client("dynamodb", region_name=region)
+    table_name = f"parallelcluster-{cluster_name}"
+    ddb_key = f"CLUSTER_CONFIG.{instance_id}"
+
+    try:
+        response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
+
+        if "Item" in response:
+            item = response["Item"]
+            data = item.get("Data", {}).get("M", {})
+            config_version = data.get("cluster_config_version", {}).get("S", "")
+            status = data.get("status", {}).get("S", "")
+
+            logging.info(f"Instance {instance_id} DDB record:")
+            logging.info(f"  - config_version: {config_version}")
+            logging.info(f"  - status: {status}")
+            logging.info(f"  - expected_version: {expected_version}")
+
+            assert_that(config_version).is_equal_to(expected_version)
+            logging.info(f"Node {instance_id} has correct config version ✓")
+            return config_version
+
+    except Exception as e:
+        logging.warning(f"Error querying DynamoDB: {e}")
+
+    # Fallback: try scanning if direct query fails
+    logging.warning("Direct DDB query failed, trying scan...")
+    response = dynamodb.scan(
+        TableName=table_name,
+        FilterExpression="contains(Id, :instance_id)",
+        ExpressionAttributeValues={":instance_id": {"S": instance_id}},
+    )
+
+    if response.get("Items"):
+        for item in response["Items"]:
+            data = item.get("Data", {}).get("M", {})
+            config_version = data.get("cluster_config_version", {}).get("S", "")
+            logging.info(f"Instance {instance_id} config version in DDB (via scan): {config_version}")
+            assert_that(config_version).is_equal_to(expected_version)
+            logging.info(f"Node {instance_id} has correct config version ✓")
+            return config_version
+
+    raise AssertionError(f"No DynamoDB record found for instance {instance_id}")
+
+
+def get_file_mtime_age_seconds(remote_command_executor, file_path):
+    """
+    Get the age of a file in seconds (time since last modification).
+
+    Args:
+        remote_command_executor: RemoteCommandExecutor instance
+        file_path: Path to the file on the remote node
+
+    Returns:
+        Age of the file in seconds
+    """
+    result = remote_command_executor.run_remote_command(f"sudo stat -c %Y {file_path}")
+    mtime = int(result.stdout.strip())
+    current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
+    return current_time - mtime
