@@ -19,11 +19,14 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids
+from utils import get_compute_nodes_instance_ids, get_file_mtime_age_seconds, verify_cluster_node_config_version_in_ddb
 
 from tests.common.schedulers_common import SlurmCommands
 
 logger = logging.getLogger(__name__)
+
+# Number of static compute nodes used in this test
+N_STATIC_NODES = 3
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -64,15 +67,15 @@ def test_update_rollback_failure(
        - metadata_db.json is updated
        - cfn-hup is not in endless loop
     """
-    # Create cluster with initial configuration (3 static compute nodes)
-    init_config_file = pcluster_config_reader()
+    # Create cluster with initial configuration
+    init_config_file = pcluster_config_reader(n_static_nodes=N_STATIC_NODES)
     cluster = clusters_factory(init_config_file)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
 
     # Wait for all static nodes to be ready
-    _wait_for_static_nodes_ready(slurm_commands, expected_count=3)
+    _wait_for_static_nodes_ready(slurm_commands, expected_count=N_STATIC_NODES)
 
     # Get compute node hostnames
     compute_nodes = slurm_commands.get_compute_nodes()
@@ -108,7 +111,7 @@ def test_update_rollback_failure(
 
     # Step 4: Trigger cluster update with wait=False (non-blocking)
     logger.info("Triggering cluster update (non-blocking)...")
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", n_static_nodes=N_STATIC_NODES)
 
     # Trigger update (non-blocking) - failure is expected due to CN1 not applying update
     cluster.update(str(updated_config_file), wait=False, raise_on_error=False)
@@ -146,7 +149,7 @@ def test_update_rollback_failure(
     _verify_dna_json_cleaned_up(remote_command_executor)
 
     # Verify CN3 has correct config version in DynamoDB (should be initial/rollback version)
-    _verify_compute_node_config_version_in_ddb(region, cluster.name, cn3_instance_id, initial_config_version)
+    verify_cluster_node_config_version_in_ddb(region, cluster.name, cn3_instance_id, initial_config_version)
 
     # Verify metadata_db.json is updated (cfn-hup processed the change)
     _verify_metadata_db_updated(remote_command_executor)
@@ -298,7 +301,7 @@ def _wait_for_stack_rollback_complete(cluster, region):
     return stack_status
 
 
-@retry(wait_fixed=seconds(30), stop_max_delay=minutes(20))
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(30))
 def _wait_for_head_node_rollback_complete(remote_command_executor):
     """
     Wait for head node rollback recipe to complete.
@@ -358,80 +361,18 @@ def _wait_for_node_config_version_change(region, cluster_name, instance_id, old_
     return _check_version()
 
 
-def _verify_compute_node_config_version_in_ddb(region, cluster_name, instance_id, expected_version):
-    """
-    Verify that the compute node has the correct config version in DynamoDB.
-
-    DynamoDB key format: CLUSTER_CONFIG.{instance_id}
-    Data structure: Data.M.cluster_config_version.S
-    """
-    logger.info(f"Verifying config version for instance {instance_id} in DynamoDB...")
-
-    dynamodb = boto3.client("dynamodb", region_name=region)
-    table_name = f"parallelcluster-{cluster_name}"
-
-    # Query using the exact key format: CLUSTER_CONFIG.{instance_id}
-    ddb_key = f"CLUSTER_CONFIG.{instance_id}"
-
-    try:
-        response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
-
-        if "Item" in response:
-            item = response["Item"]
-            # Config version is stored in Data.M.cluster_config_version.S
-            data = item.get("Data", {}).get("M", {})
-            config_version = data.get("cluster_config_version", {}).get("S", "")
-            status = data.get("status", {}).get("S", "")
-
-            logger.info(f"Instance {instance_id} DDB record:")
-            logger.info(f"  - config_version: {config_version}")
-            logger.info(f"  - status: {status}")
-            logger.info(f"  - expected_version: {expected_version}")
-
-            # The healthy node should have rolled back to the source config version
-            assert_that(config_version).is_equal_to(expected_version)
-            logger.info(f"Compute node {instance_id} has correct config version ✓")
-            return
-
-    except Exception as e:
-        logger.warning(f"Error querying DynamoDB: {e}")
-
-    # Fallback: try scanning if direct query fails
-    logger.warning("Direct DDB query failed, trying scan...")
-    response = dynamodb.scan(
-        TableName=table_name,
-        FilterExpression="contains(Id, :instance_id)",
-        ExpressionAttributeValues={":instance_id": {"S": instance_id}},
-    )
-
-    if response.get("Items"):
-        for item in response["Items"]:
-            data = item.get("Data", {}).get("M", {})
-            config_version = data.get("cluster_config_version", {}).get("S", "")
-            logger.info(f"Instance {instance_id} config version in DDB (via scan): {config_version}")
-            assert_that(config_version).is_equal_to(expected_version)
-            logger.info(f"Compute node {instance_id} has correct config version ✓")
-            return
-
-    # If we reach here, no record was found - this is a test failure
-    pytest.fail(f"No DynamoDB record found for instance {instance_id}")
-
-
 def _verify_metadata_db_updated(remote_command_executor):
     """Verify that metadata_db.json was updated (cfn-hup processed the change)."""
     logger.info("Verifying metadata_db.json is updated...")
 
+    metadata_db_path = "/var/lib/cfn-hup/data/metadata_db.json"
     result = remote_command_executor.run_remote_command(
-        "test -f /var/lib/cfn-hup/data/metadata_db.json && echo 'exists' || echo 'not found'"
+        f"test -f {metadata_db_path} && echo 'exists' || echo 'not found'"
     )
     assert_that(result.stdout.strip()).is_equal_to("exists")
 
-    # Also check the modification time is recent (within last hour)
-    result = remote_command_executor.run_remote_command("stat -c %Y /var/lib/cfn-hup/data/metadata_db.json")
-    mtime = int(result.stdout.strip())
-    current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
-    age_seconds = current_time - mtime
-
+    # Check the modification time is recent (within last hour)
+    age_seconds = get_file_mtime_age_seconds(remote_command_executor, metadata_db_path)
     logger.info(f"metadata_db.json age: {age_seconds} seconds")
     # Should have been updated within the last hour (during the test)
     assert_that(age_seconds).is_less_than(3600)

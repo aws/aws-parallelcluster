@@ -17,8 +17,8 @@ Scheduling:
         - Name: queue1-cr1
           Instances:
             - InstanceType: c5.large
-          MinCount: 3
-          MaxCount: 5
+          MinCount: {{ n_static_nodes }}
+          MaxCount: {{ n_static_nodes }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
