@@ -108,7 +108,7 @@ phases:
                 
                 PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-modules-extra-$(uname -r)"
                 Repository="BaseOS"
-                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
+                [[ $OS =~ (rocky9|rhel9) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
                 
                 if [[ $OS =~ rocky ]]; then
                   for PACKAGE in ${!PACKAGE_LIST}
