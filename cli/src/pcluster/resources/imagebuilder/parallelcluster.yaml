@@ -34,6 +34,21 @@ phases:
                 *) echo "Unsupported OS: $RELEASE" && exit {{ FailExitCode }} ;;
               esac
 
+      # Disable snap refresh to prevent background updates during build (Ubuntu only)
+      - name: DisableSnapRefresh
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              OS="{{ build.OperatingSystemName.outputs.stdout }}"
+              if [[ $OS =~ ^ubuntu ]]; then
+                # Wait for any in-progress snap operations to complete, then stop and disable
+                snap watch --last=auto-refresh 2>/dev/null || true
+                systemctl stop snapd.refresh.timer
+                systemctl disable snapd.refresh.timer
+              fi
+
       # Initialize system information and URLs
       - name: SystemInfo
         action: ExecuteBash
@@ -258,6 +273,12 @@ phases:
                 rm -rf /tmp/imagebuilder_service/ssm_installed
               else
                  echo "SSM agent is installed by default"
+              fi
+              
+              # Re-enable snap refresh timer (Ubuntu only)
+              if [[ $OS =~ ^ubuntu ]]; then
+                systemctl enable snapd.refresh.timer
+                systemctl start snapd.refresh.timer
               fi
               
               # Final cleanup
