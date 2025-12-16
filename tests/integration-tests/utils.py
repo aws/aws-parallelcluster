@@ -1113,7 +1113,7 @@ def get_file_mtime_age_seconds(remote_command_executor, file_path):
     Returns:
         Age of the file in seconds
     """
-    result = remote_command_executor.run_remote_command(f"stat -c %Y {file_path}")
+    result = remote_command_executor.run_remote_command(f"sudo stat -c %Y {file_path}")
     mtime = int(result.stdout.strip())
     current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
     return current_time - mtime

@@ -111,7 +111,9 @@ def test_update_rollback_failure(
 
     # Step 4: Trigger cluster update with wait=False (non-blocking)
     logger.info("Triggering cluster update (non-blocking)...")
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", n_static_nodes=N_STATIC_NODES)
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml", n_static_nodes=N_STATIC_NODES
+    )
 
     # Trigger update (non-blocking) - failure is expected due to CN1 not applying update
     cluster.update(str(updated_config_file), wait=False, raise_on_error=False)
@@ -372,10 +374,7 @@ def _verify_metadata_db_updated(remote_command_executor):
     logger.info(f"metadata_db.json: {result.stdout.strip()}")
 
     # Check the modification time is recent (within last 10 minutes)
-    result = remote_command_executor.run_remote_command(f"sudo stat -c %Y {metadata_db_path}")
-    mtime = int(result.stdout.strip())
-    current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
-    age_seconds = current_time - mtime
+    age_seconds = get_file_mtime_age_seconds(remote_command_executor, metadata_db_path)
     logger.info(f"metadata_db.json age: {age_seconds} seconds")
     # Should have been updated within the last 10 minutes
     assert_that(age_seconds).is_less_than(600)
