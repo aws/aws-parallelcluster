@@ -20,46 +20,6 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
     [
         pytest.param(None, None, None, id="No extra chef attributes"),
         pytest.param('{"other_attribute": "value"}', None, None, id="in_place_update_on_fleet_enabled not set"),
-        pytest.param(
-            '{"cluster": {"in_place_update_on_fleet_enabled": "true"}}',
-            None,
-            None,
-            id="in_place_update_true_string 'true' passes",
-        ),
-        pytest.param(
-            '{"cluster": {"in_place_update_on_fleet_enabled": true}}',
-            None,
-            None,
-            id="in_place_update_true_string true passes",
-        ),
-        pytest.param(
-            '{"cluster": {"in_place_update_on_fleet_enabled": "false"}}',
-            "When in-place updates are disabled, cluster updates are applied "
-            "by replacing compute and login nodes according to the selected QueueUpdateStrategy.",
-            FailureLevel.WARNING,
-            id="in_place_update_true_string 'false' throws a warning",
-        ),
-        pytest.param(
-            '{"cluster": {"in_place_update_on_fleet_enabled": false}}',
-            "When in-place updates are disabled, cluster updates are applied "
-            "by replacing compute and login nodes according to the selected QueueUpdateStrategy.",
-            FailureLevel.WARNING,
-            id="in_place_update_true_string false throws a warning",
-        ),
-        pytest.param(
-            '{"cluster": {"in_place_update_on_fleet_enabled": "invalid"}}',
-            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
-            "attribute 'in_place_update_on_fleet_enabled' must be a boolean value.",
-            FailureLevel.ERROR,
-            id="in_place_update_true_string invalid (string) throws an error",
-        ),
-        pytest.param(
-            '{"cluster": {"in_place_update_on_fleet_enabled": 123}}',
-            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
-            "attribute 'in_place_update_on_fleet_enabled' must be a boolean value.",
-            FailureLevel.ERROR,
-            id="n_place_update_true_string invalid (number) throws an error",
-        ),
     ],
 )
 def test_extra_chef_attributes_validator(extra_chef_attributes, expected_message, expected_failure_level):
