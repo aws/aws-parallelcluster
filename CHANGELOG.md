@@ -16,16 +16,34 @@ CHANGELOG
 ------
 
 **CHANGES**
+- Improve cluster update resiliency by ensuring clustermgtd is started after updates complete successfully, or after failed updates where queue reconfiguration succeeded.
+- Add chef attribute `cluster/in_place_update_on_fleet_enabled` to disable in-place updates on compute and login nodes
+  and mitigate performance impact at scale.
+- Upgrade Slurm to version 24.11.7 (from 24.11.6).
+- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
 - Upgrade Connexion to ~=2.15.1 (from ~=2.13.0).
 - Upgrade Flask to ~=3.1.0 (from >=2.2.5,<2.3).
-- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
+- Load kernel module `drm_client_lib` before installation of NVIDIA driver, if available on the kernel.
+- Reduce dependency footprint by installing the package `sssd-common` rather than `sssd`.
+- Upgrade libjwt to version 1.18.4 (from 1.17.0) for all OSes except Amazon Linux 2.
+- Upgrade amazon-efs-utils to version 2.4.0 (from v2.3.1).
+- Upgrade EFA installer to 1.44.0 (from 1.43.2).
+  - Efa-driver: efa-2.17.3-1
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.3.1-1
+  - Rdma-core: rdma-core-59.0-1
+  - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.8-11
 
 **BUG FIXES**
+- Fix an issue where cfn-hup enters an endless loop on the head node after a rollback to a cluster state older than 24 hours, caused by cfn-signal failing to signal an expired wait condition handle.
+- Fix race condition where compute nodes could deploy the wrong cluster config version after an update failure.
+- Prevent cluster readiness check failures due to instances launched while the check is in progress.
+- Fix incorrect timestamp parsing for chef-client.log in CloudWatch Agent configuration.
+- Disable snap auto-refresh on Ubuntu during build image to prevent intermittent reboot failures.
 - Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
 - Add GetFunction and GetPolicy permissions to PClusterBuildImageCleanupRole to prevent AccessDenied errors during build image stack deletion.
 - Fix validation error messages when `DevSettings` is null or `DevSettings/InstanceTypesData` is missing required fields.
-- Fix an issue where cfn-hup enters an endless loop on the head node after a rollback to a cluster state older than 24 hours, caused by cfn-signal failing to signal an expired wait condition handle.
-- Disable snap auto-refresh on Ubuntu during build image to prevent intermittent reboot failures.
 
 3.14.0
 ------
