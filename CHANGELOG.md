@@ -25,6 +25,7 @@ CHANGELOG
 - Add GetFunction and GetPolicy permissions to PClusterBuildImageCleanupRole to prevent AccessDenied errors during build image stack deletion.
 - Fix validation error messages when `DevSettings` is null or `DevSettings/InstanceTypesData` is missing required fields.
 - Fix an issue where cfn-hup enters an endless loop on the head node after a rollback to a cluster state older than 24 hours, caused by cfn-signal failing to signal an expired wait condition handle.
+- Disable snap auto-refresh on Ubuntu during build image to prevent intermittent reboot failures.
 
 3.14.0
 ------
