@@ -80,8 +80,11 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
         "owners": ["amazon"],
     },
     "ubuntu2404": {
-        "name": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*-server-*",
-        "owners": ["099720109477"],
+        "name": {
+            "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04)*",
+            "arm64": "Deep Learning ARM64 Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04)*",
+        },
+        "owners": ["amazon"],
     },
     # Simple redhat8 to be able to build in remarkable test
     "rhel8": {"name": "RHEL-8.8*_HVM-*", "owners": RHEL_OWNERS},
