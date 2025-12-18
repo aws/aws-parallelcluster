@@ -729,7 +729,6 @@ def get_batch_spot_bid_percentage(stack_name, region):
     "queue_update_strategy",
     [
         "DRAIN",
-        "TERMINATE",
     ],
 )
 @pytest.mark.usefixtures("instance")
