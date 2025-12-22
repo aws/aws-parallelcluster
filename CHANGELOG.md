@@ -29,10 +29,10 @@ CHANGELOG
 - Fix race condition where compute nodes could deploy the wrong cluster config version after an update failure.
 - Prevent cluster readiness check failures due to instances launched while the check is in progress.
 - Fix incorrect timestamp parsing for chef-client.log in CloudWatch Agent configuration.
+- Disable snap auto-refresh on Ubuntu during build image to prevent intermittent reboot failures.
 - Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
 - Add GetFunction and GetPolicy permissions to PClusterBuildImageCleanupRole to prevent AccessDenied errors during build image stack deletion.
 - Fix validation error messages when `DevSettings` is null or `DevSettings/InstanceTypesData` is missing required fields.
-- Disable snap auto-refresh on Ubuntu during build image to prevent intermittent reboot failures.
 
 3.14.0
 ------
