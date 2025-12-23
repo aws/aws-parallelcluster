@@ -157,6 +157,10 @@ def test_build_image(
             enable_lustre_client = False
     if os in ["alinux2", "alinux2023", "rocky9"]:
         update_os_packages = True
+
+    # Disable DCV installation for Ubuntu 24.04 to avoid build failures with DLAMI
+    enable_dcv = os != "ubuntu2404"
+
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
@@ -165,6 +169,7 @@ def test_build_image(
         enable_nvidia=str(enable_nvidia and get_gpu_count(instance) > 0).lower(),
         update_os_packages=str(update_os_packages).lower(),
         enable_lustre_client=str(enable_lustre_client).lower(),
+        enable_dcv=str(enable_dcv).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
