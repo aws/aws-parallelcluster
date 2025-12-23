@@ -234,6 +234,7 @@ phases:
           - path: /etc/chef/client.rb
             content: |
               cookbook_path ['/etc/chef/cookbooks']
+              require '/etc/chef/cookbooks/aws-parallelcluster-shared/libraries/log_formatter'
             overwrite: true
           - path: /etc/parallelcluster/image_dna.json
             content: |

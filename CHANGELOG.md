@@ -8,6 +8,7 @@ CHANGELOG
 - Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
 - Upgrade jmespath to ~=1.0 (from ~=0.10).
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
+- Add ISO 8601 timestamp with milliseconds precision to chef-client.log.
 
 **BUG FIXES**
 - Add validation to block updates that change tag order. Blocking such change prevents update failures.
