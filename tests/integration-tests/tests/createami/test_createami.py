@@ -426,10 +426,11 @@ def _test_image_tag_and_volume(image):
     logging.info(f"Image List: {image_list}, length {len(image_list)}")
     assert_that(len(image_list)).is_equal_to(1)
 
-    created_image = image_list[0]
-    volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
-    assert_that(volume_size).is_equal_to(200)
-    assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
+    if len(image_list) > 0:
+        created_image = image_list[0]
+        volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
+        assert_that(volume_size).is_equal_to(200)
+        assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
 
 
 @pytest.fixture()
