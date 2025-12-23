@@ -572,6 +572,18 @@ class Ec2Client(Boto3Client):
             if not route_tables:
                 raise Exception("No route tables found. The subnet or VPC configuration may be incorrect.")
 
+            # Find the main route table (subnets without explicit association use the main route table)
+            main_route_table = next(
+                (rt for rt in route_tables if any(assoc.get("Main") for assoc in rt.get("Associations", []))),
+                None,
+            )
+            if main_route_table is None:
+                raise Exception(
+                    f"No main route table found for VPC {vpc_id}. "
+                    "Please explicitly associate the subnet with a route table."
+                )
+            route_tables = [main_route_table]
+
         # Check if any route contains an internet gateway (igw)
         for route in route_tables[0].get("Routes", []):
             if "GatewayId" in route and route["GatewayId"].startswith("igw-"):
