@@ -691,7 +691,12 @@ def get_describe_route_tables_by_vpc_mocked_request(vpc_id, route_tables):
     return MockedBoto3Request(
         method="describe_route_tables",
         response={"RouteTables": route_tables},
-        expected_params={"Filters": [{"Name": "vpc-id", "Values": [vpc_id]}]},
+        expected_params={
+            "Filters": [
+                {"Name": "vpc-id", "Values": [vpc_id]},
+                {"Name": "association.main", "Values": ["true"]},
+            ]
+        },
     )
 
 
@@ -726,18 +731,12 @@ def test_is_subnet_public(boto3_stubber):
 
 def test_is_subnet_public_with_main_route_table(boto3_stubber):
     # Test when subnet has no explicit route table association (uses main route table)
-    # This tests the bug fix: should use main route table, not route_tables[0]
+    # The API filter association.main=true returns only the main route table
     subnet_id = "subnet-no-explicit-assoc"
     vpc_id = "vpc-12345678"
 
+    # API returns only main route table (filtered by association.main=true)
     route_tables = [
-        # First route table (non-main, no IGW) - bug would incorrectly use this
-        {
-            "RouteTableId": "rtb-private",
-            "Associations": [{"Main": False, "SubnetId": "subnet-other"}],
-            "Routes": [{"DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local"}],
-        },
-        # Main route table with IGW - correct one to use
         {
             "RouteTableId": "rtb-main",
             "Associations": [{"Main": True}],
