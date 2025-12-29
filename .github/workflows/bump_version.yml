@@ -21,6 +21,13 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
+    - name: Validate pcluster version format
+      run: |
+        if ! echo "${{ inputs.pcluster-version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "Error: Invalid version format '${{ inputs.pcluster-version }}'. Expected format: X.Y.Z (e.g., 3.14.0)"
+          exit 1
+        fi
+        echo "Version format validated: ${{ inputs.pcluster-version }}"
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
