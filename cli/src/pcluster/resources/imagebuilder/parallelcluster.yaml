@@ -219,7 +219,7 @@ phases:
               
               # Download cookbook
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL"
+              curl --retry 10 --retry-all-errors -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL"
               
               cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
 
