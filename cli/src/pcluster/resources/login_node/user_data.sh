@@ -120,7 +120,7 @@ write_files:
         error_exit "This AMI was not baked by ParallelCluster. Please use pcluster build-image command to create an AMI by providing your AMI as parent image."
       fi
       if [ "${!custom_cookbook}" != "NONE" ]; then
-        curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
+        curl --retry 9 --retry-all-errors -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
         vendor_cookbook
       fi
       cd /tmp
