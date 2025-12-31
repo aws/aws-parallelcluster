@@ -78,3 +78,86 @@ def render_join(elem: dict):
         else:
             raise ValueError("Found unsupported item type while rendering Fn::Join")
     return sep.join(rendered_body)
+
+
+@pytest.mark.parametrize(
+    "config_file_name, keep_original_subnet",
+    [
+        ("config-1.yaml", True),
+        ("config-2.yaml", False),
+    ],
+)
+def test_target_group_with_config_files(mocker, test_datadir, config_file_name, keep_original_subnet):
+    """
+    Test target group logical ID and name change when subnet is modified.
+
+    This test verifies that:
+    1. Target group logical ID and name are generated correctly
+    2. When subnet changes, both logical ID and target group name change
+    3. Target group name stays within AWS 32 char limit
+
+    This ensures that cluster updates with subnet changes create new target groups,
+    avoiding "target group cannot be associated with more than one load balancer"
+    and "target group name already exists" errors.
+    """
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    def get_target_group_info(cdk_assets):
+        """Extract target group logical ID and name from CDK assets."""
+        for asset in cdk_assets:
+            asset_content = asset.get("content")
+            if asset_content and "Resources" in asset_content:
+                for resource_name, resource in asset_content["Resources"].items():
+                    if resource.get("Type") == "AWS::ElasticLoadBalancingV2::TargetGroup":
+                        return resource_name, resource["Properties"]["Name"]
+        return None, None
+
+    def build_template(config_yaml):
+        """Build CDK template from config yaml."""
+        cluster_config = ClusterSchema(cluster_name="clustername").load(config_yaml)
+        _, cdk_assets = CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
+        return cdk_assets
+
+    def assert_target_group_info(logical_id, tg_name):
+        """Verify target group logical ID and name are not None and within AWS 32 char limit."""
+        assert_that(logical_id).is_not_none()
+        assert_that(tg_name).is_not_none()
+        assert_that(len(tg_name)).is_less_than_or_equal_to(32)
+
+    # Read yaml config
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
+    original_subnet = input_yaml["LoginNodes"]["Pools"][0]["Networking"]["SubnetIds"][0]
+
+    # Build template with original subnet
+    cdk_assets_original = build_template(input_yaml)
+    logical_id_original, tg_name_original = get_target_group_info(cdk_assets_original)
+
+    # Verify original target group was created correctly
+    assert_target_group_info(logical_id_original, tg_name_original)
+
+    # Modify subnet to a new value
+    new_subnet = "subnet-12345678901234567"
+    new_pool_count = 0
+    if keep_original_subnet:
+        new_subnet = original_subnet
+        new_pool_count = 1
+    input_yaml["LoginNodes"]["Pools"][0]["Networking"]["SubnetIds"][0] = new_subnet
+    input_yaml["LoginNodes"]["Pools"][0]["Count"] = new_pool_count
+
+    # Build template with new subnet
+    cdk_assets_new = build_template(input_yaml)
+    logical_id_new, tg_name_new = get_target_group_info(cdk_assets_new)
+
+    if keep_original_subnet:
+        assert_that(logical_id_new).is_equal_to(logical_id_original)
+        assert_that(tg_name_new).is_equal_to(tg_name_original)
+    else:
+        # Verify that both logical ID and target group name changed when subnet changed
+        assert_that(logical_id_new).is_not_equal_to(logical_id_original)
+        assert_that(tg_name_new).is_not_equal_to(tg_name_original)
+
+    # Verify new target group was created correctly
+    assert_target_group_info(logical_id_new, tg_name_new)
