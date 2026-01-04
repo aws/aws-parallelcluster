@@ -729,45 +729,35 @@ def test_is_subnet_public(boto3_stubber):
     assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is True
 
 
-def test_is_subnet_public_with_main_route_table(boto3_stubber):
-    # Test when subnet has no explicit route table association (uses main route table)
-    # The API filter association.main=true returns only the main route table
-    subnet_id = "subnet-no-explicit-assoc"
-    vpc_id = "vpc-12345678"
-
-    # API returns only main route table (filtered by association.main=true)
-    route_tables = [
-        {
-            "RouteTableId": "rtb-main",
-            "Associations": [{"Main": True}],
-            "Routes": [
+@pytest.mark.parametrize(
+    "subnet_id, routes, expected_result",
+    [
+        pytest.param(
+            "subnet-no-explicit-assoc",
+            [
                 {"DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local"},
                 {"DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-12345678"},
             ],
-        },
-    ]
-
-    mocked_requests = [
-        get_describe_route_tables_empty_mocked_request(subnet_id),
-        get_describe_subnets_for_vpc_mocked_request(subnet_id, vpc_id),
-        get_describe_route_tables_by_vpc_mocked_request(vpc_id, route_tables),
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # Should return True because main route table has IGW
-    assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is True
-
-
-def test_is_subnet_public_main_route_table_no_igw(boto3_stubber):
-    # Test when main route table has no IGW (private subnet)
-    subnet_id = "subnet-private"
+            True,
+            id="main route table with igw",
+        ),
+        pytest.param(
+            "subnet-private",
+            [{"DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local"}],
+            False,
+            id="main route table without igw",
+        ),
+    ],
+)
+def test_is_subnet_public_with_main_route_table(boto3_stubber, subnet_id, routes, expected_result):
+    # Test when subnet has no explicit route table association (uses main route table)
     vpc_id = "vpc-12345678"
 
     route_tables = [
         {
             "RouteTableId": "rtb-main",
             "Associations": [{"Main": True}],
-            "Routes": [{"DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local"}],
+            "Routes": routes,
         },
     ]
 
@@ -778,4 +768,4 @@ def test_is_subnet_public_main_route_table_no_igw(boto3_stubber):
     ]
     boto3_stubber("ec2", mocked_requests)
 
-    assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is False
+    assert AWSApi.instance().ec2.is_subnet_public(subnet_id) is expected_result
