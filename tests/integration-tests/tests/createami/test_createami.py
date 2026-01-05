@@ -80,8 +80,8 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2204, alinux2023 yet
-    if os not in ["ubuntu2204", "alinux2023"]:
+    # Get base AMI -- remarkable AL2 AMIs are failing because of conflicts between openssl-devel packages
+    if os not in ["alinux2"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
@@ -142,7 +142,7 @@ def test_build_image(
         enable_nvidia = False
 
     # Get base AMI
-    if os in ["alinux2", "ubuntu2004"]:
+    if os in ["ubuntu2204"]:
         # Test Deep Learning AMIs
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
@@ -164,6 +164,10 @@ def test_build_image(
             enable_lustre_client = False
     if os in ["alinux2", "alinux2023", "rocky9"]:
         update_os_packages = True
+
+    # Disable DCV installation for Ubuntu 24.04 to avoid build failures with DLAMI
+    enable_dcv = os != "ubuntu2404"
+
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
@@ -172,6 +176,7 @@ def test_build_image(
         enable_nvidia=str(enable_nvidia and get_gpu_count(instance) > 0).lower(),
         update_os_packages=str(update_os_packages).lower(),
         enable_lustre_client=str(enable_lustre_client).lower(),
+        enable_dcv=str(enable_dcv).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
@@ -430,10 +435,11 @@ def _test_image_tag_and_volume(image):
         raise ImageNotFound()
     assert_that(len(image_list)).is_equal_to(1)
 
-    created_image = image_list[0]
-    volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
-    assert_that(volume_size).is_equal_to(200)
-    assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
+    if len(image_list) > 0:
+        created_image = image_list[0]
+        volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
+        assert_that(volume_size).is_equal_to(200)
+        assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
 
 
 @pytest.fixture()

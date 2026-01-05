@@ -123,7 +123,12 @@ else
   error_exit "This AMI was not baked by ParallelCluster. Please use pcluster build-image command to create an AMI by providing your AMI as parent image."
 fi
 if [ "${!custom_cookbook}" != "NONE" ]; then
-  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
+  delays=(1 2 4 8 16 32 64 128 256)
+  for i in {0..8}; do
+    curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url} && break
+    echo "Curl attempt $((i+1)) failed, retrying in ${!delays[$i]}s..."
+    sleep ${!delays[$i]}
+  done
   vendor_cookbook
 fi
 

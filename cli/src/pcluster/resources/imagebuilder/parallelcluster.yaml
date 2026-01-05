@@ -108,7 +108,7 @@ phases:
                 
                 PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-modules-extra-$(uname -r)"
                 Repository="BaseOS"
-                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
+                [[ $OS =~ (rocky9|rhel9) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
                 
                 if [[ $OS =~ rocky ]]; then
                   for PACKAGE in ${!PACKAGE_LIST}
@@ -219,7 +219,12 @@ phases:
               
               # Download cookbook
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL"
+              delays=(1 2 4 8 16 32 64 128 256)
+              for i in {0..8}; do
+                curl -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL" && break
+                echo "Curl attempt $((i+1)) failed, retrying in ${!delays[$i]}s..."
+                sleep ${!delays[$i]}
+              done
               
               cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
 

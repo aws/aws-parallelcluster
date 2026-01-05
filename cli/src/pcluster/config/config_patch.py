@@ -221,11 +221,7 @@ class ConfigPatch:
         for target_nested_section in target_list:
             update_key_value = target_nested_section.get(update_key)
             base_nested_section = next(
-                (
-                    nested_section
-                    for nested_section in base_list
-                    if nested_section.get(update_key) == update_key_value
-                ),
+                (nested_section for nested_section in base_list if nested_section.get(update_key) == update_key_value),
                 None,
             )
             if base_nested_section:

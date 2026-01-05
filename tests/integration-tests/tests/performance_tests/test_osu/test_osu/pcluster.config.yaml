@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ head_node_instance }}
+  InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -38,3 +38,6 @@ SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: '{{ extra_chef_attributes }}'

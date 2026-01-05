@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import re
 
@@ -33,11 +34,12 @@ OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
-@pytest.mark.flaky(reruns=0)
+@pytest.mark.parametrize("in_place_update_on_fleet_enabled", ["true", "false"])
 def test_osu(
     os,
     region,
     scheduler,
+    in_place_update_on_fleet_enabled,
     instance,
     pcluster_config_reader,
     clusters_factory,
@@ -48,21 +50,24 @@ def test_osu(
     scheduler_commands_factory,
     request,
 ):
+    if in_place_update_on_fleet_enabled == "true":
+        message = "Skipping the test as we want to compare performance when cfn-hup is disabled"
+        logging.warn(message)
+        pytest.skip(message)
+
     if instance not in OSU_BENCHMARKS_INSTANCES:
         raise Exception(
             f"OSU benchmarks can't be run on instance {instance}. "
             f"Only these instances are supported: {OSU_BENCHMARKS_INSTANCES}"
         )
 
-    if architecture == "x86_64":
-        head_node_instance = "c5.18xlarge"
-    else:
-        head_node_instance = "c6g.16xlarge"
-
     max_queue_size = 32
     capacity_type = "ONDEMAND"
     capacity_reservation_id = None
     placement_group_enabled = True
+
+    chef_attributes_dict = {"cluster": {"in_place_update_on_fleet_enabled": in_place_update_on_fleet_enabled}}
+    extra_chef_attributes = json.dumps(chef_attributes_dict)
 
     if instance in ["p6-b200.48xlarge", "p5en.48xlarge"]:
         max_queue_size = 2
@@ -79,11 +84,11 @@ def test_osu(
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
-        head_node_instance=head_node_instance,
         max_queue_size=max_queue_size,
         capacity_type=capacity_type,
         capacity_reservation_id=capacity_reservation_id,
         placement_group_enabled=placement_group_enabled,
+        extra_chef_attributes=extra_chef_attributes,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
