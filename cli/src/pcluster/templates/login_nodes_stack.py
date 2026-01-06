@@ -404,9 +404,10 @@ class Pool(Construct):
         )
 
     def _add_login_nodes_pool_target_group(self):
+        subnet_hash = create_hash_suffix(self._pool.networking.subnet_ids[0])[:8]
         return elbv2.NetworkTargetGroup(
             self,
-            f"{self._pool.name}TargetGroup",
+            f"{self._pool.name}TargetGroup{subnet_hash}",
             health_check=elbv2.HealthCheck(
                 port="22",
                 protocol=elbv2.Protocol.TCP,
@@ -415,11 +416,14 @@ class Pool(Construct):
             protocol=elbv2.Protocol.TCP,
             target_type=elbv2.TargetType.INSTANCE,
             vpc=self._vpc,
+            # AWS Target Group name limit is 32 characters.
+            # With 3 args: (7 chars * 3) + (2 hyphens) + (1 hyphen) + (8 char hash) = 32 chars
             target_group_name=_get_resource_combination_name(
                 self._config.cluster_name,
                 self._pool.name,
+                subnet_hash,
                 partial_length=7,
-                hash_length=16,
+                hash_length=8,
             ),
         )
 
