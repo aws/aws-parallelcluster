@@ -13,7 +13,6 @@ import json
 import logging
 import re
 
-import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -23,7 +22,6 @@ from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.utils import (
     fetch_instance_slots,
     get_capacity_reservation_id,
-    get_installed_parallelcluster_version,
     run_system_analyzer,
     write_file,
 )
@@ -312,8 +310,6 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
     )
     # Check avg latency for all packet sizes
     failures = 0
-    metric_data = []
-    metric_namespace = "ParallelCluster/test_efa"
     evaluation_output = ""
     result = re.findall(r"(\d+)\s+(\d+)\.", output)
     push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version)
@@ -350,23 +346,6 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
 
             evaluation_output += f"\n{message}"
 
-            dimensions = {
-                "PclusterVersion": get_installed_parallelcluster_version(),
-                "MpiVariant": mpi_version,
-                "Instance": instance,
-                "OsuBenchmarkName": benchmark_name,
-                "PacketSize": packet_size,
-                "OperatingSystem": os,
-            }
-            metric_data.append(
-                {
-                    "MetricName": "Latency",
-                    "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions.items()],
-                    "Value": int(value),
-                    "Unit": "Microseconds",
-                }
-            )
-
             if is_failure:
                 failures = failures + 1
                 logging.error(message)
@@ -377,6 +356,5 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
         filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}-evaluation.out",
         content=evaluation_output,
     )
-    boto3.client("cloudwatch").put_metric_data(Namespace=metric_namespace, MetricData=metric_data)
 
     return failures
