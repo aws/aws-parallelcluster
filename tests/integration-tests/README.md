@@ -82,6 +82,8 @@ Test dimensions:
 
 Test reports:
   --show-output         Do not redirect tests stdout to file. Not recommended when running in multiple regions. (default: None)
+  --generate-historical-report
+                        Generate historical report for launch time and performance (default: False)
   --reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]
                         create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into CloudWatch (default: [])
   --cw-region CW_REGION
