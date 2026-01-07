@@ -313,48 +313,47 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
     evaluation_output = ""
     result = re.findall(r"(\d+)\s+(\d+)\.", output)
     push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version)
-    for packet_size, value in result:
-        with open(
-            str(test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name),
-            encoding="utf-8",
-        ) as result:
-            previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", result.read())
-            previous_result = previous_result_match.group(1) if previous_result_match else None
+    baseline_file_path = test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name
+    if baseline_file_path.exists():
+        for packet_size, value in result:
+            with open(str(baseline_file_path), encoding="utf-8") as result:
+                previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", result.read())
+                previous_result = previous_result_match.group(1) if previous_result_match else None
 
-            if previous_result is None:
-                logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
-                continue
+                if previous_result is None:
+                    logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
+                    continue
 
-            if benchmark_name == "osu_bibw":
-                # Invert logic because osu_bibw is in MB/s
-                tolerated_value = float(previous_result) - (float(previous_result) * 0.2)
-                is_failure = int(value) < tolerated_value
-            else:
-                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
-                tolerated_value = float(previous_result) + max(float(previous_result) * multiplier, 10)
+                if benchmark_name == "osu_bibw":
+                    # Invert logic because osu_bibw is in MB/s
+                    tolerated_value = float(previous_result) - (float(previous_result) * 0.2)
+                    is_failure = int(value) < tolerated_value
+                else:
+                    multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                    tolerated_value = float(previous_result) + max(float(previous_result) * multiplier, 10)
 
-                is_failure = int(value) > tolerated_value
+                    is_failure = int(value) > tolerated_value
 
-            percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
+                percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
 
-            outcome = "DEGRADATION" if is_failure else "IMPROVEMENT"
+                outcome = "DEGRADATION" if is_failure else "IMPROVEMENT"
 
-            message = (
-                f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "
-                f"tolerated: {tolerated_value}, current: {value}, percentage_diff: {percentage_diff}%"
-            )
+                message = (
+                    f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "
+                    f"tolerated: {tolerated_value}, current: {value}, percentage_diff: {percentage_diff}%"
+                )
 
-            evaluation_output += f"\n{message}"
+                evaluation_output += f"\n{message}"
 
-            if is_failure:
-                failures = failures + 1
-                logging.error(message)
-            else:
-                logging.info(message)
-    write_file(
-        dirname=f"{output_dir}/osu-results",
-        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}-evaluation.out",
-        content=evaluation_output,
-    )
+                if is_failure:
+                    failures = failures + 1
+                    logging.error(message)
+                else:
+                    logging.info(message)
+        write_file(
+            dirname=f"{output_dir}/osu-results",
+            filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}-evaluation.out",
+            content=evaluation_output,
+        )
 
     return failures
