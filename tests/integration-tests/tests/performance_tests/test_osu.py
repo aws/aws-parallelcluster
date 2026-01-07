@@ -16,6 +16,7 @@ import re
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import get_instance_info
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.osu_common import run_individual_osu_benchmark
@@ -48,18 +49,17 @@ def test_osu(
     scheduler_commands_factory,
     request,
 ):
-    if in_place_update_on_fleet_enabled == "true":
-        message = "Skipping the test as we want to compare performance when cfn-hup is disabled"
-        logging.warn(message)
-        pytest.skip(message)
-
-    if instance not in OSU_BENCHMARKS_INSTANCES:
-        raise Exception(
-            f"OSU benchmarks can't be run on instance {instance}. "
-            f"Only these instances are supported: {OSU_BENCHMARKS_INSTANCES}"
-        )
-
-    max_queue_size = 32
+    instance_info = get_instance_info(instance)
+    instance_memory = instance_info["MemoryInfo"]["SizeInMiB"]
+    instance_efa_supported = instance_info["NetworkInfo"]["EfaSupported"]
+    if instance_memory <= 16384:
+        # For smaller instance types, run a large cluster. The head node needs to be large to handle the cluster.
+        max_queue_size = 500
+        head_node_instance_type = "c5n.18xlarge"
+    else:
+        # For larger instance types, run a small cluster. The head node uses the same instance type as compute nodes.
+        max_queue_size = 32
+        head_node_instance_type = instance
     capacity_type = "ONDEMAND"
     capacity_reservation_id = None
     placement_group_enabled = True
@@ -82,6 +82,8 @@ def test_osu(
 
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
+        head_node_instance_type=head_node_instance_type,
+        instance_efa_supported=instance_efa_supported,
         max_queue_size=max_queue_size,
         capacity_type=capacity_type,
         capacity_reservation_id=capacity_reservation_id,
@@ -181,7 +183,7 @@ def _test_osu_benchmarks_pt2pt(
             test_datadir,
         )
         failures = _check_osu_benchmarks_results(
-            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output
+            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
         )
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
@@ -219,10 +221,10 @@ def _test_osu_benchmarks_collective(
             slots_per_instance,
             network_interfaces_count,
             test_datadir,
-            timeout=24,
+            timeout=24 + num_instances * 0.1,
         )
         failures = _check_osu_benchmarks_results(
-            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output
+            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
         )
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
@@ -301,7 +303,9 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
-def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_version, benchmark_name, output):
+def _check_osu_benchmarks_results(
+    test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
+):
     logging.info(output)
     write_file(
         dirname=f"{output_dir}/osu-results",
@@ -312,7 +316,7 @@ def _check_osu_benchmarks_results(test_datadir, output_dir, os, instance, mpi_ve
     failures = 0
     evaluation_output = ""
     result = re.findall(r"(\d+)\s+(\d+)\.", output)
-    push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version)
+    push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version, num_instances)
     baseline_file_path = test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name
     if baseline_file_path.exists():
         for packet_size, value in result:
