@@ -45,10 +45,14 @@ def _create_cluster_with_custom_pcluster(pcluster_path, cluster_name, config_fil
     logging.info("Creating cluster %s with config %s using custom pcluster", cluster_name, config_file)
     args = [
         "create-cluster",
-        "--rollback-on-failure", "false",
-        "--cluster-configuration", config_file,
-        "--cluster-name", cluster_name,
-        "--region", region,
+        "--rollback-on-failure",
+        "false",
+        "--cluster-configuration",
+        config_file,
+        "--cluster-name",
+        cluster_name,
+        "--region",
+        region,
         "--wait",
     ]
     result = _run_pcluster_command_in_venv(pcluster_path, args)
@@ -60,9 +64,7 @@ def _create_cluster_with_custom_pcluster(pcluster_path, cluster_name, config_fil
 
 
 @pytest.mark.usefixtures("os", "region")
-def test_on_demand_capacity_reservation(
-    region, pcluster_config_reader, placement_group_stack, odcr_stack, request
-):
+def test_on_demand_capacity_reservation(region, pcluster_config_reader, placement_group_stack, odcr_stack, request):
     """Verify open, targeted and pg odcrs can be created and instances can be launched into them."""
 
     """This test is only for slurm."""
@@ -165,12 +167,8 @@ def test_on_demand_capacity_reservation(
         _assert_instance_in_capacity_reservation(
             cluster, region, "target-odcr-arn-pg-cr", odcr_resources["integTestsTargetOdcr"]
         )
-        _assert_instance_in_capacity_reservation(
-            cluster, region, "pg-odcr-id-cr", odcr_resources["integTestsPgOdcr"]
-        )
-        _assert_instance_in_capacity_reservation(
-            cluster, region, "pg-odcr-arn-cr", odcr_resources["integTestsPgOdcr"]
-        )
+        _assert_instance_in_capacity_reservation(cluster, region, "pg-odcr-id-cr", odcr_resources["integTestsPgOdcr"])
+        _assert_instance_in_capacity_reservation(cluster, region, "pg-odcr-arn-cr", odcr_resources["integTestsPgOdcr"])
 
         cluster.stop()
         wait_for_computefleet_changed(cluster, "STOPPED")
