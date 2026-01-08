@@ -15,6 +15,8 @@ from pcluster.validators.utils import dig, is_boolean_string, str_to_bool
 
 EXTRA_CHEF_ATTRIBUTES_PATH = "DevSettings/Cookbook/ExtraChefAttributes"
 ATTR_IN_PLACE_UPDATE_ON_FLEET_ENABLED = "in_place_update_on_fleet_enabled"
+ATTR_RECONFIGURE_TIMEOUT = "cluster.slurm.reconfigure_timeout"
+MIN_SLURM_RECONFIGURE_TIMEOUT = 300
 
 
 class ExtraChefAttributesValidator(Validator):
@@ -29,8 +31,10 @@ class ExtraChefAttributesValidator(Validator):
         """
         if not extra_chef_attributes:
             return
-        else:
-            self._validate_in_place_update_on_fleet_enabled(json.loads(extra_chef_attributes))
+
+        attrs = json.loads(extra_chef_attributes)
+        self._validate_in_place_update_on_fleet_enabled(attrs)
+        self._validate_slurm_reconfigure_timeout(attrs)
 
     def _validate_in_place_update_on_fleet_enabled(self, extra_chef_attributes: dict = None):
         """Validate attribute cluster.in_place_update_on_fleet_enabled.
@@ -59,4 +63,34 @@ class ExtraChefAttributesValidator(Validator):
                 "When in-place updates are disabled, cluster updates are applied "
                 "by replacing compute and login nodes according to the selected QueueUpdateStrategy.",
                 FailureLevel.WARNING,
+            )
+
+    def _validate_slurm_reconfigure_timeout(self, extra_chef_attributes: dict = None):
+        """Validate attribute cluster.slurm.reconfigure-timeout.
+
+        Must be an integer greater than 300.
+
+        Args:
+            extra_chef_attributes: Dictionary of Chef attributes to validate.
+        """
+        reconfigure_timeout = dig(extra_chef_attributes, *ATTR_RECONFIGURE_TIMEOUT.split("."))
+
+        if reconfigure_timeout is None:
+            return
+
+        # Reject booleans explicitly (bool is subclass of int in Python)
+        if isinstance(reconfigure_timeout, bool) or not isinstance(reconfigure_timeout, int):
+            self._add_failure(
+                f"Invalid value in {EXTRA_CHEF_ATTRIBUTES_PATH}: "
+                f"attribute '{ATTR_RECONFIGURE_TIMEOUT}' must be an integer.",
+                FailureLevel.ERROR,
+            )
+            return
+
+        if reconfigure_timeout <= MIN_SLURM_RECONFIGURE_TIMEOUT:
+            self._add_failure(
+                f"Invalid value in {EXTRA_CHEF_ATTRIBUTES_PATH}: "
+                f"attribute '{ATTR_RECONFIGURE_TIMEOUT}' "
+                f"must be greater than {MIN_SLURM_RECONFIGURE_TIMEOUT}.",
+                FailureLevel.ERROR,
             )

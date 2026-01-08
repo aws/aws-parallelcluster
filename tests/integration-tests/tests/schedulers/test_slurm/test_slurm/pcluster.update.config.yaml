@@ -53,4 +53,8 @@ DevSettings:
   Timeouts:
     HeadNodeBootstrapTimeout: 1700
     ComputeNodeBootstrapTimeout: {{compute_node_bootstrap_timeout}}
+  Cookbook:
+    # This DevSettings is here just to verify that the Slurm reconfigure timeout can be updated.
+    ExtraChefAttributes: |
+      { "cluster" : { "slurm" : { "reconfigure_timeout": 600 } } }
 

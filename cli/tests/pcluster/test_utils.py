@@ -1036,3 +1036,181 @@ def test_get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reser
     """Test get_needed_ultraserver_capacity_block_statuses function."""
     result = utils.get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reservation_ids)
     assert_that(result).is_equal_to(expected_result)
+
+
+@pytest.mark.parametrize(
+    "value, raise_on_error, default, expected, raises",
+    [
+        # Valid JSON parsing
+        pytest.param('{"key": "value"}', False, None, {"key": "value"}, None, id="valid simple object"),
+        pytest.param(
+            '{"nested": {"a": 1, "b": 2}}', False, None, {"nested": {"a": 1, "b": 2}}, None, id="valid nested object"
+        ),
+        pytest.param("[1, 2, 3]", False, None, [1, 2, 3], None, id="valid array"),
+        pytest.param('"string"', False, None, "string", None, id="valid string value"),
+        pytest.param("123", False, None, 123, None, id="valid number value"),
+        pytest.param("true", False, None, True, None, id="valid boolean value"),
+        pytest.param("null", False, None, None, None, id="valid null value"),
+        # Invalid JSON with raise_on_error=False returns default
+        pytest.param("invalid json", False, None, None, None, id="invalid json returns None default"),
+        pytest.param("invalid json", False, {}, {}, None, id="invalid json returns empty dict default"),
+        pytest.param("invalid json", False, [], [], None, id="invalid json returns empty list default"),
+        pytest.param(
+            "{missing: quotes}", False, "default", "default", None, id="malformed json returns string default"
+        ),
+        pytest.param("", False, None, None, None, id="empty string returns None default"),
+        pytest.param(None, False, {}, {}, None, id="none value returns default"),
+        # Invalid JSON with raise_on_error=True raises exception
+        pytest.param("invalid json", True, None, None, Exception, id="invalid json raises when configured"),
+        pytest.param(None, True, None, None, TypeError, id="none value raises when configured"),
+    ],
+)
+def test_parse_json_string(value, raise_on_error, default, expected, raises):
+    if raises:
+        with pytest.raises(raises):
+            utils.parse_json_string(value, raise_on_error=raise_on_error, default=default)
+    else:
+        assert_that(utils.parse_json_string(value, raise_on_error=raise_on_error, default=default)).is_equal_to(
+            expected
+        )
+
+
+@pytest.mark.parametrize(
+    "d1, d2, expected",
+    [
+        pytest.param(
+            {"a": 1, "b": {"c": 2}},
+            {"a": 1, "b": {"c": 2}},
+            set(),
+            id="identical dicts returns empty",
+        ),
+        pytest.param(
+            {},
+            {},
+            set(),
+            id="empty dicts returns empty",
+        ),
+        pytest.param(
+            {"a": 1},
+            {"a": 1, "b": 2},
+            {"b"},
+            id="added key",
+        ),
+        pytest.param(
+            {"a": 1, "b": 2},
+            {"a": 1},
+            {"b"},
+            id="removed key",
+        ),
+        pytest.param(
+            {"a": 1, "b": 2},
+            {"a": 1, "b": 3},
+            {"b"},
+            id="changed value",
+        ),
+        pytest.param(
+            {"a": {"x": 1}},
+            {"a": {"x": 1, "y": 2}},
+            {"a.y"},
+            id="nested added key",
+        ),
+        pytest.param(
+            {"a": {"x": 1, "y": 2}},
+            {"a": {"x": 1}},
+            {"a.y"},
+            id="nested removed key",
+        ),
+        pytest.param(
+            {"a": {"x": 1}},
+            {"a": {"x": 2}},
+            {"a.x"},
+            id="nested changed value",
+        ),
+        pytest.param(
+            {"a": {"b": {"c": {"d": 1}}}},
+            {"a": {"b": {"c": {"d": 2}}}},
+            {"a.b.c.d"},
+            id="deeply nested change",
+        ),
+        pytest.param(
+            {"a": 1, "b": {"x": 10, "y": 20}, "c": 3},
+            {"a": 1, "b": {"x": 10, "y": 25}, "d": 4},
+            {"b.y", "c", "d"},
+            id="multiple changes",
+        ),
+        pytest.param(
+            {"a": {"nested": 1}},
+            {"a": "string"},
+            {"a"},
+            id="type change dict to value",
+        ),
+        pytest.param(
+            {"a": "string"},
+            {"a": {"nested": 1}},
+            {"a"},
+            id="type change value to dict",
+        ),
+        pytest.param(
+            {"a": 1, "b": 2},
+            {},
+            {"a", "b"},
+            id="compare with empty dict",
+        ),
+        pytest.param(
+            {},
+            {"a": 1, "b": 2},
+            {"a", "b"},
+            id="compare empty with populated",
+        ),
+        pytest.param(
+            None,
+            None,
+            set(),
+            id="none inputs returns empty set",
+        ),
+        pytest.param(
+            None,
+            {"a": 1, "b": 2},
+            {"a", "b"},
+            id="none first dict",
+        ),
+        pytest.param(
+            {"a": 1, "b": 2},
+            None,
+            {"a", "b"},
+            id="none second dict",
+        ),
+        pytest.param(
+            {},
+            {"cluster": {"slurm": {"timeout": 300}}},
+            {"cluster.slurm.timeout"},
+            id="added nested dict returns leaf paths",
+        ),
+        pytest.param(
+            {"cluster": {"slurm": {"timeout": 300}}},
+            {},
+            {"cluster.slurm.timeout"},
+            id="removed nested dict returns leaf paths",
+        ),
+        pytest.param(
+            {},
+            {"cluster": {"slurm": {"timeout": 300, "enabled": True}}},
+            {"cluster.slurm.timeout", "cluster.slurm.enabled"},
+            id="added nested dict with multiple leaves",
+        ),
+        pytest.param(
+            {"cluster": {"slurm": {"timeout": 300, "enabled": True}}},
+            {},
+            {"cluster.slurm.timeout", "cluster.slurm.enabled"},
+            id="removed nested dict with multiple leaves",
+        ),
+        pytest.param(
+            {},
+            {"cluster": {}},
+            {"cluster"},
+            id="added empty nested dict returns parent path",
+        ),
+    ],
+)
+def test_get_dictionary_diff(d1, d2, expected):
+    assert_that(utils.get_dictionary_diff(d1, d2)).is_equal_to(expected)
