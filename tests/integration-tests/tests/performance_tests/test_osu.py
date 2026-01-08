@@ -209,7 +209,7 @@ def _test_osu_benchmarks_collective(
 
     failed_benchmarks = []
     benchmark_group = "collective"
-    for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
+    for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall", "osu_barrier"]:
         _, output = run_individual_osu_benchmark(
             mpi_version,
             benchmark_group,
@@ -315,7 +315,12 @@ def _check_osu_benchmarks_results(
     # Check avg latency for all packet sizes
     failures = 0
     evaluation_output = ""
-    result = re.findall(r"(\d+)\s+(\d+)\.", output)
+    if benchmark_name == "osu_barrier":
+        # osu_barrier outputs only a single latency value without packet size
+        match = re.search(r"^\s+(\d+\.\d+)\s*$", output, re.MULTILINE)
+        result = match.group(1)
+    else:
+        result = re.findall(r"(\d+)\s+(\d+)\.", output)
     push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version, num_instances)
     baseline_file_path = test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name
     if baseline_file_path.exists():
