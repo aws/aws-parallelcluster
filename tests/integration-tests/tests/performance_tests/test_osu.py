@@ -102,20 +102,22 @@ def test_osu(
 
     # Run OSU benchmarks in efa-enabled queue.
     for mpi_version in mpi_variants:
-        benchmark_failures.extend(
-            _test_osu_benchmarks_pt2pt(
-                mpi_version,
-                remote_command_executor,
-                scheduler_commands,
-                test_datadir,
-                output_dir,
-                os,
-                instance,
-                network_interfaces_count,
-                slots_per_instance,
-                partition="efa-enabled",
+        if max_queue_size < 40:
+            # pt2pt benchmarks only make sense when the number of nodes are small
+            benchmark_failures.extend(
+                _test_osu_benchmarks_pt2pt(
+                    mpi_version,
+                    remote_command_executor,
+                    scheduler_commands,
+                    test_datadir,
+                    output_dir,
+                    os,
+                    instance,
+                    network_interfaces_count,
+                    slots_per_instance,
+                    partition="efa-enabled",
+                )
             )
-        )
         benchmark_failures.extend(
             _test_osu_benchmarks_collective(
                 mpi_version,
