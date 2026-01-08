@@ -211,7 +211,12 @@ def _test_osu_benchmarks_collective(
 
     failed_benchmarks = []
     benchmark_group = "collective"
-    for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall", "osu_barrier"]:
+    benchmark_names = ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_barrier"]
+    if num_instances < 40:
+        # All to all benchmark has time complexity of O(n^2) where n is the number of instances.
+        # We run it for small clusters.
+        benchmark_names.append("osu_alltoall")
+    for benchmark_name in benchmark_names:
         _, output = run_individual_osu_benchmark(
             mpi_version,
             benchmark_group,
