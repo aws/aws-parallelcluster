@@ -20,6 +20,7 @@ from pcluster.constants import (
     SLURM,
     STORAGE_TYPES_SUPPORTING_LIVE_UPDATES,
 )
+from pcluster.utils import get_dictionary_diff, parse_json_string
 
 
 class UpdatePolicy:
@@ -510,6 +511,38 @@ def get_pool_name_from_change_paths(change):
     return ""
 
 
+# ExtraChefAttributes update policy helpers
+# Define which paths within ExtraChefAttributes JSON are updatable (dot-notation)
+# IMPORTANT: We assume this set to contain the path to leaf fields.
+EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS: set[str] = {
+    "cluster.slurm.reconfigure_timeout",
+}
+
+
+def _get_non_updatable_changes(old_value: str, new_value: str) -> list[str]:
+    """Parse and compare two ExtraChefAttributes JSON strings, returning paths that are not updatable."""
+    old_attrs = parse_json_string(old_value, raise_on_error=False, default={}) if old_value else {}
+    new_attrs = parse_json_string(new_value, raise_on_error=False, default={}) if new_value else {}
+
+    return [p for p in get_dictionary_diff(old_attrs, new_attrs) if p not in EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS]
+
+
+def condition_checker_extra_chef_attributes(change, _) -> bool:
+    """
+    Check if ExtraChefAttributes changes are allowed.
+
+    Only changes to paths defined in EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS are allowed.
+    """
+    return len(_get_non_updatable_changes(change.old_value, change.new_value)) == 0
+
+
+def fail_reason_extra_chef_attributes(change, _) -> str:
+    """Generate fail reason for ExtraChefAttributes update."""
+    non_updatable_changes = _get_non_updatable_changes(change.old_value, change.new_value)
+    paths_str = ", ".join(sorted(non_updatable_changes))
+    return f"The following ExtraChefAttributes fields cannot be updated: {paths_str}"
+
+
 # Common fail_reason messages
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
@@ -526,6 +559,7 @@ UpdatePolicy.FAIL_REASONS = {
     "compute_or_login_nodes_running": lambda change, patch: (
         "The update is not supported when compute or login nodes are running"
     ),
+    "extra_chef_attributes_update": fail_reason_extra_chef_attributes,
 }
 
 # Common action_needed messages
@@ -548,6 +582,9 @@ UpdatePolicy.ACTIONS_NEEDED = {
         "Stop the login nodes by setting Count parameter to 0 "
         "and update the cluster with the pcluster update-cluster command"
     ),
+    "extra_chef_attributes_update": lambda change, patch: (
+        "Revert the non-updatable ExtraChefAttributes fields to their original values."
+    ),
 }
 
 # Base policies
@@ -565,6 +602,15 @@ UpdatePolicy.IGNORED = UpdatePolicy(
 # Update supported
 UpdatePolicy.SUPPORTED = UpdatePolicy(
     name="SUPPORTED", level=0, fail_reason="-", condition_checker=(lambda change, patch: True)
+)
+
+# Update policy for ExtraChefAttributes - allows updates to specific fields only
+UpdatePolicy.EXTRA_CHEF_ATTRIBUTES = UpdatePolicy(
+    name="EXTRA_CHEF_ATTRIBUTES",
+    level=5,
+    fail_reason=UpdatePolicy.FAIL_REASONS["extra_chef_attributes_update"],
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["extra_chef_attributes_update"],
+    condition_checker=condition_checker_extra_chef_attributes,
 )
 
 # Checks resize of max_vcpus in Batch Compute Environment
