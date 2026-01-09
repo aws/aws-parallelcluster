@@ -876,7 +876,7 @@ def test_login_nodes_traffic_management_resources_values_properties(
 
     auto_scaling_group_id = "clusternametestloginnodespool1clusternametestloginnodespool1AutoScalingGroup5EBA3937"
     load_balancer_id = "clusternametestloginnodespool1testloginnodespool1LoadBalancerE1D4FCC7"
-    target_group_id = "clusternametestloginnodespool1testloginnodespool1TargetGroup4592cff378B1099C"
+    target_group_id = "clusternametestloginnodespool1testloginnodespool1TargetGroup713F5EC5"
     listener_id = (
         "clusternametestloginnodespool1testloginnodespool1LoadBalancerLoginNodesListenertestloginnodespool165B4D3DC"
     )
@@ -1357,18 +1357,19 @@ def test_custom_munge_key_iam_policy(mocker, test_datadir, config_file_name):
 
 
 @pytest.mark.parametrize(
-    "resource_names, partial_length, hash_length, expected_combination_name",
+    "resource_name_1, resource_name_2, partial_length, hash_length, expected_combination_name",
     [
-        (["test-cluster", "test-pool"], 7, 16, "test-cl-test-po-18c74b16dfbc78ac"),
-        (["abcdefghijk", "lmnopqrst"], 8, 14, "abcdefgh-lmnopqrs-dd65eea0329dcb"),
-        (["a", "b"], 7, 16, "a-b-fb8e20fc2e4c3f24"),
-        # Test with 3 resource names (like target group: cluster_name, pool_name, subnet_hash)
-        (["clustername", "loginpool", "092512032a1df0b2c"], 7, 8, "cluster-loginpo-0925120-fde21041"),
+        ("test-cluster", "test-pool", 7, 16, "test-cl-test-po-18c74b16dfbc78ac"),
+        ("abcdefghijk", "lmnopqrst", 8, 14, "abcdefgh-lmnopqrs-dd65eea0329dcb"),
+        ("a", "b", 7, 16, "a-b-fb8e20fc2e4c3f24"),
     ],
 )
-def test_resource_combination_name(resource_names, partial_length, hash_length, expected_combination_name):
+def test_resource_combination_name(
+    resource_name_1, resource_name_2, partial_length, hash_length, expected_combination_name
+):
     combination_name = _get_resource_combination_name(
-        *resource_names,
+        resource_name_1,
+        resource_name_2,
         partial_length=partial_length,
         hash_length=hash_length,
     )
