@@ -13,7 +13,6 @@ CHANGELOG
 - Add validation to block updates that change tag order. Blocking such change prevents update failures.
 - Fix LoginNodes NLB not being publicly accessible when using public subnet with implicit main route table association. 
   See https://github.com/aws/aws-parallelcluster/issues/7173
-- Fix cluster update failure when changing LoginNodes subnet by including subnet hash in target group logical ID and name.
 - Fix cluster creation failure without Internet access when GPU instances and DCV are used.
 
 3.14.1
