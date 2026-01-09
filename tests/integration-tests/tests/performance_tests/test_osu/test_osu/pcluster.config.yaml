@@ -40,6 +40,3 @@ SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
-DevSettings:
-  Cookbook:
-    ExtraChefAttributes: '{{ extra_chef_attributes }}'
