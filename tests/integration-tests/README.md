@@ -346,12 +346,19 @@ The framework includes automatic capacity reservation management for tests that 
 - Automatically detects capacity reservation requirements in test configuration files using Jinja variables
 - Creates or modifies existing EC2 capacity reservations as needed
 - Supports placement groups and time-limited reservations
+- Supports several instance types in the same availability zone using `__` separator. For example, you can reserve 100 c5.xlarge for compute nodes and 1 c5n.18xlarge for the head node.
 - Falls back to default availability zones if reservations cannot be created
 
 Use Jinja variables in test configs with the pattern:
 ```
       dimensions:
         - regions: [{{ INSTANCE_TYPE_CAPACITY_RESERVATION_COUNT_INSTANCES_HOURS_HOURS_[YESPG|NOPG]_[OS] }}]
+```
+
+For several instance types in the same AZ, use `__` to separate specifications:
+```
+      dimensions:
+        - regions: [{{ c5_xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023__m5_xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }}]
 ```
 
 Example:
