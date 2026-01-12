@@ -1374,3 +1374,44 @@ def test_resource_combination_name(
         hash_length=hash_length,
     )
     assert_that(combination_name).is_equal_to(expected_combination_name)
+
+
+def test_storage_security_group_deduplication(mocker, test_datadir):
+    """
+    Test that storage security group rules are deduplicated when head, compute, and login nodes share the same SG.
+
+    When head node, compute nodes, and login nodes all use the same security group (sg-12345678),
+    only one set of ingress/egress rules should be created for that security group, not three separate sets.
+    The deduplicated rule uses the first occurrence's settings (Head node), which uses all protocols (-1).
+    """
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / "config-shared-sg.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    # Test both EFS and FSx storage types
+    for storage_type in ["EFS", "FSX"]:
+        storage_sg_ingress_rules = [
+            (name, resource)
+            for name, resource in generated_template["Resources"].items()
+            if resource["Type"] == "AWS::EC2::SecurityGroupIngress"
+            and name.startswith(storage_type)
+            and "SecurityGroup" in name
+        ]
+
+        # Verify deduplication: only 2 rules instead of 4 (Head, Compute, Login share same SG + Storage SG)
+        assert_that(len(storage_sg_ingress_rules)).is_equal_to(2)
+
+        # Verify each unique source security group has exactly one ingress rule
+        source_sgs = {
+            str(rule["Properties"].get("SourceSecurityGroupId"))
+            for _, rule in storage_sg_ingress_rules
+            if rule["Properties"].get("SourceSecurityGroupId")
+        }
+        assert_that(len(storage_sg_ingress_rules)).is_equal_to(len(source_sgs))

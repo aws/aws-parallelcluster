@@ -795,8 +795,17 @@ class ClusterCdkStack:
             "Storage": [storage_security_group.ref],
         }
 
+        # Deduplicate SGs to avoid creating identical rules for the same security group.
+        # This prevents EC2 duplicate rule errors which are susceptible to eventual consistency issues.
+        seen_sgs = set()
         for sg_type, sg_refs in target_security_groups.items():
             for sg_ref_id, sg_ref in enumerate(sg_refs):
+                # This conversion is required because sg_ref could either be a string or a CDK token reference.
+                # A CDK token must be converted to a string to make it comparable within the set.
+                sg_key = str(sg_ref)
+                if sg_key in seen_sgs:
+                    continue
+                seen_sgs.add(sg_key)
                 # TODO Scope down ingress rules to allow only traffic on the strictly necessary ports.
                 #      Currently scoped down only on Login nodes to limit blast radius.
                 ingress_protocol = "-1"

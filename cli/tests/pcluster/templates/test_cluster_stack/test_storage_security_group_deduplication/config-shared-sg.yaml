@@ -1,0 +1,46 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t3.micro
+  Ssh:
+    KeyName: ec2-key-name
+  Networking:
+    SubnetId: subnet-12345678
+    SecurityGroups:
+      - sg-12345678
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        SecurityGroups:
+          - sg-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: t3.micro
+          MinCount: 0
+          MaxCount: 10
+LoginNodes:
+  Pools:
+    - Name: login
+      InstanceType: t3.micro
+      Count: 1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        SecurityGroups:
+          - sg-12345678
+SharedStorage:
+  - Name: efs
+    StorageType: Efs
+    MountDir: /efs
+    EfsSettings:
+      ThroughputMode: bursting
+  - Name: fsx
+    StorageType: FsxLustre
+    MountDir: /fsx
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeploymentType: SCRATCH_2
