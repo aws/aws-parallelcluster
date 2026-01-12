@@ -14,6 +14,7 @@ CHANGELOG
 - Fix LoginNodes NLB not being publicly accessible when using public subnet with implicit main route table association. 
   See https://github.com/aws/aws-parallelcluster/issues/7173
 - Fix cluster creation failure without Internet access when GPU instances and DCV are used.
+- Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
 
 3.14.1
 ------
