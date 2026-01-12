@@ -857,7 +857,7 @@ test-suites:
           instances: [ "c5n.18xlarge" ]
           oss: [{{ NO_ROCKY_OS_X86_0 }}] # ParallelCluster does not release official Rocky images. Skip the test.
           schedulers: [ "slurm" ]
-        - regions: [ {{ c5_xlarge_CAPACITY_RESERVATION_510_INSTANCES_2_HOURS_YESPG_NO_ROCKY_OS_X86_1 }} ]
+        - regions: [ {{ c5_xlarge_CAPACITY_RESERVATION_510_INSTANCES_2_HOURS_YESPG_NO_ROCKY_OS_X86_1__c5n_18xlarge_CAPACITY_RESERVATION_1_INSTANCES_2_HOURS_NOPG_NO_ROCKY_OS_X86_1 }} ]
           instances: [ "c5.xlarge" ]
           oss: [ {{ NO_ROCKY_OS_X86_1 }} ] # ParallelCluster does not release official Rocky images. Skip the test.
           schedulers: [ "slurm" ]
