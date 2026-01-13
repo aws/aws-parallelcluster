@@ -255,7 +255,7 @@ def generate_performance_report(reports_output_dir):
     )
     all_items.sort(key=lambda x: x["timestamp"]["N"], reverse=True)
     items_by_name = defaultdict(list)
-    category_names = [("name", "S"), ("mpi_variation", "S"), ("num_instances", "N")]
+    category_names = [("name", "S"), ("mpi_variation", "S"), ("num_instances", "N"), ("instance", "S")]
     for item in all_items:
         keys = []
         for category_name, value_type in category_names:
