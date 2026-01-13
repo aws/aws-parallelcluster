@@ -521,7 +521,7 @@ def create_file_cache(request, region, vpc_stack: CfnVpcStack, cfn_stacks_factor
 
 def _create_fsx_lustre_volume_ids(num_existing_fsx_lustre, fsx_factory, import_path, export_path):
     return fsx_factory(
-        ports=[988],
+        ports=[988, 1018, 1019, 1020, 1021, 1022, 1023],
         ip_protocols=["tcp"],
         num=num_existing_fsx_lustre,
         file_system_type="LUSTRE",

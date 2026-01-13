@@ -26,6 +26,7 @@ from pcluster.constants import (
     DELETE_POLICY,
     EFS_PORT,
     FSX_PORTS,
+    LUSTRE,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING,
@@ -660,11 +661,14 @@ class ExistingFsxNetworkingValidator(Validator):
                 network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
 
                 for protocol, ports in FSX_PORTS[file_storage.file_storage_type].items():
+                    # For Lustre, only validate the first port (988), which is the only mandatory one.
+                    # Other ports (1018-1023) are optional so we do not enforce them.
+                    ports_to_validate = [ports[0]] if file_storage.file_storage_type == LUSTRE else ports
                     missing_ports = self._get_missing_ports(
                         security_groups_by_nodes,
                         subnet_ids,
                         network_interfaces,
-                        ports,
+                        ports_to_validate,
                         protocol,
                         file_storage.file_storage_type,
                     )
@@ -676,7 +680,7 @@ class ExistingFsxNetworkingValidator(Validator):
                         self._add_failure(
                             f"The current security group settings on file storage '{file_storage_id}' does not"
                             " satisfy mounting requirement. The file storage must be associated to a security group"
-                            f" that allows {direction} {protocol.upper()} traffic through ports {ports}. "
+                            f" that allows {direction} {protocol.upper()} traffic through ports {ports_to_validate}. "
                             f"Missing ports: {missing_ports}",
                             FailureLevel.ERROR,
                         )

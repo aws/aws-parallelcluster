@@ -127,7 +127,8 @@ FILE_CACHE_ID_REGEX = r"^(fc-[0-9a-f]{8,18})$"
 
 FSX_PORTS = {
     # Lustre Security group: https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html
-    LUSTRE: {"tcp": [988]},
+    # Among the Lustre ports, only 988 is mandatory to provide basic features.
+    LUSTRE: {"tcp": [988, (1018, 1023)]},
     # OpenZFS Security group: https://docs.aws.amazon.com/fsx/latest/OpenZFSGuide/limit-access-security-groups.html
     OPENZFS: {"tcp": [111, 2049, 20001, 20002, 20003], "udp": [111, 2049, 20001, 20002, 20003]},
     # Ontap Security group: https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/limit-access-security-groups.html

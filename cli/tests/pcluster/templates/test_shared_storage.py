@@ -107,9 +107,14 @@ def test_shared_storage_efs(mocker, test_datadir, config_file_name, storage_name
         else f"{cluster_config.login_nodes.pools[0].name}LoginNodesSecurityGroup"
     )
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", login_nodes_sg_name, mount_target_sg_name]:
-        ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
-        ingress_port_range = [2049, 2049] if sg == login_nodes_sg_name else [0, 65535]
         rule_deletion_policy = deletion_policy if sg == mount_target_sg_name else None
+        # Storage-to-Storage allows all traffic, node-to-storage uses scoped-down EFS port 2049
+        if sg == mount_target_sg_name:
+            ingress_ip_protocol = "-1"
+            ingress_port_range = [0, 65535]
+        else:
+            ingress_ip_protocol = "tcp"
+            ingress_port_range = [2049, 2049]
         assert_sg_rule(
             generated_template,
             mount_target_sg_name,
@@ -173,18 +178,31 @@ def test_shared_storage_fsx(mocker, test_datadir, config_file_name, storage_name
         else f"{cluster_config.login_nodes.pools[0].name}LoginNodesSecurityGroup"
     )
     for sg in ["HeadNodeSecurityGroup", "ComputeSecurityGroup", login_nodes_sg_name, file_system_sg_name]:
-        ingress_ip_protocol = "tcp" if sg == login_nodes_sg_name else "-1"
-        ingress_port_range = [988, 988] if sg == login_nodes_sg_name else [0, 65535]
         rule_deletion_policy = deletion_policy if sg == file_system_sg_name else None
-        assert_sg_rule(
-            generated_template,
-            file_system_sg_name,
-            rule_type="ingress",
-            protocol=ingress_ip_protocol,
-            port_range=ingress_port_range,
-            target_sg=sg,
-            deletion_policy=rule_deletion_policy,
-        )
+        # Storage-to-Storage allows all traffic, node-to-storage uses scoped-down FSx Lustre ports
+        if sg == file_system_sg_name:
+            assert_sg_rule(
+                generated_template,
+                file_system_sg_name,
+                rule_type="ingress",
+                protocol="-1",
+                port_range=[0, 65535],
+                target_sg=sg,
+                deletion_policy=rule_deletion_policy,
+            )
+        else:
+            ingress_ip_protocol = "tcp"
+            ingress_port_ranges = [(988, 988), (1018, 1023)]
+            for ingress_port_range in ingress_port_ranges:
+                assert_sg_rule(
+                    generated_template,
+                    file_system_sg_name,
+                    rule_type="ingress",
+                    protocol=ingress_ip_protocol,
+                    port_range=ingress_port_range,
+                    target_sg=sg,
+                    deletion_policy=rule_deletion_policy,
+                )
         assert_sg_rule(
             generated_template,
             file_system_sg_name,
