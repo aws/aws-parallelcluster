@@ -582,8 +582,8 @@ test-suites:
       dimensions:
         - regions: {{ REGIONS }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["rhel8"]
-          schedulers: ["slurm"]
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_update_rollback_failure.py::test_update_rollback_failure:
       dimensions:
         - regions: {{ REGIONS }}
