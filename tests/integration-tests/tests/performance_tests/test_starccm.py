@@ -71,11 +71,6 @@ def test_starccm(
     scheduler_commands_factory,
     s3_bucket_factory,
 ):
-    if in_place_update_on_fleet_enabled == "true":
-        message = "Skipping the test as we want to compare performance when cfn-hup is disabled"
-        logging.warn(message)
-        pytest.skip(message)
-
     number_of_nodes = [8, 16, 32]
     # Create S3 bucket for custom actions scripts
     bucket_name = s3_bucket_factory()
