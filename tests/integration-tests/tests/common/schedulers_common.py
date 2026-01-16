@@ -385,7 +385,7 @@ class SlurmCommands(SchedulerCommands):
         else:
             return self._remote_command_executor.run_remote_command(submission_command, raise_on_error=raise_on_error)
 
-    def _dump_job_output(self, job_info):
+    def _dump_job_output(self, job_id, job_info):
         params = re.split(r"\s+", job_info)
         stderr = None
         stdout = None
@@ -411,19 +411,17 @@ class SlurmCommands(SchedulerCommands):
                     stdout_result = self._remote_command_executor.run_remote_command(f'echo "stdout" && cat {stdout}')
                     logging.error(stdout_result.stdout)
         else:
-            logging.error("Unable to retrieve job output.")
+            logging.info("No stdout or stderr for job %s.", job_id)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         self.assert_job_state(job_id, "COMPLETED")
 
     def assert_job_state(self, job_id, expected_state):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        try:
-            assert_that(result.stdout).contains(f"JobState={expected_state}")
-        except AssertionError:
+        if f"JobState={expected_state}" not in result.stdout:
             logging.error("JobState of jobid %s not in %s:\n%s", job_id, expected_state, result.stdout)
-            self._dump_job_output(result.stdout)
-            raise
+            self._dump_job_output(job_id, result.stdout)
+        assert_that(result.stdout).contains(f"JobState={expected_state}")
 
     def compute_nodes_count(self, filter_by_partition=None):  # noqa: D102
         return len(self.get_compute_nodes(filter_by_partition))
