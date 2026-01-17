@@ -104,10 +104,10 @@ def test_update_rollback_failure(
     logger.info("Injecting cfn-signal failure on head node...")
     _inject_cfn_signal_failure(remote_command_executor)
 
-    # Step 3: Disable cfn-hup on CN1 BEFORE update
+    # Step 3: Disable pcluster-check-update timer on CN1 BEFORE update
     # This ensures CN1 won't apply the update, causing cluster readiness check to fail
-    logger.info(f"Disabling cfn-hup on CN1 ({cn1}) before update...")
-    _disable_cfn_hup_on_compute_node(remote_command_executor, cn1)
+    logger.info(f"Disabling the pcluster-check-update timer on CN1 ({cn1}) before update...")
+    _disable_check_update_timer_on_compute_node(remote_command_executor, cn1)
 
     # Step 4: Trigger cluster update with wait=False (non-blocking)
     logger.info("Triggering cluster update (non-blocking)...")
@@ -126,8 +126,8 @@ def test_update_rollback_failure(
         region, cluster.name, cn2_instance_id, initial_config_version, timeout_minutes=15
     )
 
-    logger.info(f"CN2 has applied the update. Disabling cfn-hup on CN2 ({cn2}) to inject rollback failure...")
-    _disable_cfn_hup_on_compute_node(remote_command_executor, cn2)
+    logger.info(f"CN2 has applied the update. Disabling pcluster-check-update timer on CN2 ({cn2}) to inject rollback failure...")
+    _disable_check_update_timer_on_compute_node(remote_command_executor, cn2)
 
     # Wait for stack to reach UPDATE_ROLLBACK_COMPLETE state
     logger.info("Waiting for stack to reach UPDATE_ROLLBACK_COMPLETE...")
@@ -269,27 +269,26 @@ exit 1
     logger.info("cfn-signal wrapper installed")
 
 
-def _disable_cfn_hup_on_compute_node(remote_command_executor, node_name):
+def _disable_check_update_timer_on_compute_node(remote_command_executor, node_name):
     """
-    Disable cfn-hup on a compute node using srun.
+    Disable pcluster-check-update on a compute node using srun.
 
-    Uses supervisorctl to stop cfn-hup service on the compute node.
+    Uses systemctl to stop the pcluster-check-update.timer on the compute node.
     """
-    logger.info(f"Disabling cfn-hup on compute node {node_name}...")
+    logger.info(f"Disabling pcluster-check-update on compute node {node_name}...")
 
-    supervisorctl_path = _get_supervisorctl_path(remote_command_executor)
+    # Stop pcluster-check-update.timer using srun
+    remote_command_executor.run_remote_command(
+        f"srun -w {node_name} sudo systemctl stop pcluster-check-update.timer"
+    )
 
-    # Stop cfn-hup using srun
-    remote_command_executor.run_remote_command(f"srun -w {node_name} sudo {supervisorctl_path} stop cfn-hup")
-
-    # Verify cfn-hup is stopped
-    # Note: supervisorctl status returns exit code 3 when process is STOPPED, so we use raise_on_error=False
+    # Verify pcluster-check-update.timer is stopped
     result = remote_command_executor.run_remote_command(
-        f"srun -w {node_name} sudo {supervisorctl_path} status cfn-hup",
+        f"srun -w {node_name} systemctl is-active pcluster-check-update.timer",
         raise_on_error=False,
     )
-    assert_that(result.stdout).contains("STOPPED")
-    logger.info(f"cfn-hup stopped on {node_name} ✓")
+    assert_that(result.stdout.strip()).contains("inactive")
+    logger.info(f"pcluster-check-update.timer stopped on {node_name} ✓")
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(60))
