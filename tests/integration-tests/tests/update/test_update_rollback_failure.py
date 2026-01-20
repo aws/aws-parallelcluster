@@ -126,7 +126,10 @@ def test_update_rollback_failure(
         region, cluster.name, cn2_instance_id, initial_config_version, timeout_minutes=15
     )
 
-    logger.info(f"CN2 has applied the update. Disabling pcluster-check-update timer on CN2 ({cn2}) to inject rollback failure...")
+    logger.info(
+        f"CN2 has applied the update. Disabling pcluster-check-update timer on CN2 "
+        f"({cn2}) to inject rollback failure..."
+    )
     _disable_check_update_timer_on_compute_node(remote_command_executor, cn2)
 
     # Wait for stack to reach UPDATE_ROLLBACK_COMPLETE state
@@ -278,9 +281,7 @@ def _disable_check_update_timer_on_compute_node(remote_command_executor, node_na
     logger.info(f"Disabling pcluster-check-update on compute node {node_name}...")
 
     # Stop pcluster-check-update.timer using srun
-    remote_command_executor.run_remote_command(
-        f"srun -w {node_name} sudo systemctl stop pcluster-check-update.timer"
-    )
+    remote_command_executor.run_remote_command(f"srun -w {node_name} sudo systemctl stop pcluster-check-update.timer")
 
     # Verify pcluster-check-update.timer is stopped
     result = remote_command_executor.run_remote_command(
