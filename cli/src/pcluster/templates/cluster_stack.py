@@ -806,25 +806,33 @@ class ClusterCdkStack:
                 if sg_key in seen_sgs:
                     continue
                 seen_sgs.add(sg_key)
-                # TODO Scope down ingress rules to allow only traffic on the strictly necessary ports.
-                #      Currently scoped down only on Login nodes to limit blast radius.
-                ingress_protocol = "-1"
-                ingress_port = ALL_PORTS_RANGE
-                if sg_type == "Login":
-                    if storage_type == SharedStorageType.EFS:
-                        ingress_protocol = "tcp"
-                        ingress_port = EFS_PORT
-                    elif storage_type == SharedStorageType.FSX:
-                        ingress_protocol = "tcp"
-                        ingress_port = FSX_PORTS[LUSTRE]["tcp"][0]
-                ingress_rule = self._allow_all_ingress(
-                    description=f"{storage_cfn_id}SecurityGroup{sg_type}Ingress{sg_ref_id}",
-                    source_security_group_id=sg_ref,
-                    group_id=storage_security_group.ref,
-                    ip_protocol=ingress_protocol,
-                    port=ingress_port,
+
+                # For Storage-to-Storage, allow all traffic.
+                # For Head/Compute/Login nodes, allow only the required ports.
+                storage_ports = {
+                    SharedStorageType.EFS: ("tcp", [EFS_PORT]),
+                    SharedStorageType.FSX: ("tcp", FSX_PORTS[LUSTRE]["tcp"]),
+                }
+                ingress_protocol, ingress_ports = (
+                    ("-1", [ALL_PORTS_RANGE])
+                    if sg_type == "Storage"
+                    else storage_ports.get(storage_type, ("-1", [ALL_PORTS_RANGE]))
                 )
-                rules.append(ingress_rule)
+
+                for rule_id, ingress_port in enumerate(ingress_ports):
+                    ingress_rule = self._allow_all_ingress(
+                        description=f"{storage_cfn_id}SecurityGroup{sg_type}Ingress{sg_ref_id}Rule{rule_id}",
+                        source_security_group_id=sg_ref,
+                        group_id=storage_security_group.ref,
+                        ip_protocol=ingress_protocol,
+                        port=ingress_port,
+                    )
+                    rules.append(ingress_rule)
+
+                    if sg_type == "Storage":
+                        ingress_rule.cfn_options.deletion_policy = ingress_rule.cfn_options.update_replace_policy = (
+                            storage_deletion_policy
+                        )
 
                 egress_rule = self._allow_all_egress(
                     description=f"{storage_cfn_id}SecurityGroup{sg_type}Egress{sg_ref_id}",
@@ -834,9 +842,6 @@ class ClusterCdkStack:
                 rules.append(egress_rule)
 
                 if sg_type == "Storage":
-                    ingress_rule.cfn_options.deletion_policy = ingress_rule.cfn_options.update_replace_policy = (
-                        storage_deletion_policy
-                    )
                     egress_rule.cfn_options.deletion_policy = egress_rule.cfn_options.update_replace_policy = (
                         storage_deletion_policy
                     )
