@@ -1,0 +1,76 @@
+Image:
+  Os: alinux2
+Region: us-east-1
+HeadNode:
+  InstanceType: t3.medium
+  Ssh:
+    KeyName: ec2-key-name
+  Networking:
+    SubnetId: subnet-12345678912345678
+    {% if head_sg %}
+    SecurityGroups:
+      - {{ head_sg }}
+    {% endif %}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q1
+      Networking:
+        SubnetIds:
+          - subnet-12345678912345678
+        {% if q1_sg %}
+        SecurityGroups:
+          - {{ q1_sg }}
+        {% endif %}
+      ComputeResources:
+        - Name: cr1
+          InstanceType: t3.medium
+          MinCount: 0
+          MaxCount: 10
+    - Name: q2
+      Networking:
+        SubnetIds:
+          - subnet-12345678912345678
+        {% if q2_sg %}
+        SecurityGroups:
+          - {{ q2_sg }}
+        {% endif %}
+      ComputeResources:
+        - Name: cr1
+          InstanceType: t3.medium
+          MinCount: 0
+          MaxCount: 10
+LoginNodes:
+  Pools:
+    - Name: login1
+      InstanceType: t3.medium
+      Count: 1
+      Networking:
+        SubnetIds:
+          - subnet-12345678912345678
+        {% if login1_sg %}
+        SecurityGroups:
+          - {{ login1_sg }}
+        {% endif %}
+    - Name: login2
+      InstanceType: t3.medium
+      Count: 1
+      Networking:
+        SubnetIds:
+          - subnet-12345678912345678
+        {% if login2_sg %}
+        SecurityGroups:
+          - {{ login2_sg }}
+        {% endif %}
+SharedStorage:
+  - Name: efs
+    StorageType: Efs
+    MountDir: /efs
+    EfsSettings:
+      ThroughputMode: bursting
+  - Name: fsx
+    StorageType: FsxLustre
+    MountDir: /fsx
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeploymentType: SCRATCH_2

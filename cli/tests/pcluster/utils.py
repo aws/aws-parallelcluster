@@ -10,6 +10,7 @@
 # limitations under the License.
 import itertools
 import os
+import re
 from copy import deepcopy
 
 import pytest
@@ -37,12 +38,18 @@ def load_cluster_model_from_yaml(config_file_name, test_datadir=None):
 
 
 def get_resources(
-    generated_template: dict, name: str = None, type: str = None, properties: dict = None, deletion_policy: str = None
+    generated_template: dict,
+    name: str = None,
+    type: str = None,
+    properties: dict = None,
+    deletion_policy: str = None,
+    name_regex: str = None,
 ):
     return dict(
         (res_name, res_value)
         for res_name, res_value in generated_template.get("Resources", {}).items()
         if (name is None or res_name == name)
+        and (name_regex is None or bool(re.search(name_regex, res_name)))
         and (type is None or res_value.get("Type") == type)
         and (deletion_policy is None or res_value.get("DeletionPolicy") == deletion_policy)
         and (
