@@ -8,7 +8,6 @@ CHANGELOG
 - Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
 - Upgrade jmespath to ~=1.0 (from ~=0.10).
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
-- Scope down storage security group ingress rules to specific ports for all node types.
 
 **BUG FIXES**
 - Add validation to block updates that change tag order. Blocking such change prevents update failures.
