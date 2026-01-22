@@ -1374,3 +1374,122 @@ def test_resource_combination_name(
         hash_length=hash_length,
     )
     assert_that(combination_name).is_equal_to(expected_combination_name)
+
+
+def test_storage_security_group_deduplication(mocker, test_datadir):
+    """
+    Test that storage security group rules are deduplicated when head, compute, and login nodes share the same SG.
+
+    When head node, compute nodes, and login nodes all use the same security group (sg-12345678),
+    only one set of ingress/egress rules should be created for that security group, not three separate sets.
+    """
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / "config-shared-sg.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    # The EFS storage security group must have 2 ingress rules:
+    #   * allow traffic from cluster nodes (port 2049)
+    #   * allow traffic from storage nodes (all traffic)
+    efs_sg_ingress_rules = [
+        (name, resource)
+        for name, resource in generated_template["Resources"].items()
+        if resource["Type"] == "AWS::EC2::SecurityGroupIngress" and name.startswith("EFS") and "SecurityGroup" in name
+    ]
+    assert_that(len(efs_sg_ingress_rules)).is_equal_to(2)
+
+    # The FSx Lustre storage security group must have 3 rules:
+    #   * allow traffic from cluster nodes (port 2049)
+    #   * allow traffic from cluster nodes (ports 1018-1023)
+    #   * allow traffic from storage nodes (all traffic)
+    fsx_sg_ingress_rules = [
+        (name, resource)
+        for name, resource in generated_template["Resources"].items()
+        if resource["Type"] == "AWS::EC2::SecurityGroupIngress" and name.startswith("FSX") and "SecurityGroup" in name
+    ]
+    assert_that(len(fsx_sg_ingress_rules)).is_equal_to(3)
+
+    # Verify each storage type has the expected unique source security groups
+    for _storage_type, rules in [("EFS", efs_sg_ingress_rules), ("FSX", fsx_sg_ingress_rules)]:
+        source_sgs = {
+            str(rule["Properties"].get("SourceSecurityGroupId"))
+            for _, rule in rules
+            if rule["Properties"].get("SourceSecurityGroupId")
+        }
+        # Should have 2 unique source SGs (shared SG + storage SG)
+        assert_that(len(source_sgs)).is_equal_to(2)
+
+
+def test_storage_security_group_port_restrictions(mocker, test_datadir):
+    """
+    Test that storage security group rules use restricted ports for head/compute/login nodes.
+
+    Security group rules should follow these principles:
+    1. Storage-to-Storage: Allow all traffic (protocol -1)
+    2. Head/Compute/Login nodes to EFS: Allow only TCP port 2049
+    3. Head/Compute/Login nodes to FSx Lustre: Allow only TCP ports 988 and 1018-1023
+    """
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / "config-shared-sg.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    # Test EFS storage - should only allow port 2049
+    efs_ingress_rules = [
+        (name, resource)
+        for name, resource in generated_template["Resources"].items()
+        if resource["Type"] == "AWS::EC2::SecurityGroupIngress" and name.startswith("EFS") and "SecurityGroup" in name
+    ]
+
+    for name, rule in efs_ingress_rules:
+        props = rule["Properties"]
+        if "Storage" in name:
+            # Storage-to-Storage: all traffic allowed
+            assert_that(props["IpProtocol"]).is_equal_to("-1")
+            assert_that(props["FromPort"]).is_equal_to(0)
+            assert_that(props["ToPort"]).is_equal_to(65535)
+        else:
+            # Head/Compute/Login to EFS: only TCP port 2049
+            assert_that(props["IpProtocol"]).is_equal_to("tcp")
+            assert_that(props["FromPort"]).is_equal_to(2049)
+            assert_that(props["ToPort"]).is_equal_to(2049)
+
+    # Test FSx Lustre storage - should only allow ports 988 and 1018-1023
+    fsx_ingress_rules = [
+        (name, resource)
+        for name, resource in generated_template["Resources"].items()
+        if resource["Type"] == "AWS::EC2::SecurityGroupIngress" and name.startswith("FSX") and "SecurityGroup" in name
+    ]
+
+    # Collect non-storage rules to verify FSx ports
+    fsx_node_rules = [(name, rule) for name, rule in fsx_ingress_rules if "Storage" not in name]
+    fsx_storage_rules = [(name, rule) for name, rule in fsx_ingress_rules if "Storage" in name]
+
+    # Verify Storage-to-Storage rule allows all traffic
+    for _name, rule in fsx_storage_rules:
+        props = rule["Properties"]
+        assert_that(props["IpProtocol"]).is_equal_to("-1")
+        assert_that(props["FromPort"]).is_equal_to(0)
+        assert_that(props["ToPort"]).is_equal_to(65535)
+
+    # Verify Head/Compute/Login rules use TCP and FSx Lustre ports (988, 1018-1023)
+    fsx_ports_found = set()
+    for _name, rule in fsx_node_rules:
+        props = rule["Properties"]
+        assert_that(props["IpProtocol"]).is_equal_to("tcp")
+        fsx_ports_found.add((props["FromPort"], props["ToPort"]))
+
+    # Should have rules for port 988 and port range 1018-1023
+    assert_that(fsx_ports_found).contains((988, 988), (1018, 1023))

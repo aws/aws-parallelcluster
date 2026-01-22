@@ -2758,3 +2758,181 @@ def test_home_change_policy(
         assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.action_needed(change_mock, patch_mock)).is_equal_to(
             expected_action_needed
         )
+
+
+# Tests for EXTRA_CHEF_ATTRIBUTES update policy
+@pytest.mark.parametrize(
+    "old_value, new_value, expected_result",
+    [
+        # No change - should succeed
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            True,
+            id="no change to updatable field",
+        ),
+        # Change only updatable field - should succeed
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            '{"cluster": {"slurm": {"reconfigure_timeout": "600"}}}',
+            True,
+            id="change updatable field from 300 to 600",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "600"}}}',
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            True,
+            id="change updatable field from 600 to 300",
+        ),
+        pytest.param(
+            None,
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            True,
+            id="add updatable field when none existed",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            None,
+            True,
+            id="remove updatable field",
+        ),
+        pytest.param(
+            "{}",
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            True,
+            id="add updatable field to empty json",
+        ),
+        # Change non-updatable field - should fail
+        pytest.param(
+            '{"cluster": {"some_other_field": "value1"}}',
+            '{"cluster": {"some_other_field": "value2"}}',
+            False,
+            id="change non-updatable field",
+        ),
+        pytest.param(
+            '{"other_key": "value1"}',
+            '{"other_key": "value2"}',
+            False,
+            id="change top-level non-updatable field",
+        ),
+        pytest.param(
+            None,
+            '{"cluster": {"some_other_field": "value"}}',
+            False,
+            id="add non-updatable field",
+        ),
+        pytest.param(
+            '{"cluster": {"some_other_field": "value"}}',
+            None,
+            False,
+            id="remove non-updatable field",
+        ),
+        # Mixed changes - should fail (non-updatable field changed)
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}, "other_field": "value1"}}',
+            '{"cluster": {"slurm": {"reconfigure_timeout": "600"}, "other_field": "value2"}}',
+            False,
+            id="change both updatable and non-updatable fields",
+        ),
+        # Change updatable field while keeping non-updatable field unchanged - should succeed
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}, "other_field": "same_value"}}',
+            '{"cluster": {"slurm": {"reconfigure_timeout": "600"}, "other_field": "same_value"}}',
+            True,
+            id="change updatable field while non-updatable field unchanged",
+        ),
+        # Empty to empty - should succeed
+        pytest.param(
+            "{}",
+            "{}",
+            True,
+            id="empty to empty",
+        ),
+        pytest.param(
+            None,
+            None,
+            True,
+            id="none to none",
+        ),
+        # Handle "-" as empty (used in config patch for missing values)
+        pytest.param(
+            "-",
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            True,
+            id="dash to updatable field",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}}}',
+            "-",
+            True,
+            id="updatable field to dash",
+        ),
+    ],
+)
+def test_extra_chef_attributes_condition_checker(mocker, old_value, new_value, expected_result):
+    patch_mock = mocker.MagicMock()
+    change_mock = mocker.MagicMock()
+    change_mock.old_value = old_value
+    change_mock.new_value = new_value
+    change_mock.key = "ExtraChefAttributes"
+
+    assert_that(UpdatePolicy.EXTRA_CHEF_ATTRIBUTES.condition_checker(change_mock, patch_mock)).is_equal_to(
+        expected_result
+    )
+
+
+@pytest.mark.parametrize(
+    "old_value, new_value, expected_fail_reason_contains",
+    [
+        pytest.param(
+            '{"cluster": {"some_other_field": "value1"}}',
+            '{"cluster": {"some_other_field": "value2"}}',
+            "cluster.some_other_field",
+            id="fail reason contains changed field path",
+        ),
+        pytest.param(
+            '{"other_key": "value1"}',
+            '{"other_key": "value2"}',
+            "other_key",
+            id="fail reason contains top-level changed field",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "300"}, "other_field": "value1"}}',
+            '{"cluster": {"slurm": {"reconfigure_timeout": "600"}, "other_field": "value2"}}',
+            "cluster.other_field",
+            id="fail reason contains only non-updatable changed field",
+        ),
+    ],
+)
+def test_extra_chef_attributes_fail_reason(mocker, old_value, new_value, expected_fail_reason_contains):
+    patch_mock = mocker.MagicMock()
+    change_mock = mocker.MagicMock()
+    change_mock.old_value = old_value
+    change_mock.new_value = new_value
+    change_mock.key = "ExtraChefAttributes"
+
+    fail_reason = UpdatePolicy.EXTRA_CHEF_ATTRIBUTES.fail_reason(change_mock, patch_mock)
+    assert_that(fail_reason).contains(expected_fail_reason_contains)
+    assert_that(fail_reason).contains("cannot be updated")
+
+
+@pytest.mark.parametrize(
+    "old_value, new_value",
+    [
+        pytest.param(
+            '{"cluster": {"some_other_field": "value1"}}',
+            '{"cluster": {"some_other_field": "value2"}}',
+            id="action needed for non-updatable field change",
+        ),
+    ],
+)
+def test_extra_chef_attributes_action_needed(mocker, old_value, new_value):
+    patch_mock = mocker.MagicMock()
+    change_mock = mocker.MagicMock()
+    change_mock.old_value = old_value
+    change_mock.new_value = new_value
+    change_mock.key = "ExtraChefAttributes"
+
+    action_needed = UpdatePolicy.EXTRA_CHEF_ATTRIBUTES.action_needed(change_mock, patch_mock)
+    assert_that(action_needed).contains("Revert")
+    assert_that(action_needed).contains("non-updatable")

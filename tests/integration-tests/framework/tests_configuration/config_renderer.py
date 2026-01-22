@@ -313,38 +313,68 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
     for var in variables:
         if "CAPACITY_RESERVATION" in var:
             logging.info("Checking capacity reservation for %s", var)
-            count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(var)
-            instance_type, os_platform = _resolve_instance_type_and_os(
-                instance_type, instance_type_parameters, os, os_parameters
-            )
-            end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
+            specs = []
+            for part in var.split("__"):  # Support multiple instance types separated by __
+                count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(part)
+                instance_type, os_platform = _resolve_instance_type_and_os(
+                    instance_type, instance_type_parameters, os, os_parameters
+                )
+                end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
+                specs.append((instance_type, os_platform, count, end_date, enable_placement_group))
             candidate_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1"]
-            if _find_and_modify_existing_capacity_reservation(
-                az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
-            ):
-                continue
-            capacity_reservation_created = False
-            try:
-                for region in candidate_regions:
-                    ec2_client = boto3.client("ec2", region_name=region)
-                    capacity_reservation_created = _create_capacity_reservation(
-                        az_for_capacity_reservation,
-                        count,
-                        ec2_client,
-                        end_date,
-                        instance_type,
-                        var,
-                        os_platform,
-                        enable_placement_group,
-                    )
-                    if capacity_reservation_created:
-                        break
-            except Exception:
-                az_for_capacity_reservation[var] = "use1-az6"
-            if not capacity_reservation_created:
-                # Assign arbitrary zone if no reservations can be made
+            if len(specs) == 1:
+                # Single instance type reservation: check for existing reservation to be frugal.
+                # It is hard to implement such logic for multiple instance types reservation.
+                # Therefore, for multiple instance types, skip the logic and make reservation directly.
+                instance_type, os_platform, count, end_date, enable_placement_group = specs[0]
+                if _find_and_modify_existing_capacity_reservation(
+                    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
+                ):
+                    continue
+            if not _create_capacity_reservations(az_for_capacity_reservation, candidate_regions, specs, var):
+                # If failed to create reservation, use use1-az6 to avoid making the test yaml syntactically wrong.
+                logging.info("Failed to create capacity reservation for %s. Using use1-az6", var)
                 az_for_capacity_reservation[var] = "use1-az6"
     return az_for_capacity_reservation
+
+
+def _create_capacity_reservations(az_for_cr, regions, specs, var):  # noqa C901
+    """Find or create capacity reservations for multiple instance types in the same AZ."""
+    for region in regions:
+        try:
+            ec2_client = boto3.client("ec2", region_name=region)
+            for az in ec2_client.describe_availability_zones()["AvailabilityZones"]:
+                if az["ZoneType"] != "availability-zone":
+                    continue
+                zone_id = az["ZoneId"]
+                created_capacity_reservation_ids = []
+                success = True
+                for instance_type, os_platform, count, end_date, enable_placement_group in specs:
+                    reservation_id = _create_single_capacity_reservation(
+                        zone_id, count, ec2_client, end_date, instance_type, os_platform, enable_placement_group
+                    )
+                    if reservation_id:
+                        created_capacity_reservation_ids.append(reservation_id)
+                    else:
+                        success = False
+                        break
+                if success:
+                    az_for_cr[var] = zone_id
+                    logging.info("Created reservations for all instance types in %s", zone_id)
+                    return True
+                for reservation_id in created_capacity_reservation_ids:
+                    try:
+                        logging.info(
+                            "Some instance types cannot be reserved in %s, cancelling back reservation %s",
+                            az,
+                            reservation_id,
+                        )
+                        ec2_client.cancel_capacity_reservation(CapacityReservationId=reservation_id)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.info("Failed creating reservations in %s: %s", region, e)
+    return False
 
 
 def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, os_parameters):
@@ -386,50 +416,44 @@ def _parse_capacity_reservation_variable(var):
     return count, enable_placement_group, hours, instance_type, os
 
 
-def _create_capacity_reservation(
-    az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var, os_platform, enable_placement_group
+def _create_single_capacity_reservation(
+    zone_id, count, ec2_client, end_date, instance_type, os_platform, enable_placement_group
 ):
-    capacity_reservation_created = False
-    for availability_zone in ec2_client.describe_availability_zones()["AvailabilityZones"]:
-        if availability_zone["ZoneType"] == "availability-zone":
+    try:
+        reservation_args = {
+            "InstanceType": instance_type,
+            "InstancePlatform": os_platform,
+            "AvailabilityZoneId": zone_id,
+            "InstanceCount": count,
+            "EndDateType": "limited",
+            "EndDate": end_date,
+            "Tenancy": "default",
+        }
+        if enable_placement_group:
+            placement_group_name = f"{instance_type}_placement_group_{zone_id}"
             try:
-                zone_id = availability_zone["ZoneId"]
-                reservation_args = {
-                    "InstanceType": instance_type,
-                    "InstancePlatform": os_platform,
-                    "AvailabilityZoneId": zone_id,
-                    "InstanceCount": count,
-                    "EndDateType": "limited",
-                    "EndDate": end_date,
-                    "Tenancy": "default",
-                }
-                if enable_placement_group:
-                    placement_group_name = f"{instance_type}_placement_group_{zone_id}"
-                    try:
-                        placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
-                            "PlacementGroups"
-                        ][0]["GroupArn"]
-                    except Exception:
-                        placement_group_arn = ec2_client.create_placement_group(
-                            GroupName=placement_group_name, Strategy="cluster"
-                        )["PlacementGroup"]["GroupArn"]
-                    reservation_args["PlacementGroupArn"] = placement_group_arn
-                ec2_client.create_capacity_reservation(**reservation_args)
-                logging.info(
-                    "Capacity reservation for %s %s on %s created in %s", count, instance_type, os_platform, zone_id
-                )
-                capacity_reservation_created = True
-                az_for_capacity_reservation[var] = zone_id
-                break
-            except Exception as e:
-                logging.info(
-                    "Capacity reservation for %s %s failed to create in %s",
-                    count,
-                    instance_type,
-                    zone_id,
-                )
-                logging.info(e)
-    return capacity_reservation_created
+                placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
+                    "PlacementGroups"
+                ][0]["GroupArn"]
+            except Exception:
+                placement_group_arn = ec2_client.create_placement_group(
+                    GroupName=placement_group_name, Strategy="cluster"
+                )["PlacementGroup"]["GroupArn"]
+            reservation_args["PlacementGroupArn"] = placement_group_arn
+        reservation_id = ec2_client.create_capacity_reservation(**reservation_args)["CapacityReservation"][
+            "CapacityReservationId"
+        ]
+        logging.info("Capacity reservation for %s %s on %s created in %s", count, instance_type, os_platform, zone_id)
+        return reservation_id
+    except Exception as e:
+        logging.info(
+            "Capacity reservation for %s %s failed to create in %s",
+            count,
+            instance_type,
+            zone_id,
+        )
+        logging.info(e)
+        return None
 
 
 def _find_and_modify_existing_capacity_reservation(  # noqa: C901

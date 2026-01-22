@@ -255,7 +255,7 @@ def _log_output_performance_difference(node, performance_degradation, observed_v
     )
 
 
-def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None):
+def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None, num_instances=None):
     reporting_region = METADATA_DEFAULT_REGION
     logging.info(f"Metadata reporting region {reporting_region}")
     # Create the metadata table in case it doesn't exist
@@ -275,6 +275,7 @@ def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None):
             "result": str(result),
             "pcluster_version": f"v{get_installed_parallelcluster_version()}",
             "mpi_variation": str(mpi_variation),
+            "num_instances": num_instances,
         }
 
         # Put item in the table

@@ -614,3 +614,79 @@ def get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reservatio
         ):
             needed_capacity_block_statuses.append(status)
     return needed_capacity_block_statuses
+
+
+def parse_json_string(value: str, raise_on_error: bool = False, default: any = None) -> any:
+    """
+    Parse a JSON string into a Python object.
+
+    :param value: JSON string to parse
+    :param raise_on_error: If True, raises exception on parse failure; if False, returns default
+    :param default: Value to return on parse failure when raise_on_error is False
+    :return: Parsed JSON object or default value on failure
+    """
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError) as e:
+        LOGGER.error("Failed to parse JSON string: %s. Error: %s", value, e)
+        if raise_on_error:
+            raise e
+        return default
+
+
+def _collect_leaves(d: dict, prefix: str) -> set[str]:
+    """Collect all leaf paths from a dict."""
+    leaves = set()
+    for k, v in d.items():
+        key_path = f"{prefix}.{k}" if prefix else str(k)
+        if isinstance(v, dict) and v:
+            leaves.update(_collect_leaves(v, key_path))
+        else:
+            leaves.add(key_path)
+    return leaves if leaves else {prefix} if prefix else set()
+
+
+def _collect_diff_for_key(d: dict, key: str, path: str) -> set[str]:
+    """Collect leaf paths for a key that exists only in one dictionary."""
+    key_path = f"{path}.{key}" if path else str(key)
+    if isinstance(d[key], dict) and d[key]:
+        return _collect_leaves(d[key], key_path)
+    return {key_path}
+
+
+def get_dictionary_diff(d1: dict, d2: dict, path: str = "") -> set[str]:
+    """
+    Recursively find all leaf paths where two dictionaries differ.
+
+    Returns a set of dot-notation paths (e.g., "cluster.settings.enabled") where
+    the dictionaries have different values, including added or removed keys.
+    Always returns leaf paths, never intermediate dict paths.
+
+    :param d1: First dictionary to compare (if None, treated as empty dict)
+    :param d2: Second dictionary to compare (if None, treated as empty dict)
+    :param path: Current path prefix (used for recursion)
+    :return: Set of dot-notation paths where dictionaries differ.
+             If no differences detected return empoty set.
+    """
+    d1 = d1 or {}
+    d2 = d2 or {}
+
+    diffs: set[str] = set()
+    keys1, keys2 = set(d1.keys()), set(d2.keys())
+
+    # Collect paths that are added or remove
+    for k in keys1 - keys2:
+        diffs.update(_collect_diff_for_key(d1, k, path))
+
+    for k in keys2 - keys1:
+        diffs.update(_collect_diff_for_key(d2, k, path))
+
+    # Compare paths
+    for k in keys1 & keys2:
+        key_path = f"{path}.{k}" if path else str(k)
+        if isinstance(d1[k], dict) and isinstance(d2[k], dict):
+            diffs.update(get_dictionary_diff(d1[k], d2[k], key_path))
+        elif d1[k] != d2[k]:
+            diffs.add(key_path)
+
+    return diffs

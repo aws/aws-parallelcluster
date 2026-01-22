@@ -13,6 +13,8 @@ jsonpickle
 junitparser
 lexicon
 matplotlib
+openpyxl
+pandas
 pexpect
 psutil
 pykwalify

@@ -62,7 +62,103 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
         ),
     ],
 )
-def test_extra_chef_attributes_validator(extra_chef_attributes, expected_message, expected_failure_level):
+def test_extra_chef_attributes_validator_in_place_update(
+    extra_chef_attributes, expected_message, expected_failure_level
+):
+    actual_failures = ExtraChefAttributesValidator().execute(extra_chef_attributes=extra_chef_attributes)
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_failure_level:
+        assert_failure_level(actual_failures, expected_failure_level)
+
+
+@pytest.mark.parametrize(
+    "extra_chef_attributes, expected_message, expected_failure_level",
+    [
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": 600}}}',
+            None,
+            None,
+            id="reconfigure_timeout valid integer > 300",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": 301}}}',
+            None,
+            None,
+            id="reconfigure_timeout valid integer just above 300",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": 300}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be greater than 300.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout equal to 300 throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": 100}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be greater than 300.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout less than 300 throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": 0}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be greater than 300.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout zero throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": -100}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be greater than 300.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout negative throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": "600"}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be an integer.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout string throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": true}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be an integer.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout boolean true throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": false}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be an integer.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout boolean false throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"reconfigure_timeout": 3.14}}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.slurm.reconfigure_timeout' must be an integer.",
+            FailureLevel.ERROR,
+            id="reconfigure_timeout float throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"slurm": {"other-setting": "value"}}}',
+            None,
+            None,
+            id="reconfigure_timeout not set passes",
+        ),
+        pytest.param(
+            '{"cluster": {"other": "value"}}',
+            None,
+            None,
+            id="slurm section not present passes",
+        ),
+    ],
+)
+def test_extra_chef_attributes_validator_reconfigure_timeout(
+    extra_chef_attributes, expected_message, expected_failure_level
+):
     actual_failures = ExtraChefAttributesValidator().execute(extra_chef_attributes=extra_chef_attributes)
     assert_failure_messages(actual_failures, expected_message)
     if expected_failure_level:

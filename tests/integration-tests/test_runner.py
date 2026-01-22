@@ -27,7 +27,13 @@ from conftest_networking import unmarshal_az_override
 from framework.tests_configuration.config_renderer import dump_rendered_config_file, read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
-from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from reports_generator import (
+    generate_cw_report,
+    generate_json_report,
+    generate_junitxml_merged_report,
+    generate_launch_time_report,
+    generate_performance_report,
+)
 from retrying import retry
 from utils import InstanceTypesData
 
@@ -50,6 +56,7 @@ TEST_DEFAULTS = {
     "instances": [],
     "dry_run": False,
     "reports": [],
+    "generate_historical_report": False,
     "cw_region": "us-east-1",
     "cw_namespace": "ParallelCluster/IntegrationTests",
     "cw_timestamp_day_start": False,
@@ -219,6 +226,12 @@ def _init_argparser():
         nargs="+",
         choices=["html", "junitxml", "json", "cw"],
         default=TEST_DEFAULTS.get("reports"),
+    )
+    reports_group.add_argument(
+        "--generate-historical-report",
+        help="Generate historical report for launch time and performance",
+        action="store_true",
+        default=TEST_DEFAULTS.get("generate_historical_report"),
     )
     reports_group.add_argument(
         "--cw-region", help="Region where to publish CloudWatch metrics", default=TEST_DEFAULTS.get("cw_region")
@@ -922,6 +935,12 @@ def main():
     if "json" in args.reports:
         logger.info("Generating tests report")
         generate_json_report(reports_output_dir)
+    if args.generate_historical_report:
+        today_number = (datetime.date.today() - datetime.date(2020, 1, 1)).days
+        if today_number % 5 == 0:
+            # Launch time report is generated once every 5 days
+            generate_launch_time_report(reports_output_dir)
+        generate_performance_report(reports_output_dir)
 
     if "cw" in args.reports:
         logger.info("Publishing CloudWatch metrics")
