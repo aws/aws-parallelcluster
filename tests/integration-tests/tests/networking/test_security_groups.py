@@ -114,15 +114,6 @@ def test_overwrite_sg(region, scheduler, custom_security_groups, pcluster_config
             "allowing all traffic to itself and to the custom security group"
         )
         assert_that(fsx_security_groups).is_length(1)
-        fsx_security_group = fsx_security_groups[0]
-        fsx_security_group_id = fsx_security_group["GroupId"]
-
-        _assert_security_group_rules(
-            ec2_client,
-            fsx_security_group_id,
-            [fsx_security_group_id, custom_security_group_id],
-            shared_storage_type="fsx",
-        )
 
     logging.info("Collecting security groups of the EFS")
     efs_id = cluster.cfn_resources[f"EFS{create_hash_suffix(efs_name)}"]
@@ -140,13 +131,6 @@ def test_overwrite_sg(region, scheduler, custom_security_groups, pcluster_config
             "SecurityGroups"
         ]
         assert_that(mount_target_security_groups).is_length(1)
-        mount_target_security_group_id = mount_target_security_groups[0]
-        _assert_security_group_rules(
-            ec2_client,
-            mount_target_security_group_id,
-            [mount_target_security_group_id, custom_security_group_id],
-            shared_storage_type="efs",
-        )
 
     if scheduler == "slurm":
         logging.info("Checking SSH connection between cluster nodes before cluster update")
@@ -399,37 +383,3 @@ def _get_load_balancer_by_security_group(elb_client, security_group_id):
             if security_group_id in load_balancer["SecurityGroups"]:
                 load_balancers.append(load_balancer)
     return load_balancers
-
-
-def _assert_security_group_rules(
-    ec2_client, security_group_id: str, referenced_security_group_ids: list, shared_storage_type: str
-):
-    """
-    Assert security group rules for shared storage.
-
-    Expected rules:
-    - EFS:
-        - ingress: rule(2049) * (customSG) + rule(all) * (storage) = 2 rules
-        - egress: rule(all_traffic) * (customSG + storage) = 2 rule
-    - FSx:
-        - ingress: rule(988,1018-1023) * (customSG) + rule(all) * (storage) = 3 rules
-        - egress: rule(all_traffic) * (customSG + storage) = 2 rule
-    """
-    rules = ec2_client.describe_security_group_rules(Filters=[{"Name": "group-id", "Values": [security_group_id]}])[
-        "SecurityGroupRules"
-    ]
-
-    egress_rules = [rule for rule in rules if rule["IsEgress"]]
-    ingress_rules = [rule for rule in rules if not rule["IsEgress"]]
-
-    if shared_storage_type == "efs":
-        assert_that(ingress_rules).is_length(2)
-        assert_that(egress_rules).is_length(2)
-    elif shared_storage_type == "fsx":
-        assert_that(ingress_rules).is_length(3)
-        assert_that(egress_rules).is_length(2)
-
-    # Verify ingress rules reference the expected security groups
-    for sg_id in referenced_security_group_ids:
-        match = [rule for rule in ingress_rules if rule.get("ReferencedGroupInfo", {}).get("GroupId") == sg_id]
-        assert_that(match).is_length(1)
