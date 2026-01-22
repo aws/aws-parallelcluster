@@ -1,8 +1,13 @@
+{% if OSS  %}
+{%- set OSS = [ OSS ] -%}
+{% else %}
+{%- set OSS = ["alinux2", "alinux2023", "ubuntu2204", "ubuntu2004", "rhel8", "rocky8"] -%}
+{% endif %}
 test-suites:
   performance_tests:
     test_starccm.py::test_starccm:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2", "alinux2023", "ubuntu2204", "ubuntu2004", "rhel8", "rocky8"]
+          oss: {{ OSS }}
           schedulers: ["slurm"]

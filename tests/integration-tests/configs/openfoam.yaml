@@ -1,8 +1,13 @@
+{% if OSS  %}
+{%- set OSS = [ OSS ] -%}
+{% else %}
+{%- set OSS = ["alinux2", "ubuntu2004"] -%}
+{% endif %}
 test-suites:
   performance_tests:
     test_openfoam.py::test_openfoam:
       dimensions:
         - regions: ["euw1-az1"]  # do not move, unless capacity reservation is moved as well
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2", "ubuntu2004"] # Ubuntu22.04, RHEL8 and Rocky8 are not supported
+          oss: {{ OSS }} # Ubuntu22.04, RHEL8 and Rocky8 are not supported
           schedulers: ["slurm"]
