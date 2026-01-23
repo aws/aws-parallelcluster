@@ -16,7 +16,7 @@ from pcluster.constants import (
     P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
-    PCLUSTER_S3_ARTIFACTS_DICT,
+    PCLUSTER_S3_ARTIFACTS_DICT, P6_B300,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
@@ -369,8 +369,9 @@ def add_network_interfaces(
 ):
     """Generate launch template network interfaces list."""
     is_gb200 = compute_resource.instance_types[0].split(".")[0] == P6E_GB200
+    is_b300 = compute_resource.instance_types[0].split(".")[0] == P6_B300
     efa_enabled = compute_resource.efa and compute_resource.efa.enabled
-    interface_type = "efa" if efa_enabled and not is_gb200 else None
+    interface_type = "efa" if efa_enabled and not is_gb200 and not is_b300 else None
 
     compute_lt_nw_interfaces = [
         ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
@@ -390,10 +391,16 @@ def add_network_interfaces(
         if is_gb200 and not efa_enabled and not even:
             continue
 
-        interface_type = "efa" if efa_enabled else None
-        # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
-        if is_gb200 and efa_enabled:
-            interface_type = "efa" if even else "efa-only"
+        if efa_enabled:
+            if is_b300:
+                interface_type = "efa-only"
+            if is_gb200:
+                # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
+                interface_type = "efa" if even else "efa-only"
+            else:
+                interface_type = "efa"
+        else:
+            interface_type = None
 
         compute_lt_nw_interfaces.append(
             ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
