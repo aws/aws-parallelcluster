@@ -252,7 +252,7 @@ phases:
               echo "Correctly installed CUDA ${cuda_output}"
 
               echo "Testing CUDA with deviceQuery..."
-              if [ {{ test.OSArchitecture.outputs.stdout }} != 'arm64' ]; then
+              if [ -f /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery ]; then
                 /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               else
