@@ -10,8 +10,8 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-import pipes
 import re
+import shlex
 import sys
 from datetime import datetime
 from typing import NoReturn
@@ -73,7 +73,7 @@ def shell_join(array):
     :param array: input array
     :return: the shell-quoted string
     """
-    return " ".join(pipes.quote(item) for item in array)
+    return " ".join(shlex.quote(item) for item in array)
 
 
 def is_job_array(job):
