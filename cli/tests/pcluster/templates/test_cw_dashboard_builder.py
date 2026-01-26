@@ -101,6 +101,9 @@ def _verify_alarms(output_yaml, alarms_enabled):
         assert_that(output_yaml).contains("HeadNodeDiskAlarm")
         assert_that(output_yaml).contains("disk_used_percent")
 
+        assert_that(output_yaml).contains("HeadNodeClustermgtdHeartbeatAlarm")
+        assert_that(output_yaml).contains("ClustermgtdHeartbeat")
+
     else:
         assert_that(output_yaml).does_not_contain("Cluster Alarms")
         assert_that(output_yaml).does_not_contain("AWS::CloudWatch::Alarm")
@@ -139,6 +142,8 @@ def _verify_head_node_instance_metrics_graphs(output_yaml):
     assert_that(output_yaml).contains("Disk Read/Write Ops")
     assert_that(output_yaml).contains("Disk Used Percent")
     assert_that(output_yaml).contains("Memory Used Percent")
+    assert_that(output_yaml).contains("Daemons Heartbeats")
+    assert_that(output_yaml).contains("ClustermgtdHeartbeat")
 
 
 def _verify_ec2_metrics_conditions(cluster_config, output_yaml):
