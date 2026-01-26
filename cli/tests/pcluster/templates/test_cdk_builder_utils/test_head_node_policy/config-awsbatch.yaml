@@ -1,0 +1,20 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t3.micro
+  Ssh:
+    KeyName: String
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceTypes:
+            - c4.xlarge
+          MaxvCpus: 10
