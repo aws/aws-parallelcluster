@@ -615,6 +615,20 @@ def test_fast_capacity_failover(
         expected_error_code="InvalidParameter" if "us-iso" in region else "InvalidParameterValue",
     )
 
+    # Test Slurm 25.11 Expedited Requeue feature with ICE
+    # Jobs submitted with --requeue=expedite should automatically requeue on node failure
+    # and be treated as highest priority, eligible to restart immediately
+    _test_expedited_requeue_on_ice(
+        partition,
+        scheduler_commands,
+        remote_command_executor,
+        clustermgtd_conf_path,
+        ice_single_static_nodes,
+        ice_single_dynamic_nodes,
+        target_compute_resource="ice-compute-resource",
+        expected_error_code="InsufficientHostCapacity",
+    )
+
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_config_update
@@ -2286,6 +2300,87 @@ def _test_enable_fast_capacity_failover(
     # check dynamic nodes in ice compute resource are reset after insufficient_capacity_timeout expired
     _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=cr_dynamic_nodes)
     # test insufficient capacity does not trigger protected mode
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
+    )
+
+
+def _test_expedited_requeue_on_ice(
+    partition,
+    scheduler_commands,
+    remote_command_executor,
+    clustermgtd_conf_path,
+    cr_static_nodes,
+    cr_dynamic_nodes,
+    target_compute_resource,
+    expected_error_code,
+):
+    """
+    Test Slurm 25.11 expedited requeue behavior when ICE occurs.
+
+    This test verifies that jobs submitted with --requeue=expedite:
+    1. Automatically requeue when nodes fail due to ICE
+    2. Complete successfully on alternative compute resources
+    3. Requeue within the expected time window (2 minutes)
+
+    It expects to be run on a CR with at least 1 static node and 1 dynamic node.
+    It expects all the dynamic nodes to fail due to the overrides to RunInstances or CreateFleet.
+    It expects the job to succeed because Slurm will reallocate the failed nodes to a different CR.
+    """
+    # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
+    _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
+
+    # clear slurm_resume and clustermgtd logs in order to start from a clean state
+    remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
+
+    # Submit job with --requeue=expedite to test Slurm 25.11 expedited requeue feature
+    # Using `prefer` to allow requeuing the job on a different CR when ICE occurs
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 30",
+            "nodes": 2,
+            "partition": partition,
+            "prefer": target_compute_resource,
+            "other_options": "--requeue=expedite",
+        }
+    )
+
+    # Wait for ICE to be detected and nodes to be marked as down
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "The following compute resources are in down state due to insufficient capacity",
+        ],
+    )
+
+    # Verify static nodes in ice compute resource are still up
+    assert_compute_node_states(scheduler_commands, cr_static_nodes, expected_states=["idle", "mixed", "allocated"])
+    # Verify dynamic nodes in ice compute resource are down due to ICE
+    assert_compute_node_states(scheduler_commands, cr_dynamic_nodes, expected_states=["down#", "down~"])
+    assert_compute_node_reasons(scheduler_commands, cr_dynamic_nodes, f"(Code:{expected_error_code})")
+
+    # Verify expedited requeue job completes successfully within 2 minutes
+    # The job should be automatically requeued with highest priority and run on alternative CR
+    scheduler_commands.wait_job_completed(job_id)
+    assert_job_requeue_in_time(scheduler_commands, job_id)
+
+    # Wait for insufficient capacity timeout to expire and nodes to reset
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Reset the following compute resources because insufficient capacity timeout expired",
+        ],
+    )
+
+    # Verify dynamic nodes are reset after insufficient_capacity_timeout expired
+    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=cr_dynamic_nodes)
+
+    # Verify insufficient capacity does not trigger protected mode
     assert_no_msg_in_logs(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
