@@ -395,7 +395,8 @@ def add_network_interfaces(
 
         if efa_enabled:
             if is_b300:
-                # if efa is enabled with a b300 instance, all network cards, except for the primary, are configured as efa-only
+                # if efa is enabled with a b300 instance, all network cards, except for the primary,
+                # are configured as efa-only
                 interface_type = "efa-only"
             elif is_gb200:
                 # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
