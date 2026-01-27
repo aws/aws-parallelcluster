@@ -382,7 +382,10 @@ class ClusterCdkStack:
             "Disk": {
                 "metric": self._cw_metric_head_node("CWAgent", "disk_used_percent", extra_dimensions={"path": "/"}),
             },
-            "ClustermgtdHeartbeat": {
+        }
+
+        if self._condition_is_slurm():
+            metrics_for_alarms["ClustermgtdHeartbeat"] = {
                 "metric": self._cw_metric_head_node(
                     CW_METRICS_NAMESPACE,
                     CW_METRICS_CLUSTERMGTD_HEARTBEAT,
@@ -393,8 +396,7 @@ class ClusterCdkStack:
                 "comparison_operator": cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
                 "threshold": 1,
                 "treat_missing_data": cloudwatch.TreatMissingData.BREACHING,
-            },
-        }
+            }
 
         for metric_key, alarm_config in metrics_for_alarms.items():
             alarm_id = f"HeadNode{metric_key}Alarm"

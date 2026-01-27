@@ -313,7 +313,10 @@ def test_add_alarms(mocker, config_file_name):
             "datapoints_to_alarm": 1,
             "treat_missing_data": "missing",
         },
-        "Clustermgtd-Heartbeat": {
+    }
+
+    if cluster.scheduling.scheduler == "slurm":
+        expected_alarms["Clustermgtd-Heartbeat"] = {
             "name": "clustername-HeadNode-ClustermgtdHeartbeat",
             "metric_name": "ClustermgtdHeartbeat",
             "namespace": "ParallelCluster",
@@ -322,8 +325,7 @@ def test_add_alarms(mocker, config_file_name):
             "evaluation_periods": 10,
             "datapoints_to_alarm": 10,
             "treat_missing_data": "breaching",
-        },
-    }
+        }
 
     if cluster.are_alarms_enabled:
         # Find the HeadNode wait condition resource name

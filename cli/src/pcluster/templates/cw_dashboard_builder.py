@@ -573,14 +573,16 @@ class CWDashboardConstruct(Construct):
         ]
 
         # Custom Metrics
-        pcluster_metrics = [
-            new_pcluster_metric(
-                title="Daemons Heartbeats",
-                metrics=[CW_METRICS_CLUSTERMGTD_HEARTBEAT],
-                namespace=CW_METRICS_NAMESPACE,
-                additional_dimensions={CW_METRICS_DIMENSION_CLUSTER_NAME: self.config.cluster_name},
-            ),
-        ]
+        pcluster_metrics = []
+        if self.config.scheduling.scheduler == "slurm":
+            pcluster_metrics.append(
+                new_pcluster_metric(
+                    title="Daemons Heartbeats",
+                    metrics=[CW_METRICS_CLUSTERMGTD_HEARTBEAT],
+                    namespace=CW_METRICS_NAMESPACE,
+                    additional_dimensions={CW_METRICS_DIMENSION_CLUSTER_NAME: self.config.cluster_name},
+                )
+            )
 
         # Create graphs for EC2 metrics and CW Agent metrics and update coordinates
         widgets_list = []
