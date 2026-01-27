@@ -17,7 +17,7 @@ from pcluster.constants import (
     P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
-    PCLUSTER_S3_ARTIFACTS_DICT,
+    PCLUSTER_S3_ARTIFACTS_DICT, INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
@@ -373,7 +373,8 @@ def add_network_interfaces(
     is_gb200 = instance_family == P6E_GB200
     is_b300 = instance_family == P6_B300
     efa_enabled = compute_resource.efa and compute_resource.efa.enabled
-    interface_type = "efa" if efa_enabled and not is_gb200 and not is_b300 else None
+    # gb200 and b300 instances require the first interface to be ENA even if EFA is enabled
+    interface_type = "efa" if efa_enabled and instance_family not in INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA else None
 
     compute_lt_nw_interfaces = [
         ec2.CfnLaunchTemplate.NetworkInterfaceProperty(

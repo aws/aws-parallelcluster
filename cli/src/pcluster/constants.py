@@ -348,6 +348,7 @@ PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-ima
 
 P6E_GB200 = "p6e-gb200"
 P6_B300 = "p6-b300"
+INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA = [P6E_GB200,P6_B300]
 
 ULTRASERVER_INSTANCE_PREFIX_LIST = [P6E_GB200]
 # Dictionary mapping ultraserver instance prefixes to their allowed capacity block sizes

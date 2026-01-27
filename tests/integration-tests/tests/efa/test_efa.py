@@ -62,6 +62,8 @@ def test_efa(
         head_node_instance = instance
     max_queue_size = 2
     capacity_reservation_id = None
+    # p family instances need capacity blocks and so placement group is set to false
+    placement_group_enabled = not instance.startswith("p")
     if instance in ("p6-b200.48xlarge", "p6-b300.48xlarge"):
         capacity_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if capacity_reservations_ids:
@@ -76,6 +78,7 @@ def test_efa(
         head_node_instance=head_node_instance,
         max_queue_size=max_queue_size,
         capacity_reservation_id=capacity_reservation_id,
+        placement_group_enabled=placement_group_enabled,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)

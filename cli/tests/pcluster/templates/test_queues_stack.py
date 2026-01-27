@@ -221,6 +221,28 @@ class NetworkCard:
                 {"network_card_index": 2, "interface_type": None, "device_index": 1},
             ],
         ),
+        (
+                True,
+                "p6-b300.WHATEVER_SIZE",
+                [NetworkCard(0,4), NetworkCard(1, 4), NetworkCard(2, 4), NetworkCard(3, 4), NetworkCard(4, 4)],
+                [
+                    {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                    {"network_card_index": 1, "interface_type": "efa-only", "device_index": 1},
+                    {"network_card_index": 2, "interface_type": "efa-only", "device_index": 1},
+                    {"network_card_index": 3, "interface_type": "efa-only", "device_index": 1},
+                    {"network_card_index": 4, "interface_type": "efa-only", "device_index": 1},
+                ],
+        ),
+        (
+                False,
+                "p6-b300.WHATEVER_SIZE",
+                [NetworkCard(0,4), NetworkCard(1, 4), NetworkCard(2, 4)],
+                [
+                    {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                    {"network_card_index": 1, "interface_type": None, "device_index": 1},
+                    {"network_card_index": 2, "interface_type": None, "device_index": 1},
+                ],
+        ),
     ],
 )
 def test_add_compute_resource_launch_template(
