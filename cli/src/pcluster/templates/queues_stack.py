@@ -13,10 +13,11 @@ from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
+    P6_B300,
     P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
-    PCLUSTER_S3_ARTIFACTS_DICT, P6_B300,
+    PCLUSTER_S3_ARTIFACTS_DICT,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
@@ -368,8 +369,9 @@ def add_network_interfaces(
     queue_lt_security_groups,
 ):
     """Generate launch template network interfaces list."""
-    is_gb200 = compute_resource.instance_types[0].split(".")[0] == P6E_GB200
-    is_b300 = compute_resource.instance_types[0].split(".")[0] == P6_B300
+    instance_family = compute_resource.instance_types[0].split(".")[0]
+    is_gb200 = instance_family == P6E_GB200
+    is_b300 = instance_family == P6_B300
     efa_enabled = compute_resource.efa and compute_resource.efa.enabled
     interface_type = "efa" if efa_enabled and not is_gb200 and not is_b300 else None
 
@@ -393,8 +395,9 @@ def add_network_interfaces(
 
         if efa_enabled:
             if is_b300:
+                # if efa is enabled with a b300 instance, all network cards, except for the primary, are configured as efa-only
                 interface_type = "efa-only"
-            if is_gb200:
+            elif is_gb200:
                 # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
                 interface_type = "efa" if even else "efa-only"
             else:
