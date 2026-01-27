@@ -11,13 +11,14 @@ from pcluster.config.cluster_config import SlurmClusterConfig, SlurmComputeResou
 from pcluster.config.common import DefaultUserHomeType, SharedStorageType
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
+    INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
     P6_B300,
     P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
-    PCLUSTER_S3_ARTIFACTS_DICT, INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA,
+    PCLUSTER_S3_ARTIFACTS_DICT,
 )
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
