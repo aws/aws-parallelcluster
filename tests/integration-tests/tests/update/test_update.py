@@ -33,6 +33,7 @@ from utils import (
     generate_stack_name,
     get_arn_partition,
     get_root_volume_id,
+    get_similar_instance_types,
     is_filecache_supported,
     is_fsx_lustre_supported,
     is_fsx_ontap_supported,
@@ -83,12 +84,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
-    spot_instance_types = ["t3.medium"]
-    try:
-        boto3.client("ec2").describe_instance_types(InstanceTypes=["t3a.medium"])
-        spot_instance_types.extend(["t3a.medium"])
-    except Exception:
-        pass
+    spot_instance_types = get_similar_instance_types("t3.medium", region, 5)
 
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader(resource_bucket=bucket_name, spot_instance_types=spot_instance_types)
