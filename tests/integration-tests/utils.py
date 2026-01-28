@@ -1023,6 +1023,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             {"Name": "processor-info.supported-architecture", "Values": [target_arch]},
             {"Name": "vcpu-info.default-vcpus", "Values": [str(target_vcpus)]},
             {"Name": "vcpu-info.default-threads-per-core", "Values": [str(target_threads)]},
+            {"Name": "supported-usage-class", "Values": ["on-demand", "spot"]},
         ],
     ):
         # Filter for EFA support, GPU presence, and inference accelerator types
