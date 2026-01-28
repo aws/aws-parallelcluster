@@ -271,20 +271,73 @@ def test_add_alarms(mocker, config_file_name):
     simple_type = "AWS::CloudWatch::Alarm"
     composite_type = "AWS::CloudWatch::CompositeAlarm"
 
-    head_node_alarms = [
-        {"name": "clustername-HeadNode", "type": composite_type},
-        {"name": "clustername-HeadNode-Health", "type": simple_type},
-        {"name": "clustername-HeadNode-Cpu", "type": simple_type},
-        {"name": "clustername-HeadNode-Mem", "type": simple_type},
-        {"name": "clustername-HeadNode-Disk", "type": simple_type},
-    ]
+    # Expected alarm configurations with details
+    expected_alarms = {
+        "Health": {
+            "name": "clustername-HeadNode-Health",
+            "metric_name": "StatusCheckFailed",
+            "namespace": "AWS/EC2",
+            "threshold": 0,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": None,
+        },
+        "Cpu": {
+            "name": "clustername-HeadNode-Cpu",
+            "metric_name": "CPUUtilization",
+            "namespace": "AWS/EC2",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": None,
+        },
+        "Mem": {
+            "name": "clustername-HeadNode-Mem",
+            "metric_name": "mem_used_percent",
+            "namespace": "CWAgent",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": None,
+        },
+        "Disk": {
+            "name": "clustername-HeadNode-Disk",
+            "metric_name": "disk_used_percent",
+            "namespace": "CWAgent",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": None,
+        },
+    }
 
     if cluster.are_alarms_enabled:
-        for alarm in head_node_alarms:
+        # Verify each simple alarm exists with correct details
+        for _alarm_key, expected in expected_alarms.items():
             matched_resources = get_resources(
-                generated_template, type=alarm["type"], properties={"AlarmName": alarm["name"]}
+                generated_template, type=simple_type, properties={"AlarmName": expected["name"]}
             )
             assert_that(matched_resources).is_length(1)
+
+            alarm_properties = list(matched_resources.values())[0]["Properties"]
+            assert_that(alarm_properties.get("AlarmName")).is_equal_to(expected["name"])
+            assert_that(alarm_properties.get("MetricName")).is_equal_to(expected["metric_name"])
+            assert_that(alarm_properties.get("Namespace")).is_equal_to(expected["namespace"])
+            assert_that(alarm_properties.get("Threshold")).is_equal_to(expected["threshold"])
+            assert_that(alarm_properties.get("ComparisonOperator")).is_equal_to(expected["comparison_operator"])
+            assert_that(alarm_properties.get("EvaluationPeriods")).is_equal_to(expected["evaluation_periods"])
+            assert_that(alarm_properties.get("DatapointsToAlarm")).is_equal_to(expected["datapoints_to_alarm"])
+            assert_that(alarm_properties.get("TreatMissingData")).is_equal_to(expected["treat_missing_data"])
+
+        # Verify composite alarm exists
+        composite_alarms = get_resources(generated_template, type=composite_type)
+        assert_that(composite_alarms).is_length(1)
+        composite_alarm_properties = list(composite_alarms.values())[0]["Properties"]
+        assert_that(composite_alarm_properties["AlarmName"]).is_equal_to("clustername-HeadNode")
     else:
         matched_simple_alarms = get_resources(generated_template, type=simple_type)
         matched_composite_alarms = get_resources(generated_template, type=composite_type)
