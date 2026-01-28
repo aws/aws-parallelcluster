@@ -23,6 +23,7 @@ from pcluster.constants import (
     CAPACITY_BLOCK_INACTIVE_STATES,
     CAPACITY_RESERVATION_OS_MAP,
     NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES,
+    P6_B300,
     SUPPORTED_OSES_FOR_P6_B300,
     SUPPORTED_OSES_FOR_P6E_GB200,
     ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT,
@@ -213,9 +214,9 @@ class InstanceTypeOSCompatibleValidator(Validator):
                     " Please use one of the following OS: {2}".format(instance_type, os, SUPPORTED_OSES_FOR_P6E_GB200),
                     FailureLevel.ERROR,
                 )
-        if instance_type.startswith("p6-b300") and os in UNSUPPORTED_OSES_FOR_P6_B300:
+        if instance_type.startswith(P6_B300) and os in UNSUPPORTED_OSES_FOR_P6_B300:
             self._add_failure(
-                "The instance type {0} is not officially supported with OS {1}."
+                "The instance type {0} is not supported with OS {1}."
                 " Please use one of the following OS: {2}".format(instance_type, os, SUPPORTED_OSES_FOR_P6_B300),
                 FailureLevel.ERROR,
             )
