@@ -2318,16 +2318,22 @@ def _test_expedited_requeue_on_ice(
     expected_error_code,
 ):
     """
-    Test Slurm 25.11 expedited requeue behavior when ICE occurs.
+    Test Slurm newer than 25.11 expedited requeue behavior when ICE occurs.
 
     This test verifies that jobs submitted with --requeue=expedite:
     1. Automatically requeue when nodes fail due to ICE
-    2. Complete successfully on alternative compute resources
-    3. Requeue within the expected time window (2 minutes)
+    2. Are treated as highest priority after requeue (start before earlier-submitted normal jobs)
+    3. Complete successfully on alternative compute resources
+
+    Test strategy:
+    - Submit job1 with --requeue=expedite to ICE-triggering CR
+    - Submit job2 (normal job) BEFORE ICE occurs (so job2 has earlier SubmitTime)
+    - Wait for ICE to occur and job1 to be requeued
+    - Verify job1 starts before job2 (proving highest priority despite later requeue)
 
     It expects to be run on a CR with at least 1 static node and 1 dynamic node.
     It expects all the dynamic nodes to fail due to the overrides to RunInstances or CreateFleet.
-    It expects the job to succeed because Slurm will reallocate the failed nodes to a different CR.
+    It expects job1 to succeed because Slurm will reallocate the failed nodes to a different CR.
     """
     # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
     _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
@@ -2336,9 +2342,9 @@ def _test_expedited_requeue_on_ice(
     remote_command_executor.clear_slurm_resume_log()
     remote_command_executor.clear_clustermgtd_log()
 
-    # Submit job with --requeue=expedite to test Slurm 25.11 expedited requeue feature
+    # Submit job1 with --requeue=expedite to test Slurm 25.11 expedited requeue feature
     # Using `prefer` to allow requeuing the job on a different CR when ICE occurs
-    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+    job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 30",
             "nodes": 2,
@@ -2347,6 +2353,19 @@ def _test_expedited_requeue_on_ice(
             "other_options": "--requeue=expedite",
         }
     )
+    logging.info(f"Submitted job1 (expedited requeue) with ID: {job1_id}")
+
+    # Submit job2 (normal job) BEFORE ICE occurs
+    # This ensures job2 has an earlier SubmitTime than job1's requeue time
+    # If expedited requeue truly provides highest priority, job1 should still start first
+    job2_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sleep 30",
+            "nodes": 1,
+            "partition": partition,
+        }
+    )
+    logging.info(f"Submitted job2 (normal job) with ID: {job2_id}")
 
     # Wait for ICE to be detected and nodes to be marked as down
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
@@ -2363,10 +2382,26 @@ def _test_expedited_requeue_on_ice(
     assert_compute_node_states(scheduler_commands, cr_dynamic_nodes, expected_states=["down#", "down~"])
     assert_compute_node_reasons(scheduler_commands, cr_dynamic_nodes, f"(Code:{expected_error_code})")
 
-    # Verify expedited requeue job completes successfully within 2 minutes
-    # The job should be automatically requeued with highest priority and run on alternative CR
-    scheduler_commands.wait_job_completed(job_id)
-    assert_job_requeue_in_time(scheduler_commands, job_id)
+    # Wait for both jobs to complete
+    scheduler_commands.wait_job_completed(job1_id)
+    scheduler_commands.wait_job_completed(job2_id)
+
+    # Verify both jobs succeeded
+    scheduler_commands.assert_job_succeeded(job1_id)
+    scheduler_commands.assert_job_succeeded(job2_id)
+
+    # Verify expedited requeue job (job1) started before normal job (job2)
+    # This proves that expedited requeue jobs are treated as highest priority
+    # even though job2 was submitted before job1 was requeued
+    job1_start_time = datetime.strptime(scheduler_commands.get_job_start_time(job1_id), "%Y-%m-%dT%H:%M:%S")
+    job2_start_time = datetime.strptime(scheduler_commands.get_job_start_time(job2_id), "%Y-%m-%dT%H:%M:%S")
+    job2_submit_time = datetime.strptime(scheduler_commands.get_job_submit_time(job2_id), "%Y-%m-%dT%H:%M:%S")
+    job1_eligible_time = datetime.strptime(scheduler_commands.get_job_eligible_time(job1_id), "%Y-%m-%dT%H:%M:%S")
+    logging.info(f"Job1 (expedited) start time: {job1_start_time}, eligible time: {job1_eligible_time}")
+    logging.info(f"Job2 (normal) submit time: {job2_submit_time}, start time: {job2_start_time}")
+    logging.info(f"Job2 was submitted before job1 was requeued: {job2_submit_time < job1_eligible_time}")
+    assert_that(job1_start_time).is_less_than_or_equal_to(job2_start_time)
+    logging.info("Verified: Expedited requeue job started before normal job (highest priority confirmed)")
 
     # Wait for insufficient capacity timeout to expire and nodes to reset
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
