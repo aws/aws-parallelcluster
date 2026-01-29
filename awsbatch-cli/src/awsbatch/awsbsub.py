@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import os
-import pipes
 import re
+import shlex
 import shutil
 import sys
 import tempfile
@@ -391,7 +391,7 @@ def _add_env_var_to_list(key_value_list, var_name, log):
         and "()" not in var  # functions
     ):
         var_value = os.environ[var_name]
-        key_value_list.append("export %s=%s;" % (var_name, pipes.quote(var_value)))
+        key_value_list.append("export %s=%s;" % (var_name, shlex.quote(var_value)))
         log.info("Exporting environment variable: (%s=%s).", var_name, var_value)
     else:
         log.warn("Excluded variable: (%s).", var_name)

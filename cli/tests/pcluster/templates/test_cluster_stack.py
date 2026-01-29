@@ -271,20 +271,112 @@ def test_add_alarms(mocker, config_file_name):
     simple_type = "AWS::CloudWatch::Alarm"
     composite_type = "AWS::CloudWatch::CompositeAlarm"
 
-    head_node_alarms = [
-        {"name": "clustername-HeadNode", "type": composite_type},
-        {"name": "clustername-HeadNode-Health", "type": simple_type},
-        {"name": "clustername-HeadNode-Cpu", "type": simple_type},
-        {"name": "clustername-HeadNode-Mem", "type": simple_type},
-        {"name": "clustername-HeadNode-Disk", "type": simple_type},
-    ]
+    # Expected alarm configurations with details
+    expected_alarms = {
+        "Health": {
+            "name": "clustername-HeadNode-Health",
+            "metric_name": "StatusCheckFailed",
+            "namespace": "AWS/EC2",
+            "threshold": 0,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+        "Cpu": {
+            "name": "clustername-HeadNode-Cpu",
+            "metric_name": "CPUUtilization",
+            "namespace": "AWS/EC2",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+        "Mem": {
+            "name": "clustername-HeadNode-Mem",
+            "metric_name": "mem_used_percent",
+            "namespace": "CWAgent",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+        "Disk": {
+            "name": "clustername-HeadNode-Disk",
+            "metric_name": "disk_used_percent",
+            "namespace": "CWAgent",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+    }
+
+    if cluster.scheduling.scheduler == "slurm":
+        expected_alarms["Clustermgtd-Heartbeat"] = {
+            "name": "clustername-HeadNode-ClustermgtdHeartbeat",
+            "metric_name": "ClustermgtdHeartbeat",
+            "namespace": "ParallelCluster",
+            "threshold": 1,
+            "comparison_operator": "LessThanThreshold",
+            "evaluation_periods": 10,
+            "datapoints_to_alarm": 10,
+            "treat_missing_data": "breaching",
+        }
 
     if cluster.are_alarms_enabled:
-        for alarm in head_node_alarms:
+        # Find the HeadNode wait condition resource name
+        wait_condition_resources = get_resources(
+            generated_template, type="AWS::CloudFormation::WaitCondition", name_pattern="^HeadNodeWaitCondition"
+        )
+        assert_that(wait_condition_resources).is_length(1)
+        wait_condition_name = list(wait_condition_resources.keys())[0]
+
+        # Collect simple alarm resource names for composite alarm rule verification
+        simple_alarm_resource_names = []
+
+        # Verify each simple alarm exists with correct details and depends on wait condition
+        for _alarm_key, expected in expected_alarms.items():
             matched_resources = get_resources(
-                generated_template, type=alarm["type"], properties={"AlarmName": alarm["name"]}
+                generated_template, type=simple_type, properties={"AlarmName": expected["name"]}
             )
             assert_that(matched_resources).is_length(1)
+
+            alarm_resource_name = list(matched_resources.keys())[0]
+            simple_alarm_resource_names.append(alarm_resource_name)
+
+            alarm_resource = list(matched_resources.values())[0]
+            alarm_properties = alarm_resource["Properties"]
+            assert_that(alarm_properties.get("AlarmName")).is_equal_to(expected["name"])
+            assert_that(alarm_properties.get("MetricName")).is_equal_to(expected["metric_name"])
+            assert_that(alarm_properties.get("Namespace")).is_equal_to(expected["namespace"])
+            assert_that(alarm_properties.get("Threshold")).is_equal_to(expected["threshold"])
+            assert_that(alarm_properties.get("ComparisonOperator")).is_equal_to(expected["comparison_operator"])
+            assert_that(alarm_properties.get("EvaluationPeriods")).is_equal_to(expected["evaluation_periods"])
+            assert_that(alarm_properties.get("DatapointsToAlarm")).is_equal_to(expected["datapoints_to_alarm"])
+            assert_that(alarm_properties.get("TreatMissingData")).is_equal_to(expected["treat_missing_data"])
+            assert_that(alarm_resource.get("DependsOn")).contains(wait_condition_name)
+
+        # Verify composite alarm exists with correct properties
+        composite_alarms = get_resources(generated_template, type=composite_type)
+        assert_that(composite_alarms).is_length(1)
+        composite_alarm_resource = list(composite_alarms.values())[0]
+        composite_alarm_properties = composite_alarm_resource["Properties"]
+        assert_that(composite_alarm_properties["AlarmName"]).is_equal_to("clustername-HeadNode")
+        assert_that(composite_alarm_resource.get("DependsOn")).contains(wait_condition_name)
+
+        # Verify composite alarm rule triggers on ANY of the simple alarms (OR logic)
+        alarm_rule = composite_alarm_properties.get("AlarmRule")
+        assert_that(alarm_rule).is_not_none()
+        alarm_rule_str = str(alarm_rule)
+        for alarm_resource_name in simple_alarm_resource_names:
+            assert_that(alarm_rule_str).contains(alarm_resource_name)
+        expected_or_count = len(simple_alarm_resource_names) - 1
+        actual_or_count = alarm_rule_str.count(" OR ")
+        assert_that(actual_or_count).is_equal_to(expected_or_count)
     else:
         matched_simple_alarms = get_resources(generated_template, type=simple_type)
         matched_composite_alarms = get_resources(generated_template, type=composite_type)
