@@ -25,9 +25,11 @@ def terminate_login_nodes(cluster):
     """
     logging.info(f"Terminating login nodes for cluster: {cluster.name}")
     instance_ids = cluster.get_cluster_instance_ids(node_type="LoginNode")
-    ec2 = boto3.client("ec2", region_name=cluster.region)
-    ec2.terminate_instances(InstanceIds=instance_ids)
-    ec2.get_waiter("instance_terminated").wait(InstanceIds=instance_ids)
+    logging.info(f"Detected login nodes for cluster {cluster.name}: {instance_ids}")
+    if instance_ids:
+        ec2 = boto3.client("ec2", region_name=cluster.region)
+        ec2.terminate_instances(InstanceIds=instance_ids)
+        ec2.get_waiter("instance_terminated").wait(InstanceIds=instance_ids)
     logging.info(f"Login nodes for cluster {cluster.name} have been terminated: {instance_ids}")
 
 
