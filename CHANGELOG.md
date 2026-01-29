@@ -8,6 +8,7 @@ CHANGELOG
 - Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
 - Upgrade jmespath to ~=1.0 (from ~=0.10).
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
+- Add support for p6-b300 instances for all OSs except AL2.
 - Add permission `cloudwatch:PutMetricData` to the head node policy so that clustermgtd is able to emit metrics.
 - Add alarm on missing clustermgtd heartbeat.
 

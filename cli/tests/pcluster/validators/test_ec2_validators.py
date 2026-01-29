@@ -461,6 +461,17 @@ def test_instance_type_base_ami_compatible_validator(
             "rocky9",
             None,
         ),
+        (
+            "p6-b300.WHATEVER_SIZE",
+            "alinux2",
+            "The instance type p6-b300.WHATEVER_SIZE is not supported with OS alinux2. "
+            "Please use one of the following OS",
+        ),
+        (
+            "p6-b300.WHATEVER_SIZE",
+            "alinux2023",
+            None,
+        ),
     ],
 )
 def test_instance_type_os_compatible_validator(instance_type, os, expected_message):
