@@ -2345,9 +2345,10 @@ def _test_expedited_requeue_on_ice(
     # Submit job1 with --requeue=expedite to test Slurm 25.11 expedited requeue feature
     # Using `prefer` to allow requeuing the job on a different CR when ICE occurs
     # Command outputs hostname and timestamp to verify job actually ran
+    # Note: Using double quotes in echo to avoid conflicts with --wrap's single quotes
     job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "echo 'Job1 started on' $(hostname) 'at' $(date); sleep 30; echo 'Job1 completed at' $(date)",
+            "command": 'echo "Job1 started on" $(hostname) "at" $(date); sleep 30; echo "Job1 completed at" $(date)',
             "nodes": 2,
             "partition": partition,
             "prefer": target_compute_resource,
@@ -2361,9 +2362,10 @@ def _test_expedited_requeue_on_ice(
     # If expedited requeue truly provides highest priority, job1 should still start first
     # Job2 also uses --prefer to target the same CR and requests 2 nodes
     # This prevents job2 from immediately running on another CR before job1 requeues
+    # Note: Using double quotes in echo to avoid conflicts with --wrap's single quotes
     job2_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": "echo 'Job2 started on' $(hostname) 'at' $(date); sleep 30; echo 'Job2 completed at' $(date)",
+            "command": 'echo "Job2 started on" $(hostname) "at" $(date); sleep 30; echo "Job2 completed at" $(date)',
             "nodes": 2,
             "partition": partition,
             "prefer": target_compute_resource,
