@@ -23,6 +23,8 @@ import pandas as pd
 import untangle
 from framework.metrics_publisher import Metric, MetricsPublisher
 from junitparser import JUnitXml
+from openpyxl.styles import PatternFill
+from scipy import stats
 
 from pcluster.constants import SUPPORTED_OSES
 
@@ -263,8 +265,115 @@ def generate_performance_report(reports_output_dir):
         key = "_".join(keys)
         items_by_name[key].append(item)
     result = defaultdict(dict)
+    all_benchmark_data = {}  # Collect data for summary report
     for name, items in items_by_name.items():
-        result[name] = _get_statistics_from_result(items, name, reports_output_dir)
+        result[name] = _get_statistics_from_result(items, name, reports_output_dir, all_benchmark_data)
+
+    # Generate the summary overview report
+    generate_performance_summary(all_benchmark_data, reports_output_dir)
+
+
+def generate_performance_summary(all_benchmark_data, reports_output_dir):  # noqa C901
+    """Generate a summary Excel file showing performance trends across all benchmarks."""
+    number_of_os_rotations = [2, 4, 7, 11, 16, 22, 29, 37]
+    timeframes = {}
+    for num_of_rotation in number_of_os_rotations:
+        num_days = len(SUPPORTED_OSES) * num_of_rotation
+        timeframes[f"{num_days} days"] = num_days
+
+    summary_data = []
+    current_time = time.time()
+
+    for benchmark_key, data in all_benchmark_data.items():
+        row = {"Benchmark": benchmark_key}
+        timestamps = data["timestamps"]
+        values = data["values"]
+
+        if len(timestamps) < 2:
+            for tf_name in timeframes:
+                row[tf_name] = None
+            summary_data.append(row)
+            continue
+
+        for tf_name, tf_days in timeframes.items():
+            cutoff = current_time - (tf_days * 24 * 60 * 60)
+            # Filter data within this timeframe
+            mask = [t >= cutoff for t in timestamps]
+            tf_timestamps = [t for t, m in zip(timestamps, mask) if m]
+            tf_values = [v for v, m in zip(values, mask) if m]
+
+            if len(tf_timestamps) < 2:
+                row[tf_name] = None
+                continue
+
+            # Check if data covers the beginning of the timeframe (within 30 days of cutoff)
+            oldest_data = min(tf_timestamps)
+            if oldest_data > cutoff + (30 * 24 * 60 * 60):
+                row[tf_name] = None
+                continue
+
+            # Linear regression: convert timestamps to days from start
+            t0 = min(tf_timestamps)
+            x = [(t - t0) / (24 * 60 * 60) for t in tf_timestamps]  # days
+            slope, intercept, _, _, _ = stats.linregress(x, tf_values)
+
+            # Calculate percentage change over the timeframe
+            start_val = intercept
+            end_val = intercept + slope * (max(x) if x else 0)
+
+            if abs(start_val) > 1e-10:
+                pct_change = ((end_val - start_val) / abs(start_val)) * 100
+                row[tf_name] = pct_change  # Store as number, format later
+            else:
+                row[tf_name] = None  # Will display as empty
+
+        summary_data.append(row)
+
+    if not summary_data:
+        print("No benchmark data available for summary report")
+        return
+
+    # Create DataFrame and write to Excel with conditional formatting
+    df = pd.DataFrame(summary_data)
+    df = df.set_index("Benchmark")
+
+    filename = os.path.join(reports_output_dir, "performance_summary.xlsx")
+    print(f"Creating performance summary: {filename}...")
+
+    with pd.ExcelWriter(filename, engine="openpyxl") as writer:
+        df.to_excel(writer, index=True)
+        worksheet = writer.sheets["Sheet1"]
+
+        # Color coding based on benchmark type:
+        # - osu_bibw: higher is better (bandwidth), so positive = good (green), negative = bad (yellow/red)
+        # - All other OSU benchmarks: lower is better (latency), so positive = bad (yellow/red), negative = good (green)
+        for row in range(2, len(summary_data) + 2):
+            benchmark_name = worksheet.cell(row=row, column=1).value
+            is_higher_better = "osu_bibw" in benchmark_name if benchmark_name else False
+
+            for col in range(2, len(timeframes) + 2):
+                cell = worksheet.cell(row=row, column=col)
+                if cell.value is not None and isinstance(cell.value, (int, float)):
+                    val = cell.value
+                    # Apply percentage number format
+                    cell.number_format = "+0.0%;-0.0%;0.0%"
+                    cell.value = val / 100  # Convert to decimal for percentage format
+
+                    # Determine if this change is good or bad based on benchmark type
+                    is_regression = (val > 0 and not is_higher_better) or (val < 0 and is_higher_better)
+
+                    if is_regression:
+                        if abs(val) > 25:
+                            cell.fill = PatternFill(start_color="FF6B6B", end_color="FF6B6B", fill_type="solid")
+                        elif abs(val) > 10:
+                            cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+                    else:
+                        if abs(val) > 25:
+                            cell.fill = PatternFill(start_color="32CD32", end_color="32CD32", fill_type="solid")
+                        elif abs(val) > 10:
+                            cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+
+    print(f"Performance summary saved: {filename}")
 
 
 def _append_performance_data(target_dict, os_key, performance, timestamp):
@@ -276,7 +385,16 @@ def _append_performance_data(target_dict, os_key, performance, timestamp):
     target_dict[os_time_key].append(datetime.datetime.fromtimestamp(int(timestamp)).strftime("%Y-%m-%d %H:%M:%S"))
 
 
-def _get_statistics_from_result(all_items, name, reports_output_dir):
+def _collect_summary_data(all_benchmark_data, benchmark_key, os_key, performance, timestamp):
+    """Collect raw data for the summary report."""
+    full_key = f"{benchmark_key}_{os_key}"
+    if full_key not in all_benchmark_data:
+        all_benchmark_data[full_key] = {"timestamps": [], "values": []}
+    all_benchmark_data[full_key]["timestamps"].append(int(timestamp))
+    all_benchmark_data[full_key]["values"].append(float(performance))
+
+
+def _get_statistics_from_result(all_items, name, reports_output_dir, all_benchmark_data=None):
     result = {}
     result_with_single_layer = {}
     for item in all_items:
@@ -298,8 +416,12 @@ def _get_statistics_from_result(all_items, name, reports_output_dir):
                 if key not in result:
                     result[key] = {}
                 _append_performance_data(result[key], os_key, performance, timestamp)
+                if all_benchmark_data is not None:
+                    _collect_summary_data(all_benchmark_data, f"{name}_{key}", os_key, performance, timestamp)
         else:
             _append_performance_data(result_with_single_layer, os_key, this_result, timestamp)
+            if all_benchmark_data is not None:
+                _collect_summary_data(all_benchmark_data, name, os_key, this_result, timestamp)
     for key, node_num_result in result.items():
         create_report(node_num_result, [name, key], reports_output_dir)
     if result_with_single_layer:
@@ -396,29 +518,17 @@ def plot_statistics(result, name_prefix):
 
 
 def create_excel_files(result, name_prefix, reports_output_dir):
-    # Collect and sort all unique time points
     filename = os.path.join(reports_output_dir, f"{name_prefix}_statistics.xlsx")
     print(f"Creating Excel file: {filename}...")
-    all_times = set()
-    for category, values in result.items():
-        if "-time" in category:
-            all_times.update(values)
-    sorted_times = sorted(all_times)
 
-    df_data = {}
-
-    # Add each category as a column
-    for category, values in result.items():
-        if "-time" in category:
-            continue
-        x_values = result[f"{category}-time"]
-        # Create series and aggregate duplicates by taking the mean
-        category_series = pd.Series(index=x_values, data=values).groupby(level=0).mean()
-        df_data[category] = category_series.reindex(sorted_times)
-
+    all_times = sorted({t for k, v in result.items() if "-time" in k for t in v})
+    df_data = {
+        k: pd.Series(index=result[f"{k}-time"], data=v).groupby(level=0).mean().reindex(all_times)
+        for k, v in result.items()
+        if "-time" not in k
+    }
     df = pd.DataFrame(df_data)
 
-    # Write to Excel
     with pd.ExcelWriter(filename, engine="openpyxl") as writer:
         df.T.to_excel(writer, index=True)
 
