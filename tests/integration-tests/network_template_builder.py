@@ -242,6 +242,12 @@ class NetworkTemplateBuilder:
                 enable_private_dns=True,
             ),
             VPCEndpointConfig(
+                name="MonitoringEndpoint",
+                service_name=f"com.amazonaws.{region}.monitoring",
+                type=VPCEndpointConfig.EndpointType.INTERFACE,
+                enable_private_dns=True,
+            ),
+            VPCEndpointConfig(
                 name="CFNEndpoint",
                 service_name=prefix + f"com.amazonaws.{region}.cloudformation",
                 type=VPCEndpointConfig.EndpointType.INTERFACE,
