@@ -140,7 +140,7 @@ def test_update_rollback_failure(
     # Wait for head node rollback to complete
     # Note: CFN stack reaches UPDATE_ROLLBACK_COMPLETE before head node finishes rollback recipe
     # Sleep briefly to ensure rollback recipe has started writing to chef-client.log
-    time.sleep(10)
+    time.sleep(20)
     logger.info("Waiting for head node rollback recipe to complete...")
     _wait_for_head_node_rollback_complete(remote_command_executor)
 
