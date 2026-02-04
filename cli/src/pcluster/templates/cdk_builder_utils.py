@@ -38,13 +38,11 @@ from pcluster.config.common import SharedStorageType
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
-    CW_METRICS_NAMESPACE,
     IAM_ROLE_PATH,
     LAMBDA_VPC_ACCESS_MANAGED_POLICY,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
-    SLURM,
     ULTRASERVER_INSTANCE_PREFIX_LIST,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
@@ -743,19 +741,6 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ],
             ),
         ]
-
-        if self._config.scheduling.scheduler == SLURM:
-            policy.extend(
-                [
-                    iam.PolicyStatement(
-                        sid="CloudWatch",
-                        actions=["cloudwatch:PutMetricData"],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                        conditions={"StringEquals": {"cloudwatch:Namespace": CW_METRICS_NAMESPACE}},
-                    )
-                ]
-            )
 
         if (
             self._config.scheduling.scheduler == "slurm"
