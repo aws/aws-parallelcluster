@@ -22,7 +22,7 @@ from pcluster.config.cluster_config import (
     SlurmComputeResource,
     SlurmQueue,
 )
-from pcluster.constants import CW_METRICS_NAMESPACE, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.cdk_builder_utils import (
@@ -593,48 +593,3 @@ def _check_cleanup_role(
         assert_that("/parallelcluster/" in generated_template[cleanup_resource_old]["Properties"]["Path"]).is_true()
 
         assert_that(generated_template[cleanup_resource_old]["Properties"]).does_not_contain_key("RoleName")
-
-
-@pytest.mark.parametrize(
-    "config_file_name, expect_cloudwatch_permission",
-    [
-        ("config-slurm.yaml", True),
-        ("config-awsbatch.yaml", False),
-    ],
-)
-def test_head_node_policy(mocker, test_datadir, config_file_name, expect_cloudwatch_permission):
-    """Verify that cloudwatch:PutMetricData is added for slurm scheduler but not for awsbatch."""
-    mock_aws_api(mocker)
-    mocker.patch(
-        "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
-        new_callable=PropertyMock(return_value="us-east-1a"),
-    )
-    mock_bucket(mocker)
-    mock_bucket_object_utils(mocker)
-
-    input_yaml = load_yaml_dict(test_datadir / config_file_name)
-    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
-    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-
-    # Find the CloudWatch policy statement in ParallelClusterPoliciesHeadNode
-    head_node_policies = generated_template["Resources"]["ParallelClusterPoliciesHeadNode"]["Properties"][
-        "PolicyDocument"
-    ]["Statement"]
-
-    cloudwatch_statement = next(
-        (stmt for stmt in head_node_policies if stmt.get("Sid") == "CloudWatch"),
-        None,
-    )
-
-    if expect_cloudwatch_permission:
-        assert_that(cloudwatch_statement).is_not_none()
-        assert_that(cloudwatch_statement["Action"]).is_equal_to("cloudwatch:PutMetricData")
-        assert_that(cloudwatch_statement["Effect"]).is_equal_to("Allow")
-        assert_that(cloudwatch_statement["Resource"]).is_equal_to("*")
-        assert_that(cloudwatch_statement["Condition"]).is_equal_to(
-            {"StringEquals": {"cloudwatch:Namespace": CW_METRICS_NAMESPACE}}
-        )
-    else:
-        assert_that(cloudwatch_statement).is_none()

@@ -136,13 +136,6 @@ Resources:
                   - route53:ChangeResourceRecordSets
                 Resource: '*'
                 Effect: Allow
-              - Action:
-                  - cloudwatch:PutMetricData
-                Resource: '*'
-                Effect: Allow
-                Condition:
-                  StringEquals:
-                    cloudwatch:namespace: 'ParallelCluster'
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 
