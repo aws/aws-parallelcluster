@@ -58,7 +58,9 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
     if cluster_config.is_cw_dashboard_enabled:
         assert_that(output_yaml).contains("CloudwatchDashboard")
         assert_that(output_yaml).contains("Head Node EC2 Metrics")
-        _verify_head_node_instance_metrics_graphs(output_yaml, cluster_config.scheduling.scheduler)
+        _verify_head_node_instance_metrics_graphs(
+            output_yaml, cluster_config.scheduling.scheduler, cluster_config.is_cw_logging_enabled
+        )
 
         if cluster_config.are_alarms_enabled:
             assert_that(output_yaml).contains("Cluster Alarms")
@@ -79,7 +81,12 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
         assert_that(output_yaml).does_not_contain("CloudwatchDashboard")
         assert_that(output_yaml).does_not_contain("Head Node EC2 Metrics")
 
-    _verify_alarms(output_yaml, cluster_config.are_alarms_enabled, cluster_config.scheduling.scheduler)
+    _verify_alarms(
+        output_yaml,
+        cluster_config.are_alarms_enabled,
+        cluster_config.scheduling.scheduler,
+        cluster_config.is_cw_logging_enabled,
+    )
 
     if cluster_config.is_cw_logging_enabled:
         assert_that(output_yaml).contains("ClusterCWLogGroup")
@@ -87,7 +94,7 @@ def test_cw_dashboard_builder(mocker, test_datadir, set_env, config_file_name, r
         assert_that(output_yaml).does_not_contain("ClusterCWLogGroup")
 
 
-def _verify_alarms(output_yaml, alarms_enabled, scheduler):
+def _verify_alarms(output_yaml, alarms_enabled, scheduler, is_cw_logging_enabled):
     if alarms_enabled:
         assert_that(output_yaml).contains("HeadNodeHealthAlarm")
         assert_that(output_yaml).contains("StatusCheckFailed")
@@ -102,7 +109,7 @@ def _verify_alarms(output_yaml, alarms_enabled, scheduler):
         assert_that(output_yaml).contains("disk_used_percent")
 
         # ClustermgtdHeartbeat alarm is only created for Slurm scheduler
-        if scheduler == "slurm":
+        if scheduler == "slurm" and is_cw_logging_enabled:
             assert_that(output_yaml).contains("HeadNodeClustermgtdHeartbeatAlarm")
             assert_that(output_yaml).contains("ClustermgtdHeartbeat")
         else:
@@ -130,13 +137,15 @@ def _verify_metric_filter_dimensions(metric_filters):
         )
 
         expected_dimensions = [{"Key": "ClusterName", "Value": "$.cluster-name"}]
+        if name == "ClustermgtdHeartbeatFilter":
+            expected_dimensions.append({"Key": "InstanceId", "Value": "$.instance-id"})
 
         assert_that(dimensions, description=f"{name} should have dimensions {expected_dimensions}").is_equal_to(
             expected_dimensions
         )
 
 
-def _verify_head_node_instance_metrics_graphs(output_yaml, scheduler):
+def _verify_head_node_instance_metrics_graphs(output_yaml, scheduler, is_cw_logging_enabled):
     """Verify CloudWatch graphs within the Head Node Instance Metrics section."""
     assert_that(output_yaml).contains("Head Node Instance Metrics")
     assert_that(output_yaml).contains("CPU Utilization")
@@ -146,8 +155,8 @@ def _verify_head_node_instance_metrics_graphs(output_yaml, scheduler):
     assert_that(output_yaml).contains("Disk Read/Write Ops")
     assert_that(output_yaml).contains("Disk Used Percent")
     assert_that(output_yaml).contains("Memory Used Percent")
-    # Daemons Heartbeats widget is only created for Slurm scheduler
-    if scheduler == "slurm":
+    # Daemons Heartbeats widget is only created for Slurm scheduler with logging enabled
+    if scheduler == "slurm" and is_cw_logging_enabled:
         assert_that(output_yaml).contains("Daemons Heartbeats")
         assert_that(output_yaml).contains("ClustermgtdHeartbeat")
     else:

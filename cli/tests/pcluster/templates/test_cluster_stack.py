@@ -250,6 +250,7 @@ def test_add_efs_shared_storage(mocker, test_datadir, config_file_name, expected
     [
         "slurm.required.yaml",
         "slurm.full.yaml",
+        "slurm.logging_disabled.yaml",
         "awsbatch.simple.yaml",
         "awsbatch.full.yaml",
     ],
@@ -315,7 +316,7 @@ def test_add_alarms(mocker, config_file_name):
         },
     }
 
-    if cluster.scheduling.scheduler == "slurm":
+    if cluster.scheduling.scheduler == "slurm" and cluster.is_cw_logging_enabled:
         expected_alarms["Clustermgtd-Heartbeat"] = {
             "name": "clustername-HeadNode-ClustermgtdHeartbeat",
             "metric_name": "ClustermgtdHeartbeat",

@@ -66,6 +66,7 @@ from pcluster.constants import (
     CW_LOGS_CFN_PARAM_NAME,
     CW_METRICS_CLUSTERMGTD_HEARTBEAT,
     CW_METRICS_DIMENSION_CLUSTER_NAME,
+    CW_METRICS_DIMENSION_INSTANCE_ID,
     CW_METRICS_NAMESPACE,
     DEFAULT_EPHEMERAL_DIR,
     EFS_PORT,
@@ -384,8 +385,34 @@ class ClusterCdkStack:
             },
         }
 
-        if self._condition_is_slurm():
-            metrics_for_alarms["ClustermgtdHeartbeat"] = {
+        # These alarms required Cw logging enabled because they are based on CW Metrics Filters.
+        if self._condition_is_slurm() and self.config.is_cw_logging_enabled:
+            # Create metric filter to extract heartbeat metric from clustermgtd event logs
+            clustermgtd_heartbeat_metric_filter = logs.CfnMetricFilter(
+                scope=self.stack,
+                id=f"{CW_METRICS_CLUSTERMGTD_HEARTBEAT}Filter",
+                filter_pattern='{ $.event-type = "clustermgtd-heartbeat" }',
+                log_group_name=self.log_group_name,
+                metric_transformations=[
+                    logs.CfnMetricFilter.MetricTransformationProperty(
+                        metric_namespace=CW_METRICS_NAMESPACE,
+                        metric_name=CW_METRICS_CLUSTERMGTD_HEARTBEAT,
+                        metric_value="1",
+                        unit="Count",
+                        dimensions=[
+                            logs.CfnMetricFilter.DimensionProperty(
+                                key=CW_METRICS_DIMENSION_CLUSTER_NAME, value="$.cluster-name"
+                            ),
+                            logs.CfnMetricFilter.DimensionProperty(
+                                key=CW_METRICS_DIMENSION_INSTANCE_ID, value="$.instance-id"
+                            ),
+                        ],
+                    )
+                ],
+            )
+            clustermgtd_heartbeat_metric_filter.add_depends_on(self.log_group)
+
+            metrics_for_alarms[CW_METRICS_CLUSTERMGTD_HEARTBEAT] = {
                 "metric": self._cw_metric_head_node(
                     CW_METRICS_NAMESPACE,
                     CW_METRICS_CLUSTERMGTD_HEARTBEAT,
