@@ -338,11 +338,12 @@ def assert_topology_plugin_completely_disabled(cluster: Cluster):
     """Verify that TopologyPlugin is completely disabled and no topology configuration exists."""
     rce = RemoteCommandExecutor(cluster)
 
-    # Check TopologyPlugin is not configured -> default
+    # Check TopologyPlugin is not configured -> default (topology/flat in Slurm 25.11+)
+    # In Slurm 25.11, the default TopologyPlugin changed from topology/default to topology/flat
     logging.info("Checking TopologyPlugin is completely disabled")
     result = rce.run_remote_command("scontrol show config | grep TopologyPlugin")
     assert_that(result.stdout.strip()).contains("TopologyPlugin")
-    assert_that(result.stdout.strip()).contains("= topology/default")
+    assert_that(result.stdout.strip()).contains("= topology/flat")
 
     # Check topology.conf does not exist
     topology_conf_path = "/opt/slurm/etc/topology.conf"
@@ -386,7 +387,7 @@ def test_gb200(
        - TopologyPlugin is configured at cluster level but q2-cr2 nodes are not included in topology configuration
        - /opt/slurm/etc/topology.conf exists but does not contain q2-cr2 nodes
     3. After removing block_topology force_configuration:
-       - TopologyPlugin is completely disabled (scontrol show config | grep TopologyPlugin is empty)
+       - TopologyPlugin is set to default topology/flat in Slurm >= 25.11
        - topology.conf file does not exist
        - scontrol show topology produces no output
        - IMEX continues to work normally
