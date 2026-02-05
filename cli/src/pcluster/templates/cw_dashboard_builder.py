@@ -574,7 +574,7 @@ class CWDashboardConstruct(Construct):
 
         # Custom Metrics
         pcluster_metrics = []
-        if self.config.scheduling.scheduler == "slurm":
+        if self.config.scheduling.scheduler == "slurm" and self.config.is_cw_logging_enabled:
             pcluster_metrics.append(
                 new_pcluster_metric(
                     title="Daemons Heartbeats",
