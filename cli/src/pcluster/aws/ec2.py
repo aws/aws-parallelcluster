@@ -310,8 +310,10 @@ class Ec2Client(Boto3Client):
         """Return the id of the current official image, for the provided os-architecture combination."""
         owner = filters.owner if filters and filters.owner else "amazon"
         tags = filters.tags if filters and filters.tags else []
+        name_prefix = filters.name_prefix if filters and filters.name_prefix else ""
+        name = name_prefix + "{0}*".format(self._get_official_image_name_prefix(os, architecture))
 
-        filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
+        filters = [{"Name": "name", "Values": [name]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
         images = self._describe_images_with_pagination(Owners=[owner], Filters=filters, IncludeDeprecated=True)
         if not images:
