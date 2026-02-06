@@ -1199,10 +1199,11 @@ class AdditionalPackages(Resource):
 class AmiSearchFilters(Resource):
     """Represent the configuration for AMI search filters."""
 
-    def __init__(self, tags: List[Tag] = None, owner: str = None):
+    def __init__(self, tags: List[Tag] = None, owner: str = None, name_prefix: str = None):
         super().__init__()
         self.tags = tags
         self.owner = owner
+        self.name_prefix = name_prefix
 
 
 class Timeouts(Resource):

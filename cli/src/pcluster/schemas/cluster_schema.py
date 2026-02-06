@@ -1088,6 +1088,7 @@ class AmiSearchFiltersSchema(BaseSchema):
         TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
     )
     owner = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    name_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load()
     def make_resource(self, data, **kwargs):

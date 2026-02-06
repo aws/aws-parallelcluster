@@ -611,7 +611,7 @@ def file_reader(test_datadir, request, vpc_stack):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, architecture):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, architecture, ami_type):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -641,7 +641,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         output_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(output_file_path, request, region, architecture, benchmarks)
+            inject_additional_config_settings(output_file_path, request, region, architecture, ami_type, benchmarks)
         else:
             inject_additional_image_configs_settings(output_file_path, request)
         return output_file_path
@@ -722,7 +722,9 @@ def _inject_additional_iam_policies_for_nodes(
             _inject_additional_iam_policies(pool, policies)
 
 
-def inject_additional_config_settings(cluster_config, request, region, architecture, benchmarks=None):  # noqa C901
+def inject_additional_config_settings(  # noqa C901
+    cluster_config, request, region, architecture, ami_type, benchmarks=None
+):
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -788,6 +790,8 @@ def inject_additional_config_settings(cluster_config, request, region, architect
             dict_add_nested_key(
                 config_content, request.config.getoption("ami_owner"), ("DevSettings", "AmiSearchFilters", "Owner")
             )
+        if ami_type == "DLAMI":
+            dict_add_nested_key(config_content, "dlami-", ("DevSettings", "AmiSearchFilters", "NamePrefix"))
 
     # Additional instance types data is copied it into config files to make it available at cluster creation
     instance_types_data = request.config.getoption("instance_types_data", None)
