@@ -22,7 +22,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, ParamValidationError
 from configparser import ConfigParser, NoOptionError, NoSectionError
-from pkg_resources import packaging
+from packaging import version as packaging_version
 from tabulate import tabulate
 
 from awsbatch.utils import fail, get_installed_version, get_region_by_stack_id
@@ -147,8 +147,8 @@ class CliRequirementsMatcher:
         """Verify if CLI requirements are satisfied."""
         for req in self.requirements:
             if not self.COMPARISON_OPERATORS[req.operator](
-                packaging.version.parse(get_installed_version(req.package)),
-                packaging.version.parse(req.version),
+                packaging_version.parse(get_installed_version(req.package)),
+                packaging_version.parse(req.version),
             ):
                 fail(f"The cluster requires {req.package}{req.operator}{req.version}")
 
