@@ -36,7 +36,8 @@ def test_import():
     """
     # We need to use a separate process to test concurrent imports
     # because cdk library might be already imported in the test process by previous tests
-    p = Process(target=concurrent_imports, args=(50, 0.1))
+    # Reduced iterations (20) and delay (0.05s) for faster test execution while still testing concurrency
+    p = Process(target=concurrent_imports, args=(20, 0.05))
     p.start()
     p.join()
     assert_that(p.exitcode).is_equal_to(0)

@@ -545,7 +545,7 @@ class TestAsyncUtils(unittest.TestCase):
 
         class FakeAsyncMethodProvider:
             def very_expensive_function(self, param):
-                time.sleep(1)
+                time.sleep(0.01)  # Reduced from 1s to 0.01s - still tests caching behavior
                 nonlocal total_calls
                 total_calls += 1
                 return param
