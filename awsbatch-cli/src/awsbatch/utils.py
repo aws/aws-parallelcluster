@@ -14,9 +14,9 @@ import re
 import shlex
 import sys
 from datetime import datetime
+from importlib.metadata import version as get_package_version
 from typing import NoReturn
 
-import pkg_resources
 from dateutil import tz
 
 
@@ -112,7 +112,7 @@ def get_job_type(job):
 
 def get_installed_version(package_name="aws-parallelcluster-awsbatch-cli"):
     """Get the version of the installed package."""
-    return pkg_resources.get_distribution(package_name).version
+    return get_package_version(package_name)
 
 
 class S3Uploader:
