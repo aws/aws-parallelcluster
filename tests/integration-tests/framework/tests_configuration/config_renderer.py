@@ -22,6 +22,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
 from pcluster.constants import (
+    EXCLUDED_INSTANCE_TYPE_PREFIXES,
     SUPPORTED_OSES,
     SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
@@ -96,29 +97,6 @@ def _get_instance_type_parameters():  # noqa: C901
         return _get_instance_type_parameters._cache
 
     result = {}
-    excluded_instance_type_prefixes = (
-        "m1",
-        "m2",
-        "m3",
-        "m4",
-        "t1",
-        "t2",
-        "c1",
-        "c3",
-        "c4",
-        "r3",
-        "r4",
-        "x1",
-        "x1e",
-        "d2",
-        "h1",
-        "i2",
-        "i3",
-        "f1",
-        "g3",
-        "p2",
-        "p3",
-    )
 
     for region in ["us-east-1", "us-west-2"]:  # Only populate instance type for big regions
         ec2_client = boto3.client("ec2", region_name=region)
@@ -137,13 +115,13 @@ def _get_instance_type_parameters():  # noqa: C901
                     instance_type_availability_zones[instance_type_name].append(offering["Location"])
                     # Check if instance type ends with '.xlarge'
                     if instance_type_name.endswith(".xlarge") and _is_current_instance_type_generation(
-                        excluded_instance_type_prefixes, offering
+                        EXCLUDED_INSTANCE_TYPE_PREFIXES, offering
                     ):
                         xlarge_instances.add(instance_type_name)
                     # Get a list of only GPU instances of any size available in the region
                     if (
                         instance_type_name.startswith("p") or instance_type_name.startswith("g")
-                    ) and _is_current_instance_type_generation(excluded_instance_type_prefixes, offering):
+                    ) and _is_current_instance_type_generation(EXCLUDED_INSTANCE_TYPE_PREFIXES, offering):
                         all_gpu_instances.add(instance_type_name)
 
             # Get GPU instance details in batches of 100
@@ -161,7 +139,7 @@ def _get_instance_type_parameters():  # noqa: C901
                             if instance_type.get("GpuInfo").get("Gpus")[0].get(
                                 "Count"
                             ) >= 4 and _is_current_instance_type_generation(
-                                excluded_instance_type_prefixes, instance_type
+                                EXCLUDED_INSTANCE_TYPE_PREFIXES, instance_type
                             ):
                                 # Find instance types with 4 or more GPUs. Number of GPUs can change test behavior.
                                 # For example, it takes longer for DCGM health check to diagnose multiple GPUs.
