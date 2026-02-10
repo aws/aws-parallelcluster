@@ -158,6 +158,7 @@ from pcluster.validators.ec2_validators import (
     InstanceTypePlacementGroupValidator,
     InstanceTypeValidator,
     KeyPairValidator,
+    LaunchTemplateOverridesValidator,
     PlacementGroupCapacityReservationValidator,
     PlacementGroupCapacityTypeValidator,
     PlacementGroupNamingValidator,
@@ -1631,6 +1632,7 @@ class BaseClusterConfig(Resource):
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
         self.instance_types_data_version = ""
+        self.run_instances_overrides_version = ""
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(RegionValidator, region=self.region)
@@ -2222,6 +2224,15 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         return str(files(__package__).parent / "resources" / "batch")
 
 
+class LaunchTemplateOverrides(Resource):
+    """Represent the LaunchTemplateOverrides configuration for a compute resource."""
+
+    def __init__(self, launch_template_id: str = None, version: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.launch_template_id = Resource.init_param(launch_template_id)
+        self.version = Resource.init_param(version)
+
+
 class _BaseSlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
@@ -2240,6 +2251,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         tags: List[Tag] = None,
         static_node_priority: int = None,
         dynamic_node_priority: int = None,
+        launch_template_overrides=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2260,6 +2272,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.tags = tags
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
+        self.launch_template_overrides = launch_template_overrides
 
     @abstractmethod
     def is_flexible(self) -> bool:
@@ -2362,6 +2375,15 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             ec2memory=min_memory,
             instance_type=smallest_type,
         )
+        if self.launch_template_overrides:
+            self._register_validator(
+                LaunchTemplateOverridesValidator,
+                launch_template_id=self.launch_template_overrides.launch_template_id,
+                version=self.launch_template_overrides.version,
+                instance_types=self.instance_types,
+                max_network_cards=self.max_network_cards,
+                is_flexible=self.is_flexible(),
+            )
 
     def is_flexible(self):
         """Return True because the ComputeResource can contain multiple instance types."""
@@ -2449,6 +2471,15 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
             instance_type=self.instance_type,
         )
+        if self.launch_template_overrides:
+            self._register_validator(
+                LaunchTemplateOverridesValidator,
+                launch_template_id=self.launch_template_overrides.launch_template_id,
+                version=self.launch_template_overrides.version,
+                instance_types=self.instance_types,
+                max_network_cards=self.max_network_cards,
+                is_flexible=self.is_flexible(),
+            )
 
     @property
     def architecture(self) -> str:
@@ -2974,6 +3005,40 @@ class SlurmClusterConfig(BaseClusterConfig):
                     instance_type_info = compute_resource.instance_type_info_map[instance_type]
                     result[instance_type] = instance_type_info.instance_type_data
         return result
+
+    def get_run_instances_overrides(self):
+        """
+        Build run_instances_overrides data from LaunchTemplateOverrides config.
+
+        Iterates all queues and compute resources. For each compute resource that has
+        launch_template_overrides configured, fetches the launch template data.
+
+        Returns a dict keyed by {queue_name} -> {compute_resource_name} -> {launch_template_data}.
+        Returns empty dict if no overrides are configured.
+        """
+        overrides = {}
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                if not compute_resource.launch_template_overrides:
+                    continue
+
+                lt_overrides = compute_resource.launch_template_overrides
+                lt_id = lt_overrides.launch_template_id
+                lt_version = lt_overrides.version
+
+                LOGGER.info(
+                    "Fetching launch template %s version %s for queue %s, compute resource %s",
+                    lt_id,
+                    lt_version,
+                    queue.name,
+                    compute_resource.name,
+                )
+                lt_data = AWSApi.instance().ec2.describe_launch_template_version(lt_id, lt_version)
+
+                if lt_data:
+                    overrides.setdefault(queue.name, {})[compute_resource.name] = lt_data
+
+        return overrides
 
     @property
     def login_nodes_ami(self):

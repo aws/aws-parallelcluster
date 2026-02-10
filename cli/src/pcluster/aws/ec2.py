@@ -164,6 +164,22 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
+    def describe_launch_template_version(self, launch_template_id, version):
+        """Describe a specific launch template version and return its LaunchTemplateData."""
+        response = self._client.describe_launch_template_versions(
+            LaunchTemplateId=launch_template_id,
+            Versions=[str(version)],
+        )
+        versions = response.get("LaunchTemplateVersions", [])
+        if not versions:
+            raise AWSClientError(
+                function_name="describe_launch_template_versions",
+                message=f"Launch template {launch_template_id} version {version} not found",
+            )
+        return versions[0].get("LaunchTemplateData", {})
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_images(self, ami_ids, filters, owners):
         """Return a list of objects of ImageInfo."""
         images = self._describe_images_with_pagination(ImageIds=ami_ids, Filters=filters, Owners=owners)

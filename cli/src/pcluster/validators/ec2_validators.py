@@ -870,3 +870,53 @@ class UltraserverCapacityBlockSizeValidator(Validator):
                 f"The following capacity blocks have invalid block sizes: {'; '.join(invalid_capacity_blocks)}.",
                 FailureLevel.ERROR,
             )
+
+
+class LaunchTemplateOverridesValidator(Validator):
+    """Validate the launch template overrides configuration."""
+
+    def _validate(self, launch_template_id, version, instance_types, max_network_cards, is_flexible):
+        try:
+            lt_data = AWSApi.instance().ec2.describe_launch_template_version(launch_template_id, str(version))
+        except AWSClientError as e:
+            self._add_failure(
+                f"Unable to retrieve launch template {launch_template_id} version {version}. {str(e)}",
+                FailureLevel.ERROR,
+            )
+            return
+
+        # Check for properties not in allow list
+        allow_list = {"InstanceType", "NetworkInterfaces"}
+        denied_found = [prop for prop in lt_data if prop not in allow_list]
+        if denied_found:
+            self._add_failure(
+                f"Launch template {launch_template_id} contains unsupported properties: "
+                f"{', '.join(sorted(denied_found))}. Only NetworkInterfaces, InstanceType "
+                f"are supported in the override launch template.",
+                FailureLevel.ERROR,
+            )
+
+        # Validate network interface count does not exceed max supported
+        network_interfaces = lt_data.get("NetworkInterfaces", [])
+        if network_interfaces and len(network_interfaces) > max_network_cards:
+            self._add_failure(
+                f"Launch template {launch_template_id} configures {len(network_interfaces)} network interfaces, "
+                f"but the instance type supports a maximum of {max_network_cards}.",
+                FailureLevel.ERROR,
+            )
+
+        # Validate instance type in LT matches the compute resource if specified
+        lt_instance_type = lt_data.get("InstanceType")
+        if lt_instance_type and lt_instance_type not in instance_types:
+            self._add_failure(
+                f"Instance type '{lt_instance_type}' in launch template {launch_template_id} does not match "
+                f"the compute resource instance type(s): {', '.join(instance_types)}.",
+                FailureLevel.ERROR,
+            )
+
+        # Warn if used with flexible instance types
+        if is_flexible:
+            self._add_failure(
+                "LaunchTemplateOverrides cannot be used with flexible instance types.",
+                FailureLevel.ERROR,
+            )

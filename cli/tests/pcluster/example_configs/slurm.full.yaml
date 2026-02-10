@@ -180,6 +180,9 @@ Scheduling:
           HttpProxyAddress: https://proxy-address:port
       ComputeResources:
         - Name: compute-resource-1
+          LaunchTemplateOverrides:
+            LaunchTemplateId: lt-0ab6123b7f1111111
+            Version: "2"
           InstanceType: c4.2xlarge
         - Name: compute-resource-2
           InstanceType: c5.2xlarge

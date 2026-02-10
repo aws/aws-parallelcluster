@@ -64,6 +64,7 @@ from pcluster.config.cluster_config import (
     Image,
     Imds,
     IntelSoftware,
+    LaunchTemplateOverrides,
     LocalStorage,
     LoginNodes,
     LoginNodesIam,
@@ -1536,6 +1537,25 @@ class QueueTagSchema(BaseSchema):
         return BaseTag(**data)
 
 
+class LaunchTemplateOverridesSchema(BaseSchema):
+    """Represent the schema of the LaunchTemplateOverrides section."""
+
+    launch_template_id = fields.Str(
+        required=True,
+        validate=validate.Regexp(r"^lt-[a-zA-Z0-9]+$"),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+    version = fields.Int(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LaunchTemplateOverrides(**data)
+
+
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
@@ -1575,6 +1595,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     dynamic_node_priority = fields.Int(
         validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    launch_template_overrides = fields.Nested(
+        LaunchTemplateOverridesSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @validates_schema

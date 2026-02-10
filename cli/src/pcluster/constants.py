@@ -232,6 +232,7 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",
     "change_set_name": "change-set.json",
+    "run_instances_overrides_name": "run_instances_overrides.json",
 }
 
 PCLUSTER_TAG_VALUE_REGEX = r"^([\w\+\-\=\.\_\:\@/]{0,256})$"

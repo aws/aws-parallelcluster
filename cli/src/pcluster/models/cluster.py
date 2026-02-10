@@ -374,6 +374,7 @@ class Cluster:
             artifact_dir_generated = True
             self._upload_config()
             self._upload_instance_types_data()
+            self._upload_run_instances_overrides()
             LOGGER.info("Generation and upload completed successfully")
 
             # Create template if not provided by the user
@@ -556,6 +557,25 @@ class Cluster:
         except Exception as e:
             raise _cluster_error_mapper(
                 e, f"Unable to upload instance types data to the S3 bucket {self.bucket.name} due to exception: {e}"
+            )
+
+    def _upload_run_instances_overrides(self):
+        """Upload run_instances_overrides.json to the cluster S3 bucket."""
+        try:
+            overrides = self.config.get_run_instances_overrides()
+            LOGGER.info("Uploading run_instances_overrides.json to S3...")
+            result = self.bucket.upload_config(
+                config=overrides,
+                config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("run_instances_overrides_name"),
+                format=S3FileFormat.JSON,
+            )
+            self.config.run_instances_overrides_version = result.get("VersionId")
+            LOGGER.info("run_instances_overrides.json uploaded successfully.")
+        except Exception as e:
+            raise _cluster_error_mapper(
+                e,
+                f"Unable to upload run_instances_overrides.json to the S3 bucket {self.bucket.name} "
+                f"due to exception: {e}",
             )
 
     def _upload_change_set(self, changes=None):
@@ -924,6 +944,7 @@ class Cluster:
             self._add_tags()
             self._upload_config()
             self._upload_instance_types_data()
+            self._upload_run_instances_overrides()
             self._upload_change_set(changes)
 
             # Create template if not provided by the user

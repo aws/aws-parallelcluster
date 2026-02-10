@@ -1419,10 +1419,13 @@ class ClusterCdkStack:
                     ),
                     "cluster_config_version": self.config.config_version,
                     "instance_types_data_version": self.config.instance_types_data_version,
+                    "run_instances_overrides_version": self.config.run_instances_overrides_version,
                     "change_set_s3_key": f"{self.bucket.artifact_directory}/configs/"
                     f"{PCLUSTER_S3_ARTIFACTS_DICT.get('change_set_name')}",
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"
                     f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
+                    "run_instances_overrides_s3_key": f"{self.bucket.artifact_directory}/configs/"
+                    f"{PCLUSTER_S3_ARTIFACTS_DICT.get('run_instances_overrides_name')}",
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
