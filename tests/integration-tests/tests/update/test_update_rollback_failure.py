@@ -20,11 +20,14 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from utils import (
+    check_status,
     get_compute_nodes_instance_ids,
     get_file_mtime_age_seconds,
     match_regex_in_log,
+    wait_for_computefleet_changed,
 )
 
+from tests.common.assertions import wait_for_num_instances_in_cluster
 from tests.common.schedulers_common import SlurmCommands
 
 logger = logging.getLogger(__name__)
@@ -175,6 +178,27 @@ def test_update_rollback_failure(
     #     region, cluster.name, cn3_instance_id, initial_config_version
     # )
 
+    # Inject failure in the async workflow of update-compute-fleet.
+    # This will cause the recipe update_compute_fleet_status to fail when clustermgtd is stopped.
+    # The goal is to verify that we restart clustermgtd on failure and that the functionality is able to resume
+    # after the failure goes away.
+    logger.info("Injecting failure on compute-fleet status update...")
+    _inject_slurm_fleet_status_manager_failure(remote_command_executor)
+    cluster.stop()
+
+    _wait_for_slurm_fleet_status_manager_failure(remote_command_executor)
+    check_status(cluster, compute_fleet_status="STOPPING")
+    retry(wait_fixed=seconds(5), stop_max_delay=seconds(20))(_verify_clustermgtd_running)(remote_command_executor)
+
+    # After removing the injected failure, we expect the compute-fleet change functionality to resume, that is:
+    # 1. We expect the compute fleet to reach the stopped state, where no compute nodes are running.
+    # 2. We expect to be able to restart the fleet
+    _restore_slurm_fleet_status_manager(remote_command_executor)
+    wait_for_computefleet_changed(cluster, "STOPPED")
+    wait_for_num_instances_in_cluster(cluster.name, region, 0)
+    cluster.start()
+    wait_for_computefleet_changed(cluster, "RUNNING")
+    _wait_for_static_nodes_ready(slurm_commands, expected_count=N_STATIC_NODES)
     logger.info("All verifications passed!")
 
 
@@ -298,9 +322,31 @@ def _inject_slurmctld_restart_failure(remote_command_executor):
 
 def _restore_slurmctld(remote_command_executor):
     """Restore execute permission on slurmctld."""
-    remote_command_executor.run_remote_command("sudo chmod +x /opt/slurm/sbin/slurmctld;")
+    remote_command_executor.run_remote_command("sudo chmod +x /opt/slurm/sbin/slurmctld")
     remote_command_executor.run_remote_command("sudo systemctl restart slurmctld")
     logger.info("slurmctld restored")
+
+
+def _inject_slurm_fleet_status_manager_failure(remote_command_executor):
+    """
+    Inject failure into the async path of update-compute-fleet by removing execute permission
+    from slurm_fleet_status_manager.
+
+    When the update_compute_fleet_status recipe tries to run slurm_fleet_status_manager, it will fail
+    because the script is not executable.
+    """
+    remote_command_executor.run_remote_command(
+        "sudo chmod -x /opt/parallelcluster/scripts/slurm/slurm_fleet_status_manager"
+    )
+    logger.info("slurm_fleet_status_manager made non-executable - update-compute-fleet async path will fail")
+
+
+def _restore_slurm_fleet_status_manager(remote_command_executor):
+    """Restore execute permission on slurm_fleet_status_manager."""
+    remote_command_executor.run_remote_command(
+        "sudo chmod +x /opt/parallelcluster/scripts/slurm/slurm_fleet_status_manager"
+    )
+    logger.info("slurm_fleet_status_manager restored")
 
 
 def _disable_check_update_timer_on_compute_node(remote_command_executor, node_name):
@@ -354,7 +400,20 @@ def _wait_for_rollback_failure(rce: RemoteCommandExecutor):
         r"ShellCommandFailed: execute\[check slurmctld status\] \(aws-parallelcluster-slurm::update_head_node",
     )
     if not match:
-        raise Exception(f"Update recipe never reached the  cluster readiness checks. Last lines: {lines}")
+        raise Exception(f"Update recipe never reached the slurmctld status check failure. Last lines: {lines}")
+    logger.info(f"Update recipe reached the expected failure: {lines}")
+
+
+@retry(wait_fixed=seconds(15), stop_max_delay=minutes(5))
+def _wait_for_slurm_fleet_status_manager_failure(rce: RemoteCommandExecutor):
+    match, lines = match_regex_in_log(
+        rce,
+        "/var/log/chef-client.log",
+        r"ShellCommandFailed: bash\[update compute fleet\] "
+        r"\(aws-parallelcluster-slurm::update_computefleet_status_head_node",
+    )
+    if not match:
+        raise Exception(f"Update recipe never reached the failure on compute fleet script failure. Last lines: {lines}")
     logger.info(f"Update recipe reached the expected failure: {lines}")
 
 
