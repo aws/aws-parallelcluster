@@ -367,3 +367,28 @@ ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
 CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]
 
 ORDER_SENSITIVE_PARAMETERS = ["Tags"]
+
+# Older generation instance types
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "i2",
+    "i3",
+    "f1",
+    "g3",
+    "p2",
+    "p3",
+)
