@@ -140,6 +140,10 @@ def retrieve_latest_ami(
     request=None,
     allow_private_ami=False,
 ):
+    logging.info(
+        "Retrieving AMI with ami_type=%s os=%s architecture=%s allow_private_ami=%s"
+        % (ami_type, os, architecture, allow_private_ami)
+    )
     if additional_filters is None:
         additional_filters = []
     try:
@@ -160,19 +164,22 @@ def retrieve_latest_ami(
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})
         else:
             ami_name = _get_ami_for_os(ami_type, os, architecture).get("name")
-        logging.info("Parent image name %s" % ami_name)
-        paginator = boto3.client("ec2", region_name=region).get_paginator("describe_images")
-        page_iterator = paginator.paginate(
-            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
+        describe_images_args = {
+            "Filters": [{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
-            Owners=_get_ami_for_os(ami_type, os, architecture).get("owners"),
-            IncludeDeprecated=_get_ami_for_os(ami_type, os, architecture).get("includeDeprecated", False),
-        )
+            "Owners": _get_ami_for_os(ami_type, os, architecture).get("owners"),
+            "IncludeDeprecated": _get_ami_for_os(ami_type, os, architecture).get("includeDeprecated", False),
+        }
+        logging.info("Retrieving AMI with DescribeImages arguments: %s" % describe_images_args)
+        paginator = boto3.client("ec2", region_name=region).get_paginator("describe_images")
+        page_iterator = paginator.paginate(**describe_images_args)
         images = []
         for page in page_iterator:
             images.extend(page["Images"])
         # Sort on Creation date Desc
-        return sorted(images, key=lambda x: x["CreationDate"], reverse=True)[0]["ImageId"]
+        image_id = sorted(images, key=lambda x: x["CreationDate"], reverse=True)[0]["ImageId"]
+        logging.info("Retrieved AMI: %s" % image_id)
+        return image_id
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         raise

@@ -33,6 +33,7 @@ from utils import (
     generate_stack_name,
     get_arn_partition,
     get_root_volume_id,
+    get_similar_instance_types,
     is_filecache_supported,
     is_fsx_lustre_supported,
     is_fsx_ontap_supported,
@@ -83,12 +84,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
-    spot_instance_types = ["t3.medium"]
-    try:
-        boto3.client("ec2").describe_instance_types(InstanceTypes=["t3a.medium"])
-        spot_instance_types.extend(["t3a.medium"])
-    except Exception:
-        pass
+    spot_instance_types = get_similar_instance_types("t3.medium", region, 5)
 
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader(resource_bucket=bucket_name, spot_instance_types=spot_instance_types)
@@ -824,6 +820,7 @@ def _test_update_without_queue_strategy(
     pcluster_config_reader, pcluster_ami_id, pcluster_copy_ami_id, cluster, updated_compute_root_volume_size
 ):
     """Test update without setting queue strategy, update will fail."""
+    logging.info("Updating cluster without strategy. The update is expected to fail")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         global_custom_ami=pcluster_ami_id,
@@ -855,7 +852,8 @@ def _test_update_queue_strategy_without_running_job(
     updated_compute_root_volume_size,
     queue_update_strategy,
 ):
-    """Test queue parameter update with drain stragegy without running job in the queue."""
+    """Test queue parameter update with drain strategy without running job in the queue."""
+    logging.info(f"Updating cluster with strategy {queue_update_strategy} without running jobs")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update_without_running_job.yaml",
         global_custom_ami=pcluster_ami_id,
@@ -900,6 +898,7 @@ def _test_update_queue_strategy_with_running_job(
     region,
     queue_update_strategy,
 ):
+    logging.info("Submitting job to queue1 before cluster update")
     queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "srun sleep 3000",
@@ -908,13 +907,17 @@ def _test_update_queue_strategy_with_running_job(
         }
     )
 
+    logging.info("Submitting job to queue2 before cluster update")
     queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={"command": "srun sleep 3000", "nodes": 2, "partition": "queue2"}
     )
     # Wait for the job to run
     scheduler_commands.wait_job_running(queue1_job_id)
+    logging.info(f"Job {queue1_job_id} is running on queue1")
     scheduler_commands.wait_job_running(queue2_job_id)
+    logging.info(f"Job {queue2_job_id} is running on queue2")
 
+    logging.info(f"Updating cluster with strategy {queue_update_strategy} with running jobs")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update_with_running_job.yaml",
         global_custom_ami=pcluster_ami_id,

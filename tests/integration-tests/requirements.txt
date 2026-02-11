@@ -29,6 +29,7 @@ pytest-timeout
 PyYAML
 requests
 retrying
+scipy
 troposphere
 untangle
 xmltodict

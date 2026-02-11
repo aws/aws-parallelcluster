@@ -29,6 +29,8 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
+from pcluster.constants import EXCLUDED_INSTANCE_TYPE_PREFIXES
+
 DEFAULT_PARTITION = "aws"
 PARTITION_MAP = {
     "cn": "aws-cn",
@@ -1023,15 +1025,18 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             {"Name": "processor-info.supported-architecture", "Values": [target_arch]},
             {"Name": "vcpu-info.default-vcpus", "Values": [str(target_vcpus)]},
             {"Name": "vcpu-info.default-threads-per-core", "Values": [str(target_threads)]},
+            {"Name": "supported-usage-class", "Values": ["on-demand", "spot"]},
         ],
     ):
         # Filter for EFA support, GPU presence, and inference accelerator types
         for instance in page["InstanceTypes"]:
+            instance_prefix = instance["InstanceType"].split(".")[0]
             instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
             instance_has_gpu = "GpuInfo" in instance
             instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
             if (
-                instance_has_efa == target_has_efa
+                instance_prefix not in EXCLUDED_INSTANCE_TYPE_PREFIXES
+                and instance_has_efa == target_has_efa
                 and instance_has_gpu == target_has_gpu
                 and instance_inference_accelerators == target_inference_accelerators
             ):
@@ -1117,3 +1122,29 @@ def get_file_mtime_age_seconds(remote_command_executor, file_path):
     mtime = int(result.stdout.strip())
     current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
     return current_time - mtime
+
+
+def match_regex_in_log(rce, log_file: str, pattern: str, nlines: int = 50) -> tuple[bool, str]:
+    """
+    Search for a regex pattern in a remote log file.
+
+    Args:
+        rce: Remote command executor instance to run commands on the target host.
+        log_file: Absolute path to the log file on the remote host.
+        pattern: Regular expression pattern to search for in the log content.
+        nlines: Number of lines from the end of the log to return if pattern is not found. Defaults to 50.
+
+    Returns:
+        A tuple containing:
+            - bool: True if the pattern was found, False otherwise.
+            - str: The matched string if found, or the last `nlines` lines of the log if not found.
+    """
+    result = rce.run_remote_command(f"cat {log_file}")
+    log_content = result.stdout
+
+    match = re.search(pattern, log_content)
+    if match:
+        return True, match.group()
+    else:
+        last_lines = "\n".join(log_content.splitlines()[-nlines:])
+        return False, last_lines
