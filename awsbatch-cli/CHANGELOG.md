@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+1.6.0
+------
+
+**BUG FIXES**
+
+- Replace deprecated `pkg_resources` with `packaging` and `importlib` in
+  AWSBatch CLI to fix compatibility with setuptools 82.0+ which removed `pkg_resources` module.
+
 1.5.0
 ------
 
@@ -8,7 +16,7 @@ CHANGELOG
 
 - Fix cluster creation failures in China when the OS is Amazon Linux 2023.
 
-  1.4.0
+1.4.0
 ------
 
 **ENHANCEMENTS**
