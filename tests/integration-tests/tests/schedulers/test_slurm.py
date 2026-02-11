@@ -55,7 +55,11 @@ from tests.common.hit_common import (
     wait_for_compute_nodes_states,
     wait_for_num_nodes_in_scheduler,
 )
-from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
+from tests.common.scaling_common import (
+    recover_create_fleet_override_from_ice,
+    setup_create_fleet_override_to_emulate_ice,
+    setup_ec2_launch_override_to_emulate_ice,
+)
 from tests.common.schedulers_common import SlurmCommands
 
 
@@ -615,18 +619,126 @@ def test_fast_capacity_failover(
         expected_error_code="InvalidParameter" if "us-iso" in region else "InvalidParameterValue",
     )
 
-    # Test Slurm 25.11 Expedited Requeue feature with ICE
-    # Jobs submitted with --requeue=expedite should automatically requeue on node failure
-    # and be treated as highest priority, eligible to restart immediately
-    _test_expedited_requeue_on_ice(
-        partition,
-        scheduler_commands,
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.expedited_requeue
+def test_expedited_requeue(
+    pcluster_config_reader,
+    clusters_factory,
+    scheduler_commands_factory,
+):
+    """
+    Test Slurm 25.11+ expedited requeue behavior with recoverable ICE simulation.
+
+    Uses JSON run_instances_overrides to simulate ICE (Placement.Tenancy=host triggers
+    InsufficientHostCapacity), then recovers by changing the override to a valid InstanceType.
+    Verifies that expedited requeue jobs are treated as highest priority after ICE recovery.
+    """
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    partition = "queue"
+    ice_cr = "ice-cr"
+    real_instance_types = ["t3.medium", "c5.xlarge"]
+
+    # Set up ICE simulation via create_fleet_overrides.json with invalid InstanceTypes
+    setup_create_fleet_override_to_emulate_ice(
+        remote_command_executor, queue=partition, compute_resource=ice_cr, instance_types=real_instance_types
+    )
+
+    # Set insufficient_capacity_timeout to 180s for quicker reset
+    _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
+
+    # Get node lists — all nodes in ice-cr are dynamic
+    nodes_in_scheduler = scheduler_commands.get_compute_nodes(partition, all_nodes=True)
+    _, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+    ice_dynamic_nodes = [n for n in dynamic_nodes]
+    logging.info("ICE CR dynamic nodes: %s", ice_dynamic_nodes)
+    # Pick a specific dynamic node to target
+    target_node = ice_dynamic_nodes[0]
+    logging.info("Target dynamic node for ICE test: %s", target_node)
+
+    # Clear logs for clean state
+    remote_command_executor.clear_slurm_resume_log()
+    remote_command_executor.clear_clustermgtd_log()
+
+    # Submit job1 with --requeue=expedite, targeting the specific ICE dynamic node
+    job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": 'echo "Job1 on $(hostname) at $(date)"; sleep 30; echo "Job1 done"',
+            "nodes": 1,
+            "partition": partition,
+            "host": target_node,
+            "other_options": "--requeue=expedite",
+        }
+    )
+    logging.info("Submitted job1 (expedited requeue) ID: %s", job1_id)
+
+    # Submit job2 (normal), targeting the same ICE dynamic node
+    job2_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": 'echo "Job2 on $(hostname) at $(date)"; sleep 30; echo "Job2 done"',
+            "nodes": 1,
+            "partition": partition,
+            "host": target_node,
+        }
+    )
+    logging.info("Submitted job2 (normal) ID: %s", job2_id)
+
+    # Wait for ICE to be detected
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
         remote_command_executor,
-        clustermgtd_conf_path,
-        ice_single_static_nodes,
-        ice_single_dynamic_nodes,
-        target_compute_resource="ice-compute-resource",
-        expected_error_code="InsufficientHostCapacity",
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["The following compute resources are in down state due to insufficient capacity"],
+    )
+
+    # Verify the target dynamic node is down due to ICE
+    assert_compute_node_states(scheduler_commands, [target_node], expected_states=["down#", "down~"])
+
+    # Recover from ICE: change InstanceTypes in JSON override back to real ones
+    recover_create_fleet_override_from_ice(
+        remote_command_executor, queue=partition, compute_resource=ice_cr, real_instance_types=real_instance_types
+    )
+
+    # Wait for insufficient_capacity_timeout to expire and nodes to reset
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Reset the following compute resources because insufficient capacity timeout expired"],
+    )
+
+    # Wait for the target dynamic node to be power-saved (reset)
+    wait_for_compute_nodes_states(
+        scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=300
+    )
+
+    # Wait for both jobs to complete — they should now run on recovered nodes
+    scheduler_commands.wait_job_completed(job1_id, timeout=8)
+    scheduler_commands.wait_job_completed(job2_id, timeout=8)
+
+    # Verify both jobs succeeded
+    scheduler_commands.assert_job_succeeded(job1_id)
+    scheduler_commands.assert_job_succeeded(job2_id)
+
+    # Verify expedited requeue job (job1) started before normal job (job2)
+    job1_start = datetime.strptime(scheduler_commands.get_job_start_time(job1_id), "%Y-%m-%dT%H:%M:%S")
+    job2_start = datetime.strptime(scheduler_commands.get_job_start_time(job2_id), "%Y-%m-%dT%H:%M:%S")
+    job2_submit = datetime.strptime(scheduler_commands.get_job_submit_time(job2_id), "%Y-%m-%dT%H:%M:%S")
+    job1_eligible = datetime.strptime(scheduler_commands.get_job_eligible_time(job1_id), "%Y-%m-%dT%H:%M:%S")
+    logging.info("Job1 (expedited) start=%s, eligible=%s", job1_start, job1_eligible)
+    logging.info("Job2 (normal) submit=%s, start=%s", job2_submit, job2_start)
+    logging.info("Job2 submitted before job1 requeued: %s", job2_submit < job1_eligible)
+    assert_that(job1_start).is_less_than_or_equal_to(job2_start)
+    logging.info("Verified: expedited requeue job started before normal job (highest priority)")
+
+    # Verify no protected mode triggered
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
     )
 
 
@@ -2306,127 +2418,6 @@ def _test_enable_fast_capacity_failover(
         ["Node bootstrap error"],
     )
 
-
-def _test_expedited_requeue_on_ice(
-    partition,
-    scheduler_commands,
-    remote_command_executor,
-    clustermgtd_conf_path,
-    cr_static_nodes,
-    cr_dynamic_nodes,
-    target_compute_resource,
-    expected_error_code,
-):
-    """
-    Test Slurm newer than 25.11 expedited requeue behavior when ICE occurs.
-
-    This test verifies that jobs submitted with --requeue=expedite:
-    1. Automatically requeue when nodes fail due to ICE
-    2. Are treated as highest priority after requeue (start before earlier-submitted normal jobs)
-    3. Complete successfully on alternative compute resources
-
-    Test strategy:
-    - Submit job1 with --requeue=expedite to ICE-triggering CR
-    - Submit job2 (normal job) BEFORE ICE occurs (so job2 has earlier SubmitTime)
-    - Wait for ICE to occur and job1 to be requeued
-    - Verify job1 starts before job2 (proving highest priority despite later requeue)
-
-    It expects to be run on a CR with at least 1 static node and 1 dynamic node.
-    It expects all the dynamic nodes to fail due to the overrides to RunInstances or CreateFleet.
-    It expects job1 to succeed because Slurm will reallocate the failed nodes to a different CR.
-    """
-    # set insufficient_capacity_timeout to 180 seconds to quicker reset compute resources
-    _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
-
-    # clear slurm_resume and clustermgtd logs in order to start from a clean state
-    remote_command_executor.clear_slurm_resume_log()
-    remote_command_executor.clear_clustermgtd_log()
-
-    # Submit job1 with --requeue=expedite to test Slurm 25.11 expedited requeue feature
-    # Using `prefer` to allow requeuing the job on a different CR when ICE occurs
-    # Command outputs hostname and timestamp to verify job actually ran
-    # Note: Using double quotes in echo to avoid conflicts with --wrap's single quotes
-    job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={
-            "command": 'echo "Job1 started on" $(hostname) "at" $(date); sleep 30; echo "Job1 completed at" $(date)',
-            "nodes": 2,
-            "partition": partition,
-            "prefer": target_compute_resource,
-            "other_options": "--requeue=expedite",
-        }
-    )
-    logging.info(f"Submitted job1 (expedited requeue) with ID: {job1_id}")
-
-    # Submit job2 (normal job) BEFORE ICE occurs
-    # This ensures job2 has an earlier SubmitTime than job1's requeue time
-    # If expedited requeue truly provides highest priority, job1 should still start first
-    # Job2 also uses --prefer to target the same CR and requests 2 nodes
-    # This prevents job2 from immediately running on another CR before job1 requeues
-    # Note: Using double quotes in echo to avoid conflicts with --wrap's single quotes
-    job2_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={
-            "command": 'echo "Job2 started on" $(hostname) "at" $(date); sleep 30; echo "Job2 completed at" $(date)',
-            "nodes": 2,
-            "partition": partition,
-            "prefer": target_compute_resource,
-        }
-    )
-    logging.info(f"Submitted job2 (normal job) with ID: {job2_id}")
-
-    # Wait for ICE to be detected and nodes to be marked as down
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        [
-            "The following compute resources are in down state due to insufficient capacity",
-        ],
-    )
-
-    # Verify static nodes in ice compute resource are still up
-    assert_compute_node_states(scheduler_commands, cr_static_nodes, expected_states=["idle", "mixed", "allocated"])
-    # Verify dynamic nodes in ice compute resource are down due to ICE
-    assert_compute_node_states(scheduler_commands, cr_dynamic_nodes, expected_states=["down#", "down~"])
-    assert_compute_node_reasons(scheduler_commands, cr_dynamic_nodes, f"(Code:{expected_error_code})")
-
-    # Wait for both jobs to complete
-    scheduler_commands.wait_job_completed(job1_id)
-    scheduler_commands.wait_job_completed(job2_id)
-
-    # Verify both jobs succeeded
-    scheduler_commands.assert_job_succeeded(job1_id)
-    scheduler_commands.assert_job_succeeded(job2_id)
-
-    # Verify expedited requeue job (job1) started before normal job (job2)
-    # This proves that expedited requeue jobs are treated as highest priority
-    # even though job2 was submitted before job1 was requeued
-    job1_start_time = datetime.strptime(scheduler_commands.get_job_start_time(job1_id), "%Y-%m-%dT%H:%M:%S")
-    job2_start_time = datetime.strptime(scheduler_commands.get_job_start_time(job2_id), "%Y-%m-%dT%H:%M:%S")
-    job2_submit_time = datetime.strptime(scheduler_commands.get_job_submit_time(job2_id), "%Y-%m-%dT%H:%M:%S")
-    job1_eligible_time = datetime.strptime(scheduler_commands.get_job_eligible_time(job1_id), "%Y-%m-%dT%H:%M:%S")
-    logging.info(f"Job1 (expedited) start time: {job1_start_time}, eligible time: {job1_eligible_time}")
-    logging.info(f"Job2 (normal) submit time: {job2_submit_time}, start time: {job2_start_time}")
-    logging.info(f"Job2 was submitted before job1 was requeued: {job2_submit_time < job1_eligible_time}")
-    assert_that(job1_start_time).is_less_than_or_equal_to(job2_start_time)
-    logging.info("Verified: Expedited requeue job started before normal job (highest priority confirmed)")
-
-    # Wait for insufficient capacity timeout to expire and nodes to reset
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        [
-            "Reset the following compute resources because insufficient capacity timeout expired",
-        ],
-    )
-
-    # Verify dynamic nodes are reset after insufficient_capacity_timeout expired
-    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=cr_dynamic_nodes)
-
-    # Verify insufficient capacity does not trigger protected mode
-    assert_no_msg_in_logs(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        ["Node bootstrap error"],
-    )
 
 
 def _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor):
