@@ -666,9 +666,10 @@ def test_expedited_requeue(
     remote_command_executor.clear_clustermgtd_log()
 
     # Submit job1 with --requeue=expedite, targeting the specific ICE dynamic node
+    # Output epoch timestamp for reliable start time parsing from slurm output file
     job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": 'echo "Job1 on $(hostname) at $(date)"; sleep 30; echo "Job1 done"',
+            "command": 'echo "START_TIME=$(date +%s)"; sleep 30; echo "Job1 done"',
             "nodes": 1,
             "partition": partition,
             "host": target_node,
@@ -680,7 +681,7 @@ def test_expedited_requeue(
     # Submit job2 (normal), targeting the same ICE dynamic node
     job2_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": 'echo "Job2 on $(hostname) at $(date)"; sleep 30; echo "Job2 done"',
+            "command": 'echo "START_TIME=$(date +%s)"; sleep 30; echo "Job2 done"',
             "nodes": 1,
             "partition": partition,
             "host": target_node,
@@ -715,23 +716,34 @@ def test_expedited_requeue(
         scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=300
     )
 
-    # Wait for both jobs to complete — they should now run on recovered nodes
-    scheduler_commands.wait_job_completed(job1_id, timeout=8)
-    scheduler_commands.wait_job_completed(job2_id, timeout=8)
+    # Wait for job1 to run and enter REQUEUE_HOLD.
+    # Known Slurm 25.11 bug: jobs with --requeue=expedite enter REQUEUE_HOLD after successful
+    # completion instead of COMPLETED, because _set_job_requeue_exit_value() unconditionally
+    # triggers expedited requeue without checking exit_code.
+    # We wait for REQUEUE_HOLD directly and read start time from the slurm output file,
+    # since StartTime in scontrol resets to Unknown in REQUEUE_HOLD state.
+    # TODO: Change to wait_job_completed + assert_job_succeeded once the Slurm bug is fixed.
+    retry(wait_fixed=seconds(10), stop_max_delay=minutes(8))(scheduler_commands.assert_job_state)(
+        job1_id, "REQUEUE_HOLD"
+    )
+    logging.info("Job1 entered REQUEUE_HOLD as expected (known Slurm 25.11 bug)")
+    scheduler_commands.cancel_job(job1_id)
 
-    # Verify both jobs succeeded
-    scheduler_commands.assert_job_succeeded(job1_id)
+    # Wait for job2 to complete normally
+    scheduler_commands.wait_job_completed(job2_id, timeout=8)
     scheduler_commands.assert_job_succeeded(job2_id)
 
+    # Read start times from slurm output files (epoch timestamps)
+    job1_output = remote_command_executor.run_remote_command(f"cat ~/slurm-{job1_id}.out").stdout
+    job2_output = remote_command_executor.run_remote_command(f"cat ~/slurm-{job2_id}.out").stdout
+    job1_start_epoch = int(re.search(r"START_TIME=(\d+)", job1_output).group(1))
+    job2_start_epoch = int(re.search(r"START_TIME=(\d+)", job2_output).group(1))
+    logging.info("Job1 output: %s", job1_output)
+    logging.info("Job2 output: %s", job2_output)
+
     # Verify expedited requeue job (job1) started before normal job (job2)
-    job1_start = datetime.strptime(scheduler_commands.get_job_start_time(job1_id), "%Y-%m-%dT%H:%M:%S")
-    job2_start = datetime.strptime(scheduler_commands.get_job_start_time(job2_id), "%Y-%m-%dT%H:%M:%S")
-    job2_submit = datetime.strptime(scheduler_commands.get_job_submit_time(job2_id), "%Y-%m-%dT%H:%M:%S")
-    job1_eligible = datetime.strptime(scheduler_commands.get_job_eligible_time(job1_id), "%Y-%m-%dT%H:%M:%S")
-    logging.info("Job1 (expedited) start=%s, eligible=%s", job1_start, job1_eligible)
-    logging.info("Job2 (normal) submit=%s, start=%s", job2_submit, job2_start)
-    logging.info("Job2 submitted before job1 requeued: %s", job2_submit < job1_eligible)
-    assert_that(job1_start).is_less_than_or_equal_to(job2_start)
+    logging.info("Job1 start_epoch=%s, Job2 start_epoch=%s", job1_start_epoch, job2_start_epoch)
+    assert_that(job1_start_epoch).is_less_than_or_equal_to(job2_start_epoch)
     logging.info("Verified: expedited requeue job started before normal job (highest priority)")
 
     # Verify no protected mode triggered
