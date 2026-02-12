@@ -17,7 +17,7 @@ Scheduling:
         - Name: ice-cr
           Instances:
             - InstanceType: t3.medium
-            - InstanceType: c5.xlarge
+            - InstanceType: c5.large
         - Name: normal-cr
           InstanceType: {{ instance }}
 SharedStorage:

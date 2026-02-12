@@ -642,7 +642,7 @@ def test_expedited_requeue(
 
     partition = "queue"
     ice_cr = "ice-cr"
-    real_instance_types = ["t3.medium", "c5.xlarge"]
+    real_instance_types = ["t3.medium", "c5.large"]
 
     # Set up ICE simulation via create_fleet_overrides.json with invalid InstanceTypes
     setup_create_fleet_override_to_emulate_ice(
