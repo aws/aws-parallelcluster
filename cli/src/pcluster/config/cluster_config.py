@@ -2251,7 +2251,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         tags: List[Tag] = None,
         static_node_priority: int = None,
         dynamic_node_priority: int = None,
-        launch_template_overrides=None,
+        launch_specification_overrides=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2272,7 +2272,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.tags = tags
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
-        self.launch_template_overrides = launch_template_overrides
+        self.launch_specification_overrides = launch_specification_overrides
 
     @abstractmethod
     def is_flexible(self) -> bool:
@@ -2375,11 +2375,11 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             ec2memory=min_memory,
             instance_type=smallest_type,
         )
-        if self.launch_template_overrides:
+        if self.launch_specification_overrides:
             self._register_validator(
                 LaunchTemplateOverridesValidator,
-                launch_template_id=self.launch_template_overrides.launch_template_id,
-                version=self.launch_template_overrides.version,
+                launch_template_id=self.launch_specification_overrides.launch_template_id,
+                version=self.launch_specification_overrides.version,
                 instance_types=self.instance_types,
                 max_network_cards=self.max_network_cards,
                 is_flexible=self.is_flexible(),
@@ -2471,11 +2471,11 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
             instance_type=self.instance_type,
         )
-        if self.launch_template_overrides:
+        if self.launch_specification_overrides:
             self._register_validator(
                 LaunchTemplateOverridesValidator,
-                launch_template_id=self.launch_template_overrides.launch_template_id,
-                version=self.launch_template_overrides.version,
+                launch_template_id=self.launch_specification_overrides.launch_template_id,
+                version=self.launch_specification_overrides.version,
                 instance_types=self.instance_types,
                 max_network_cards=self.max_network_cards,
                 is_flexible=self.is_flexible(),
@@ -3011,7 +3011,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         Build run_instances_overrides data from LaunchTemplateOverrides config.
 
         Iterates all queues and compute resources. For each compute resource that has
-        launch_template_overrides configured, fetches the launch template data.
+        launch_specification_overrides configured, fetches the launch template data.
 
         Returns a dict keyed by {queue_name} -> {compute_resource_name} -> {launch_template_data}.
         Returns empty dict if no overrides are configured.
@@ -3019,10 +3019,10 @@ class SlurmClusterConfig(BaseClusterConfig):
         overrides = {}
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                if not compute_resource.launch_template_overrides:
+                if not compute_resource.launch_specification_overrides:
                     continue
 
-                lt_overrides = compute_resource.launch_template_overrides
+                lt_overrides = compute_resource.launch_specification_overrides
                 lt_id = lt_overrides.launch_template_id
                 lt_version = lt_overrides.version
 

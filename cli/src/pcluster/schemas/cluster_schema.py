@@ -1596,7 +1596,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    launch_template_overrides = fields.Nested(
+    launch_specification_overrides = fields.Nested(
         LaunchTemplateOverridesSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
