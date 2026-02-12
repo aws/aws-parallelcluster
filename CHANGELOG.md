@@ -18,6 +18,13 @@ CHANGELOG
 - Fix cluster creation failure without Internet access when GPU instances and DCV are used.
 - Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
 
+3.14.2
+------
+
+**CHANGES**
+- Upgrade munge to version 0.5.18 (from 0.5.16) to address [CVE-2026-25506](https://github.com/dun/munge/security/advisories/GHSA-r9cr-jf4v-75gh).
+- Upgrade NodeJS version in installer to version 22.22.0 (from 20.18.3).
+
 3.14.1
 ------
 
