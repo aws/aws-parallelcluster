@@ -18,6 +18,12 @@ CHANGELOG
 - Fix cluster creation failure without Internet access when GPU instances and DCV are used.
 - Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
 
+3.14.2
+------
+
+**CHANGES**
+- Upgrade munge to version 0.5.18 (from 0.5.16).
+
 3.14.1
 ------
 
