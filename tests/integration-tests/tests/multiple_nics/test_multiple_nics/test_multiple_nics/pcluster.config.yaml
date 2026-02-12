@@ -20,6 +20,7 @@ Scheduling:
   {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
     - Name: queue-0
       ComputeResources:
+        # Baseline: EFA enabled, no override
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}
           InstanceTypes:
@@ -33,6 +34,35 @@ Scheduling:
           Efa:
             Enabled: true
           {% endif %}
+        {% if scheduler != "awsbatch" and lt_efa_override_primary is defined %}
+        # Use Case 1/2: EFA enabled, override SG on primary NIC
+        - Name: cr-efa-override-primary
+          InstanceType: {{ instance }}
+          MinCount: 1
+          Efa:
+            Enabled: true
+          LaunchSpecificationOverrides:
+            LaunchTemplateId: {{ lt_efa_override_primary }}
+            Version: "{{ lt_efa_override_primary_version }}"
+        # Use Case 1/2: EFA enabled, override SG on secondary NIC
+        - Name: cr-efa-override-secondary
+          InstanceType: {{ instance }}
+          MinCount: 1
+          Efa:
+            Enabled: true
+          LaunchSpecificationOverrides:
+            LaunchTemplateId: {{ lt_efa_override_secondary }}
+            Version: "{{ lt_efa_override_secondary_version }}"
+        # Use Case 3/4: EFA disabled, override InterfaceType + SG on primary NIC
+        - Name: cr-no-efa-override
+          InstanceType: {{ instance }}
+          MinCount: 1
+          Efa:
+            Enabled: false
+          LaunchSpecificationOverrides:
+            LaunchTemplateId: {{ lt_no_efa_override }}
+            Version: "{{ lt_no_efa_override_version }}"
+        {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
