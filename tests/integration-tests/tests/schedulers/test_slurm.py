@@ -646,7 +646,11 @@ def test_expedited_requeue(
 
     # Set up ICE simulation via create_fleet_overrides.json with invalid InstanceTypes
     setup_create_fleet_override_to_emulate_ice(
-        remote_command_executor, queue=partition, compute_resource=ice_cr, instance_types=real_instance_types
+        remote_command_executor,
+        cluster_name=cluster.cfn_name,
+        queue=partition,
+        compute_resource=ice_cr,
+        instance_types=real_instance_types,
     )
 
     # Set insufficient_capacity_timeout to 180s for quicker reset
@@ -701,7 +705,11 @@ def test_expedited_requeue(
 
     # Recover from ICE: change InstanceTypes in JSON override back to real ones
     recover_create_fleet_override_from_ice(
-        remote_command_executor, queue=partition, compute_resource=ice_cr, real_instance_types=real_instance_types
+        remote_command_executor,
+        cluster_name=cluster.cfn_name,
+        queue=partition,
+        compute_resource=ice_cr,
+        real_instance_types=real_instance_types,
     )
 
     # Wait for insufficient_capacity_timeout to expire and nodes to reset
@@ -712,9 +720,7 @@ def test_expedited_requeue(
     )
 
     # Wait for the target dynamic node to be power-saved (reset)
-    wait_for_compute_nodes_states(
-        scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=300
-    )
+    wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=300)
 
     # Wait for job1 to run and enter REQUEUE_HOLD.
     # Known Slurm 25.11 bug: jobs with --requeue=expedite enter REQUEUE_HOLD after successful
@@ -2429,7 +2435,6 @@ def _test_enable_fast_capacity_failover(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Node bootstrap error"],
     )
-
 
 
 def _test_update_without_update_queue_params(pcluster_config_reader, cluster, remote_command_executor):
