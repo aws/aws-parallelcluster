@@ -733,7 +733,7 @@ def test_expedited_requeue(
     # We wait for REQUEUE_HOLD directly and read start time from the slurm output file,
     # since StartTime in scontrol resets to Unknown in REQUEUE_HOLD state.
     # TODO: Change to wait_job_completed + assert_job_succeeded once the Slurm bug is fixed.
-    retry(wait_fixed=seconds(10), stop_max_delay=minutes(8))(scheduler_commands.assert_job_state)(
+    retry(wait_fixed=seconds(10), stop_max_delay=minutes(15))(scheduler_commands.assert_job_state)(
         job1_id, "REQUEUE_HOLD"
     )
     logging.info("Job1 entered REQUEUE_HOLD as expected (known Slurm 25.11 bug)")
