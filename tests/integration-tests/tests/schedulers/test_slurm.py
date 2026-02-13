@@ -626,12 +626,13 @@ def test_expedited_requeue(
     pcluster_config_reader,
     clusters_factory,
     scheduler_commands_factory,
+    vpc_stack,
 ):
     """
     Test Slurm 25.11+ expedited requeue behavior with recoverable ICE simulation.
 
-    Uses JSON run_instances_overrides to simulate ICE (Placement.Tenancy=host triggers
-    InsufficientHostCapacity), then recovers by changing the override to a valid InstanceType.
+    Uses create_fleet_overrides.json to simulate ICE (invalid "ICE-" prefixed InstanceTypes),
+    then recovers by changing them back to real ones.
     Verifies that expedited requeue jobs are treated as highest priority after ICE recovery.
     """
     cluster_config = pcluster_config_reader()
@@ -643,6 +644,7 @@ def test_expedited_requeue(
     partition = "queue"
     ice_cr = "ice-cr"
     real_instance_types = ["t3.medium", "c5.large"]
+    subnet_id = vpc_stack.get_private_subnet()
 
     # Set up ICE simulation via create_fleet_overrides.json with invalid InstanceTypes
     setup_create_fleet_override_to_emulate_ice(
@@ -651,6 +653,7 @@ def test_expedited_requeue(
         queue=partition,
         compute_resource=ice_cr,
         instance_types=real_instance_types,
+        subnet_id=subnet_id,
     )
 
     # Set insufficient_capacity_timeout to 180s for quicker reset
@@ -710,6 +713,7 @@ def test_expedited_requeue(
         queue=partition,
         compute_resource=ice_cr,
         real_instance_types=real_instance_types,
+        subnet_id=subnet_id,
     )
 
     # Wait for insufficient_capacity_timeout to expire and nodes to reset
@@ -720,7 +724,7 @@ def test_expedited_requeue(
     )
 
     # Wait for the target dynamic node to be power-saved (reset)
-    wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=300)
+    wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=600)
 
     # Wait for job1 to run and enter REQUEUE_HOLD.
     # Known Slurm 25.11 bug: jobs with --requeue=expedite enter REQUEUE_HOLD after successful

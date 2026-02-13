@@ -377,22 +377,11 @@ def _write_json_override(remote_command_executor, path, content):
     )
 
 
-def setup_create_fleet_override_to_emulate_ice(
-    remote_command_executor, cluster_name, queue, compute_resource, instance_types
-):
-    """
-    Write create_fleet_overrides.json with invalid InstanceTypes to emulate ICE.
-
-    This targets multi-instance-type CRs that use the create_fleet API. The override must include
-    LaunchTemplateSpecification (with the cluster's launch template name) to avoid MissingParameter
-    errors. The invalid InstanceTypes (prefixed with "ICE-") cause create_fleet to return no
-    instances, which is detected as InsufficientInstanceCapacity by the instance manager.
-
-    To recover, call recover_create_fleet_override_from_ice() which replaces the invalid
-    InstanceTypes with real ones.
-    """
+def _build_create_fleet_override(cluster_name, queue, compute_resource, instance_types, subnet_id):
+    """Build a create_fleet_overrides dict with LaunchTemplateSpecification, InstanceTypes and SubnetId."""
     lt_name = f"{cluster_name}-{queue}-{compute_resource}"
-    overrides = {
+    overrides_list = [{"InstanceType": it, "SubnetId": subnet_id} for it in instance_types]
+    return {
         queue: {
             compute_resource: {
                 "LaunchTemplateConfigs": [
@@ -401,52 +390,46 @@ def setup_create_fleet_override_to_emulate_ice(
                             "LaunchTemplateName": lt_name,
                             "Version": "$Latest",
                         },
-                        "Overrides": [{"InstanceType": f"ICE-{it}"} for it in instance_types],
+                        "Overrides": overrides_list,
                     }
                 ],
             }
         }
     }
-    logging.info(
-        "Writing create_fleet_overrides.json with invalid InstanceTypes to emulate ICE " "for queue=%s, cr=%s (LT=%s)",
-        queue,
-        compute_resource,
-        lt_name,
-    )
+
+
+def setup_create_fleet_override_to_emulate_ice(
+    remote_command_executor, cluster_name, queue, compute_resource, instance_types, subnet_id
+):
+    """
+    Write create_fleet_overrides.json with invalid InstanceTypes to emulate ICE.
+
+    This targets multi-instance-type CRs that use the create_fleet API. The override includes
+    LaunchTemplateSpecification and SubnetId to avoid MissingParameter errors. The invalid
+    InstanceTypes (prefixed with "ICE-") cause create_fleet to return no instances, which is
+    detected as InsufficientInstanceCapacity.
+
+    To recover, call recover_create_fleet_override_from_ice() which replaces the invalid
+    InstanceTypes with real ones.
+    """
+    ice_instance_types = [f"ICE-{it}" for it in instance_types]
+    overrides = _build_create_fleet_override(cluster_name, queue, compute_resource, ice_instance_types, subnet_id)
+    logging.info("Writing create_fleet_overrides.json with invalid InstanceTypes to emulate ICE "
+                 "for queue=%s, cr=%s", queue, compute_resource)
     _write_json_override(remote_command_executor, CREATE_FLEET_OVERRIDES_PATH, overrides)
 
 
 def recover_create_fleet_override_from_ice(
-    remote_command_executor, cluster_name, queue, compute_resource, real_instance_types
+    remote_command_executor, cluster_name, queue, compute_resource, real_instance_types, subnet_id
 ):
     """
     Recover from simulated ICE by changing InstanceTypes in create_fleet_overrides.json back to real ones.
 
     This is the "change instance type in JSON to recover" approach — the invalid "ICE-*" prefixed
-    InstanceTypes are replaced with real ones, so the next create_fleet call succeeds.
+    InstanceTypes are replaced with real ones (with correct SubnetId), so the next create_fleet
+    call succeeds.
     """
-    lt_name = f"{cluster_name}-{queue}-{compute_resource}"
-    overrides = {
-        queue: {
-            compute_resource: {
-                "LaunchTemplateConfigs": [
-                    {
-                        "LaunchTemplateSpecification": {
-                            "LaunchTemplateName": lt_name,
-                            "Version": "$Latest",
-                        },
-                        "Overrides": [{"InstanceType": it} for it in real_instance_types],
-                    }
-                ],
-            }
-        }
-    }
-    logging.info(
-        "Recovering from ICE: writing real InstanceTypes=%s in create_fleet_overrides.json "
-        "for queue=%s, cr=%s (LT=%s)",
-        real_instance_types,
-        queue,
-        compute_resource,
-        lt_name,
-    )
+    overrides = _build_create_fleet_override(cluster_name, queue, compute_resource, real_instance_types, subnet_id)
+    logging.info("Recovering from ICE: writing real InstanceTypes=%s in create_fleet_overrides.json "
+                 "for queue=%s, cr=%s", real_instance_types, queue, compute_resource)
     _write_json_override(remote_command_executor, CREATE_FLEET_OVERRIDES_PATH, overrides)
