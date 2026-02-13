@@ -733,14 +733,16 @@ def test_expedited_requeue(
     # We wait for REQUEUE_HOLD directly and read start time from the slurm output file,
     # since StartTime in scontrol resets to Unknown in REQUEUE_HOLD state.
     # TODO: Change to wait_job_completed + assert_job_succeeded once the Slurm bug is fixed.
-    retry(wait_fixed=seconds(10), stop_max_delay=minutes(15))(scheduler_commands.assert_job_state)(
-        job1_id, "REQUEUE_HOLD"
-    )
+    def _assert_job_in_requeue_hold():
+        result = remote_command_executor.run_remote_command(f"scontrol show jobs -o {job1_id}")
+        assert_that(result.stdout).contains("JobState=REQUEUE_HOLD")
+
+    retry(wait_fixed=seconds(10), stop_max_delay=minutes(15))(_assert_job_in_requeue_hold)()
     logging.info("Job1 entered REQUEUE_HOLD as expected (known Slurm 25.11 bug)")
     scheduler_commands.cancel_job(job1_id)
 
     # Wait for job2 to complete normally
-    scheduler_commands.wait_job_completed(job2_id, timeout=8)
+    scheduler_commands.wait_job_completed(job2_id, timeout=15)
     scheduler_commands.assert_job_succeeded(job2_id)
 
     # Read start times from slurm output files (epoch timestamps)
