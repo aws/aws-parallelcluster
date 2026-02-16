@@ -3,9 +3,9 @@ import logging
 import random
 import string
 import time
+from pathlib import Path
 
 import boto3
-import pkg_resources
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from utils import get_arn_partition
@@ -112,7 +112,7 @@ class KMSKeyFactory:
         # create the iam policy
         # for different scheduler, attach different instance policy
         logging.info("Creating iam policy {0} for iam role...".format(iam_policy_name))
-        file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/../../resources"))
+        file_loader = FileSystemLoader(Path(__file__).parent.parent.parent / "resources")
         env = SandboxedEnvironment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
         policy_filename = (
             "batch_instance_policy.json" if scheduler == "awsbatch" else "traditional_instance_policy.json"
@@ -155,7 +155,7 @@ class KMSKeyFactory:
 
         # create KMS key policy
         logging.info("Attaching key policy...")
-        file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/../../resources"))
+        file_loader = FileSystemLoader(Path(__file__).parent.parent.parent / "resources")
         env = SandboxedEnvironment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
         key_policy = env.get_template("key_policy.json").render(
             partition=self.partition, account_id=self.account_id, iam_role_name=f"parallelcluster/{self.iam_role_name}"
