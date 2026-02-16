@@ -17,7 +17,6 @@ from pathlib import Path
 
 import boto3
 import cfn_tools
-import pkg_resources
 import pytest
 from assertpy import assert_that
 from benchmarks.common.util import get_instance_vcpus
@@ -128,7 +127,7 @@ def _ec2_wait(region, instances, waiter_type):
 
 @pytest.fixture(scope="session", name="resources_dir")
 def resources_dir_fixture():
-    return Path(pkg_resources.resource_filename(__name__, "/../../resources"))
+    return Path(__file__).parent.parent.parent / "resources"
 
 
 @pytest.fixture(scope="session", name="policies_template_path")
