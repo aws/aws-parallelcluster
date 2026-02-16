@@ -15,11 +15,12 @@ import pathlib
 import random
 import string
 import time
+from importlib.metadata import version as get_package_version
 
 import boto3
-import pkg_resources
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from packaging import version as packaging_version
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -263,14 +264,14 @@ def _assert_ami_is_available(region, ami_id):
 def get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
     try:
-        return pkg_resources.get_distribution("aws-parallelcluster").version
+        return get_package_version("aws-parallelcluster")
     except Exception:
         logging.info("aws-parallelcluster is not installed through Python. Getting version from `pcluster version`.")
         return json.loads(run_command(["pcluster", "version"]).stdout.strip())["version"]
 
 
 def get_installed_parallelcluster_base_version():
-    return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
+    return packaging_version.parse(get_installed_parallelcluster_version()).base_version
 
 
 CLASSIC_AWS_DOMAIN = "amazonaws.com"

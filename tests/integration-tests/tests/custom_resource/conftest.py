@@ -15,7 +15,6 @@ from pathlib import Path
 
 import boto3
 import cfn_tools
-import pkg_resources
 import pytest
 import yaml
 from cfn_stacks_factory import CfnStack
@@ -34,7 +33,7 @@ def cfn_fixture(region):
 
 @pytest.fixture(scope="session", name="resources_dir")
 def resources_dir_fixture():
-    return Path(pkg_resources.resource_filename(__name__, "/../../resources"))
+    return Path(__file__).parent.parent.parent / "resources"
 
 
 @pytest.fixture(scope="session", name="cluster_custom_resource_template")
