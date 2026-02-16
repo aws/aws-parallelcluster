@@ -42,5 +42,14 @@ Scheduling:
         {% endif %}
 SharedStorage:
   - MountDir: /shared
-    Name: name1
+    Name: shared-ebs
     StorageType: Ebs
+  - MountDir: /shared-efs
+    Name: shared-efs
+    StorageType: Efs
+  - MountDir: /shared-fsx-lustre
+    Name: shared-fsx-lustre
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeletionPolicy: Delete
