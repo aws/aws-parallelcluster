@@ -12,6 +12,9 @@
 # limitations under the License.
 import functools
 import importlib
+
+# For importing package resources
+import importlib.resources as importlib_resources
 import json
 
 import jmespath
@@ -19,12 +22,6 @@ import jmespath
 from pcluster.api import encoder, openapi
 from pcluster.cli.exceptions import APIOperationException
 from pcluster.utils import to_kebab_case, to_snake_case, yaml_load
-
-# For importing package resources
-try:
-    import importlib.resources as pkg_resources  # pylint: disable=ungrouped-imports # nosem
-except ImportError:
-    import importlib_resources as pkg_resources
 
 
 def _param_overrides(operation, param):
@@ -88,7 +85,7 @@ def _resolve_body(spec, operation):
 
 def package_spec():
     """Load the OpenAPI specification from the package."""
-    with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:  # pylint: disable=deprecated-method
+    with importlib_resources.open_text(openapi, "openapi.yaml") as spec_file:  # pylint: disable=deprecated-method
         return yaml_load(spec_file.read())
 
 

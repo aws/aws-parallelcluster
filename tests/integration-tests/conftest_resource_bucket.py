@@ -22,7 +22,6 @@ import tempfile
 from pathlib import Path
 
 import boto3
-import pkg_resources
 import pytest
 import urllib3
 from framework.fixture_utils import xdist_session_fixture
@@ -36,7 +35,7 @@ NODE_VERSION = "v18.20.3"
 def install_pc(basepath, pc_version):
     """Install ParallelCluster to a temporary directory"""
     tempdir = Path(basepath) / "python"
-    root = Path(pkg_resources.resource_filename(__name__, "/../.."))
+    root = Path(__file__).parent.parent
     cli_dir = root / "cli"
     try:
         logger.info("installing ParallelCluster packages...")
@@ -105,7 +104,7 @@ def get_resource_map():
 
 @xdist_session_fixture()
 def resource_bucket_shared(request, s3_bucket_factory_shared, lambda_layer_source):
-    root = Path(pkg_resources.resource_filename(__name__, "/../.."))
+    root = Path(__file__).parent.parent
     if request.config.getoption("resource_bucket"):
         return None  # short-circuit this fixture if a resource-bucket is provided
 
