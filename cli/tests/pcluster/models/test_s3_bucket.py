@@ -245,15 +245,13 @@ def test_get_resource_url(region, bucket_name, cluster_name, resource_name, expe
                 "B": {"B1": "M"},
             },
             S3FileFormat.YAML,
-            textwrap.dedent(
-                """\
+            textwrap.dedent("""\
                 A:
                   A1: X
                   A2: Y
                 B:
                   B1: M
-                """
-            ),
+                """),
         ),
         (
             {
