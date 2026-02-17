@@ -182,7 +182,7 @@ def test_ebs_multiple(
     for i in range(len(volume_ids)):
         # test different volume types
         volume_id = volume_ids[i]
-        ebs_settings = _get_ebs_settings_by_name(cluster.config, f"ebs{i+1}")
+        ebs_settings = _get_ebs_settings_by_name(cluster.config, f"ebs{i + 1}")
         volume_type = ebs_settings["VolumeType"]
         volume = describe_volume(volume_id, region)
         assert_that(volume[0]).is_equal_to(volume_type)
