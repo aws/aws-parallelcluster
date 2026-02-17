@@ -177,9 +177,9 @@ def configure(args):  # noqa: C901
     for queue_index in range(number_of_queues):
         while True:
             queue_name = prompt(
-                f"Name of queue {queue_index+1}",
+                f"Name of queue {queue_index + 1}",
                 validator=lambda x: len(NameValidator().execute(x)) == 0,
-                default_value=f"queue{queue_index+1}",
+                default_value=f"queue{queue_index + 1}",
             )
             if queue_name not in queue_names:
                 break
@@ -208,7 +208,7 @@ def configure(args):  # noqa: C901
             if scheduler != "awsbatch":
                 while True:
                     compute_instance_type = prompt(
-                        f"Compute instance type for compute resource {compute_resource_index+1} in {queue_name}",
+                        f"Compute instance type for compute resource {compute_resource_index + 1} in {queue_name}",
                         validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
                         default_value=default_instance_type,
                     )
