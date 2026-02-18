@@ -17,6 +17,7 @@ CHANGELOG
   See https://github.com/aws/aws-parallelcluster/issues/7173
 - Fix cluster creation failure without Internet access when GPU instances and DCV are used.
 - Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
+- Fix build-image failure during ubuntu-desktop installation on a Ubuntu parent image with outdated OS packages.
 
 **DEPRECATIONS**
 - The configuration parameter `LoginNodes/Pools/Ssh/KeyName` is no longer supported.
