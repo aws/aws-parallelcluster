@@ -165,8 +165,7 @@ def test_build_image(
     if os in ["alinux2", "alinux2023", "rocky9"]:
         update_os_packages = True
 
-    # Disable DCV installation for Ubuntu 24.04 to avoid build failures with DLAMI
-    enable_dcv = os != "ubuntu2404"
+    enable_dcv = True
 
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
