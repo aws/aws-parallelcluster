@@ -57,7 +57,17 @@ PROMPTS = {
 
 
 def test_pcluster_configure(
-    request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir, architecture
+    request,
+    vpc_stack,
+    key_name,
+    region,
+    os,
+    instance,
+    scheduler,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    ami_type,
 ):
     """Verify that the config file produced by `pcluster configure` can be used to create a cluster."""
     skip_if_unsupported_test_options_were_used(request)
@@ -65,7 +75,7 @@ def test_pcluster_configure(
 
     _create_and_test_standard_configuration(request, config_path, region, key_name, scheduler, os, instance, vpc_stack)
 
-    inject_additional_config_settings(config_path, request, region, architecture)
+    inject_additional_config_settings(config_path, request, region, architecture, ami_type)
     clusters_factory(config_path)
 
 
