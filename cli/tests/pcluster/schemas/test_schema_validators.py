@@ -722,7 +722,6 @@ def test_login_node_pool_count_validator(count, expected_message):
             "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": count,
-            "Ssh": {"KeyName": "valid_key_name"},
         },
         expected_message,
     )
