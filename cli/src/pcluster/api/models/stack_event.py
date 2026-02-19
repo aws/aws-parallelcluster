@@ -69,7 +69,7 @@ class StackEvent(Model):
             "timestamp": datetime,
         }
 
-        self.attribute_map = {
+        self.attribute_map = {  # nosec B105
             "event_id": "eventId",
             "physical_resource_id": "physicalResourceId",
             "resource_status": "resourceStatus",

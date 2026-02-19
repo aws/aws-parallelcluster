@@ -32,7 +32,7 @@ class DescribeClusterInstancesResponseContent(Model):
         """
         self.openapi_types = {"instances": List[ClusterInstance], "next_token": str}
 
-        self.attribute_map = {"instances": "instances", "next_token": "nextToken"}
+        self.attribute_map = {"instances": "instances", "next_token": "nextToken"}  # nosec B105
 
         self._instances = instances
         self._next_token = next_token
