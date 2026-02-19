@@ -6,9 +6,6 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
-  Iam:
-    AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -24,9 +21,6 @@ Scheduling:
           - {{ private_subnet_id }}
     # New queue added to trigger update
     - Name: queue2
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       ComputeResources:
         - Name: queue2-cr1
           Instances:
