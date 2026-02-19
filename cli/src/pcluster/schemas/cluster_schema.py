@@ -1412,6 +1412,17 @@ class LoginNodesSshSchema(BaseSchema):
         validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP}
     )
 
+    def handle_error(self, error, data, **kwargs):
+        """Provide a helpful error message if the removed KeyName field is used."""
+        if isinstance(data, dict) and "KeyName" in data:
+            if hasattr(error, "messages") and isinstance(error.messages, dict) and "KeyName" in error.messages:
+                # Replace the generic "Unknown field" message for KeyName with a helpful message
+                error.messages["KeyName"] = [
+                    "The KeyName parameter is no longer supported for Login Nodes. "
+                    "Login nodes use the same SSH key as the head node."
+                ]
+        raise error
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""

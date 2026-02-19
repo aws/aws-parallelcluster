@@ -34,6 +34,7 @@ from pcluster.schemas.cluster_schema import (
     LoginNodesIamSchema,
     LoginNodesImageSchema,
     LoginNodesPoolSchema,
+    LoginNodesSshSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
@@ -827,5 +828,26 @@ def test_login_node_pool_subnet_ids_validator(subnet_ids, expected_message):
             "Networking": {"SubnetIds": subnet_ids},
             "Count": 1,
         },
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "ssh_config, expected_message",
+    [
+        ({"KeyName": "my-key"}, "The KeyName parameter is no longer supported for Login Nodes"),
+        ({"KeyName": "my-key", "AllowedIps": "0.0.0.0/0"}, "The KeyName parameter is no longer supported for Login Nodes"),
+        ({"AllowedIps": "0.0.0.0/0"}, None),
+        ({}, None),
+        # When there are other unknown fields, KeyName still gets the custom message
+        ({"KeyName": "my-key", "OtherUnknown": "value"}, "The KeyName parameter is no longer supported for Login Nodes"),
+        ({"OtherUnknown": "value"}, "Unknown field"),
+    ],
+)
+def test_login_nodes_ssh_key_name_removed(ssh_config, expected_message):
+    """Test that using the removed KeyName field in LoginNodes Ssh provides a helpful error message."""
+    _validate_and_assert_error(
+        LoginNodesSshSchema(),
+        ssh_config,
         expected_message,
     )
