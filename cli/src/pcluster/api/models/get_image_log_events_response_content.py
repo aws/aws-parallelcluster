@@ -28,7 +28,7 @@ class GetImageLogEventsResponseContent(Model):
         """
         self.openapi_types = {"next_token": str, "prev_token": str, "events": List[LogEvent]}
 
-        self.attribute_map = {"next_token": "nextToken", "prev_token": "prevToken", "events": "events"}
+        self.attribute_map = {"next_token": "nextToken", "prev_token": "prevToken", "events": "events"}  # nosec B105
 
         self._next_token = next_token
         self._prev_token = prev_token
