@@ -1405,10 +1405,9 @@ class LoginNodesImageSchema(BaseSchema):
         return LoginNodesImage(**data)
 
 
-class LoginNodesSshSchema(BaseSshSchema):
+class LoginNodesSshSchema(BaseSchema):
     """Represent the Ssh schema of LoginNodes."""
 
-    key_name = fields.Str(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP})
     allowed_ips = fields.Str(
         validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP}
     )
@@ -1416,9 +1415,7 @@ class LoginNodesSshSchema(BaseSshSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        # If KeyName is present in the user configuration, mark it as explicitly set
-        key_name_explicitly_set = "key_name" in data
-        return LoginNodesSsh(key_name_explicitly_set=key_name_explicitly_set, **data)
+        return LoginNodesSsh(**data)
 
 
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):

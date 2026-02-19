@@ -2485,16 +2485,16 @@ def test_login_nodes_pools_policy(
     [
         pytest.param(
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn1"}}]},
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"AllowedIps": "10.0.0.0/8"}}]},
             },
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn2"}}]},
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"AllowedIps": "192.168.0.0/16"}}]},
             },
             Change(
                 path=["LoginNodes", "Pools[mock-lp1]", "Ssh"],
-                key="KeyName",
-                old_value="mock-kn1",
-                new_value="mock-kn2",
+                key="AllowedIps",
+                old_value="10.0.0.0/8",
+                new_value="192.168.0.0/16",
                 update_policy={},
                 is_list=False,
             ),
@@ -2507,16 +2507,16 @@ def test_login_nodes_pools_policy(
         ),
         pytest.param(
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn1"}}]},
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"AllowedIps": "10.0.0.0/8"}}]},
             },
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn2"}}]},
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"AllowedIps": "192.168.0.0/16"}}]},
             },
             Change(
                 path=["LoginNodes", "Pools[mock-lp1]", "Ssh"],
-                key="KeyName",
-                old_value="mock-kn1",
-                new_value="mock-kn2",
+                key="AllowedIps",
+                old_value="10.0.0.0/8",
+                new_value="192.168.0.0/16",
                 update_policy={},
                 is_list=False,
             ),
@@ -2530,16 +2530,16 @@ def test_login_nodes_pools_policy(
         ),
         pytest.param(
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn1"}}]},
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"AllowedIps": "10.0.0.0/8"}}]},
             },
             {
-                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"KeyName": "mock-kn2"}}]},
+                "LoginNodes": {"Pools": [{"Name": "mock-lp1", "Ssh": {"AllowedIps": "192.168.0.0/16"}}]},
             },
             Change(
                 path=["LoginNodes", "Pools[mock-lp1]", "Ssh"],
-                key="KeyName",
-                old_value="mock-kn1",
-                new_value="mock-kn2",
+                key="AllowedIps",
+                old_value="10.0.0.0/8",
+                new_value="192.168.0.0/16",
                 update_policy={},
                 is_list=False,
             ),

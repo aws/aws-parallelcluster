@@ -155,7 +155,6 @@ class Pool(Construct):
                 ),
                 image_id=self._config.login_nodes_ami[self._pool.name],
                 instance_type=self._pool.instance_type,
-                key_name=self._pool.ssh.key_name,
                 metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
                     http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
                 ),
