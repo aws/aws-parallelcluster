@@ -835,12 +835,17 @@ def test_login_node_pool_subnet_ids_validator(subnet_ids, expected_message):
 @pytest.mark.parametrize(
     "ssh_config, expected_message",
     [
-        ({"KeyName": "my-key"}, "The KeyName parameter is no longer supported for Login Nodes"),
-        ({"KeyName": "my-key", "AllowedIps": "0.0.0.0/0"}, "The KeyName parameter is no longer supported for Login Nodes"),
+        ({"KeyName": "my-key"}, "Starting with ParallelCluster 3.15, the KeyName parameter is no longer supported for "
+                                "Login Nodes. Remove from the configuration and try again."),
+        ({"KeyName": "my-key", "AllowedIps": "0.0.0.0/0"}, "Starting with ParallelCluster 3.15, the KeyName parameter "
+                                                           "is no longer supported for Login Nodes. Remove from the "
+                                                           "configuration and try again."),
         ({"AllowedIps": "0.0.0.0/0"}, None),
         ({}, None),
         # When there are other unknown fields, KeyName still gets the custom message
-        ({"KeyName": "my-key", "OtherUnknown": "value"}, "The KeyName parameter is no longer supported for Login Nodes"),
+        ({"KeyName": "my-key", "OtherUnknown": "value"}, "Starting with ParallelCluster 3.15, the KeyName parameter "
+                                                         "is no longer supported for Login Nodes. Remove from "
+                                                         "the configuration and try again."),
         ({"OtherUnknown": "value"}, "Unknown field"),
     ],
 )

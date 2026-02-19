@@ -1418,8 +1418,8 @@ class LoginNodesSshSchema(BaseSchema):
             if hasattr(error, "messages") and isinstance(error.messages, dict) and "KeyName" in error.messages:
                 # Replace the generic "Unknown field" message for KeyName with a helpful message
                 error.messages["KeyName"] = [
-                    "The KeyName parameter is no longer supported for Login Nodes. "
-                    "Login nodes use the same SSH key as the head node."
+                    "Starting with ParallelCluster 3.15, the KeyName parameter is no longer supported for Login Nodes. "
+                    "Remove from the configuration and try again."
                 ]
         raise error
 
