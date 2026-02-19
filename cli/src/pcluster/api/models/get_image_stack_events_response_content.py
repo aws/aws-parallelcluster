@@ -26,7 +26,7 @@ class GetImageStackEventsResponseContent(Model):
         """
         self.openapi_types = {"next_token": str, "events": List[StackEvent]}
 
-        self.attribute_map = {"next_token": "nextToken", "events": "events"}
+        self.attribute_map = {"next_token": "nextToken", "events": "events"}  # nosec B105
 
         self._next_token = next_token
         self._events = events

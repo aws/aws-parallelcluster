@@ -26,7 +26,7 @@ class ListImageLogStreamsResponseContent(Model):
         """
         self.openapi_types = {"log_streams": List[LogStream], "next_token": str}
 
-        self.attribute_map = {"log_streams": "logStreams", "next_token": "nextToken"}
+        self.attribute_map = {"log_streams": "logStreams", "next_token": "nextToken"}  # nosec B105
 
         self._log_streams = log_streams
         self._next_token = next_token
