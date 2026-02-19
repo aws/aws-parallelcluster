@@ -10,7 +10,6 @@ CHANGELOG
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
 - Add support for p6-b300 instances for all OSs except AL2.
 - Add alarm on missing clustermgtd heartbeat.
-- The configuration parameter `LoginNodes/Pools/Ssh/KeyName` is no longer supported.
 
 **BUG FIXES**
 - Add validation to block updates that change tag order. Blocking such change prevents update failures.
@@ -18,6 +17,9 @@ CHANGELOG
   See https://github.com/aws/aws-parallelcluster/issues/7173
 - Fix cluster creation failure without Internet access when GPU instances and DCV are used.
 - Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
+
+**DEPRECATIONS**
+- The configuration parameter `LoginNodes/Pools/Ssh/KeyName` is no longer supported.
 
 3.14.2
 ------
