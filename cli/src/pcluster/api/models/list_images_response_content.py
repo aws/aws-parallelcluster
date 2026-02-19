@@ -32,7 +32,7 @@ class ListImagesResponseContent(Model):
         """
         self.openapi_types = {"images": List[ImageInfoSummary], "next_token": str}
 
-        self.attribute_map = {"images": "images", "next_token": "nextToken"}
+        self.attribute_map = {"images": "images", "next_token": "nextToken"}  # nosec B105
 
         self._images = images
         self._next_token = next_token

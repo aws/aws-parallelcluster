@@ -52,7 +52,7 @@ class LogStream(Model):
             "upload_sequence_token": str,
         }
 
-        self.attribute_map = {
+        self.attribute_map = {  # nosec B105
             "log_stream_arn": "logStreamArn",
             "creation_time": "creationTime",
             "log_stream_name": "logStreamName",
