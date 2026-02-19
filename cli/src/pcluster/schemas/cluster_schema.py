@@ -1405,20 +1405,28 @@ class LoginNodesImageSchema(BaseSchema):
         return LoginNodesImage(**data)
 
 
-class LoginNodesSshSchema(BaseSshSchema):
+class LoginNodesSshSchema(BaseSchema):
     """Represent the Ssh schema of LoginNodes."""
 
-    key_name = fields.Str(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP})
     allowed_ips = fields.Str(
         validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP}
     )
 
+    def handle_error(self, error, data, **kwargs):
+        """Provide a helpful error message if the removed KeyName field is used."""
+        if isinstance(data, dict) and "KeyName" in data:
+            if hasattr(error, "messages") and isinstance(error.messages, dict) and "KeyName" in error.messages:
+                # Replace the generic "Unknown field" message for KeyName with a helpful message
+                error.messages["KeyName"] = [
+                    "Starting with ParallelCluster 3.15, the KeyName parameter is no longer supported for Login Nodes. "
+                    "Remove from the configuration and try again."
+                ]
+        raise error
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        # If KeyName is present in the user configuration, mark it as explicitly set
-        key_name_explicitly_set = "key_name" in data
-        return LoginNodesSsh(key_name_explicitly_set=key_name_explicitly_set, **data)
+        return LoginNodesSsh(**data)
 
 
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):

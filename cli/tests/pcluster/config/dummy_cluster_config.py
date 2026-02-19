@@ -146,7 +146,7 @@ def dummy_slurm_cluster_config(mocker):
             instance_type="t3.micro",
             networking=LoginNodesNetworking(subnet_ids=["subnet-12345678"]),
             count=1,
-            ssh=LoginNodesSsh(key_name="validkeyname"),
+            ssh=LoginNodesSsh(),
         )
     ]
     login_nodes = LoginNodes(pools=pools)

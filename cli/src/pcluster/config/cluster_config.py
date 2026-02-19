@@ -190,7 +190,6 @@ from pcluster.validators.instances_validators import (
     InstancesNetworkingValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.login_nodes_validators import LoginNodesSshKeyNameDeprecatedValidator
 from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
@@ -842,25 +841,14 @@ class HeadNodeSsh(_BaseSsh):
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
-class LoginNodesSsh(_BaseSsh):
+class LoginNodesSsh(Resource):
     """Represent the SSH configuration for LoginNodes."""
 
     def __init__(self, allowed_ips: str = None, **kwargs):
-        key_name_explicitly_set = kwargs.pop("key_name_explicitly_set", False)
         super().__init__(**kwargs)
         # If AllowedIPs is not specified for the login node pool, then allowed_ips will default to the same settings
         # in the HeadNode to restrict SSH access from a specific CIDR or prefix-list.
         self.allowed_ips = Resource.init_param(allowed_ips)
-        # Track whether the key_name was explicitly set in the configuration.
-        self._key_name_explicitly_set = key_name_explicitly_set
-
-    def _register_validators(self, context=None):
-        super()._register_validators(context)
-        self._register_validator(
-            LoginNodesSshKeyNameDeprecatedValidator,
-            key_name=self.key_name,
-            key_name_explicitly_set=self._key_name_explicitly_set,
-        )
 
 
 class SharedStorageEfsSettings(Resource):
@@ -2937,16 +2925,9 @@ class SlurmClusterConfig(BaseClusterConfig):
             # Create a LocalStorage for the LoginNodesPool and ensure that encrypted = true
             for pool in self.login_nodes.pools:
                 pool.local_storage = LocalStorage(implied=True)
-                # If there's no customer ssh key for LoginNodes pool, set a default value as HeadNode's ssh key
-                if pool.ssh and not pool.ssh.key_name:
-                    pool.ssh.key_name = self.head_node.ssh.key_name
-                    # Mark that this key was not explicitly set by the user
-                    pool.ssh._key_name_explicitly_set = False
-                elif not pool.ssh:
-                    pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name, key_name_explicitly_set=False)
-                else:
-                    # SSH config exists and has a key_name, mark it as explicitly set
-                    pool.ssh._key_name_explicitly_set = True
+                # If the login node pool SSH config is not specified, create one
+                if not pool.ssh:
+                    pool.ssh = LoginNodesSsh()
                 # If the login node pool allowed IPs is not specified, forces the source allowed IP for the
                 # SSH connection to the one defined in the HeadNode
                 if not pool.ssh.allowed_ips:

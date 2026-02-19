@@ -34,6 +34,7 @@ from pcluster.schemas.cluster_schema import (
     LoginNodesIamSchema,
     LoginNodesImageSchema,
     LoginNodesPoolSchema,
+    LoginNodesSshSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
@@ -722,7 +723,6 @@ def test_login_node_pool_count_validator(count, expected_message):
             "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": count,
-            "Ssh": {"KeyName": "valid_key_name"},
         },
         expected_message,
     )
@@ -801,7 +801,6 @@ def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_m
             "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": 1,
-            "Ssh": {"KeyName": "valid_key_name"},
             "GracetimePeriod": gracetime_period,
         },
         expected_message,
@@ -828,7 +827,41 @@ def test_login_node_pool_subnet_ids_validator(subnet_ids, expected_message):
             "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": subnet_ids},
             "Count": 1,
-            "Ssh": {"KeyName": "valid_key_name"},
         },
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "ssh_config, expected_message",
+    [
+        (
+            {"KeyName": "my-key"},
+            "Starting with ParallelCluster 3.15, the KeyName parameter is no longer supported for "
+            "Login Nodes. Remove from the configuration and try again.",
+        ),
+        (
+            {"KeyName": "my-key", "AllowedIps": "0.0.0.0/0"},
+            "Starting with ParallelCluster 3.15, the KeyName parameter "
+            "is no longer supported for Login Nodes. Remove from the "
+            "configuration and try again.",
+        ),
+        ({"AllowedIps": "0.0.0.0/0"}, None),
+        ({}, None),
+        # When there are other unknown fields, KeyName still gets the custom message
+        (
+            {"KeyName": "my-key", "OtherUnknown": "value"},
+            "Starting with ParallelCluster 3.15, the KeyName parameter "
+            "is no longer supported for Login Nodes. Remove from "
+            "the configuration and try again.",
+        ),
+        ({"OtherUnknown": "value"}, "Unknown field"),
+    ],
+)
+def test_login_nodes_ssh_key_name_removed(ssh_config, expected_message):
+    """Test that using the removed KeyName field in LoginNodes Ssh provides a helpful error message."""
+    _validate_and_assert_error(
+        LoginNodesSshSchema(),
+        ssh_config,
         expected_message,
     )
