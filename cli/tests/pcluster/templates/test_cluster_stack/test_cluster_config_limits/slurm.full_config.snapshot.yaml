@@ -135,7 +135,6 @@ LoginNodes:
       - subnet-12345678
     Ssh:
       AllowedIps: 1.2.3.4/32
-      KeyName: validate_key_name
 Monitoring:
   Alarms:
     Enabled: true

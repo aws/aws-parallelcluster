@@ -800,7 +800,6 @@ def test_login_node_pool_gracetime_period_validator(gracetime_period, expected_m
             "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": ["subnet-01b4c1fa1de8a507f"]},
             "Count": 1,
-            "Ssh": {"KeyName": "valid_key_name"},
             "GracetimePeriod": gracetime_period,
         },
         expected_message,
@@ -827,7 +826,6 @@ def test_login_node_pool_subnet_ids_validator(subnet_ids, expected_message):
             "InstanceType": "t3.micro",
             "Networking": {"SubnetIds": subnet_ids},
             "Count": 1,
-            "Ssh": {"KeyName": "valid_key_name"},
         },
         expected_message,
     )
