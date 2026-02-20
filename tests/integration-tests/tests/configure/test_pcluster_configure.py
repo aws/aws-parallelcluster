@@ -164,6 +164,7 @@ def test_efa_and_placement_group(
     efa_config,
     placement_group_response_type,
     placement_group_stack,
+    ami_type,
 ):
     config_path = test_datadir / "config.yaml"
 
@@ -207,7 +208,7 @@ def test_efa_and_placement_group(
         efa_config=efa_config,
         placement_group_config=placement_group_config["configuration"],
     )
-    inject_additional_config_settings(config_path, request, region, architecture)
+    inject_additional_config_settings(config_path, request, region, architecture, ami_type)
     response = clusters_factory(config_path, dryrun=True, raise_on_error=False).creation_response
     assert_that(response.get("message")).is_equal_to("Request would have succeeded, but DryRun flag is set.")
 
