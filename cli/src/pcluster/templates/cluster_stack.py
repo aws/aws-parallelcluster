@@ -96,7 +96,6 @@ from pcluster.templates.cdk_builder_utils import (
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
-    get_default_volume_tags,
     get_directory_service_dna_json_for_head_node,
     get_lambda_log_group_prefix,
     get_log_group_deletion_policy,

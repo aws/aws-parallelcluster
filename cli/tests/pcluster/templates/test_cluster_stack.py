@@ -1125,77 +1125,7 @@ def _get_cfn_init_file_content(template, resource, file):
 
 @freeze_time("2021-01-01T01:01:01")
 @pytest.mark.parametrize(
-    "config_file_name, expected_instance_tags, expected_volume_tags,",
-    [
-        (
-            "slurm.full.yaml",
-            {},
-            {
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
-        (
-            "awsbatch.full.yaml",
-            {},
-            {
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
-    ],
-)
-def test_head_node_tags_from_launch_template(
-    mocker,
-    config_file_name,
-    expected_instance_tags,
-    expected_volume_tags,
-):
-    mock_aws_api(mocker)
-    mock_bucket(mocker)
-    mock_bucket_object_utils(mocker)
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
-        return_value=("t3.micro", "capacity-reservation"),
-    )
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-    tags_specifications = (
-        generated_template.get("Resources")
-        .get("HeadNodeLaunchTemplate")
-        .get("Properties")
-        .get("LaunchTemplateData")
-        .get("TagSpecifications", [])
-    )
-
-    instance_tags = next((specs for specs in tags_specifications if specs["ResourceType"] == "instance"), {}).get(
-        "Tags", []
-    )
-    actual_instance_tags = {tag["Key"]: tag["Value"] for tag in instance_tags}
-    assert_that(actual_instance_tags).is_equal_to(expected_instance_tags)
-
-    volume_tags = next((specs for specs in tags_specifications if specs["ResourceType"] == "volume"), {}).get(
-        "Tags", []
-    )
-    actual_volume_tags = {tag["Key"]: tag["Value"] for tag in volume_tags}
-    assert_that(actual_volume_tags).is_equal_to(expected_volume_tags)
-
-
-@freeze_time("2021-01-01T01:01:01")
-@pytest.mark.parametrize(
-    "config_file_name, expected_tags",
+    "config_file_name, expected_head_node_tags",
     [
         (
             "slurm.full.yaml",
@@ -1231,7 +1161,7 @@ def test_head_node_tags_from_launch_template(
         ),
     ],
 )
-def test_head_node_tags_from_instance_definition(mocker, config_file_name, expected_tags):
+def test_head_node_tags(mocker, config_file_name, expected_head_node_tags):
     mock_aws_api(mocker)
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
@@ -1243,12 +1173,28 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
-    tags = generated_template.get("Resources").get("HeadNode").get("Properties").get("Tags", [])
 
-    actual_tags = {tag["Key"]: tag["Value"] for tag in tags}
-    assert_that(actual_tags.keys()).is_equal_to(expected_tags.keys())
-    for key in actual_tags.keys():
-        assert_that(actual_tags[key]).matches(expected_tags[key])
+    # Verify no volume TagSpecifications in the launch template.
+    # Volume tags are propagated via PropagateTagsToVolumeOnCreation on the HeadNode instance.
+    tags_specifications = (
+        generated_template.get("Resources")
+        .get("HeadNodeLaunchTemplate")
+        .get("Properties")
+        .get("LaunchTemplateData")
+        .get("TagSpecifications", [])
+    )
+    volume_tag_specs = [specs for specs in tags_specifications if specs["ResourceType"] == "volume"]
+    assert_that(volume_tag_specs).is_empty()
+
+    # Verify PropagateTagsToVolumeOnCreation is enabled and instance tags are correct.
+    head_node_props = generated_template.get("Resources").get("HeadNode").get("Properties")
+    assert_that(head_node_props.get("PropagateTagsToVolumeOnCreation")).is_true()
+
+    tags = head_node_props.get("Tags", [])
+    head_node_actual_tags = {tag["Key"]: tag["Value"] for tag in tags}
+    assert_that(head_node_actual_tags.keys()).is_equal_to(expected_head_node_tags.keys())
+    for key in head_node_actual_tags.keys():
+        assert_that(head_node_actual_tags[key]).matches(expected_head_node_tags[key])
 
 
 @freeze_time("2021-01-01T01:01:01")
