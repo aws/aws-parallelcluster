@@ -366,8 +366,6 @@ ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
 # Capacity Block states that are considered inactive (cannot check health status)
 CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]
 
-ORDER_SENSITIVE_PARAMETERS = ["Tags"]
-
 # Older generation instance types
 EXCLUDED_INSTANCE_TYPE_PREFIXES = (
     "m1",
