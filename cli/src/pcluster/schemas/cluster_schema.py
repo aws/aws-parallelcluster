@@ -1970,9 +1970,7 @@ class ClusterSchema(BaseSchema):
 
     monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    tags = fields.Nested(
-        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
-    )
+    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
     iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     directory_service = fields.Nested(
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP}
