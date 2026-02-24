@@ -676,11 +676,11 @@ def test_expedited_requeue(
     # Output epoch timestamp for reliable start time parsing from slurm output file
     job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": 'echo "START_TIME=$(date +%s)"; sleep 180; echo "Job1 done"',
+            "command": 'echo "START_TIME=$(date +%s)"; sleep 30; echo "Job1 done"',
             "nodes": 1,
             "partition": partition,
             "host": target_node,
-            "other_options": "--requeue=expedite",
+            "other_options": "--requeue=expedite --exclusive",
         }
     )
     logging.info("Submitted job1 (expedited requeue) ID: %s", job1_id)
@@ -692,6 +692,7 @@ def test_expedited_requeue(
             "nodes": 1,
             "partition": partition,
             "host": target_node,
+            "other_options": "--exclusive",
         }
     )
     logging.info("Submitted job2 (normal) ID: %s", job2_id)
