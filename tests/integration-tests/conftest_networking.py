@@ -134,6 +134,12 @@ def az_id():
     pass
 
 
+@pytest.fixture(autouse=True)
+def ami_type():
+    """Removes the need to declare the fixture in all tests even if not needed."""
+    pass
+
+
 def unmarshal_az_override(az_override):
     for region, regex in ZONE_ID_MAPPING.items():
         pattern = re.compile(regex)
