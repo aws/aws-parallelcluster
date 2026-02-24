@@ -725,7 +725,7 @@ def test_expedited_requeue(
     )
 
     # Wait for the target dynamic node to be power-saved (reset)
-    wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=600)
+    wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], wait_fixed_secs=5, stop_max_delay_secs=600)
 
     # Wait for both jobs to complete — they should now run on recovered nodes
     scheduler_commands.wait_job_completed(job1_id, timeout=15)
