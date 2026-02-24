@@ -676,7 +676,7 @@ def test_expedited_requeue(
     # Output epoch timestamp for reliable start time parsing from slurm output file
     job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
-            "command": 'echo "START_TIME=$(date +%s)"; sleep 30; echo "Job1 done"',
+            "command": 'echo "START_TIME=$(date +%s)"; sleep 180; echo "Job1 done"',
             "nodes": 1,
             "partition": partition,
             "host": target_node,
@@ -726,20 +726,9 @@ def test_expedited_requeue(
     # Wait for the target dynamic node to be power-saved (reset)
     wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], stop_max_delay_secs=600)
 
-    # Wait for job1 to run and enter REQUEUE_HOLD.
-    # Known Slurm 25.11 bug: jobs with --requeue=expedite enter REQUEUE_HOLD after successful
-    # completion instead of COMPLETED, because _set_job_requeue_exit_value() unconditionally
-    # triggers expedited requeue without checking exit_code.
-    # We wait for REQUEUE_HOLD directly and read start time from the slurm output file,
-    # since StartTime in scontrol resets to Unknown in REQUEUE_HOLD state.
-    # TODO: Change to wait_job_completed + assert_job_succeeded once the Slurm bug is fixed.
-    def _assert_job_in_requeue_hold():
-        result = remote_command_executor.run_remote_command(f"scontrol show jobs -o {job1_id}")
-        assert_that(result.stdout).contains("JobState=REQUEUE_HOLD")
-
-    retry(wait_fixed=seconds(10), stop_max_delay=minutes(15))(_assert_job_in_requeue_hold)()
-    logging.info("Job1 entered REQUEUE_HOLD as expected (known Slurm 25.11 bug)")
-    scheduler_commands.cancel_job(job1_id)
+    # Wait for both jobs to complete — they should now run on recovered nodes
+    scheduler_commands.wait_job_completed(job1_id, timeout=15)
+    scheduler_commands.assert_job_succeeded(job1_id)
 
     # Wait for job2 to complete normally
     scheduler_commands.wait_job_completed(job2_id, timeout=15)
