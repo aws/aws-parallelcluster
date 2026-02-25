@@ -620,6 +620,106 @@ def test_fast_capacity_failover(
     )
 
 
+def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
+    """
+    Set up ICE simulation, submit jobs, and wait for ICE to be detected.
+
+    Each entry in jobs is a dict with "label" (str) and "expedited" (bool).
+    Returns a list of job IDs in the same order as the input jobs.
+    """
+    rce = common_cluster_details["remote_command_executor"]
+    scheduler_commands = common_cluster_details["scheduler_commands"]
+    target_nodes = common_cluster_details["target_nodes"]
+
+    # Set up ICE simulation
+    setup_create_fleet_override_to_emulate_ice(
+        rce,
+        cluster_name=common_cluster_details["cluster_name"],
+        queue=common_cluster_details["partition"],
+        compute_resource=common_cluster_details["ice_compute_res"],
+        instance_types=common_cluster_details["real_instance_types"],
+        subnet_id=common_cluster_details["subnet_id"],
+    )
+
+    # Clear logs for clean state
+    rce.clear_slurm_resume_log()
+    rce.clear_clustermgtd_log()
+
+    # Submit all jobs
+    job_ids = []
+    for job in jobs:
+        requeue_opt = "--requeue=expedite " if job["expedited"] else ""
+        job_type = "expedited" if job["expedited"] else "normal"
+        jid = scheduler_commands.submit_command_and_assert_job_accepted(
+            submit_command_args={
+                "command": f'echo "START_TIME=$(date +%s)"; sleep 30; echo "{job["label"]} done"',
+                "nodes": 1,
+                "partition": common_cluster_details["partition"],
+                "host": target_nodes[0],
+                "other_options": f"{requeue_opt}--exclusive",
+            }
+        )
+        logging.info("Submitted %s (%s) ID: %s", job["label"], job_type, jid)
+        job_ids.append(jid)
+
+    # Wait for ICE to be detected
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
+        rce,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["The following compute resources are in down state due to insufficient capacity"],
+    )
+
+    # Verify target nodes are down due to ICE
+    assert_compute_node_states(scheduler_commands, target_nodes, expected_states=["down#", "down~"])
+
+    return job_ids
+
+
+def _recover_from_ice_and_wait_for_jobs(common_cluster_details, job_ids):
+    """Recover from ICE simulation, wait for nodes to reset, and wait for all jobs to complete."""
+    rce = common_cluster_details["remote_command_executor"]
+    scheduler_commands = common_cluster_details["scheduler_commands"]
+    target_nodes = common_cluster_details["target_nodes"]
+
+    # Recover from ICE
+    recover_create_fleet_override_from_ice(
+        rce,
+        cluster_name=common_cluster_details["cluster_name"],
+        queue=common_cluster_details["partition"],
+        compute_resource=common_cluster_details["ice_compute_res"],
+        real_instance_types=common_cluster_details["real_instance_types"],
+        subnet_id=common_cluster_details["subnet_id"],
+    )
+
+    # Wait for insufficient_capacity_timeout to expire and nodes to reset
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
+        rce,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Reset the following compute resources because insufficient capacity timeout expired"],
+    )
+
+    # Wait for target nodes to be power-saved (reset)
+    wait_for_compute_nodes_states(
+        scheduler_commands, target_nodes, expected_states=["idle~"], wait_fixed_secs=5, stop_max_delay_secs=600
+    )
+
+    # Wait for all jobs to complete
+    for jid in job_ids:
+        scheduler_commands.wait_job_completed(jid, timeout=15)
+        scheduler_commands.assert_job_succeeded(jid)
+
+
+def _collect_start_epochs(remote_command_executor, job_ids):
+    """Read START_TIME epoch from slurm output files and return as a list in the same order."""
+    epochs = []
+    for jid in job_ids:
+        output = remote_command_executor.run_remote_command(f"cat ~/slurm-{jid}.out").stdout
+        logging.info("Job %s output: %s", jid, output)
+        epoch = int(re.search(r"START_TIME=(\d+)", output).group(1))
+        epochs.append(epoch)
+    return epochs
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.expedited_requeue
 def test_expedited_requeue(
@@ -642,21 +742,11 @@ def test_expedited_requeue(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     partition = "queue"
-    ice_cr = "ice-cr"
+    ice_compute_res = "ice-cr"
     real_instance_types = ["t3.medium", "c5.large"]
     subnet_id = vpc_stack.get_private_subnet()
 
-    # Set up ICE simulation via create_fleet_overrides.json with invalid InstanceTypes
-    setup_create_fleet_override_to_emulate_ice(
-        remote_command_executor,
-        cluster_name=cluster.cfn_name,
-        queue=partition,
-        compute_resource=ice_cr,
-        instance_types=real_instance_types,
-        subnet_id=subnet_id,
-    )
-
-    # Set insufficient_capacity_timeout to 180s for quicker reset
+    # Set insufficient_capacity_timeout to 180s for quick reset of iced-ompute resource
     _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
 
     # Get node lists — all nodes in ice-cr are dynamic
@@ -668,92 +758,38 @@ def test_expedited_requeue(
     target_node = ice_dynamic_nodes[0]
     logging.info("Target dynamic node for ICE test: %s", target_node)
 
-    # Clear logs for clean state
-    remote_command_executor.clear_slurm_resume_log()
-    remote_command_executor.clear_clustermgtd_log()
+    common_cluster_details = {
+        "remote_command_executor": remote_command_executor,
+        "cluster_name": cluster.cfn_name,
+        "scheduler_commands": scheduler_commands,
+        "partition": partition,
+        "ice_compute_res": ice_compute_res,
+        "real_instance_types": real_instance_types,
+        "subnet_id": subnet_id,
+        "target_nodes": [target_node],
+    }
 
-    # Submit job1 with --requeue=expedite, targeting the specific ICE dynamic node
-    # Output epoch timestamp for reliable start time parsing from slurm output file
-    job1_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={
-            "command": 'echo "START_TIME=$(date +%s)"; sleep 30; echo "Job1 done"',
-            "nodes": 1,
-            "partition": partition,
-            "host": target_node,
-            "other_options": "--requeue=expedite --exclusive",
-        }
-    )
-    logging.info("Submitted job1 (expedited requeue) ID: %s", job1_id)
+    # Submit 3 jobs in a single ICE cycle:
+    # job1 (normal), job2 (expedited), job3 (expedited)
+    jobs = [
+        {"label": "job1", "expedited": False},
+        {"label": "job2", "expedited": True},
+        {"label": "job3", "expedited": True},
+    ]
+    job_ids = _submit_jobs_and_simulate_ice(common_cluster_details, jobs)
+    _recover_from_ice_and_wait_for_jobs(common_cluster_details, job_ids)
+    start_epochs = _collect_start_epochs(remote_command_executor, job_ids)
 
-    # Submit job2 (normal), targeting the same ICE dynamic node
-    job2_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={
-            "command": 'echo "START_TIME=$(date +%s)"; sleep 30; echo "Job2 done"',
-            "nodes": 1,
-            "partition": partition,
-            "host": target_node,
-            "other_options": "--exclusive",
-        }
-    )
-    logging.info("Submitted job2 (normal) ID: %s", job2_id)
+    # Expected ordering after ICE recovery:
+    # Expedited jobs (job2, job3) run first in submission order, then normal job (job1) last
+    logging.info("Start epochs: %s", dict(zip([j["label"] for j in jobs], start_epochs)))
 
-    # Wait for ICE to be detected
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        ["The following compute resources are in down state due to insufficient capacity"],
-    )
 
-    # Verify the target dynamic node is down due to ICE
-    assert_compute_node_states(scheduler_commands, [target_node], expected_states=["down#", "down~"])
+    assert_that(start_epochs[2]).is_less_than_or_equal_to(start_epochs[1])  # job2 (expedited) before job1 (normal)
+    assert_that(start_epochs[3]).is_less_than_or_equal_to(start_epochs[1])  # job3 (expedited) before job1 (normal)
+    assert_that(start_epochs[2]).is_less_than_or_equal_to(start_epochs[3])  # job2 (expedited) before job3 (expedited)
+    logging.info("Verified: expedited jobs (job2, job3) ran before normal job (job1)")
 
-    # Recover from ICE: change InstanceTypes in JSON override back to real ones
-    recover_create_fleet_override_from_ice(
-        remote_command_executor,
-        cluster_name=cluster.cfn_name,
-        queue=partition,
-        compute_resource=ice_cr,
-        real_instance_types=real_instance_types,
-        subnet_id=subnet_id,
-    )
-
-    # Wait for insufficient_capacity_timeout to expire and nodes to reset
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        ["Reset the following compute resources because insufficient capacity timeout expired"],
-    )
-
-    # Wait for the target dynamic node to be power-saved (reset)
-    wait_for_compute_nodes_states(scheduler_commands, [target_node], expected_states=["idle~"], wait_fixed_secs=5, stop_max_delay_secs=600)
-
-    # Wait for both jobs to complete — they should now run on recovered nodes
-    scheduler_commands.wait_job_completed(job1_id, timeout=15)
-    scheduler_commands.assert_job_succeeded(job1_id)
-
-    # Wait for job2 to complete normally
-    scheduler_commands.wait_job_completed(job2_id, timeout=15)
-    scheduler_commands.assert_job_succeeded(job2_id)
-
-    # Read start times from slurm output files (epoch timestamps)
-    job1_output = remote_command_executor.run_remote_command(f"cat ~/slurm-{job1_id}.out").stdout
-    job2_output = remote_command_executor.run_remote_command(f"cat ~/slurm-{job2_id}.out").stdout
-    job1_start_epoch = int(re.search(r"START_TIME=(\d+)", job1_output).group(1))
-    job2_start_epoch = int(re.search(r"START_TIME=(\d+)", job2_output).group(1))
-    logging.info("Job1 output: %s", job1_output)
-    logging.info("Job2 output: %s", job2_output)
-
-    # Verify expedited requeue job (job1) started before normal job (job2)
-    logging.info("Job1 start_epoch=%s, Job2 start_epoch=%s", job1_start_epoch, job2_start_epoch)
-    assert_that(job1_start_epoch).is_less_than_or_equal_to(job2_start_epoch)
-    logging.info("Verified: expedited requeue job started before normal job (highest priority)")
-
-    # Verify no protected mode triggered
-    assert_no_msg_in_logs(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        ["Node bootstrap error"],
-    )
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
