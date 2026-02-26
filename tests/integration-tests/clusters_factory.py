@@ -12,13 +12,13 @@
 import functools
 import json
 import logging
-import re
 import subprocess
 import time
 
 import boto3
 import yaml
 from assertpy import assert_that
+from diagnosis_utils import retrieve_rca_details
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -567,7 +567,13 @@ class ClustersFactory:
                         # in the case where the stack has been deleted.
                         stack_id = response.get("cloudformationStackArn")
                         events = get_cfn_events(stack_name=stack_id, region=cluster.region)
-                        raise ClusterCreationError(error, stack_events=events, cluster_details=response)
+                        rca_details = retrieve_rca_details(cluster)
+                        raise ClusterCreationError(
+                            error,
+                            stack_events=events,
+                            cluster_details=response,
+                            rca_details=rca_details,
+                        )
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
                     end_time = time.time()
