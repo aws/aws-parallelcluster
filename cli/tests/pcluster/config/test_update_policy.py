@@ -2936,3 +2936,114 @@ def test_extra_chef_attributes_action_needed(mocker, old_value, new_value):
     action_needed = UpdatePolicy.EXTRA_CHEF_ATTRIBUTES.action_needed(change_mock, patch_mock)
     assert_that(action_needed).contains("Revert")
     assert_that(action_needed).contains("non-updatable")
+
+
+# Tests for HeadNode LocalStorage update policy
+EBS_ACTION_NEEDED = (
+    "Follow the instructions at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/"
+    "requesting-ebs-volume-modifications.html#modify-ebs-volume to modify your volume from AWS Console."
+)
+
+
+@pytest.mark.parametrize(
+    "base_config, target_config, expected_update_allowed, expected_action_needed",
+    [
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 100}},
+                },
+            },
+            False,
+            None,
+            id="Adding LocalStorage to HeadNode is blocked",
+        ),
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 50}},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                },
+            },
+            False,
+            None,
+            id="Removing LocalStorage from HeadNode is blocked",
+        ),
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 50}},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 100}},
+                },
+            },
+            False,
+            EBS_ACTION_NEEDED,
+            id="Changing HeadNode RootVolume Size shows EBS action_needed",
+        ),
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"VolumeType": "gp2"}},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"VolumeType": "gp3"}},
+                },
+            },
+            False,
+            EBS_ACTION_NEEDED,
+            id="Changing HeadNode RootVolume VolumeType shows EBS action_needed",
+        ),
+    ],
+)
+def test_head_node_local_storage_update_blocked(
+    mocker, base_config, target_config, expected_update_allowed, expected_action_needed
+):
+    """Test that HeadNode LocalStorage changes during update are blocked.
+
+    LocalStorage affects the HeadNode launch template and cannot be updated without replacing the HeadNode.
+    When individual RootVolume fields (Size, VolumeType) are changed, the EBS action_needed message is shown.
+    When adding/removing the entire LocalStorage section, a generic "Restore value" message is shown instead.
+    """
+    cluster = Cluster(name="mock-name", stack="mock-stack")
+    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
+
+    patch_allowed, rows = patch.check()
+    assert_that(patch_allowed).is_equal_to(expected_update_allowed)
+
+    # Verify action_needed message
+    # rows format: [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", ...], ...]
+    action_needed_index = 6
+    action_needed_messages = [row[action_needed_index] for row in rows[1:] if row[action_needed_index]]
+
+    if expected_action_needed:
+        assert_that(action_needed_messages).is_not_empty()
+        assert_that(action_needed_messages[0]).is_equal_to(expected_action_needed)

@@ -276,7 +276,7 @@ class QueueEphemeralVolumeSchema(BaseSchema):
 class HeadNodeStorageSchema(BaseSchema):
     """Represent the schema of storage attached to a node."""
 
-    root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     ephemeral_volume = fields.Nested(
         HeadNodeEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
@@ -1370,7 +1370,7 @@ class HeadNodeSchema(BaseSchema):
         HeadNodeNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     ssh = fields.Nested(HeadNodeSshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     shared_storage_type = fields.Str(
         required=False,
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
