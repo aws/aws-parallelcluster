@@ -2936,3 +2936,74 @@ def test_extra_chef_attributes_action_needed(mocker, old_value, new_value):
     action_needed = UpdatePolicy.EXTRA_CHEF_ATTRIBUTES.action_needed(change_mock, patch_mock)
     assert_that(action_needed).contains("Revert")
     assert_that(action_needed).contains("non-updatable")
+
+
+# Tests for HeadNode LocalStorage update policy
+@pytest.mark.parametrize(
+    "base_config, target_config, expected_update_allowed",
+    [
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 100}},
+                },
+            },
+            False,
+            id="Adding LocalStorage to HeadNode is blocked",
+        ),
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 50}},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 100}},
+                },
+            },
+            False,
+            id="Changing HeadNode RootVolume Size is blocked",
+        ),
+        pytest.param(
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                    "LocalStorage": {"RootVolume": {"Size": 50}},
+                },
+            },
+            {
+                "HeadNode": {
+                    "InstanceType": "t3.micro",
+                    "Networking": {"SubnetId": "subnet-12345678"},
+                },
+            },
+            False,
+            id="Removing LocalStorage from HeadNode is blocked",
+        ),
+    ],
+)
+def test_head_node_local_storage_update_blocked(mocker, base_config, target_config, expected_update_allowed):
+    """Test that adding/changing/removing HeadNode LocalStorage during update is blocked.
+
+    LocalStorage affects the HeadNode launch template and cannot be updated without replacing the HeadNode.
+    """
+    cluster = Cluster(name="mock-name", stack="mock-stack")
+    patch = ConfigPatch(cluster=cluster, base_config=base_config, target_config=target_config)
+
+    # Check that the update is blocked (patch.check() returns False for patch_allowed)
+    patch_allowed, _ = patch.check()
+    assert_that(patch_allowed).is_equal_to(expected_update_allowed)
