@@ -1226,6 +1226,7 @@ class ClusterDevSettings(BaseDevSettings):
         instance_types_data: str = None,
         timeouts: Timeouts = None,
         compute_startup_time_metric_enabled: bool = None,
+        efa_interface_type: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1236,6 +1237,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.compute_startup_time_metric_enabled = Resource.init_param(
             compute_startup_time_metric_enabled, default=False
         )
+        self.efa_interface_type = Resource.init_param(efa_interface_type)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -2294,6 +2296,11 @@ class _BaseSlurmComputeResource(BaseComputeResource):
 
     @property
     @abstractmethod
+    def max_efa_interfaces(self) -> int:
+        """Return max number of EFA interfaces for the instance."""
+
+    @property
+    @abstractmethod
     def network_cards_list(self) -> list:
         """List of NIC indexes for the instance."""
 
@@ -2377,6 +2384,11 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
         return least_max_nics
 
     @property
+    def max_efa_interfaces(self) -> int:
+        """Return max number of EFA interfaces for the compute resource."""
+        return min(self.instance_type_info_map[it].max_efa_interfaces() for it in self.instance_types)
+
+    @property
     def network_cards_list(self) -> list:
         """Return the list of NIC indexes for the compute resource.
 
@@ -2452,6 +2464,11 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def max_network_cards(self) -> int:
         """Return max number of NICs for the instance."""
         return self._instance_type_info.max_network_cards()
+
+    @property
+    def max_efa_interfaces(self) -> int:
+        """Return max number of EFA interfaces for the instance."""
+        return self._instance_type_info.max_efa_interfaces()
 
     @property
     def network_cards_list(self) -> list:
