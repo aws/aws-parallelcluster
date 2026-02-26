@@ -268,8 +268,10 @@ class InstanceTypeInfo:
         return len(self.network_cards())
 
     def network_cards_list(self) -> list:
-        """List of NICs for the instance."""
-        return [NetworkCardInfo(nic) for nic in self.network_cards() if nic.get("NetworkCardIndex") is not None]
+        """List of NICs for the instance, sorted by NetworkCardIndex."""
+        cards = [NetworkCardInfo(nic) for nic in self.network_cards() if nic.get("NetworkCardIndex") is not None]
+        cards.sort(key=lambda c: c.network_card_index())
+        return cards
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
@@ -324,6 +326,11 @@ class InstanceTypeInfo:
     def ec2memory_size_in_mib(self):
         """Return the amount of memory in MiB."""
         return self.instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
+
+    def max_efa_interfaces(self) -> int:
+        """Return the maximum number of EFA interfaces for the instance."""
+        efa_info = self.instance_type_data.get("NetworkInfo", {}).get("EfaInfo", {})
+        return efa_info.get("MaximumEfaInterfaces", 0)
 
 
 class FsxStorageInfo:

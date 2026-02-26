@@ -208,6 +208,40 @@ class InstancesNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMix
                 FailureLevel.WARNING,
             )
 
+        unique_max_efa_interfaces = {
+            instance_type_info.max_efa_interfaces()
+            for instance_type_name, instance_type_info in instance_types_info.items()
+        }
+
+        if len(unique_max_efa_interfaces) > 1:
+            lowest_efa = min(unique_max_efa_interfaces)
+            highest_efa = max(unique_max_efa_interfaces)
+            self._add_failure(
+                f"Compute Resource {compute_resource_name} has instance types with varying numbers of maximum EFA "
+                f"interfaces (Min: {lowest_efa}, Max: {highest_efa}). EFA network configuration will be based on "
+                f"the instance type with the fewest EFA interfaces ({lowest_efa}).",
+                FailureLevel.WARNING,
+            )
+
+        # Check that all instance types agree on whether NCI-0 supports EFA
+        nci0_efa_support = {
+            instance_type_info.max_efa_interfaces() == instance_type_info.max_network_cards()
+            for instance_type_info in instance_types_info.values()
+        }
+        if len(nci0_efa_support) > 1:
+            supports = [
+                it for it, info in instance_types_info.items() if info.max_efa_interfaces() == info.max_network_cards()
+            ]
+            does_not = [
+                it for it, info in instance_types_info.items() if info.max_efa_interfaces() != info.max_network_cards()
+            ]
+            self._add_failure(
+                f"Compute Resource {compute_resource_name} mixes instance types where NCI-0 supports EFA "
+                f"({', '.join(supports)}) with instance types where it does not ({', '.join(does_not)}). "
+                f"This may result in a suboptimal EFA network configuration for some instance types.",
+                FailureLevel.WARNING,
+            )
+
         if placement_group_enabled and len(instance_types_info.keys()) > 1:
             self._add_failure(
                 f"Enabling placement groups for queue: {queue_name} may result in Insufficient Capacity Errors due to "
