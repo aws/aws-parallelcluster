@@ -186,13 +186,7 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
     except Exception as e:
         logging.warning(f"Failed to prepare known_hosts file {host_keys_file}: {e}")
 
-    before_content = _get_known_hosts_content(host_keys_file)
-    logging.info(f"Original content of known hosts file {host_keys_file}: {before_content}")
-
     add_keys_to_known_hosts(node_ip, host_keys_file)
-
-    after_content = _get_known_hosts_content(host_keys_file)
-    logging.info(f"New content of known hosts file {host_keys_file}: {after_content}")
 
     dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
 
