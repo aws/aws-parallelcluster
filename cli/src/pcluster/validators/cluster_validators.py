@@ -379,6 +379,7 @@ class EfaPlacementGroupValidator(Validator):
         placement_group_disabled: bool,
         multi_az_enabled: bool,
         capacity_type: str,
+        queue_name: str,
     ):
         # Capacity Blocks do not require the configuration of a Placement Group
         if capacity_type == CapacityType.CAPACITY_BLOCK:
@@ -386,13 +387,17 @@ class EfaPlacementGroupValidator(Validator):
         # if multi_az is enabled suggestions about PlacementGroups will be suppressed
         if efa_enabled and placement_group_disabled and not multi_az_enabled:
             self._add_failure(
-                "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
+                f"You may see better performance using a placement group for the queue '{queue_name}'. "
+                "You can ignore this warning if the compute resources in the queue use a capacity reservation "
+                "that provides its own placement group.",
+                FailureLevel.WARNING,
             )
         elif efa_enabled and placement_group_key is None and not multi_az_enabled:
             self._add_failure(
-                "The placement group for EFA-enabled compute resources must be explicit. "
-                "You may see better performance using a placement group, but if you don't wish to use one please add "
-                "'Enabled: false' to the compute resource's configuration section.",
+                f"The placement group for EFA-enabled compute resources in queue '{queue_name}' must be explicit. "
+                "You may see better performance using a placement group, but if you don't wish to use one or "
+                "the compute resources in the queue use a capacity reservation with its own placement group, "
+                "please add 'Enabled: false' to the compute resource's configuration section.",
                 FailureLevel.ERROR,
             )
 
