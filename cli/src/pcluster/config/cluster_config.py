@@ -3193,7 +3193,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                         subnet=queue.networking.subnet_ids[0],
                         instance_types=compute_resource.instance_types,
                         multi_az_enabled=queue.multi_az_enabled,
-                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
                 for instance_type in compute_resource.instance_types:
                     if self.scheduling.settings.enable_memory_based_scheduling:
