@@ -20,6 +20,7 @@ CHANGELOG
 - Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
 - Fix build-image failure during ubuntu-desktop installation on a Ubuntu parent image with outdated OS packages.
 - Fix HeadNode/LocalStorage update policy to make updates unsupported.
+- Fix validator `PlacementGroupCapacityReservationValidator` to accept capacity reservations with cross-account placement group.
 
 **DEPRECATIONS**
 - The configuration parameter `LoginNodes/Pools/Ssh/KeyName` is no longer supported.

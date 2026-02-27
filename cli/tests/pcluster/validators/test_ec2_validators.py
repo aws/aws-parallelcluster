@@ -1376,8 +1376,7 @@ mock_capacity_reservations = [
 
 
 @pytest.mark.parametrize(
-    "placement_group, odcr, subnets, instance_types, capacity_reservations, "
-    "multi_az_enabled, subnet_id_az_mapping, expected_message",
+    "placement_group, odcr, subnets, instance_types, capacity_reservations, " "multi_az_enabled, expected_message",
     [
         (
             None,
@@ -1386,7 +1385,6 @@ mock_capacity_reservations = [
             ["mock-type"],
             mock_capacity_reservations[:2],
             False,
-            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
@@ -1396,7 +1394,6 @@ mock_capacity_reservations = [
             ["mock-type"],
             mock_capacity_reservations[:2],
             False,
-            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
@@ -1406,12 +1403,7 @@ mock_capacity_reservations = [
             ["mock-type", "mock-type-2"],
             mock_capacity_reservations[:3],
             False,
-            {"mock-subnet-1": "us-east-1"},
-            (
-                "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' in 'us-east-1' "
-                "and no placement group provided. Please either provide a placement group or add an ODCR that "
-                "does not target a placement group and targets the instance type"
-            ),
+            None,
         ),
         (
             None,
@@ -1420,7 +1412,6 @@ mock_capacity_reservations = [
             ["mock-type", "mock-type-2"],
             mock_capacity_reservations[:4],
             False,
-            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
@@ -1430,10 +1421,7 @@ mock_capacity_reservations = [
             ["mock-type", "mock-type-2"],
             mock_capacity_reservations[:2],
             False,
-            {"mock-subnet-1": "us-east-1"},
-            "There are no open or targeted ODCRs that match the instance_type 'mock-type-2' in 'us-east-1' and "
-            "no placement group provided. Please either provide a placement group or add an ODCR that does not target "
-            "a placement group and targets the instance type.",
+            None,
         ),
         (
             "mock-placement",
@@ -1442,7 +1430,6 @@ mock_capacity_reservations = [
             ["mock-type"],
             mock_capacity_reservations[:2],
             False,
-            {"mock-subnet-1": "us-east-1"},
             "When using an open or targeted capacity reservation with an unrelated placement group, "
             "insufficient capacity errors may occur due to placement constraints outside of the "
             "reservation even if the capacity reservation has remaining capacity. Please consider either "
@@ -1456,7 +1443,6 @@ mock_capacity_reservations = [
             ["mock-type"],
             mock_capacity_reservations[1:2],
             False,
-            {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test' targets the 'mock-type' instance type but there "
             "are no ODCRs included in the resource group that target that instance type.",
         ),
@@ -1467,7 +1453,6 @@ mock_capacity_reservations = [
             ["mock-type"],
             mock_capacity_reservations[1:2],
             False,
-            {"mock-subnet-1": "us-east-1"},
             "The placement group provided 'test-2' targets the 'mock-type' instance type but there "
             "are no ODCRs included in the resource group that target that instance type.",
         ),
@@ -1478,7 +1463,6 @@ mock_capacity_reservations = [
             ["mock-type", "mock-type-2"],
             mock_capacity_reservations[:3],
             True,
-            {"mock-subnet-1": "us-east-1"},
             None,
         ),
         (
@@ -1488,7 +1472,6 @@ mock_capacity_reservations = [
             ["mock-type"],
             mock_capacity_reservations[:3],
             True,
-            {"mock-subnet-1": "us-east-1"},
             None,
         ),
     ],
@@ -1501,7 +1484,6 @@ def test_placement_group_capacity_reservation_validator(
     instance_types,
     capacity_reservations,
     multi_az_enabled,
-    subnet_id_az_mapping,
     expected_message,
 ):
     mock_aws_api(mocker)
@@ -1517,7 +1499,6 @@ def test_placement_group_capacity_reservation_validator(
         subnet=subnets[0],
         instance_types=instance_types,
         multi_az_enabled=multi_az_enabled,
-        subnet_id_az_mapping=subnet_id_az_mapping,
     )
     assert_failure_messages(actual_failure, expected_message)
 
