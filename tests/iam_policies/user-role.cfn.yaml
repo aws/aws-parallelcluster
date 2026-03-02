@@ -106,6 +106,7 @@ Resources:
               - iam:CreateServiceLinkedRole
               - iam:DeleteRole
               - iam:TagRole
+              - iam:UntagRole
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CustomIamPathPrefix}/*
             Effect: Allow
@@ -340,6 +341,7 @@ Resources:
               - dynamodb:UpdateItem
               - dynamodb:Query
               - dynamodb:TagResource
+              - dynamodb:UntagResource
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
             Effect: Allow
             Sid: DynamoDB
