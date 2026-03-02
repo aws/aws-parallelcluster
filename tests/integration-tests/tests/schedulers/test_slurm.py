@@ -659,6 +659,7 @@ def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
                 "other_options": f"{requeue_opt}--exclusive",
             }
         )
+        time.sleep(20)  # Add a sleep to match manual submission of job
         logging.info("Submitted %s (%s) ID: %s", job["label"], job_type, jid)
         job_ids.append(jid)
 
@@ -771,6 +772,8 @@ def test_expedited_requeue(
 
     # Submit 3 jobs in a single ICE cycle:
     # job1 (normal), job2 (expedited), job3 (expedited)
+    # TODO: Improve the test by making Job 2 as expedited and Job 1 as normal
+    #  so that its clear that Job 2 goes at the top of the queue
     jobs = [
         {"label": "job1", "expedited": False},
         {"label": "job2", "expedited": True},
@@ -784,12 +787,10 @@ def test_expedited_requeue(
     # Expedited jobs (job2, job3) run first in submission order, then normal job (job1) last
     logging.info("Start epochs: %s", dict(zip([j["label"] for j in jobs], start_epochs)))
 
-
-    assert_that(start_epochs[2]).is_less_than_or_equal_to(start_epochs[1])  # job2 (expedited) before job1 (normal)
-    # assert_that(start_epochs[3]).is_less_than_or_equal_to(start_epochs[1])  # job3 (expedited) before job1 (normal)
-    # assert_that(start_epochs[2]).is_less_than_or_equal_to(start_epochs[3])  # job2 (expedited) before job3 (expedited)
-    logging.info("Verified: expedited jobs (job2, job3) ran before normal job (job1)")
-
+    assert_that(start_epochs[1]).is_less_than_or_equal_to(start_epochs[0])  # job1 (normal) after job2 (expedited)
+    # assert_that(start_epochs[2]).is_less_than_or_equal_to(start_epochs[0])  # job3 (expedited) before job1 (normal)
+    # assert_that(start_epochs[1]).is_less_than_or_equal_to(start_epochs[2])  # job2 (expedited) before job3 (expedited)
+    logging.info("Verified: expedited jobs (job2) ran before normal job (job1)")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")

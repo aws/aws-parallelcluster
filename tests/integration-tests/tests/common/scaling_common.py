@@ -414,8 +414,11 @@ def setup_create_fleet_override_to_emulate_ice(
     """
     ice_instance_types = [f"ICE-{it}" for it in instance_types]
     overrides = _build_create_fleet_override(cluster_name, queue, compute_resource, ice_instance_types, subnet_id)
-    logging.info("Writing create_fleet_overrides.json with invalid InstanceTypes to emulate ICE "
-                 "for queue=%s, cr=%s", queue, compute_resource)
+    logging.info(
+        "Writing create_fleet_overrides.json with invalid InstanceTypes to emulate ICE " "for queue=%s, cr=%s",
+        queue,
+        compute_resource,
+    )
     _write_json_override(remote_command_executor, CREATE_FLEET_OVERRIDES_PATH, overrides)
 
 
@@ -430,6 +433,10 @@ def recover_create_fleet_override_from_ice(
     call succeeds.
     """
     overrides = _build_create_fleet_override(cluster_name, queue, compute_resource, real_instance_types, subnet_id)
-    logging.info("Recovering from ICE: writing real InstanceTypes=%s in create_fleet_overrides.json "
-                 "for queue=%s, cr=%s", real_instance_types, queue, compute_resource)
+    logging.info(
+        "Recovering from ICE: writing real InstanceTypes=%s in create_fleet_overrides.json " "for queue=%s, cr=%s",
+        real_instance_types,
+        queue,
+        compute_resource,
+    )
     _write_json_override(remote_command_executor, CREATE_FLEET_OVERRIDES_PATH, overrides)
