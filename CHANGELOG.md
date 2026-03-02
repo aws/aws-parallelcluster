@@ -10,6 +10,7 @@ CHANGELOG
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).
 - Add support for p6-b300 instances for all OSs except AL2.
 - Add alarm on missing clustermgtd heartbeat.
+- Support updates of `Tags` during cluster-updates.
 
 **BUG FIXES**
 - Add validation to block updates that change tag order. Blocking such change prevents update failures.

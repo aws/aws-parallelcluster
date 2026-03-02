@@ -181,10 +181,9 @@ class TagSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     value = fields.Str(
-        # TODO Tags can be updated with policy QUEUE_UPDATE_STRATEGY
         required=True,
         validate=validate.Length(max=256),
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
     @post_load

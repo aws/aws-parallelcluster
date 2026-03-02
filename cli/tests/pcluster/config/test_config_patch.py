@@ -86,12 +86,7 @@ def _compare_changes(changes, expected_changes):
     def _sorting_func(change):
         if change.is_list:
             if isinstance(change.new_value, dict):
-                if "Key" in change.new_value:
-                    return change.new_value["Key"]
-                elif "Name" in change.new_value:
-                    return change.new_value["Name"]
-                else:
-                    return "-"
+                return change.new_value.get("Name") or change.new_value.get("Key", "")
             else:
                 return "-"
         else:
@@ -1146,17 +1141,8 @@ def test_patch_check_cluster_resource_bucket(
         pytest.param(
             [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
             [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
-            [
-                Change(
-                    [],
-                    "Tags",
-                    [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
-                    [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
-                    UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
-                    is_list=True,
-                )
-            ],
-            UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
+            [],
+            UpdatePolicy.SUPPORTED,
             id="order_only_change",
         ),
         pytest.param(
@@ -1168,11 +1154,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     None,
                     {"Key": "test3", "Value": "val3"},
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED,
             id="tag_addition",
         ),
         pytest.param(
@@ -1184,11 +1170,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     {"Key": "test2", "Value": "val2"},
                     None,
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED,
             id="tag_removal",
         ),
         pytest.param(
@@ -1200,11 +1186,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Value",
                     "old_value",
                     "new_value",
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED,
                     is_list=False,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED,
             id="tag_value_modification",
         ),
         pytest.param(
@@ -1216,11 +1202,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     None,
                     {"Key": "test3", "Value": "val3"},
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED,
             id="order_change_plus_addition",
         ),
         pytest.param(
