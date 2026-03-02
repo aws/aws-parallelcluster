@@ -260,9 +260,9 @@ test-suites:
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
+        - regions: [{{ p4d_24xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_X86_2 }}]   # do not move, unless capacity reservation is moved as well
           instances: ["p4d.24xlarge"]
-          oss: [{{ NO_RHEL_OS_X86_1 }}]  # The capacity reservation cannot use RHEL operating system
+          oss: [{{ OS_X86_2 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
         - regions: [ "use2-az2" ]  # do not move, unless capacity reservation is moved as well
           instances: [ "p6-b200.48xlarge" ]
