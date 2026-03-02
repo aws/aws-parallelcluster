@@ -1,12 +1,14 @@
 Image:
   Os: {{ os }}
 Tags:
+  - Key: ComputeOverrideTag
+    Value: ClusterLevelValue
   - Key: ConfigFileTag
     Value: ConfigFileTagValue
   - Key: QueueOverrideTag
     Value: ClusterLevelValue
-  - Key: ComputeOverrideTag
-    Value: ClusterLevelValue
+  - Key: AdditionalConfigTag
+    Value: AdditionalConfigTagValue
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
