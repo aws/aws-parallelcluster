@@ -113,9 +113,10 @@ def test_efa(
         head_node_instance = _try_reserve_head_node_instance(region, az_id, architecture, os)
     max_queue_size = 2
     capacity_reservation_id = None
-    # p family instances need capacity blocks and so placement group is set to false
-    placement_group_enabled = not instance.startswith("p")
-    if instance in ("p6-b200.48xlarge", "p6-b300.48xlarge"):
+    # p6 family instances need capacity blocks and so placement group is set to false
+    capacity_block_instance_type = instance.startswith("p6")
+    placement_group_enabled = not capacity_block_instance_type
+    if capacity_block_instance_type:
         capacity_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if capacity_reservations_ids:
             capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
