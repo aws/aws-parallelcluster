@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
+import boto3
 import pytest
 import xmltodict
 from assertpy import assert_that, soft_assertions
@@ -85,6 +86,7 @@ def test_efa(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
+    _test_efa_eni_configuration(cluster, region)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
@@ -123,6 +125,54 @@ def test_efa(
             ).is_equal_to(0)
             assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
             assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
+
+
+def _test_efa_eni_configuration(cluster, region):
+    """Verify compute nodes have the expected EFA network interface configuration.
+
+    Under the new default (PC 3.15):
+    - Each compute node should have exactly one private IP address (on the interface ENI at NCI-0)
+    - All ENIs except one should be efa-only (no IP, EFA fabric only)
+    """
+    ec2_client = boto3.client("ec2", region_name=region)
+    compute_instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
+
+    for instance_id in compute_instance_ids:
+        instance_info = ec2_client.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+        enis = instance_info["NetworkInterfaces"]
+        logging.info(f"Instance {instance_id} has {len(enis)} ENIs")
+
+        enis_with_ip = []
+        efa_only_enis = []
+        for eni in enis:
+            interface_type = eni.get("InterfaceType", "interface")
+            private_ips = eni.get("PrivateIpAddresses", [])
+            attachment = eni.get("Attachment", {})
+            network_card_index = attachment.get("NetworkCardIndex", 0)
+            device_index = attachment.get("DeviceIndex", 0)
+            logging.info(
+                f"  ENI {eni['NetworkInterfaceId']}: InterfaceType={interface_type}, "
+                f"PrivateIPs={len(private_ips)}, NetworkCardIndex={network_card_index}, DeviceIndex={device_index}"
+            )
+            if interface_type == "efa-only":
+                efa_only_enis.append(eni)
+            else:
+                enis_with_ip.append(eni)
+
+        # Exactly one ENI should have a private IP (the interface ENI on NCI-0)
+        assert_that(
+            len(enis_with_ip), description=f"Instance {instance_id} should have exactly 1 ENI with a private IP"
+        ).is_equal_to(1)
+
+        # All other ENIs should be efa-only
+        if len(enis) > 1:
+            assert_that(
+                len(efa_only_enis), description=f"Instance {instance_id}: all ENIs except one should be efa-only"
+            ).is_equal_to(len(enis) - 1)
+
+        logging.info(
+            f"Instance {instance_id}: {len(enis_with_ip)} ENI(s) with private IP, {len(efa_only_enis)} efa-only ENI(s)"
+        )
 
 
 def _execute_fabtests(remote_command_executor, test_datadir, instance):
