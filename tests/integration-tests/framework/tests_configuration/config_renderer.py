@@ -355,6 +355,12 @@ def _create_capacity_reservations(az_for_cr, regions, specs, var):  # noqa C901
     return False
 
 
+def _replace_last(string, old, new):
+    """Replaces the last occurrence of a substring in a string."""
+    parts = string.rsplit(old, 1)
+    return new.join(parts)
+
+
 def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, os_parameters):
     if "INSTANCE_TYPE" in instance_type:
         # The value of the Jinja INSTANCE_TYPE variable can contain a size or not, e.g. trn1.32xlarge vs trn1.
@@ -368,7 +374,8 @@ def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, o
         else:
             instance_type = instance_type_parameters.get(instance_type)
     else:
-        instance_type = instance_type.replace("_", ".")
+        instance_type = _replace_last(instance_type, "_", ".")
+        instance_type = instance_type.replace("_", "-")
     os_platform = "Linux/UNIX"
     if os is not None:
         if "OS" in os:
