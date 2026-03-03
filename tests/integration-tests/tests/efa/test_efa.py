@@ -148,7 +148,7 @@ def test_efa(
     if instance.startswith("p"):
         # Doc of supported instance types and operating systems:
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
-        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
+        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance, os)
 
     with soft_assertions():
         assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)

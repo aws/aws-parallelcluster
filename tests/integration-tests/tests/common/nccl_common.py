@@ -11,15 +11,18 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import pathlib
+import re
 
 import pytest
 from assertpy import assert_that
 from utils import get_instance_info
 
+from tests.performance_tests.common import push_result_to_dynamodb
+
 NCCL_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/nccl/"
 
 
-def install_and_run_nccl_benchmarks(remote_command_executor, mpi_module, scheduler_commands, instance):
+def install_and_run_nccl_benchmarks(remote_command_executor, mpi_module, scheduler_commands, instance, os):
     logging.info("Running NCCL benchmarks")
     remote_command_executor.run_remote_script(
         str(NCCL_COMMON_DATADIR / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True, timeout=600
@@ -55,6 +58,24 @@ def install_and_run_nccl_benchmarks(remote_command_executor, mpi_module, schedul
     #        (B)    (elements)                               (us)  (GB/s)  (GB/s)            (us)  (GB/s)  (GB/s)
     # ...
     # 1073741824     268435456     float     sum      -1    44023   24.39   45.73      0    43947   24.43   45.81      0
+
+    # Parse all data rows from NCCL output.
+    # Each data row has: size, count, type, redop, root, time, algbw, busbw, #wrong, time, algbw, busbw, #wrong
+    # We extract: size (col 1), out-of-place busbw (col 8), in-place busbw (col 12)
+    nccl_output = remote_command_executor.run_remote_command("cat /shared/nccl_tests.out").stdout
+
+    # Parse per-size results: list of (size, out_of_place_busbw, in_place_busbw)
+    nccl_all_rows = re.findall(
+        r"^\s*(\d+)\s+\d+\s+float\s+sum\s+\S+\s+\S+\s+\S+\s+(\S+)\s+\S+\s+\S+\s+\S+\s+(\S+)",
+        nccl_output,
+        re.MULTILINE,
+    )
+
+    # Upload all rows to DynamoDB: list of (size, in_place_busbw) tuples, consistent with OSU format.
+    nccl_result = [(size, in_place_busbw) for size, _, in_place_busbw in nccl_all_rows]
+    nccl_result_out_of_place = [(size, oop_busbw) for size, oop_busbw, _ in nccl_all_rows]
+    push_result_to_dynamodb("NCCL_in_place_busbw", nccl_result, instance, os=os, num_instances=2)
+    push_result_to_dynamodb("NCCL_out_of_place_busbw", nccl_result_out_of_place, instance, os=os, num_instances=2)
 
     # We are looking for packet size 1073741824, 268435456 elements and in-place busbw (GB/s).
     max_bandwidth = remote_command_executor.run_remote_command(
