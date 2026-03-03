@@ -266,14 +266,17 @@ def generate_performance_report(reports_output_dir):
         items_by_name[key].append(item)
     result = defaultdict(dict)
     all_benchmark_data = {}  # Collect data for summary report
+    os_comparison_data = {}  # Collect data for OS comparison report
     for name, items in items_by_name.items():
-        result[name] = _get_statistics_from_result(items, name, reports_output_dir, all_benchmark_data)
+        result[name] = _get_statistics_from_result(
+            items, name, reports_output_dir, all_benchmark_data, os_comparison_data
+        )
 
     # Generate the summary overview report
-    generate_performance_summary(all_benchmark_data, reports_output_dir)
+    generate_performance_summary(all_benchmark_data, os_comparison_data, reports_output_dir)
 
 
-def generate_performance_summary(all_benchmark_data, reports_output_dir):  # noqa C901
+def generate_performance_summary(all_benchmark_data, os_comparison_data, reports_output_dir):  # noqa C901
     """Generate a summary Excel file showing performance trends across all benchmarks."""
     number_of_os_rotations = [2, 4, 7, 11, 16, 22, 29, 37]
     timeframes = {}
@@ -341,8 +344,8 @@ def generate_performance_summary(all_benchmark_data, reports_output_dir):  # noq
     print(f"Creating performance summary: {filename}...")
 
     with pd.ExcelWriter(filename, engine="openpyxl") as writer:
-        df.to_excel(writer, index=True)
-        worksheet = writer.sheets["Sheet1"]
+        df.to_excel(writer, index=True, sheet_name="Trend")
+        worksheet = writer.sheets["Trend"]
 
         # Color coding based on benchmark type:
         # - osu_bibw: higher is better (bandwidth), so positive = good (green), negative = bad (yellow/red)
@@ -373,7 +376,105 @@ def generate_performance_summary(all_benchmark_data, reports_output_dir):  # noq
                         elif abs(val) > 10:
                             cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
 
+        # OS Comparison sheet
+        _write_os_comparison_sheet(writer, os_comparison_data)
+
     print(f"Performance summary saved: {filename}")
+
+
+def _write_os_comparison_sheet(writer, os_comparison_data):  # noqa: C901
+    """Write OS comparison sheet: average of last 30 days per OS, with best/worst coloring and spread."""
+    current_time = time.time()
+    cutoff_30d = current_time - (30 * 24 * 60 * 60)
+
+    # Collect all OS names across all benchmarks
+    all_oses = sorted({os_key for bench in os_comparison_data.values() for os_key in bench})
+
+    rows = []
+    for benchmark_key in os_comparison_data:
+        row = {"Benchmark": benchmark_key}
+        os_averages = {}
+
+        for os_key in all_oses:
+            os_data = os_comparison_data[benchmark_key].get(os_key)
+            if not os_data:
+                row[os_key] = None
+                continue
+            # Filter to last 30 days and compute average
+            recent = [v for v, t in zip(os_data["values"], os_data["timestamps"]) if t >= cutoff_30d]
+            if recent:
+                avg = sum(recent) / len(recent)
+                row[os_key] = avg
+                os_averages[os_key] = avg
+            else:
+                row[os_key] = None
+
+        if not os_averages:
+            continue
+
+        # Calculate spread
+        if len(os_averages) >= 2:
+            best = min(os_averages.values())
+            worst = max(os_averages.values())
+            if abs(best) > 1e-10:
+                row["Spread"] = ((worst - best) / abs(best)) * 100
+            else:
+                row["Spread"] = None
+        else:
+            row["Spread"] = None
+
+        rows.append(row)
+
+    if not rows:
+        return
+
+    # Ensure column order: Benchmark, OS columns sorted, Spread
+    columns = ["Benchmark"] + all_oses + ["Spread"]
+    df = pd.DataFrame(rows, columns=columns).set_index("Benchmark")
+    df.to_excel(writer, index=True, sheet_name="OS Comparison")
+    worksheet = writer.sheets["OS Comparison"]
+
+    os_col_start = 2  # Column B (first OS)
+    os_col_end = os_col_start + len(all_oses) - 1
+    spread_col = os_col_end + 1
+
+    for row_idx in range(2, len(rows) + 2):
+        benchmark_name = worksheet.cell(row=row_idx, column=1).value
+        is_higher_better = "osu_bibw" in benchmark_name if benchmark_name else False
+
+        # Find best and worst OS values in this row
+        os_values = {}
+        for col in range(os_col_start, os_col_end + 1):
+            cell = worksheet.cell(row=row_idx, column=col)
+            if cell.value is not None and isinstance(cell.value, (int, float)):
+                os_values[col] = cell.value
+
+        if len(os_values) >= 2:
+            if is_higher_better:
+                best_col = max(os_values, key=os_values.get)
+                worst_col = min(os_values, key=os_values.get)
+            else:
+                best_col = min(os_values, key=os_values.get)
+                worst_col = max(os_values, key=os_values.get)
+
+            # Color best green, worst red
+            worksheet.cell(row=row_idx, column=best_col).fill = PatternFill(
+                start_color="90EE90", end_color="90EE90", fill_type="solid"
+            )
+            worksheet.cell(row=row_idx, column=worst_col).fill = PatternFill(
+                start_color="FF6B6B", end_color="FF6B6B", fill_type="solid"
+            )
+
+        # Color spread column
+        spread_cell = worksheet.cell(row=row_idx, column=spread_col)
+        if spread_cell.value is not None and isinstance(spread_cell.value, (int, float)):
+            spread_val = spread_cell.value
+            spread_cell.number_format = "0.0%"
+            spread_cell.value = spread_val / 100
+            if spread_val > 50:
+                spread_cell.fill = PatternFill(start_color="FF6B6B", end_color="FF6B6B", fill_type="solid")
+            elif spread_val > 25:
+                spread_cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
 
 
 def _append_performance_data(target_dict, os_key, performance, timestamp):
@@ -394,7 +495,19 @@ def _collect_summary_data(all_benchmark_data, benchmark_key, os_key, performance
     all_benchmark_data[full_key]["values"].append(float(performance))
 
 
-def _get_statistics_from_result(all_items, name, reports_output_dir, all_benchmark_data=None):
+def _collect_os_comparison_data(os_comparison_data, benchmark_key, os_key, performance, timestamp):
+    """Collect data keyed by benchmark with OS as a sub-dimension."""
+    if benchmark_key not in os_comparison_data:
+        os_comparison_data[benchmark_key] = {}
+    if os_key not in os_comparison_data[benchmark_key]:
+        os_comparison_data[benchmark_key][os_key] = {"timestamps": [], "values": []}
+    os_comparison_data[benchmark_key][os_key]["timestamps"].append(int(timestamp))
+    os_comparison_data[benchmark_key][os_key]["values"].append(float(performance))
+
+
+def _get_statistics_from_result(  # noqa: C901
+    all_items, name, reports_output_dir, all_benchmark_data=None, os_comparison_data=None
+):
     result = {}
     result_with_single_layer = {}
     for item in all_items:
@@ -418,10 +531,14 @@ def _get_statistics_from_result(all_items, name, reports_output_dir, all_benchma
                 _append_performance_data(result[key], os_key, performance, timestamp)
                 if all_benchmark_data is not None:
                     _collect_summary_data(all_benchmark_data, f"{name}_{key}", os_key, performance, timestamp)
+                if os_comparison_data is not None:
+                    _collect_os_comparison_data(os_comparison_data, f"{name}_{key}", os_key, performance, timestamp)
         else:
             _append_performance_data(result_with_single_layer, os_key, this_result, timestamp)
             if all_benchmark_data is not None:
                 _collect_summary_data(all_benchmark_data, name, os_key, this_result, timestamp)
+            if os_comparison_data is not None:
+                _collect_os_comparison_data(os_comparison_data, name, os_key, this_result, timestamp)
     for key, node_num_result in result.items():
         create_report(node_num_result, [name, key], reports_output_dir)
     if result_with_single_layer:

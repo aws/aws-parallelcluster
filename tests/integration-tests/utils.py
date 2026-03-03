@@ -124,9 +124,15 @@ class StackSetupError(SetupError):
 class ClusterCreationError(SetupError):
     """Exception to throw when cluster creation fails during test setup."""
 
-    def __init__(self, message, stack_events=None, cluster_details=None):
+    def __init__(self, message, stack_events=None, cluster_details=None, rca_details=None):
         message = message if message else "ClusterCreationError has been raised"
-        super().__init__(_format_stack_error(message, stack_events=stack_events, cluster_details=cluster_details))
+        formatted_message = _format_stack_error(message, stack_events=stack_events, cluster_details=cluster_details)
+        if rca_details:
+            formatted_message += "\n\n=== ROOT CAUSE ANALYSIS ==="
+            for item, content in rca_details.items():
+                formatted_message += f"\n\n--- {item} ---\n{content}"
+        super().__init__(formatted_message)
+        self.diagnosis_info = rca_details
 
     def __str__(self):
         return f"ClusterCreationError: {self.message}"
@@ -1148,3 +1154,27 @@ def match_regex_in_log(rce, log_file: str, pattern: str, nlines: int = 50) -> tu
     else:
         last_lines = "\n".join(log_content.splitlines()[-nlines:])
         return False, last_lines
+
+
+def find_all_matches_in_log(
+    rce, log_file: str, pattern: str, nlines: int = 10, case_sensitive: bool = False
+) -> list[str]:
+    """
+    Find lines matching a regex pattern in a remote log file.
+
+    :param rce: Remote command executor instance.
+    :param log_file: Path to the log file on the remote host.
+    :param pattern: Regex pattern to search for.
+    :param nlines: Max matching lines to return.
+    :param case_sensitive: If True, match case-sensitively.
+    :return: Last `nlines` matches, or empty list if none found.
+    """
+    result = rce.run_remote_command(f"sudo cat {log_file}", raise_on_error=False, log_error=False)
+    if result.failed:
+        return []
+
+    log_content = result.stdout
+    flags = 0 if case_sensitive else re.IGNORECASE
+    matching_lines = [line for line in log_content.splitlines() if re.search(pattern, line, flags)]
+
+    return matching_lines[-nlines:]

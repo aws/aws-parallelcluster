@@ -748,14 +748,15 @@ def test_efa_validator(
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, capacity_type, expected_message",
+    "efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, capacity_type, "
+    "queue_name, expected_message",
     [
         # Efa disabled
-        (False, "test", False, False, CapacityType.ONDEMAND, None),
-        (False, "test", True, False, CapacityType.ONDEMAND, None),
-        (False, None, False, False, CapacityType.ONDEMAND, None),
-        (False, None, True, False, CapacityType.ONDEMAND, None),
-        (False, "test", False, False, CapacityType.CAPACITY_BLOCK, None),
+        (False, "test", False, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, "test", True, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, None, False, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, None, True, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, "test", False, False, CapacityType.CAPACITY_BLOCK, "queue1", None),
         # Efa enabled
         (
             True,
@@ -763,10 +764,11 @@ def test_efa_validator(
             False,
             False,
             CapacityType.ONDEMAND,
-            "The placement group for EFA-enabled compute resources must be explicit. "
-            "You may see better performance using a placement group, "
-            "but if you don't wish to use one please add "
-            "'Enabled: false' to the compute resource's configuration section.",
+            "queue1",
+            "The placement group for EFA-enabled compute resources in queue 'queue1' must be explicit. "
+            "You may see better performance using a placement group, but if you don't wish to use one or "
+            "the compute resources in the queue use a capacity reservation with its own placement group, "
+            "please add 'Enabled: false' to the compute resource's configuration section.",
         ),
         (
             True,
@@ -774,16 +776,22 @@ def test_efa_validator(
             True,
             False,
             CapacityType.ONDEMAND,
-            "You may see better performance using a placement group for the queue.",
+            "queue1",
+            "You may see better performance using a placement group for the queue 'queue1'. "
+            "You can ignore this warning if the compute resources in the queue use a capacity reservation "
+            "that provides its own placement group.",
         ),
-        (True, "test", False, False, CapacityType.ONDEMAND, None),
+        (True, "test", False, False, CapacityType.ONDEMAND, "queue1", None),
         (
             True,
             "test",
             True,
             False,
             CapacityType.ONDEMAND,
-            "You may see better performance using a placement group for the queue.",
+            "queue1",
+            "You may see better performance using a placement group for the queue 'queue1'. "
+            "You can ignore this warning if the compute resources in the queue use a capacity reservation "
+            "that provides its own placement group.",
         ),
         (
             True,
@@ -791,16 +799,23 @@ def test_efa_validator(
             False,
             False,
             CapacityType.CAPACITY_BLOCK,
+            "queue1",
             None,
         ),
         # EFA and MultiAZ enabled
-        (True, "test", False, True, CapacityType.ONDEMAND, None),
-        (True, "test", True, True, CapacityType.ONDEMAND, None),
-        (True, "test", True, True, CapacityType.CAPACITY_BLOCK, None),
+        (True, "test", False, True, CapacityType.ONDEMAND, "queue1", None),
+        (True, "test", True, True, CapacityType.ONDEMAND, "queue1", None),
+        (True, "test", True, True, CapacityType.CAPACITY_BLOCK, "queue1", None),
     ],
 )
 def test_efa_placement_group_validator(
-    efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, capacity_type, expected_message
+    efa_enabled,
+    placement_group_key,
+    placement_group_disabled,
+    multi_az_enabled,
+    capacity_type,
+    queue_name,
+    expected_message,
 ):
     actual_failures = EfaPlacementGroupValidator().execute(
         efa_enabled,
@@ -808,6 +823,7 @@ def test_efa_placement_group_validator(
         placement_group_disabled,
         multi_az_enabled,
         capacity_type,
+        queue_name,
     )
 
     assert_failure_messages(actual_failures, expected_message)

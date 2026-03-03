@@ -787,33 +787,7 @@ class PlacementGroupCapacityReservationValidator(Validator):
                     FailureLevel.WARNING,
                 )
 
-    def _validate_no_pg(
-        self, instance_types, capacity_reservations: List[CapacityReservationInfo], subnet, subnet_id_az_mapping
-    ):
-        for instance_type in instance_types:
-            odcr_without_pg = False
-            for capacity_reservation in capacity_reservations:
-                odcr_pg = get_resource_name_from_resource_arn(capacity_reservation.placement_group_arn())
-                # search for a capacity reservation without a placement group and matching instance type and avail zone
-                if not odcr_pg and (
-                    capacity_reservation_matches_instance(
-                        capacity_reservation=capacity_reservation, instance_type=instance_type
-                    )
-                    and capacity_reservation_matches_avail_zone(
-                        capacity_reservation=capacity_reservation, subnet_id=subnet
-                    )
-                ):
-                    odcr_without_pg = True
-            if not odcr_without_pg:
-                self._add_failure(
-                    f"There are no open or targeted ODCRs that match the instance_type '{instance_type}' in "
-                    f"'{subnet_id_az_mapping[subnet]}' and no placement group provided. Please either provide a "
-                    f"placement group or add an ODCR that does not target a placement group and targets the "
-                    f"instance type.",
-                    FailureLevel.ERROR,
-                )
-
-    def _validate(self, placement_group, odcr, subnet, instance_types, multi_az_enabled, subnet_id_az_mapping):
+    def _validate(self, placement_group, odcr, subnet, instance_types, multi_az_enabled):
         if not multi_az_enabled:
             odcr_id = getattr(odcr, "capacity_reservation_id", None)
             odcr_arn = getattr(odcr, "capacity_reservation_resource_group_arn", None)
@@ -823,6 +797,10 @@ class PlacementGroupCapacityReservationValidator(Validator):
                 capacity_reservations = get_capacity_reservations(odcr_arn)
             else:
                 capacity_reservations = None
+            # If the user provided a placement group and the capacity reservation has a placement group,
+            # then the two placement groups must match.
+            # If the user omitted a placement group and the capacity reservation has a placement group,
+            # then it is ok to rely on the reservation placement group.
             if capacity_reservations:
                 if placement_group:
                     self._validate_chosen_pg(
@@ -830,13 +808,6 @@ class PlacementGroupCapacityReservationValidator(Validator):
                         instance_types=instance_types,
                         capacity_reservations=capacity_reservations,
                         chosen_pg=placement_group,
-                    )
-                else:
-                    self._validate_no_pg(
-                        subnet=subnet,
-                        instance_types=instance_types,
-                        capacity_reservations=capacity_reservations,
-                        subnet_id_az_mapping=subnet_id_az_mapping,
                     )
 
 
