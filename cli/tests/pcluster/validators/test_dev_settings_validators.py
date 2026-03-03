@@ -163,3 +163,115 @@ def test_extra_chef_attributes_validator_reconfigure_timeout(
     assert_failure_messages(actual_failures, expected_message)
     if expected_failure_level:
         assert_failure_level(actual_failures, expected_failure_level)
+
+
+@pytest.mark.parametrize(
+    "extra_chef_attributes, expected_message, expected_failure_level",
+    [
+        pytest.param(None, None, None, id="No extra chef attributes"),
+        pytest.param('{"other_attribute": "value"}', None, None, id="cluster_readiness_check_enabled not set"),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": "true"}}',
+            None,
+            None,
+            id="cluster_readiness_check_enabled 'true' string passes",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": true}}',
+            None,
+            None,
+            id="cluster_readiness_check_enabled true boolean passes",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": "false"}}',
+            "Cluster readiness check is disabled. Cluster creation and cluster update can succeed "
+            "even if there are cluster nodes that did not complete the deployment of the expected configuration.",
+            FailureLevel.WARNING,
+            id="cluster_readiness_check_enabled 'false' string throws warning",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": false}}',
+            "Cluster readiness check is disabled. Cluster creation and cluster update can succeed "
+            "even if there are cluster nodes that did not complete the deployment of the expected configuration.",
+            FailureLevel.WARNING,
+            id="cluster_readiness_check_enabled false boolean throws warning",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": "invalid"}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.cluster_readiness_check_enabled' must be a boolean value.",
+            FailureLevel.ERROR,
+            id="cluster_readiness_check_enabled invalid string throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": 123}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.cluster_readiness_check_enabled' must be a boolean value.",
+            FailureLevel.ERROR,
+            id="cluster_readiness_check_enabled invalid number throws error",
+        ),
+    ],
+)
+def test_extra_chef_attributes_validator_cluster_readiness_check_enabled(
+    extra_chef_attributes, expected_message, expected_failure_level
+):
+    actual_failures = ExtraChefAttributesValidator().execute(extra_chef_attributes=extra_chef_attributes)
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_failure_level:
+        assert_failure_level(actual_failures, expected_failure_level)
+
+
+@pytest.mark.parametrize(
+    "extra_chef_attributes, expected_message, expected_failure_level",
+    [
+        pytest.param(None, None, None, id="No extra chef attributes"),
+        pytest.param('{"other_attribute": "value"}', None, None, id="cluster_readiness_check_ignore_failure not set"),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": "false"}}',
+            None,
+            None,
+            id="cluster_readiness_check_ignore_failure 'false' string passes",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": false}}',
+            None,
+            None,
+            id="cluster_readiness_check_ignore_failure false boolean passes",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": "true"}}',
+            "Cluster readiness check failures are ignored. Cluster creation and cluster update can succeed "
+            "even if there are cluster nodes that did not complete the deployment of the expected configuration.",
+            FailureLevel.WARNING,
+            id="cluster_readiness_check_ignore_failure 'true' string throws warning",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": true}}',
+            "Cluster readiness check failures are ignored. Cluster creation and cluster update can succeed "
+            "even if there are cluster nodes that did not complete the deployment of the expected configuration.",
+            FailureLevel.WARNING,
+            id="cluster_readiness_check_ignore_failure true boolean throws warning",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": "invalid"}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.cluster_readiness_check_ignore_failure' must be a boolean value.",
+            FailureLevel.ERROR,
+            id="cluster_readiness_check_ignore_failure invalid string throws error",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": 123}}',
+            "Invalid value in DevSettings/Cookbook/ExtraChefAttributes: "
+            "attribute 'cluster.cluster_readiness_check_ignore_failure' must be a boolean value.",
+            FailureLevel.ERROR,
+            id="cluster_readiness_check_ignore_failure invalid number throws error",
+        ),
+    ],
+)
+def test_extra_chef_attributes_validator_cluster_readiness_check_ignore_failure(
+    extra_chef_attributes, expected_message, expected_failure_level
+):
+    actual_failures = ExtraChefAttributesValidator().execute(extra_chef_attributes=extra_chef_attributes)
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_failure_level:
+        assert_failure_level(actual_failures, expected_failure_level)
