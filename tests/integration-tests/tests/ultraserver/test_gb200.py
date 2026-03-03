@@ -488,7 +488,7 @@ def test_gb200(
         # Doc of supported instance types and operating systems:
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
         _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition=queue_with_imex)
-        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
+        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance, os)
 
     # Test cluster update with changed topology configuration
     if instance == "p6e-gb200.36xlarge":
