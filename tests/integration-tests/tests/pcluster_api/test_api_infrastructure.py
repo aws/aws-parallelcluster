@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
+import time
 
 import boto3
 import botocore
@@ -213,6 +214,7 @@ def _call_list_clusters(region, api_url, enable_sigv4=True):
 
 def _test_auth(region, parallelcluster_user_role, parallelcluster_api_url):
     logging.info("Testing API auth")
+    time.sleep(60)  # Wait for IAM propagation
     with sts_credential_provider(region, parallelcluster_user_role):
         assert_that(_call_list_clusters(region, parallelcluster_api_url).status_code).is_equal_to(requests.codes.ok)
     assert_that(_call_list_clusters(region, parallelcluster_api_url).status_code).is_equal_to(requests.codes.forbidden)
