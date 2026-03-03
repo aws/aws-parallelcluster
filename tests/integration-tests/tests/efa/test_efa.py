@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
@@ -29,9 +30,62 @@ from tests.common.utils import (
     wait_process_completion,
 )
 
+# Candidate head node instance types for when compute is p* or hpc* (one per family).
+HEAD_NODE_CANDIDATES_X86 = [
+    "c5.18xlarge",
+    "c6i.16xlarge",
+    "c7i.16xlarge",
+    "m5.16xlarge",
+    "m6i.16xlarge",
+    "m7i.16xlarge",
+    "r5.16xlarge",
+]
+HEAD_NODE_CANDIDATES_ARM = [
+    "c6g.16xlarge",
+    "c7g.16xlarge",
+    "m6g.16xlarge",
+    "m7g.16xlarge",
+    "r6g.16xlarge",
+]
+
 FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
 
 FABTESTS_GDRCOPY_TESTS = ["runt"]
+
+
+def _try_reserve_head_node_instance(region, az_id, architecture, os):
+    """Try to create a 1-hour capacity reservation for a head node instance in the given AZ.
+
+    Iterates through candidate instance types (one per family) and returns the first one that succeeds.
+    Returns the selected instance type. Falls back to the first candidate if all reservations fail.
+    """
+    ec2_client = boto3.client("ec2", region_name=region)
+    candidates = HEAD_NODE_CANDIDATES_X86 if architecture == "x86_64" else HEAD_NODE_CANDIDATES_ARM
+    instance_platform = "Red Hat Enterprise Linux" if "rhel" in os else "Linux/UNIX"
+    end_date = datetime.now(timezone.utc) + timedelta(hours=1)
+
+    for candidate in candidates:
+        try:
+            response = ec2_client.create_capacity_reservation(
+                InstanceType=candidate,
+                InstancePlatform=instance_platform,
+                AvailabilityZoneId=az_id,
+                InstanceCount=1,
+                EndDateType="limited",
+                EndDate=end_date,
+                Tenancy="default",
+            )
+            cr_id = response["CapacityReservation"]["CapacityReservationId"]
+            logging.info("Created head node capacity reservation %s for %s in %s", cr_id, candidate, az_id)
+            return candidate
+        except Exception as e:
+            logging.info("Capacity reservation for head node %s failed in %s: %s", candidate, az_id, e)
+
+    # All candidates failed
+    pytest.fail(
+        "Could not reserve capacity for any head node instance type candidate",
+    )
+    return None
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -46,21 +100,17 @@ def test_efa(
     architecture,
     scheduler_commands_factory,
     request,
+    vpc_stack,
 ):
     """
     Test all EFA Features.
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
+    head_node_instance = instance
     if instance.startswith("p") or instance.startswith("hpc"):
-        if architecture == "x86_64":
-            head_node_instance = "c5.18xlarge"
-        else:
-            head_node_instance = "c6g.16xlarge"
-    else:
-        # Use the same instance type for both compute node and head node
-        # when the instance type is available in open capacity pool
-        head_node_instance = instance
+        az_id = vpc_stack.az_override or vpc_stack.default_az_id
+        head_node_instance = _try_reserve_head_node_instance(region, az_id, architecture, os)
     max_queue_size = 2
     capacity_reservation_id = None
     # p family instances need capacity blocks and so placement group is set to false
