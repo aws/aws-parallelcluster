@@ -39,3 +39,5 @@ SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
+DevSettings:
+  EfaInterfaceType: efa
