@@ -2802,6 +2802,44 @@ def test_home_change_policy(
             True,
             id="add updatable field to empty json",
         ),
+        # cluster_readiness_check_enabled - updatable field tests
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": true}}',
+            '{"cluster": {"cluster_readiness_check_enabled": false}}',
+            True,
+            id="change cluster_readiness_check_enabled value",
+        ),
+        pytest.param(
+            None,
+            '{"cluster": {"cluster_readiness_check_enabled": true}}',
+            True,
+            id="add cluster_readiness_check_enabled when none existed",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_enabled": true}}',
+            None,
+            True,
+            id="remove cluster_readiness_check_enabled",
+        ),
+        # cluster_readiness_check_ignore_failure - updatable field tests
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": true}}',
+            '{"cluster": {"cluster_readiness_check_ignore_failure": false}}',
+            True,
+            id="change cluster_readiness_check_ignore_failure value",
+        ),
+        pytest.param(
+            None,
+            '{"cluster": {"cluster_readiness_check_ignore_failure": true}}',
+            True,
+            id="add cluster_readiness_check_ignore_failure when none existed",
+        ),
+        pytest.param(
+            '{"cluster": {"cluster_readiness_check_ignore_failure": true}}',
+            None,
+            True,
+            id="remove cluster_readiness_check_ignore_failure",
+        ),
         # Change non-updatable field - should fail
         pytest.param(
             '{"cluster": {"some_other_field": "value1"}}',
