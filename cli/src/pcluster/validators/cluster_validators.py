@@ -387,9 +387,9 @@ class EfaPlacementGroupValidator(Validator):
         # if multi_az is enabled suggestions about PlacementGroups will be suppressed
         if efa_enabled and placement_group_disabled and not multi_az_enabled:
             self._add_failure(
-                f"You may see better performance using a placement group for the queue '{queue_name}'. "
-                "You can ignore this warning if the compute resources in the queue use a capacity reservation "
-                "that provides its own placement group.",
+                f"Placement group is disabled for queue '{queue_name}'. "
+                "This is expected when using a capacity reservation with its own placement group. "
+                "Otherwise, enabling a placement group may improve network performance.",
                 FailureLevel.WARNING,
             )
         elif efa_enabled and placement_group_key is None and not multi_az_enabled:
