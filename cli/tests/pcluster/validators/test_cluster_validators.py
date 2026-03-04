@@ -777,9 +777,9 @@ def test_efa_validator(
             False,
             CapacityType.ONDEMAND,
             "queue1",
-            "You may see better performance using a placement group for the queue 'queue1'. "
-            "You can ignore this warning if the compute resources in the queue use a capacity reservation "
-            "that provides its own placement group.",
+            "Placement group is disabled for queue 'queue1'. "
+            "This is expected when using a capacity reservation with its own placement group. "
+            "Otherwise, enabling a placement group may improve network performance.",
         ),
         (True, "test", False, False, CapacityType.ONDEMAND, "queue1", None),
         (
@@ -789,9 +789,9 @@ def test_efa_validator(
             False,
             CapacityType.ONDEMAND,
             "queue1",
-            "You may see better performance using a placement group for the queue 'queue1'. "
-            "You can ignore this warning if the compute resources in the queue use a capacity reservation "
-            "that provides its own placement group.",
+            "Placement group is disabled for queue 'queue1'. "
+            "This is expected when using a capacity reservation with its own placement group. "
+            "Otherwise, enabling a placement group may improve network performance.",
         ),
         (
             True,
