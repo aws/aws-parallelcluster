@@ -732,9 +732,10 @@ def test_expedited_requeue(
     """
     Test Slurm 25.11+ expedited requeue behavior with recoverable ICE simulation.
 
-    Uses create_fleet_overrides.json to simulate ICE (invalid "ICE-" prefixed InstanceTypes),
-    then recovers by changing them back to real ones.
-    Verifies that expedited requeue jobs are treated as highest priority after ICE recovery.
+    Submits 2 exclusive jobs to a single ICE node:
+      job1 (expedited requeue) submitted first, job2 (normal) submitted second.
+    With --exclusive, only job1 gets allocated and requeued during ICE.
+    After ICE recovery, verifies job1 retains highest priority and executes before job2.
     """
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -770,27 +771,22 @@ def test_expedited_requeue(
         "target_nodes": [target_node],
     }
 
-    # Submit 3 jobs in a single ICE cycle:
-    # job1 (normal), job2 (expedited), job3 (expedited)
-    # TODO: Improve the test by making Job 2 as expedited and Job 1 as normal
-    #  so that its clear that Job 2 goes at the top of the queue
+    # Submit 2 jobs with --exclusive to a single ICE node:
+    # job1 (expedited) submitted first, job2 (normal) submitted second.
+    # With --exclusive, only job1 gets allocated and requeued during ICE.
+    # After recovery, job1 should still have the highest priority and run first.
     jobs = [
-        {"label": "job1", "expedited": False},
-        {"label": "job2", "expedited": True},
-        # {"label": "job3", "expedited": True},
+        {"label": "job1", "expedited": True},
+        {"label": "job2", "expedited": False},
     ]
     job_ids = _submit_jobs_and_simulate_ice(common_cluster_details, jobs)
     _recover_from_ice_and_wait_for_jobs(common_cluster_details, job_ids)
     start_epochs = _collect_start_epochs(remote_command_executor, job_ids)
 
-    # Expected ordering after ICE recovery:
-    # Expedited jobs (job2, job3) run first in submission order, then normal job (job1) last
+    # Expected: job1 (expedited) runs before job2 (normal) after ICE recovery
     logging.info("Start epochs: %s", dict(zip([j["label"] for j in jobs], start_epochs)))
-
-    assert_that(start_epochs[1]).is_less_than_or_equal_to(start_epochs[0])  # job1 (normal) after job2 (expedited)
-    # assert_that(start_epochs[2]).is_less_than_or_equal_to(start_epochs[0])  # job3 (expedited) before job1 (normal)
-    # assert_that(start_epochs[1]).is_less_than_or_equal_to(start_epochs[2])  # job2 (expedited) before job3 (expedited)
-    logging.info("Verified: expedited jobs (job2) ran before normal job (job1)")
+    assert_that(start_epochs[0]).is_less_than_or_equal_to(start_epochs[1])  # job1 (expedited) before job2 (normal)
+    logging.info("Verified: expedited job (job1) ran before normal job (job2) after requeue")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
