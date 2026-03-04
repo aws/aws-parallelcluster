@@ -567,7 +567,15 @@ class ClustersFactory:
                         # in the case where the stack has been deleted.
                         stack_id = response.get("cloudformationStackArn")
                         events = get_cfn_events(stack_name=stack_id, region=cluster.region)
-                        rca_details = retrieve_rca_details(cluster)
+
+                        # Only attempt RCA if head node exists
+                        rca_details = None
+                        try:
+                            _ = cluster.head_node_ip
+                            rca_details = retrieve_rca_details(cluster)
+                        except Exception as e:
+                            logging.warning("Skipping RCA, head node not accessible: %s", e)
+
                         raise ClusterCreationError(
                             error,
                             stack_events=events,
