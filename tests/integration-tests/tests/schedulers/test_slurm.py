@@ -659,7 +659,6 @@ def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
                 "other_options": f"{requeue_opt}--exclusive",
             }
         )
-        time.sleep(20)  # Add a sleep to match manual submission of job
         logging.info("Submitted %s (%s) ID: %s", job["label"], job_type, jid)
         job_ids.append(jid)
 

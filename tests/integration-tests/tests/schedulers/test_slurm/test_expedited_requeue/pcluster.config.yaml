@@ -18,8 +18,6 @@ Scheduling:
           Instances:
             - InstanceType: t3.medium
             - InstanceType: c5.large
-        - Name: normal-cr
-          InstanceType: {{ instance }}
 SharedStorage:
   - MountDir: /shared
     Name: name1
