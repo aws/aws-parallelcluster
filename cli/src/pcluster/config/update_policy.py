@@ -516,6 +516,8 @@ def get_pool_name_from_change_paths(change):
 # IMPORTANT: We assume this set to contain the path to leaf fields.
 EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS: set[str] = {
     "cluster.slurm.reconfigure_timeout",
+    "cluster.cluster_readiness_check_enabled",
+    "cluster.cluster_readiness_check_ignore_failure",
 }
 
 
