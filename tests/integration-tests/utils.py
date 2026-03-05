@@ -24,6 +24,7 @@ from hashlib import sha1
 import boto3
 import requests
 from assertpy import assert_that
+from constants import EXCLUDED_INSTANCE_TYPE_PREFIXES
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
@@ -1028,11 +1029,13 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     ):
         # Filter for EFA support, GPU presence, and inference accelerator types
         for instance in page["InstanceTypes"]:
+            instance_prefix = instance["InstanceType"].split(".")[0]
             instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
             instance_has_gpu = "GpuInfo" in instance
             instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
             if (
-                instance_has_efa == target_has_efa
+                instance_prefix not in EXCLUDED_INSTANCE_TYPE_PREFIXES
+                and instance_has_efa == target_has_efa
                 and instance_has_gpu == target_has_gpu
                 and instance_inference_accelerators == target_inference_accelerators
             ):
