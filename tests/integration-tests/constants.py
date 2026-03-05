@@ -19,6 +19,30 @@ REPOSITORY_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."
 
 UNSUPPORTED_OSES_FOR_DCV = []
 
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "i2",
+    "i3",
+    "f1",
+    "g3",
+    "p2",
+    "p3",
+)
+
 
 class NodeType(Enum):
     """Categories of nodes."""
