@@ -634,7 +634,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
         output_file_path = test_datadir / output_file if output_file else config_file_path
         default_values = _get_default_template_values(vpc_stack, request)
         inject_internal_storage_settings(kwargs)
-        inject_placement_group_settings(vpc_stack, instance, kwargs)
+        inject_placement_group_settings(vpc_stack, instance, region, kwargs)
         inject_flexible_instance_types_settings(instance, region, kwargs)
         file_loader = FileSystemLoader(str(test_datadir))
         env = SandboxedEnvironment(loader=file_loader)
@@ -654,9 +654,18 @@ def inject_internal_storage_settings(kwargs):
         kwargs["shared_headnode_storage_type"] = "Efs"
 
 
-def inject_placement_group_settings(vpc_stack, instance, kwargs):
+def inject_placement_group_settings(vpc_stack, instance, region, kwargs):
     if vpc_stack.az_override:
-        kwargs["capacity_reservation_framework_placement_group"] = f"{instance}_placement_group_{vpc_stack.az_override}"
+        placement_group_name = f"{instance}_placement_group_{vpc_stack.az_override}"
+        try:
+            ec2_client = boto3.client("ec2", region_name=region)
+            ec2_client.describe_placement_groups(GroupNames=[placement_group_name])
+            kwargs["capacity_reservation_framework_placement_group"] = placement_group_name
+        except Exception:
+            logging.info("Placement group %s not found, skipping placement group setting", placement_group_name)
+            kwargs["capacity_reservation_framework_placement_group"] = ""
+    else:
+        kwargs["capacity_reservation_framework_placement_group"] = ""
 
 
 def inject_flexible_instance_types_settings(instance, region, kwargs):
