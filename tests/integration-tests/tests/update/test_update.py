@@ -415,7 +415,15 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
             assert_that("InstanceType").is_not_in(launch_template_data)  # Using CreateFleet override
             assert_that("CpuOptions").is_not_in(launch_template_data)
             if compute_resource_config["enable_efa"]:
-                assert_that(launch_template_data["NetworkInterfaces"][0]["InterfaceType"]).is_equal_to("efa")
+                # Under the new default, NCI-0 uses 'interface' (no InterfaceType set) + efa-only on DI=1.
+                # Verify at least one NetworkInterface has InterfaceType 'efa-only'.
+                interface_types = [
+                    ni.get("InterfaceType")
+                    for ni in launch_template_data["NetworkInterfaces"]
+                    if ni.get("InterfaceType")
+                ]
+                assert_that(interface_types).is_not_empty()
+                assert_that(interface_types).contains("efa-only")
             else:
                 assert_that("InterfaceType").is_not_in(launch_template_data["NetworkInterfaces"][0])
 
