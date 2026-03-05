@@ -390,3 +390,39 @@ def render_join(elem: dict):
         else:
             raise ValueError("Found unsupported item type while rendering Fn::Join")
     return sep.join(rendered_body)
+
+
+@pytest.mark.parametrize(
+    "override_lt_data, expected_overrides",
+    [
+        # Override NetworkInterfaces only
+        pytest.param(
+            {"NetworkInterfaces": [{"DeviceIndex": 0, "InterfaceType": "efa", "Groups": ["sg-override"]}]},
+            [("LaunchTemplateData.NetworkInterfaces", [{"DeviceIndex": 0, "InterfaceType": "efa", "Groups": ["sg-override"]}])],
+            id="Override NetworkInterfaces",
+        ),
+    ],
+)
+def test_apply_launch_template_overrides(mocker, override_lt_data, expected_overrides):
+    """Test that _apply_launch_template_overrides calls add_property_override for each property."""
+    from pcluster.templates.queues_stack import _apply_launch_template_overrides
+
+    # Mock the launch template CDK construct
+    mock_launch_template = MagicMock()
+
+    # Mock the compute resource with launch specification overrides
+    mock_compute_resource = MagicMock()
+    mock_compute_resource.launch_specification_overrides.launch_template_id = "lt-12345678901234567"
+    mock_compute_resource.launch_specification_overrides.version = 1
+
+    # Mock the EC2 API call
+    mock_aws_api = mocker.patch("pcluster.templates.queues_stack.AWSApi")
+    mock_aws_api.instance().ec2.describe_launch_template_version.return_value = override_lt_data
+
+    # Call the function
+    _apply_launch_template_overrides(mock_launch_template, mock_compute_resource)
+
+    # Verify the overrides were applied
+    assert mock_launch_template.add_property_override.call_count == len(expected_overrides)
+    for path, value in expected_overrides:
+        mock_launch_template.add_property_override.assert_any_call(path, value)
