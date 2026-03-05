@@ -328,9 +328,16 @@ class InstanceTypeInfo:
         return self.instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
 
     def max_efa_interfaces(self) -> int:
-        """Return the maximum number of EFA interfaces for the instance."""
+        """Return the maximum number of EFA interfaces for the instance.
+
+        If EfaInfo/MaximumEfaInterfaces is not present in the API response (older API versions),
+        fall back to 1 if EfaSupported is true, 0 otherwise.
+        """
         efa_info = self.instance_type_data.get("NetworkInfo", {}).get("EfaInfo", {})
-        return efa_info.get("MaximumEfaInterfaces", 0)
+        max_efa = efa_info.get("MaximumEfaInterfaces")
+        if max_efa is not None:
+            return max_efa
+        return 1 if self.is_efa_supported() else 0
 
 
 class FsxStorageInfo:
