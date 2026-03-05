@@ -64,6 +64,7 @@ from pcluster.config.cluster_config import (
     Image,
     Imds,
     IntelSoftware,
+    LaunchSpecificationOverrides,
     LocalStorage,
     LoginNodes,
     LoginNodesIam,
@@ -829,6 +830,24 @@ class EfaSchema(BaseSchema):
         return Efa(**data)
 
 
+class LaunchSpecificationOverridesSchema(BaseSchema):
+    """Represent the schema of LaunchSpecificationOverrides for a Compute Resource."""
+
+    launch_template_id = fields.Str(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+    version = fields.Int(
+        validate=validate.Range(min=1),
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LaunchSpecificationOverrides(**data)
+
+
 # ---------------------- Monitoring ---------------------- #
 
 
@@ -1584,6 +1603,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     dynamic_node_priority = fields.Int(
         validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+    launch_specification_overrides = fields.Nested(
+        LaunchSpecificationOverridesSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @validates_schema

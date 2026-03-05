@@ -878,6 +878,15 @@ class Efa(Resource):
         self.gdr_support = Resource.init_param(gdr_support, default=False)
 
 
+class LaunchSpecificationOverrides(Resource):
+    """Represent the Launch Specification Overrides configuration."""
+
+    def __init__(self, launch_template_id: str = None, version: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.launch_template_id = Resource.init_param(launch_template_id)
+        self.version = Resource.init_param(version)
+
+
 # ---------------------- Health Checks ---------------------- #
 
 
@@ -2230,6 +2239,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         tags: List[Tag] = None,
         static_node_priority: int = None,
         dynamic_node_priority: int = None,
+        launch_specification_overrides: LaunchSpecificationOverrides = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2250,6 +2260,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.tags = tags
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
+        self.launch_specification_overrides = launch_specification_overrides
 
     @abstractmethod
     def is_flexible(self) -> bool:
