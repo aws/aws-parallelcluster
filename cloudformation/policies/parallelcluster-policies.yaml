@@ -570,6 +570,7 @@ Resources:
               - logs:DescribeMetricFilters
               - logs:PutMetricFilter
               - logs:deleteMetricFilter
+              - logs:ListTagsForResource
             Resource: '*'
             Effect: Allow
             Condition: !If
