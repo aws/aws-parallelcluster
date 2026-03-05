@@ -33,15 +33,21 @@ def _create_override_launch_template(ec2_client, subnet_id, security_group_id, s
     Returns:
         Tuple of (launch_template_id, version)
     """
-    # Create network interfaces configuration with 16 EFA interfaces
+    # Create network interfaces configuration with 2 interfaces:
+    # - First interface (DeviceIndex 0): regular ENI (no InterfaceType specified)
+    # - Second interface (DeviceIndex 1): efa-only
     network_interfaces = [
         {
-            "DeviceIndex": i,
-            "InterfaceType": "efa",
+            "DeviceIndex": 0,
             "SubnetId": subnet_id,
             "Groups": [security_group_id],
-        }
-        for i in range(16)
+        },
+        {
+            "DeviceIndex": 1,
+            "InterfaceType": "efa-only",
+            "SubnetId": subnet_id,
+            "Groups": [security_group_id],
+        },
     ]
 
     response = ec2_client.create_launch_template(
@@ -177,9 +183,10 @@ def test_launch_template_overrides(
 def _test_launch_template_override_eni_configuration(cluster, region, override_launch_template):
     """Verify compute nodes have the expected network interface configuration from the launch template override.
 
-    With the launch template override specifying 16 EFA interfaces:
-    - Each compute node should have exactly 16 ENIs
-    - All ENIs should have InterfaceType 'efa'
+    Efa enabled is set to false, but with the launch template override, an efa-only interface will be configured.
+    With the launch template override specifying 2 interfaces:
+    - First interface (DeviceIndex 0): regular ENI
+    - Second interface (DeviceIndex 1): efa-only
     - All ENIs should use the security group from the override launch template
     """
     ec2_client = boto3.client("ec2", region_name=region)
@@ -194,7 +201,8 @@ def _test_launch_template_override_eni_configuration(cluster, region, override_l
         enis = instance_info["NetworkInterfaces"]
         logging.info(f"Instance {instance_id} has {len(enis)} ENIs")
 
-        efa_enis = []
+        efa_only_enis = []
+        regular_enis = []
         for eni in enis:
             interface_type = eni.get("InterfaceType", "interface")
             private_ips = eni.get("PrivateIpAddresses", [])
@@ -209,24 +217,26 @@ def _test_launch_template_override_eni_configuration(cluster, region, override_l
                 f"DeviceIndex={device_index}, SecurityGroups={security_groups}"
             )
 
-            if interface_type == "efa":
-                efa_enis.append(eni)
+            if interface_type == "efa-only":
+                efa_only_enis.append(eni)
+            else:
+                regular_enis.append(eni)
 
             # Verify security group from override is applied
             assert_that(security_groups).described_as(
                 f"ENI {eni['NetworkInterfaceId']} should have the override security group"
             ).contains(expected_security_group)
 
-        # Verify we have 16 ENIs as specified in the override launch template
+        # Verify we have 2 ENIs as specified in the override launch template
         assert_that(len(enis)).described_as(
-            f"Instance {instance_id} should have 16 ENIs from the launch template override"
-        ).is_equal_to(16)
+            f"Instance {instance_id} should have 2 ENIs from the launch template override"
+        ).is_equal_to(2)
 
-        # Verify all ENIs are EFA type
-        assert_that(len(efa_enis)).described_as(
-            f"Instance {instance_id} should have all 16 ENIs with InterfaceType 'efa'"
-        ).is_equal_to(16)
+        # Verify we have 1 regular ENI and 1 efa-only ENI
+        assert_that(len(regular_enis)).described_as(
+            f"Instance {instance_id} should have 1 regular ENI"
+        ).is_equal_to(1)
 
-        logging.info(
-            f"Instance {instance_id}: {len(efa_enis)} EFA ENI(s) with override security group {expected_security_group}"
-        )
+        assert_that(len(efa_only_enis)).described_as(
+            f"Instance {instance_id} should have 1 efa-only ENI"
+        ).is_equal_to(1)

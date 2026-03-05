@@ -2375,7 +2375,6 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
                 compute_resource_name=self.name,
                 launch_template_id=self.launch_specification_overrides.launch_template_id,
                 launch_template_version=self.launch_specification_overrides.version,
-                instance_types=self.instance_types,
             )
 
     def is_flexible(self):
@@ -2475,7 +2474,6 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
                 compute_resource_name=self.name,
                 launch_template_id=self.launch_specification_overrides.launch_template_id,
                 launch_template_version=self.launch_specification_overrides.version,
-                instance_types=self.instance_types,
             )
 
     @property

@@ -343,17 +343,16 @@ class LaunchTemplateValidator(Validator):
     """Validate that the specified launch template exists, is accessible, and only contains allowed properties."""
 
     # Only these properties are allowed in the launch template
-    ALLOWED_PROPERTIES = {"NetworkInterfaces", "InstanceType"}
+    ALLOWED_PROPERTIES = {"NetworkInterfaces"}
 
     def _validate(
         self,
         compute_resource_name: str,
         launch_template_id: str,
         launch_template_version: int,
-        instance_types: list,
         **kwargs,
     ):
-        """Check if the launch template exists, is valid, and only contains NetworkInterfaces and InstanceType."""
+        """Check if the launch template exists, is valid, and only contains NetworkInterfaces."""
         if not launch_template_id:
             return
 
@@ -374,16 +373,6 @@ class LaunchTemplateValidator(Validator):
             self._add_failure(
                 f"Launch template '{launch_template_id}' in Compute Resource '{compute_resource_name}' contains "
                 f"properties that are not allowed: {', '.join(sorted(disallowed_properties))}. "
-                f"Only NetworkInterfaces and InstanceType are allowed.",
-                FailureLevel.ERROR,
-            )
-
-        # Validate InstanceType matches if specified
-        lt_instance_type = lt_data.get("InstanceType")
-        if lt_instance_type and lt_instance_type not in instance_types:
-            self._add_failure(
-                f"Launch template '{launch_template_id}' in Compute Resource '{compute_resource_name}' specifies "
-                f"InstanceType '{lt_instance_type}' which does not match the compute resource instance type(s): "
-                f"{', '.join(instance_types)}.",
+                f"Only NetworkInterfaces is allowed.",
                 FailureLevel.ERROR,
             )

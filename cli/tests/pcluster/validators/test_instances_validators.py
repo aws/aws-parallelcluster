@@ -871,7 +871,7 @@ def test_instances_memory_scheduling_validator(
 
 
 @pytest.mark.parametrize(
-    "compute_resource_name, launch_template_id, launch_template_version, instance_types, "
+    "compute_resource_name, launch_template_id, launch_template_version, "
     "mock_lt_data, mock_exception, expected_message",
     [
         # Launch template not found
@@ -879,7 +879,6 @@ def test_instances_memory_scheduling_validator(
             "TestComputeResource",
             "lt-12345678901234567",
             1,
-            ["c5.xlarge"],
             None,
             Exception("Launch template not found"),
             "Launch template 'lt-12345678901234567' version '1' specified in Compute Resource "
@@ -891,44 +890,20 @@ def test_instances_memory_scheduling_validator(
             "TestComputeResource",
             "lt-12345678901234567",
             1,
-            ["c5.xlarge"],
             {"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]},
             None,
             "",
             id="Only NetworkInterfaces - allowed",
-        ),
-        # Launch template with only allowed properties (InstanceType matching)
-        pytest.param(
-            "TestComputeResource",
-            "lt-12345678901234567",
-            1,
-            ["c5.xlarge"],
-            {"InstanceType": "c5.xlarge"},
-            None,
-            "",
-            id="InstanceType matching compute resource - allowed",
-        ),
-        # Launch template with both allowed properties
-        pytest.param(
-            "TestComputeResource",
-            "lt-12345678901234567",
-            1,
-            ["c5.xlarge", "c5.2xlarge"],
-            {"NetworkInterfaces": [{"DeviceIndex": 0}], "InstanceType": "c5.xlarge"},
-            None,
-            "",
-            id="Both NetworkInterfaces and InstanceType - allowed",
         ),
         # Launch template with disallowed property
         pytest.param(
             "TestComputeResource",
             "lt-12345678901234567",
             1,
-            ["c5.xlarge"],
             {"NetworkInterfaces": [{"DeviceIndex": 0}], "MetadataOptions": {"HttpTokens": "required"}},
             None,
             "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
-            "properties that are not allowed: MetadataOptions. Only NetworkInterfaces and InstanceType are allowed.",
+            "properties that are not allowed: MetadataOptions. Only NetworkInterfaces is allowed.",
             id="MetadataOptions not allowed",
         ),
         # Launch template with multiple disallowed properties
@@ -936,31 +911,17 @@ def test_instances_memory_scheduling_validator(
             "TestComputeResource",
             "lt-12345678901234567",
             1,
-            ["c5.xlarge"],
             {"UserData": "base64data", "ImageId": "ami-12345"},
             None,
             "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
-            "properties that are not allowed: ImageId, UserData. Only NetworkInterfaces and InstanceType are allowed.",
+            "properties that are not allowed: ImageId, UserData. Only NetworkInterfaces is allowed.",
             id="Multiple disallowed properties",
-        ),
-        # Launch template with InstanceType not matching compute resource
-        pytest.param(
-            "TestComputeResource",
-            "lt-12345678901234567",
-            1,
-            ["c5.xlarge", "c5.2xlarge"],
-            {"InstanceType": "m5.xlarge"},
-            None,
-            "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' specifies "
-            "InstanceType 'm5.xlarge' which does not match the compute resource instance type(s): c5.xlarge, c5.2xlarge.",
-            id="InstanceType not matching",
         ),
         # No launch template specified (should pass without validation)
         pytest.param(
             "TestComputeResource",
             None,
             None,
-            ["c5.xlarge"],
             None,
             None,
             "",
@@ -973,7 +934,6 @@ def test_launch_template_validator(
     compute_resource_name,
     launch_template_id,
     launch_template_version,
-    instance_types,
     mock_lt_data,
     mock_exception,
     expected_message,
@@ -991,6 +951,5 @@ def test_launch_template_validator(
         compute_resource_name=compute_resource_name,
         launch_template_id=launch_template_id,
         launch_template_version=launch_template_version,
-        instance_types=instance_types,
     )
     assert_failure_messages(actual_failures, expected_message)
