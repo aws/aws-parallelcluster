@@ -29,8 +29,6 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
-from pcluster.constants import EXCLUDED_INSTANCE_TYPE_PREFIXES
-
 DEFAULT_PARTITION = "aws"
 PARTITION_MAP = {
     "cn": "aws-cn",
@@ -1030,13 +1028,11 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     ):
         # Filter for EFA support, GPU presence, and inference accelerator types
         for instance in page["InstanceTypes"]:
-            instance_prefix = instance["InstanceType"].split(".")[0]
             instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
             instance_has_gpu = "GpuInfo" in instance
             instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
             if (
-                instance_prefix not in EXCLUDED_INSTANCE_TYPE_PREFIXES
-                and instance_has_efa == target_has_efa
+                instance_has_efa == target_has_efa
                 and instance_has_gpu == target_has_gpu
                 and instance_inference_accelerators == target_inference_accelerators
             ):
