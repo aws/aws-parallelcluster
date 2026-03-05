@@ -291,6 +291,13 @@ test-suites:
           instances: [ "p6e-gb200.36xlarge" ]
           oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023", "rhel9" ]
           schedulers: [ "slurm" ]
+  launch_template_overrides:
+    test_launch_template_overrides.py::test_launch_template_overrides:
+      dimensions:
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_X86_0 }}]
+          instances: ["c5n.18xlarge"]
+          oss: [{{ OS_X86_0 }}]
+          schedulers: ["slurm"]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
