@@ -10,7 +10,9 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+from datetime import datetime, timedelta, timezone
 
+import boto3
 import pytest
 import xmltodict
 from assertpy import assert_that, soft_assertions
@@ -28,9 +30,62 @@ from tests.common.utils import (
     wait_process_completion,
 )
 
+# Candidate head node instance types for when compute is p* or hpc* (one per family).
+HEAD_NODE_CANDIDATES_X86 = [
+    "c5.18xlarge",
+    "c6i.16xlarge",
+    "c7i.16xlarge",
+    "m5.16xlarge",
+    "m6i.16xlarge",
+    "m7i.16xlarge",
+    "r5.16xlarge",
+]
+HEAD_NODE_CANDIDATES_ARM = [
+    "c6g.16xlarge",
+    "c7g.16xlarge",
+    "m6g.16xlarge",
+    "m7g.16xlarge",
+    "r6g.16xlarge",
+]
+
 FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
 
 FABTESTS_GDRCOPY_TESTS = ["runt"]
+
+
+def _try_reserve_head_node_instance(region, az_id, architecture, os):
+    """Try to create a 1-hour capacity reservation for a head node instance in the given AZ.
+
+    Iterates through candidate instance types (one per family) and returns the first one that succeeds.
+    Returns the selected instance type. Falls back to the first candidate if all reservations fail.
+    """
+    ec2_client = boto3.client("ec2", region_name=region)
+    candidates = HEAD_NODE_CANDIDATES_X86 if architecture == "x86_64" else HEAD_NODE_CANDIDATES_ARM
+    instance_platform = "Red Hat Enterprise Linux" if "rhel" in os else "Linux/UNIX"
+    end_date = datetime.now(timezone.utc) + timedelta(hours=1)
+
+    for candidate in candidates:
+        try:
+            response = ec2_client.create_capacity_reservation(
+                InstanceType=candidate,
+                InstancePlatform=instance_platform,
+                AvailabilityZoneId=az_id,
+                InstanceCount=1,
+                EndDateType="limited",
+                EndDate=end_date,
+                Tenancy="default",
+            )
+            cr_id = response["CapacityReservation"]["CapacityReservationId"]
+            logging.info("Created head node capacity reservation %s for %s in %s", cr_id, candidate, az_id)
+            return candidate
+        except Exception as e:
+            logging.info("Capacity reservation for head node %s failed in %s: %s", candidate, az_id, e)
+
+    # All candidates failed
+    pytest.fail(
+        "Could not reserve capacity for any head node instance type candidate",
+    )
+    return None
 
 
 @pytest.mark.usefixtures("serial_execution_by_instance")
@@ -45,26 +100,23 @@ def test_efa(
     architecture,
     scheduler_commands_factory,
     request,
+    vpc_stack,
 ):
     """
     Test all EFA Features.
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
+    head_node_instance = instance
     if instance.startswith("p") or instance.startswith("hpc"):
-        if architecture == "x86_64":
-            head_node_instance = "c5.18xlarge"
-        else:
-            head_node_instance = "c6g.16xlarge"
-    else:
-        # Use the same instance type for both compute node and head node
-        # when the instance type is available in open capacity pool
-        head_node_instance = instance
+        az_id = vpc_stack.az_override or vpc_stack.default_az_id
+        head_node_instance = _try_reserve_head_node_instance(region, az_id, architecture, os)
     max_queue_size = 2
     capacity_reservation_id = None
-    # p family instances need capacity blocks and so placement group is set to false
-    placement_group_enabled = not instance.startswith("p")
-    if instance in ("p6-b200.48xlarge", "p6-b300.48xlarge"):
+    # p6 family instances need capacity blocks and so placement group is set to false
+    capacity_block_instance_type = instance.startswith("p6")
+    placement_group_enabled = not capacity_block_instance_type
+    if capacity_block_instance_type:
         capacity_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if capacity_reservations_ids:
             capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
@@ -85,6 +137,7 @@ def test_efa(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
+    _test_efa_eni_configuration(cluster, region)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, scheduler_commands, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
@@ -95,7 +148,7 @@ def test_efa(
     if instance.startswith("p"):
         # Doc of supported instance types and operating systems:
         # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start-nccl.html
-        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance)
+        install_and_run_nccl_benchmarks(remote_command_executor, "openmpi", scheduler_commands, instance, os)
 
     with soft_assertions():
         assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
@@ -123,6 +176,54 @@ def test_efa(
             ).is_equal_to(0)
             assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
             assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
+
+
+def _test_efa_eni_configuration(cluster, region):
+    """Verify compute nodes have the expected EFA network interface configuration.
+
+    Under the new default (PC 3.15):
+    - Each compute node should have exactly one private IP address (on the interface ENI at NCI-0)
+    - All ENIs except one should be efa-only (no IP, EFA fabric only)
+    """
+    ec2_client = boto3.client("ec2", region_name=region)
+    compute_instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
+
+    for instance_id in compute_instance_ids:
+        instance_info = ec2_client.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+        enis = instance_info["NetworkInterfaces"]
+        logging.info(f"Instance {instance_id} has {len(enis)} ENIs")
+
+        enis_with_ip = []
+        efa_only_enis = []
+        for eni in enis:
+            interface_type = eni.get("InterfaceType", "interface")
+            private_ips = eni.get("PrivateIpAddresses", [])
+            attachment = eni.get("Attachment", {})
+            network_card_index = attachment.get("NetworkCardIndex", 0)
+            device_index = attachment.get("DeviceIndex", 0)
+            logging.info(
+                f"  ENI {eni['NetworkInterfaceId']}: InterfaceType={interface_type}, "
+                f"PrivateIPs={len(private_ips)}, NetworkCardIndex={network_card_index}, DeviceIndex={device_index}"
+            )
+            if interface_type == "efa-only":
+                efa_only_enis.append(eni)
+            else:
+                enis_with_ip.append(eni)
+
+        # Exactly one ENI should have a private IP (the interface ENI on NCI-0)
+        assert_that(
+            len(enis_with_ip), description=f"Instance {instance_id} should have exactly 1 ENI with a private IP"
+        ).is_equal_to(1)
+
+        # All other ENIs should be efa-only
+        if len(enis) > 1:
+            assert_that(
+                len(efa_only_enis), description=f"Instance {instance_id}: all ENIs except one should be efa-only"
+            ).is_equal_to(len(enis) - 1)
+
+        logging.info(
+            f"Instance {instance_id}: {len(enis_with_ip)} ENI(s) with private IP, {len(efa_only_enis)} efa-only ENI(s)"
+        )
 
 
 def _execute_fabtests(remote_command_executor, test_datadir, instance):

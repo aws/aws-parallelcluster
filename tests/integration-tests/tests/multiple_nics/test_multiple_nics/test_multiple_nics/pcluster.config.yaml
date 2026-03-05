@@ -1,8 +1,3 @@
-{% if "rocky" in os or "rhel" in os %}
-DevSettings:
-  Timeouts:
-    HeadNodeBootstrapTimeout: 2040
-{% endif %}
 Image:
   Os: {{ os }}
 HeadNode:
@@ -28,7 +23,6 @@ Scheduling:
           {% else %}
           Instances:
             - InstanceType: {{ instance }}
-            - InstanceType: c6in.metal
           MinCount: 1
           Efa:
             Enabled: true
@@ -44,3 +38,5 @@ SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
+DevSettings:
+  EfaInterfaceType: efa

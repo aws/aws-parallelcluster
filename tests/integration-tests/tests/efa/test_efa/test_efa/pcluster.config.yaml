@@ -4,7 +4,7 @@ HeadNode:
   InstanceType: {{ head_node_instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
+    ElasticIp: true
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -21,7 +21,7 @@ Scheduling:
       Networking:
         PlacementGroup:
           Enabled: {{ placement_group_enabled }}
-          {% if instance in ["c5n.18xlarge", "c6gn.16xlarge"] %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
+          {% if placement_group_enabled %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
@@ -32,11 +32,6 @@ Scheduling:
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
-            {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
-{% if instance == "p4d.24xlarge" %}
-          CapacityReservationTarget:
-            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:447714826191:group/EC2CRGroup
-{% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: name1

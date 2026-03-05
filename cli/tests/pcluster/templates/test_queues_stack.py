@@ -167,60 +167,82 @@ class NetworkCard:
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, instance_type, network_cards_list, expected_interfaces",
+    "efa_enabled, instance_type, network_cards_list, expected_interfaces, efa_interface_type, max_efa, max_cards",
     [
+        # GB200 EFA enabled: NCI-0=interface (MaxENIs=15 but no EFA on NCI-0), odd=efa-only, even=efa-only
         (
             True,
             "p6e-gb200.WHATEVER_SIZE",
-            [NetworkCard(0), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
+            [NetworkCard(0, 15), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
             [
                 {"network_card_index": 0, "interface_type": None, "device_index": 0},
                 {"network_card_index": 1, "interface_type": "efa-only", "device_index": 0},
-                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 2, "interface_type": "efa-only", "device_index": 1},
                 {"network_card_index": 3, "interface_type": "efa-only", "device_index": 0},
-                {"network_card_index": 4, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 4, "interface_type": "efa-only", "device_index": 1},
             ],
+            None,
+            16,
+            17,
         ),
+        # GB200 EFA disabled: skip odd cards, even cards get interface (unchanged)
         (
             False,
             "p6e-gb200.WHATEVER_SIZE",
-            [NetworkCard(0), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
+            [NetworkCard(0, 15), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
             [
                 {"network_card_index": 0, "interface_type": None, "device_index": 0},
                 {"network_card_index": 2, "interface_type": None, "device_index": 1},
                 {"network_card_index": 4, "interface_type": None, "device_index": 1},
             ],
+            None,
+            16,
+            17,
         ),
+        # Generic multi-NIC EFA enabled: NCI-0=interface+efa-only, NCI-1+=efa-only
         (
             True,
             "NOTp6e-gb200.WHATEVER_SIZE",
-            [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
+            [NetworkCard(0, 2), NetworkCard(1, 2), NetworkCard(2, 2)],
             [
-                {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
-                {"network_card_index": 1, "interface_type": "efa", "device_index": 1},
-                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 0, "interface_type": "efa-only", "device_index": 1},
+                {"network_card_index": 1, "interface_type": "efa-only", "device_index": 1},
+                {"network_card_index": 2, "interface_type": "efa-only", "device_index": 1},
             ],
+            None,
+            3,
+            3,
         ),
+        # Generic multi-NIC EFA enabled, MaxENIs=1 per card (hpc6id-like): NCI-0 fallback to efa, NCI-1+=efa-only
         (
             True,
             "NOTp6e-gb200.WHATEVER_SIZE",
             [NetworkCard(0), NetworkCard(1), NetworkCard(2)],
             [
                 {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
-                {"network_card_index": 1, "interface_type": "efa", "device_index": 0},
-                {"network_card_index": 2, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa-only", "device_index": 0},
+                {"network_card_index": 2, "interface_type": "efa-only", "device_index": 0},
             ],
+            None,
+            3,
+            3,
         ),
+        # Generic multi-NIC EFA disabled (unchanged)
         (
             False,
             "NOTp6e-gb200.WHATEVER_SIZE",
-            [NetworkCard(0), NetworkCard(1, 2), NetworkCard(2, 2)],
+            [NetworkCard(0, 2), NetworkCard(1, 2), NetworkCard(2, 2)],
             [
                 {"network_card_index": 0, "interface_type": None, "device_index": 0},
                 {"network_card_index": 1, "interface_type": None, "device_index": 1},
                 {"network_card_index": 2, "interface_type": None, "device_index": 1},
             ],
+            None,
+            3,
+            3,
         ),
+        # B300 EFA enabled: NCI-0=interface (MaxEfa<MaxCards), NCI-1+=efa-only
         (
             True,
             "p6-b300.WHATEVER_SIZE",
@@ -232,7 +254,11 @@ class NetworkCard:
                 {"network_card_index": 3, "interface_type": "efa-only", "device_index": 1},
                 {"network_card_index": 4, "interface_type": "efa-only", "device_index": 1},
             ],
+            None,
+            16,
+            17,
         ),
+        # B300 EFA disabled (unchanged)
         (
             False,
             "p6-b300.WHATEVER_SIZE",
@@ -242,22 +268,107 @@ class NetworkCard:
                 {"network_card_index": 1, "interface_type": None, "device_index": 1},
                 {"network_card_index": 2, "interface_type": None, "device_index": 1},
             ],
+            None,
+            16,
+            17,
+        ),
+        # Single-NIC EFA enabled: NCI-0=interface+efa-only
+        (
+            True,
+            "c5n.18xlarge",
+            [NetworkCard(0, 15)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 0, "interface_type": "efa-only", "device_index": 1},
+            ],
+            None,
+            1,
+            1,
+        ),
+        # Single-NIC EFA enabled, MaxENIs=1 (hpc5a-like): fallback to efa
+        (
+            True,
+            "hpc5a.48xlarge",
+            [NetworkCard(0)],
+            [
+                {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
+            ],
+            None,
+            1,
+            1,
+        ),
+        # Legacy opt-out: EfaInterfaceType=efa restores old behavior
+        (
+            True,
+            "NOTp6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0, 2), NetworkCard(1, 2), NetworkCard(2, 2)],
+            [
+                {"network_card_index": 0, "interface_type": "efa", "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+            ],
+            "efa",
+            3,
+            3,
+        ),
+        # Legacy opt-out on GB200: restores PC 3.14 behavior (even=efa, odd=efa-only)
+        (
+            True,
+            "p6e-gb200.WHATEVER_SIZE",
+            [NetworkCard(0, 15), NetworkCard(1), NetworkCard(2, 2), NetworkCard(3), NetworkCard(4, 2)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa-only", "device_index": 0},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 3, "interface_type": "efa-only", "device_index": 0},
+                {"network_card_index": 4, "interface_type": "efa", "device_index": 1},
+            ],
+            "efa",
+            16,
+            17,
+        ),
+        # Legacy opt-out on B300: NCI-0 stays interface, NCI-1+ switch to efa
+        (
+            True,
+            "p6-b300.WHATEVER_SIZE",
+            [NetworkCard(0, 4), NetworkCard(1, 4), NetworkCard(2, 4), NetworkCard(3, 4)],
+            [
+                {"network_card_index": 0, "interface_type": None, "device_index": 0},
+                {"network_card_index": 1, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 2, "interface_type": "efa", "device_index": 1},
+                {"network_card_index": 3, "interface_type": "efa", "device_index": 1},
+            ],
+            "efa",
+            16,
+            17,
         ),
     ],
 )
 def test_add_compute_resource_launch_template(
-    mocker, efa_enabled, instance_type, test_datadir, network_cards_list, expected_interfaces
+    mocker,
+    efa_enabled,
+    instance_type,
+    test_datadir,
+    network_cards_list,
+    expected_interfaces,
+    efa_interface_type,
+    max_efa,
+    max_cards,
 ):
     mock_compute_resource = MagicMock()
     mock_compute_resource.name = "test-compute-resource"
     mock_compute_resource.instance_types = [instance_type]
     mock_compute_resource.efa.enabled = efa_enabled
     mock_compute_resource.network_cards_list = network_cards_list
+    mock_compute_resource.max_efa_interfaces = max_efa
+    mock_compute_resource.max_network_cards = max_cards
 
     mock_queue = MagicMock()
     mock_queue.name = "test-queue"
 
-    network_interfaces = add_network_interfaces(mock_queue, mock_compute_resource, ["sg-12345"])
+    network_interfaces = add_network_interfaces(
+        mock_queue, mock_compute_resource, ["sg-12345"], efa_interface_type=efa_interface_type
+    )
 
     assert len(network_interfaces) == len(expected_interfaces)
 

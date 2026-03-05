@@ -5,6 +5,7 @@ CHANGELOG
 ------
 
 **CHANGES**
+- When EFA is enabled, ParallelCluster now configures network interfaces as `interface` and `efa-only` instead of the combined `efa` type. NCI-0 is configured with an `interface` ENI for IP connectivity plus an `efa-only` ENI for EFA fabric. Secondary cards are configured with an `efa-only` only ENI. This reduces IP address consumption from one per network card to one per instance. EFA performance is unchanged. Customers who need the legacy `efa` behavior can set `DevSettings: EfaInterfaceType: efa`.
 - Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
 - Upgrade jmespath to ~=1.0 (from ~=0.10).
 - Upgrade tabulate to <=0.9.0 (from <=0.8.10).

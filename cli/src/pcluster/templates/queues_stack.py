@@ -11,10 +11,8 @@ from pcluster.config.cluster_config import SlurmClusterConfig, SlurmComputeResou
 from pcluster.config.common import DefaultUserHomeType, SharedStorageType
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
-    INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA,
     NODE_BOOTSTRAP_TIMEOUT,
     OS_MAPPING,
-    P6_B300,
     P6E_GB200,
     PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
@@ -153,7 +151,12 @@ class QueuesStack(NestedStack):
         instance_profiles,
         is_detailed_monitoring_enabled,
     ):
-        compute_lt_nw_interfaces = add_network_interfaces(queue, compute_resource, queue_lt_security_groups)
+        compute_lt_nw_interfaces = add_network_interfaces(
+            queue,
+            compute_resource,
+            queue_lt_security_groups,
+            efa_interface_type=get_attr(self._config, "dev_settings.efa_interface_type"),
+        )
 
         conditional_template_properties = {}
         if compute_resource.is_ebs_optimized:
@@ -368,43 +371,95 @@ def add_network_interfaces(
     queue,
     compute_resource,
     queue_lt_security_groups,
+    efa_interface_type=None,
 ):
-    """Generate launch template network interfaces list."""
+    """Generate launch template network interfaces list.
+
+    When EFA is enabled, use `interface` + `efa-only` on NCI-0 and `efa-only` on NCI-1+.
+    The legacy `efa` combined type is only used as a fallback when NCI-0 cannot hold 2 ENIs (MaxENIs=1),
+    or when the DevSettings opt-out `EfaInterfaceType: efa` is set.
+
+    Whether NCI-0 supports EFA is inferred from the DescribeInstanceTypes API:
+    - MaximumEfaInterfaces == MaximumNetworkCards → NCI-0 supports EFA
+    - MaximumEfaInterfaces < MaximumNetworkCards → NCI-0 does NOT support EFA (e.g., B300, GB200)
+
+    GB200 retains hardcoded secondary card configuration (odd/even pattern).
+    """
     instance_family = compute_resource.instance_types[0].split(".")[0]
     is_gb200 = instance_family == P6E_GB200
-    is_b300 = instance_family == P6_B300
     efa_enabled = compute_resource.efa and compute_resource.efa.enabled
-    # gb200 and b300 instances require the first interface to be ENA even if EFA is enabled
-    interface_type = "efa" if efa_enabled and instance_family not in INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA else None
+    use_legacy_efa = efa_interface_type == "efa"
+
+    # Determine NCI-0 MaxENIs to decide if we can fit 2 ENIs (interface + efa-only)
+    nci0_max_enis = (
+        compute_resource.network_cards_list[0].maximum_network_interfaces()
+        if compute_resource.network_cards_list
+        else 1
+    )
+
+    # Infer whether NCI-0 supports EFA from API data
+    max_efa = compute_resource.max_efa_interfaces
+    max_cards = compute_resource.max_network_cards
+    nci0_supports_efa = max_efa == max_cards
+
+    # --- NCI-0 configuration ---
+    if efa_enabled and use_legacy_efa and nci0_supports_efa:
+        # Legacy opt-out: use combined efa on NCI-0 (only when NCI-0 actually supports EFA)
+        nci0_interface_type = "efa"
+    elif efa_enabled and not use_legacy_efa and nci0_supports_efa and nci0_max_enis < 2:
+        # NCI-0 supports EFA but can't hold 2 ENIs — fall back to combined efa
+        # (known to be misconfigured API limits on hpc5a/hpc6id, per EFA team)
+        nci0_interface_type = "efa"
+    else:
+        # New default and instances where NCI-0 doesn't support EFA: NCI-0 is always `interface` (None in CDK = ENA)
+        nci0_interface_type = None
 
     compute_lt_nw_interfaces = [
         ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
             device_index=0,
             network_card_index=0,
             associate_public_ip_address=queue.networking.assign_public_ip,
-            interface_type=interface_type,
+            interface_type=nci0_interface_type,
             groups=queue_lt_security_groups,
             subnet_id=(queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None),
         )
     ]
 
+    # --- NCI-0 additional efa-only ENI (new default) ---
+    # Add efa-only on NCI-0 when: EFA enabled, not legacy opt-out, NCI-0 supports EFA,
+    # and NCI-0 can hold 2 ENIs
+    if efa_enabled and not use_legacy_efa and nci0_supports_efa and nci0_max_enis >= 2:
+        compute_lt_nw_interfaces.append(
+            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
+                device_index=1,
+                network_card_index=0,
+                associate_public_ip_address=False,
+                interface_type="efa-only",
+                groups=queue_lt_security_groups,
+                subnet_id=(
+                    queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                ),
+            )
+        )
+
+    # --- NCI-1+ configuration ---
     for network_card in compute_resource.network_cards_list[1:]:
         even = network_card.network_card_index() % 2 == 0
-        # if efa is disabled, and we have a gb200 instance we skip configuring odd numbered indexes because they only
-        # support efa-only interface type
+
+        # GB200 EFA-disabled: skip odd cards (they only support efa-only)
         if is_gb200 and not efa_enabled and not even:
             continue
 
         if efa_enabled:
-            if is_b300:
-                # if efa is enabled with a b300 instance, all network cards, except for the primary,
-                # are configured as efa-only
-                interface_type = "efa-only"
-            elif is_gb200:
-                # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
+            if use_legacy_efa and is_gb200:
+                # Legacy opt-out for GB200: restore PC 3.14 behavior (even=efa, odd=efa-only)
                 interface_type = "efa" if even else "efa-only"
-            else:
+            elif use_legacy_efa:
+                # Legacy opt-out: all secondary cards get combined efa
                 interface_type = "efa"
+            else:
+                # New default: all secondary cards get efa-only
+                interface_type = "efa-only"
         else:
             interface_type = None
 

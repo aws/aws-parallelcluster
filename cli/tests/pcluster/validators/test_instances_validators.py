@@ -568,6 +568,113 @@ def test_instances_efa_validator(
             True,
             "",
         ),
+        # Mismatched MaximumEfaInterfaces across instance types
+        (
+            "TestQueue12",
+            "TestComputeResource",
+            {
+                "p5.48xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "p5.48xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 32,
+                            "EfaInfo": {"MaximumEfaInterfaces": 32},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 2}
+                                for i in range(32)
+                            ],
+                        },
+                    }
+                ),
+                "p4d.24xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "p4d.24xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "EfaInfo": {"MaximumEfaInterfaces": 4},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 15}
+                                for i in range(4)
+                            ],
+                        },
+                    }
+                ),
+            },
+            False,
+            "Compute Resource TestComputeResource has instance types with varying numbers of maximum EFA "
+            "interfaces (Min: 4, Max: 32). EFA network configuration will be based on "
+            "the instance type with the fewest EFA interfaces (4).",
+        ),
+        # Same MaximumEfaInterfaces — no warning
+        (
+            "TestQueue13",
+            "TestComputeResource",
+            {
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "c5n.18xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 1,
+                            "EfaInfo": {"MaximumEfaInterfaces": 1},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 15},
+                            ],
+                        },
+                    }
+                ),
+                "c6i.32xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "c6i.32xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 1,
+                            "EfaInfo": {"MaximumEfaInterfaces": 1},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 15},
+                            ],
+                        },
+                    }
+                ),
+            },
+            False,
+            "",
+        ),
+        # Mixed NCI-0 EFA support: InstanceA has MaxEfa==MaxCards, InstanceB has MaxEfa<MaxCards
+        (
+            "TestQueue14",
+            "TestComputeResource",
+            {
+                "instanceA": InstanceTypeInfo(
+                    {
+                        "InstanceType": "instanceA",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 5,
+                            "EfaInfo": {"MaximumEfaInterfaces": 5},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 2}
+                                for i in range(5)
+                            ],
+                        },
+                    }
+                ),
+                "instanceB": InstanceTypeInfo(
+                    {
+                        "InstanceType": "instanceB",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 6,
+                            "EfaInfo": {"MaximumEfaInterfaces": 5},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 2}
+                                for i in range(6)
+                            ],
+                        },
+                    }
+                ),
+            },
+            False,
+            "Compute Resource TestComputeResource mixes instance types where NCI-0 supports EFA "
+            "(instanceA) with instance types where it does not (instanceB). "
+            "This may result in a suboptimal EFA network configuration for some instance types.",
+        ),
     ],
 )
 def test_instances_networking_validator(
