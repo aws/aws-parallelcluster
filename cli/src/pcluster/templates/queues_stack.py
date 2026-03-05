@@ -37,6 +37,31 @@ from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, get_http_tokens_setting
 
 
+def _apply_launch_template_overrides(launch_template, compute_resource):
+    """
+    Apply user-specified launch template overrides to the generated launch template.
+
+    For each property in the user's launch template, applies it using add_property_override.
+    This replaces the specific property while CDK handles the rest normally.
+
+    Args:
+        launch_template: The CDK CfnLaunchTemplate construct
+        compute_resource: The compute resource configuration
+    """
+    launch_spec_overrides = getattr(compute_resource, "launch_specification_overrides", None)
+    if not launch_spec_overrides or not launch_spec_overrides.launch_template_id:
+        return
+
+    version = str(launch_spec_overrides.version)
+    override_lt_data = AWSApi.instance().ec2.describe_launch_template_version(
+        launch_spec_overrides.launch_template_id, version
+    )
+
+    # Apply each property from the override launch template
+    for key, value in override_lt_data.items():
+        launch_template.add_property_override(f"LaunchTemplateData.{key}", value)
+
+
 class QueuesStack(NestedStack):
     """Stack encapsulating a set of queues and the associated resources."""
 
@@ -363,6 +388,8 @@ class QueuesStack(NestedStack):
                 **conditional_template_properties,
             ),
         )
+
+        _apply_launch_template_overrides(launch_template, compute_resource)
 
         return launch_template
 

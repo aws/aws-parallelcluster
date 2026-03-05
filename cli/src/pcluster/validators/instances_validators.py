@@ -11,6 +11,8 @@
 from enum import Enum
 from typing import Callable, Dict
 
+from pcluster.aws.aws_api import AWSApi
+
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config import cluster_config
 from pcluster.constants import MIN_MEMORY_ABSOLUTE_DIFFERENCE, MIN_MEMORY_PRECENTAGE_DIFFERENCE
@@ -335,3 +337,53 @@ class InstancesMemorySchedulingWarningValidator(Validator):
         # EC2 API should return valid values, but since it's really cheap better add a check
         available_memory = [value for value in available_memory if value is not None]
         return min(available_memory), max(available_memory)
+
+
+class LaunchTemplateValidator(Validator):
+    """Validate that the specified launch template exists, is accessible, and only contains allowed properties."""
+
+    # Only these properties are allowed in the launch template
+    ALLOWED_PROPERTIES = {"NetworkInterfaces", "InstanceType"}
+
+    def _validate(
+        self,
+        compute_resource_name: str,
+        launch_template_id: str,
+        launch_template_version: int,
+        instance_types: list,
+        **kwargs,
+    ):
+        """Check if the launch template exists, is valid, and only contains NetworkInterfaces and InstanceType."""
+        if not launch_template_id:
+            return
+
+        version = str(launch_template_version)
+        try:
+            lt_data = AWSApi.instance().ec2.describe_launch_template_version(launch_template_id, version)
+        except Exception as e:
+            self._add_failure(
+                f"Launch template '{launch_template_id}' version '{version}' specified in Compute Resource "
+                f"'{compute_resource_name}' could not be found or accessed: {e}",
+                FailureLevel.ERROR,
+            )
+            return
+
+        # Check for disallowed properties
+        disallowed_properties = set(lt_data.keys()) - self.ALLOWED_PROPERTIES
+        if disallowed_properties:
+            self._add_failure(
+                f"Launch template '{launch_template_id}' in Compute Resource '{compute_resource_name}' contains "
+                f"properties that are not allowed: {', '.join(sorted(disallowed_properties))}. "
+                f"Only NetworkInterfaces and InstanceType are allowed.",
+                FailureLevel.ERROR,
+            )
+
+        # Validate InstanceType matches if specified
+        lt_instance_type = lt_data.get("InstanceType")
+        if lt_instance_type and lt_instance_type not in instance_types:
+            self._add_failure(
+                f"Launch template '{launch_template_id}' in Compute Resource '{compute_resource_name}' specifies "
+                f"InstanceType '{lt_instance_type}' which does not match the compute resource instance type(s): "
+                f"{', '.join(instance_types)}.",
+                FailureLevel.ERROR,
+            )

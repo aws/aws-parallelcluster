@@ -188,6 +188,7 @@ from pcluster.validators.instances_validators import (
     InstancesEFAValidator,
     InstancesMemorySchedulingWarningValidator,
     InstancesNetworkingValidator,
+    LaunchTemplateValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
@@ -2368,6 +2369,14 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             ec2memory=min_memory,
             instance_type=smallest_type,
         )
+        if self.launch_specification_overrides:
+            self._register_validator(
+                LaunchTemplateValidator,
+                compute_resource_name=self.name,
+                launch_template_id=self.launch_specification_overrides.launch_template_id,
+                launch_template_version=self.launch_specification_overrides.version,
+                instance_types=self.instance_types,
+            )
 
     def is_flexible(self):
         """Return True because the ComputeResource can contain multiple instance types."""
@@ -2460,6 +2469,14 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
             instance_type=self.instance_type,
         )
+        if self.launch_specification_overrides:
+            self._register_validator(
+                LaunchTemplateValidator,
+                compute_resource_name=self.name,
+                launch_template_id=self.launch_specification_overrides.launch_template_id,
+                launch_template_version=self.launch_specification_overrides.version,
+                instance_types=self.instance_types,
+            )
 
     @property
     def architecture(self) -> str:
