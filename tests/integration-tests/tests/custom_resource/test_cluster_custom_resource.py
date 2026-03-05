@@ -210,68 +210,68 @@ def test_cluster_update_invalid(
 
 
 @pytest.mark.usefixtures("instance", "os", "region")
-@pytest.mark.parametrize("config_parameter_change", [False, True])
 def test_cluster_update_tag_propagation(
-    cluster_custom_resource_factory, config_parameter_change, pcluster_config_reader
+    cluster_custom_resource_factory, pcluster_config_reader, cluster_custom_resource_template
 ):
-    """Verify tags are properly updated ."""
-    max_count = 16
-    cluster_config = pcluster_config_reader(max_count=max_count)
-    stack = cluster_custom_resource_factory(cluster_config)
-    cluster_name = _stack_parameter(stack, "ClusterName")
-
-    stack_tags = [
+    """Verify tags are properly updated at both cluster resource stack and cluster level."""
+    old_cluster_tags = [
+        {"Key": "old_key", "Value": "old_value"},
+        {"Key": "inside_configuration_key", "Value": "overridden"},
+    ]
+    old_stack_tags = [
+        {"Key": "inside_configuration_key", "Value": "overridden"},
+    ]
+    new_cluster_tags = [
+        {"Key": "cluster_name", "Value": "new_cluster_name"},
+        {"Key": "inside_configuration_key", "Value": "stack_level_value"},
+        {"Key": "new_key", "Value": "new_value"},
+    ]
+    new_stack_tags = [
         {"Key": "cluster_name", "Value": "new_cluster_name"},
         {"Key": "inside_configuration_key", "Value": "stack_level_value"},
         {"Key": "new_key", "Value": "new_value"},
     ]
 
-    if config_parameter_change:
-        new_max = max_count + 1
-        template_body = boto3.client("cloudformation").get_template(StackName=stack.name)["TemplateBody"]
-        template_body = template_body.replace(f"MaxCount: {max_count}", f"MaxCount: {new_max}")
+    def tags_to_yaml(tags):
+        return "\n".join([f"  - Key: {tag['Key']}\n    Value: {tag['Value']}" for tag in tags])
 
-        # Update the stack
-        with pytest.raises(StackError) as stack_error:
-            stack.factory.update_stack(
-                stack.name,
-                stack.region,
-                stack.parameters,
-                stack_is_under_test=True,
-                tags=stack_tags,
-                wait_for_rollback=True,
-                template_body=template_body,
-            )
-        reason = failure_reason(stack_error.value.stack_events)
-        assert_that(reason).contains(
-            "If you need this change, please consider creating a new cluster instead of updating the existing one"
-        )
-        # Root stack tags here do not update because the stack gets rolled back after cluster update failure
-        assert_that(_stack_tag(stack, "cluster_name")).is_equal_to(cluster_name)
-        assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
-        assert_that(_stack_tag(stack, "new_key")).is_none()
-    else:
-        stack.factory.update_stack(
-            stack.name, stack.region, stack.parameters, stack_is_under_test=True, tags=stack_tags
-        )
-        # Root stack tags here do update because the cluster update is not triggered,
-        # so it does not fail, and the update is not rolled back
-        assert_that(_stack_tag(stack, "cluster_name")).is_equal_to("new_cluster_name")
-        assert_that(_stack_tag(stack, "inside_configuration_key")).is_equal_to("stack_level_value")
-        assert_that(_stack_tag(stack, "new_key")).is_equal_to("new_value")
+    def verify_tags(stack, cluster, stack_tags, cluster_tags):
+        for tag in stack_tags:
+            assert_that(_stack_tag(stack, tag["Key"])).is_equal_to(tag["Value"])
+        for tag in cluster_tags:
+            assert_that(_cluster_tag(cluster, tag["Key"])).is_equal_to(tag["Value"])
 
-    assert_that(stack.cfn_outputs["HeadNodeIp"]).is_not_none()
+    # Create cluster with old tags
+    cluster_config = pcluster_config_reader(tags=tags_to_yaml(old_cluster_tags))
+    stack = cluster_custom_resource_factory(cluster_config, tags=old_stack_tags)
+    cluster_name = _stack_parameter(stack, "ClusterName")
 
+    # Verify tags before update
     cluster = pc().describe_cluster(cluster_name=cluster_name)
-
-    # Cluster Tags are never supposed to change, because
-    # 1. If the config is changed update validation will fail as tags update is unsupported in ParallelCluster
-    # 2. If the config is unchanged no update on the cluster stack is triggered
-    # So the state of the cluster is never supposed to change when tags are updated
-    assert_that(_cluster_tag(cluster, "cluster_name")).is_equal_to(cluster_name)
-    assert_that(_cluster_tag(cluster, "inside_configuration_key")).is_equal_to("overridden")
+    verify_tags(stack, cluster, old_stack_tags, old_cluster_tags)
+    assert_that(_stack_tag(stack, "new_key")).is_none()
     assert_that(_cluster_tag(cluster, "new_key")).is_none()
-    assert_that(cluster["clusterStatus"]).is_equal_to("CREATE_COMPLETE")
+
+    # Update the stack
+    updated_config = pcluster_config_reader("pcluster.config.update.yaml", tags=tags_to_yaml(new_cluster_tags))
+    template = get_custom_resource_template(
+        cluster_config_path=updated_config,
+        cluster_custom_resource_template=cluster_custom_resource_template,
+    )
+    stack.factory.update_stack(
+        stack.name,
+        stack.region,
+        stack.parameters,
+        template_body=template.to_yaml(),
+        stack_is_under_test=True,
+        tags=new_stack_tags,
+    )
+
+    # Verify tags after update
+    cluster = pc().describe_cluster(cluster_name=cluster_name)
+    verify_tags(stack, cluster, new_stack_tags, new_cluster_tags)
+    assert_that(stack.cfn_outputs["HeadNodeIp"]).is_not_none()
+    assert_that(cluster["clusterStatus"]).is_equal_to("UPDATE_COMPLETE")
 
 
 @pytest.mark.usefixtures("instance", "os", "region")
