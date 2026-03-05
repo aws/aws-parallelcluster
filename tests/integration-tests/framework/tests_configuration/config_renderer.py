@@ -308,6 +308,7 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 "ap-southeast-2",
                 "ap-northeast-1",
                 "eu-west-2",
+                "eu-north-1",
             ]
             if len(specs) == 1:
                 # Single instance type reservation: check for existing reservation to be frugal.
