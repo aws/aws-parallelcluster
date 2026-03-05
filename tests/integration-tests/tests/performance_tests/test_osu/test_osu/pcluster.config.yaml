@@ -21,7 +21,7 @@ Scheduling:
       Networking:
         PlacementGroup:
           Enabled: {{ placement_group_enabled }}
-          {% if placement_group_enabled %}
+          {% if placement_group_enabled and capacity_reservation_framework_placement_group %}
           Name: {{ capacity_reservation_framework_placement_group }}
           {% endif %}
         SubnetIds:
