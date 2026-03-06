@@ -112,11 +112,13 @@ def test_efa(
         az_id = vpc_stack.az_override or vpc_stack.default_az_id
         head_node_instance = _try_reserve_head_node_instance(region, az_id, architecture, os)
     max_queue_size = 2
-    p6_b200_capacity_reservation_id = None
-    if instance == "p6-b200.48xlarge":
+    capacity_reservation_id = None
+    # p family instances need capacity blocks and so placement group is set to false
+    placement_group_enabled = not instance.startswith("p")
+    if instance in ("p6-b200.48xlarge", "p6-b300.48xlarge"):
         capacity_reservations_ids = get_capacity_reservation_id(request, instance, region, max_queue_size, os)
         if capacity_reservations_ids:
-            p6_b200_capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
+            capacity_reservation_id = capacity_reservations_ids[0].get("CapacityReservationId")
         else:
             message = f"Skipping the test as no Capacity Block for {instance} and os {os} was found in {region}"
             logging.warn(message)
@@ -126,7 +128,8 @@ def test_efa(
     cluster_config = pcluster_config_reader(
         head_node_instance=head_node_instance,
         max_queue_size=max_queue_size,
-        p6_b200_capacity_reservation_id=p6_b200_capacity_reservation_id,
+        capacity_reservation_id=capacity_reservation_id,
+        placement_group_enabled=placement_group_enabled,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
