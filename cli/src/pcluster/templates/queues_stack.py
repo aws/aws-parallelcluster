@@ -48,13 +48,13 @@ def _apply_launch_template_overrides(launch_template, compute_resource):
         launch_template: The CDK CfnLaunchTemplate construct
         compute_resource: The compute resource configuration
     """
-    launch_spec_overrides = getattr(compute_resource, "launch_specification_overrides", None)
-    if not launch_spec_overrides or not launch_spec_overrides.launch_template_id:
+    launch_template_overrides = getattr(compute_resource, "launch_template_overrides", None)
+    if not launch_template_overrides or not launch_template_overrides.launch_template_id:
         return
 
-    version = str(launch_spec_overrides.version)
+    version = str(launch_template_overrides.version)
     override_lt_data = AWSApi.instance().ec2.describe_launch_template_version(
-        launch_spec_overrides.launch_template_id, version
+        launch_template_overrides.launch_template_id, version
     )
 
     # Apply each property from the override launch template

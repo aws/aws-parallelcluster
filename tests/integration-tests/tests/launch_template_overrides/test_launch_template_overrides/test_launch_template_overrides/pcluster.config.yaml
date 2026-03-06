@@ -26,6 +26,6 @@ Scheduling:
           MaxCount: 2
           Efa:
             Enabled: false
-          LaunchSpecificationOverrides:
+          LaunchTemplateOverrides:
             LaunchTemplateId: {{ override_launch_template_id }}
             Version: {{ override_launch_template_version }}

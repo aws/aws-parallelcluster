@@ -20,7 +20,7 @@ from utils import generate_stack_name, get_compute_nodes_instance_ids
 
 def _create_override_launch_template(ec2_client, subnet_id, security_group_id, stack_name):
     """
-    Create a launch template with 2 network interfaces for testing LaunchSpecificationOverrides.
+    Create a launch template with 2 network interfaces for testing LaunchTemplateOverrides.
 
     Args:
         ec2_client: boto3 EC2 client
@@ -147,7 +147,7 @@ def test_launch_template_overrides(
     vpc_stack,
 ):
     """
-    Test that LaunchSpecificationOverrides properly applies a custom launch template to compute nodes.
+    Test that LaunchTemplateOverrides properly applies a custom launch template to compute nodes.
 
     This test:
     1. Creates a launch template with 2 network interfaces configured with a specific subnet and security group

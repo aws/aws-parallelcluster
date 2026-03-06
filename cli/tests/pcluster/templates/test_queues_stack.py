@@ -415,10 +415,10 @@ def test_apply_launch_template_overrides(mocker, override_lt_data, expected_over
     # Mock the launch template CDK construct
     mock_launch_template = MagicMock()
 
-    # Mock the compute resource with launch specification overrides
+    # Mock the compute resource with launch template overrides
     mock_compute_resource = MagicMock()
-    mock_compute_resource.launch_specification_overrides.launch_template_id = "lt-12345678901234567"
-    mock_compute_resource.launch_specification_overrides.version = 1
+    mock_compute_resource.launch_template_overrides.launch_template_id = "lt-12345678901234567"
+    mock_compute_resource.launch_template_overrides.version = 1
 
     # Mock the EC2 API call
     mock_aws_api = mocker.patch("pcluster.templates.queues_stack.AWSApi")

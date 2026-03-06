@@ -64,7 +64,7 @@ from pcluster.config.cluster_config import (
     Image,
     Imds,
     IntelSoftware,
-    LaunchSpecificationOverrides,
+    LaunchTemplateOverrides,
     LocalStorage,
     LoginNodes,
     LoginNodesIam,
@@ -830,8 +830,8 @@ class EfaSchema(BaseSchema):
         return Efa(**data)
 
 
-class LaunchSpecificationOverridesSchema(BaseSchema):
-    """Represent the schema of LaunchSpecificationOverrides for a Compute Resource."""
+class LaunchTemplateOverridesSchema(BaseSchema):
+    """Represent the schema of LaunchTemplateOverrides for a Compute Resource."""
 
     launch_template_id = fields.Str(
         required=True,
@@ -843,10 +843,16 @@ class LaunchSpecificationOverridesSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
 
+    @validates_schema
+    def validate_version_required(self, data, **kwargs):
+        """Validate that version is required when launch_template_id is specified."""
+        if data.get("launch_template_id") and not data.get("version"):
+            raise ValidationError("Version is required when LaunchTemplateId is specified.", field_name="Version")
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return LaunchSpecificationOverrides(**data)
+        return LaunchTemplateOverrides(**data)
 
 
 # ---------------------- Monitoring ---------------------- #
@@ -1605,8 +1611,8 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    launch_specification_overrides = fields.Nested(
-        LaunchSpecificationOverridesSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    launch_template_overrides = fields.Nested(
+        LaunchTemplateOverridesSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
     )
 
     @validates_schema

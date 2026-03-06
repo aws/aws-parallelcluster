@@ -188,7 +188,7 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
-          LaunchSpecificationOverrides:
+          LaunchTemplateOverrides:
             LaunchTemplateId: lt-01234567890abcdef
             Version: 1
       Iam:
