@@ -398,7 +398,12 @@ def render_join(elem: dict):
         # Override NetworkInterfaces only
         pytest.param(
             {"NetworkInterfaces": [{"DeviceIndex": 0, "InterfaceType": "efa", "Groups": ["sg-override"]}]},
-            [("LaunchTemplateData.NetworkInterfaces", [{"DeviceIndex": 0, "InterfaceType": "efa", "Groups": ["sg-override"]}])],
+            [
+                (
+                    "LaunchTemplateData.NetworkInterfaces",
+                    [{"DeviceIndex": 0, "InterfaceType": "efa", "Groups": ["sg-override"]}],
+                )
+            ],
             id="Override NetworkInterfaces",
         ),
     ],

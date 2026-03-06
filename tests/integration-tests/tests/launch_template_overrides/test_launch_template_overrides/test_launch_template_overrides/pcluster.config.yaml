@@ -4,6 +4,8 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+    AdditionalSecurityGroups:
+      - {{ override_security_group_id }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:

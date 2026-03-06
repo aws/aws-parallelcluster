@@ -10,7 +10,6 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
@@ -18,7 +17,6 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from utils import generate_stack_name, get_compute_nodes_instance_ids
 
-from tests.common.assertions import assert_head_node_is_running, assert_no_errors_in_logs
 
 def _create_override_launch_template(ec2_client, subnet_id, security_group_id, stack_name):
     """
@@ -120,9 +118,7 @@ def override_launch_template(request, region, vpc_stack):
         ],
     )
 
-    launch_template_id, version = _create_override_launch_template(
-        ec2_client, subnet_id, security_group_id, stack_name
-    )
+    launch_template_id, version = _create_override_launch_template(ec2_client, subnet_id, security_group_id, stack_name)
 
     yield {
         "launch_template_id": launch_template_id,
@@ -161,9 +157,11 @@ def test_launch_template_overrides(
     """
 
     # Create cluster config with the override launch template
+    # Also add the security group to the head node so it can accept traffic from compute nodes
     cluster_config = pcluster_config_reader(
         override_launch_template_id=override_launch_template["launch_template_id"],
         override_launch_template_version=override_launch_template["version"],
+        override_security_group_id=override_launch_template["security_group_id"],
     )
     cluster = clusters_factory(cluster_config)
 
@@ -233,10 +231,8 @@ def _test_launch_template_override_eni_configuration(cluster, region, override_l
         ).is_equal_to(2)
 
         # Verify we have 1 regular ENI and 1 efa-only ENI
-        assert_that(len(regular_enis)).described_as(
-            f"Instance {instance_id} should have 1 regular ENI"
-        ).is_equal_to(1)
+        assert_that(len(regular_enis)).described_as(f"Instance {instance_id} should have 1 regular ENI").is_equal_to(1)
 
-        assert_that(len(efa_only_enis)).described_as(
-            f"Instance {instance_id} should have 1 efa-only ENI"
-        ).is_equal_to(1)
+        assert_that(len(efa_only_enis)).described_as(f"Instance {instance_id} should have 1 efa-only ENI").is_equal_to(
+            1
+        )

@@ -12,7 +12,6 @@ from enum import Enum
 from typing import Callable, Dict
 
 from pcluster.aws.aws_api import AWSApi
-
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config import cluster_config
 from pcluster.constants import MIN_MEMORY_ABSOLUTE_DIFFERENCE, MIN_MEMORY_PRECENTAGE_DIFFERENCE
