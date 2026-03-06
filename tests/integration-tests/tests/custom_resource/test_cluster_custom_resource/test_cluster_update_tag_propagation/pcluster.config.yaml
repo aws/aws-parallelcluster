@@ -4,6 +4,14 @@ Tags:
 {{ tags }}
 Image:
   Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Count: 1
+      InstanceType:  {{ instance }}
+      Name: pool
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
