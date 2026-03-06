@@ -128,7 +128,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ p4d_24xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2 }}]
           instances: ["p4d.24xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
