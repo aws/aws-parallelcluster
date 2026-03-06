@@ -13,6 +13,7 @@ CHANGELOG
 - Add alarm on missing clustermgtd heartbeat.
 - Support updates of `Tags` during cluster-updates.
 - Add `LaunchSpecificationOverrides` to cluster config to allow network interfaces to be customized by overriding the launch template of a compute resource.
+  - This overrides the parallelcluster default using a shallow merge. 
 
 **BUG FIXES**
 - Add validation to block updates that change tag order. Blocking such change prevents update failures.

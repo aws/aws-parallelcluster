@@ -294,7 +294,7 @@ test-suites:
   launch_template_overrides:
     test_launch_template_overrides.py::test_launch_template_overrides:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_X86_0 }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_OS_X86_0 }}]
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]

@@ -685,7 +685,7 @@ class Ec2Client(Boto3Client):
         return instance_type, reservation_type
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_launch_template_version(self, launch_template_id: str, version: str = "$Default"):
+    def describe_launch_template_version(self, launch_template_id: str, version: str):
         """
         Describe a launch template version and return its data.
 

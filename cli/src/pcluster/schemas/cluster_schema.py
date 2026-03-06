@@ -839,6 +839,7 @@ class LaunchSpecificationOverridesSchema(BaseSchema):
     )
     version = fields.Int(
         validate=validate.Range(min=1),
+        required=True,
         metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
 
