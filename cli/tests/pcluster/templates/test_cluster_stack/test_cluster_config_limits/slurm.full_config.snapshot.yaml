@@ -168,6 +168,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-00
@@ -246,6 +247,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-10
@@ -324,6 +326,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-20
@@ -402,6 +405,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-30
@@ -480,6 +484,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-40
@@ -558,6 +563,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-50
@@ -636,6 +642,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-60
@@ -714,6 +721,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-70
@@ -792,6 +800,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-80
@@ -870,6 +879,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-90
@@ -948,6 +958,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-100
@@ -1026,6 +1037,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-110
@@ -1104,6 +1116,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-120
@@ -1182,6 +1195,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-130
@@ -1260,6 +1274,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-140
@@ -1338,6 +1353,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-150
@@ -1416,6 +1432,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-160
@@ -1494,6 +1511,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-170
@@ -1572,6 +1590,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-180
@@ -1650,6 +1669,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-190
@@ -1728,6 +1748,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-200
@@ -1806,6 +1827,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-210
@@ -1884,6 +1906,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-220
@@ -1962,6 +1985,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-230
@@ -2040,6 +2064,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-240
@@ -2118,6 +2143,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-00
@@ -2186,6 +2212,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-10
@@ -2254,6 +2281,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-20
@@ -2322,6 +2350,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-30
@@ -2390,6 +2419,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-40
@@ -2458,6 +2488,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-50
@@ -2526,6 +2557,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-60
@@ -2594,6 +2626,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-70
@@ -2662,6 +2695,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-80
@@ -2730,6 +2764,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-90
@@ -2798,6 +2833,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-100
@@ -2866,6 +2902,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-110
@@ -2934,6 +2971,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-120
@@ -3002,6 +3040,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-130
@@ -3070,6 +3109,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-140
@@ -3138,6 +3178,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-150
@@ -3206,6 +3247,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-160
@@ -3274,6 +3316,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-170
@@ -3342,6 +3385,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-180
@@ -3410,6 +3454,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-190
@@ -3478,6 +3523,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-200
@@ -3546,6 +3592,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-210
@@ -3614,6 +3661,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-220
@@ -3682,6 +3730,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-230
@@ -3750,6 +3799,7 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides: null
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-240

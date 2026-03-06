@@ -868,3 +868,88 @@ def test_instances_memory_scheduling_validator(
         compute_resource_name, instance_types_info, memory_scheduling_enabled
     )
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_resource_name, launch_template_id, launch_template_version, "
+    "mock_lt_data, mock_exception, expected_message",
+    [
+        # Launch template not found
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            None,
+            Exception("Launch template not found"),
+            "Launch template 'lt-12345678901234567' version '1' specified in Compute Resource "
+            "'TestComputeResource' could not be found or accessed",
+            id="Launch template not found",
+        ),
+        # Launch template with only allowed properties (NetworkInterfaces)
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            {"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]},
+            None,
+            "",
+            id="Only NetworkInterfaces - allowed",
+        ),
+        # Launch template with disallowed property
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            {"NetworkInterfaces": [{"DeviceIndex": 0}], "MetadataOptions": {"HttpTokens": "required"}},
+            None,
+            "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
+            "properties that are not allowed: MetadataOptions. Only NetworkInterfaces is allowed.",
+            id="MetadataOptions not allowed",
+        ),
+        # Launch template with multiple disallowed properties
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            {"UserData": "base64data", "ImageId": "ami-12345"},
+            None,
+            "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
+            "properties that are not allowed: ImageId, UserData. Only NetworkInterfaces is allowed.",
+            id="Multiple disallowed properties",
+        ),
+        # No launch template specified (should pass without validation)
+        pytest.param(
+            "TestComputeResource",
+            None,
+            None,
+            None,
+            None,
+            "",
+            id="No launch template specified",
+        ),
+    ],
+)
+def test_launch_template_validator(
+    mocker,
+    compute_resource_name,
+    launch_template_id,
+    launch_template_version,
+    mock_lt_data,
+    mock_exception,
+    expected_message,
+):
+    from pcluster.validators.instances_validators import LaunchTemplateValidator
+
+    if launch_template_id:
+        mock_ec2 = mocker.patch("pcluster.validators.instances_validators.AWSApi")
+        if mock_exception:
+            mock_ec2.instance().ec2.describe_launch_template_version.side_effect = mock_exception
+        else:
+            mock_ec2.instance().ec2.describe_launch_template_version.return_value = mock_lt_data
+
+    actual_failures = LaunchTemplateValidator().execute(
+        compute_resource_name=compute_resource_name,
+        launch_template_id=launch_template_id,
+        launch_template_version=launch_template_version,
+    )
+    assert_failure_messages(actual_failures, expected_message)

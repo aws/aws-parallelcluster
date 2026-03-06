@@ -188,6 +188,7 @@ from pcluster.validators.instances_validators import (
     InstancesEFAValidator,
     InstancesMemorySchedulingWarningValidator,
     InstancesNetworkingValidator,
+    LaunchTemplateValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
@@ -876,6 +877,15 @@ class Efa(Resource):
         super().__init__(**kwargs)
         self.enabled = enabled
         self.gdr_support = Resource.init_param(gdr_support, default=False)
+
+
+class LaunchTemplateOverrides(Resource):
+    """Represent the Launch Template Overrides configuration."""
+
+    def __init__(self, launch_template_id: str = None, version: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.launch_template_id = Resource.init_param(launch_template_id)
+        self.version = Resource.init_param(version)
 
 
 # ---------------------- Health Checks ---------------------- #
@@ -2230,6 +2240,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         tags: List[Tag] = None,
         static_node_priority: int = None,
         dynamic_node_priority: int = None,
+        launch_template_overrides: LaunchTemplateOverrides = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2250,6 +2261,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.tags = tags
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
+        self.launch_template_overrides = launch_template_overrides
 
     @abstractmethod
     def is_flexible(self) -> bool:
@@ -2357,6 +2369,13 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             ec2memory=min_memory,
             instance_type=smallest_type,
         )
+        if self.launch_template_overrides:
+            self._register_validator(
+                LaunchTemplateValidator,
+                compute_resource_name=self.name,
+                launch_template_id=self.launch_template_overrides.launch_template_id,
+                launch_template_version=self.launch_template_overrides.version,
+            )
 
     def is_flexible(self):
         """Return True because the ComputeResource can contain multiple instance types."""
@@ -2449,6 +2468,13 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
             instance_type=self.instance_type,
         )
+        if self.launch_template_overrides:
+            self._register_validator(
+                LaunchTemplateValidator,
+                compute_resource_name=self.name,
+                launch_template_id=self.launch_template_overrides.launch_template_id,
+                launch_template_version=self.launch_template_overrides.version,
+            )
 
     @property
     def architecture(self) -> str:

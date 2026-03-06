@@ -683,3 +683,27 @@ class Ec2Client(Boto3Client):
                 reservation_type = reservation.reservation_type()
 
         return instance_type, reservation_type
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_launch_template_version(self, launch_template_id: str, version: str):
+        """
+        Describe a launch template version and return its data.
+
+        Args:
+            launch_template_id: The launch template ID (e.g., 'lt-0abc123def456')
+            version: The version number or '$Default'/'$Latest'
+
+        Returns:
+            dict: The LaunchTemplateData from the specified version
+        """
+        response = self._client.describe_launch_template_versions(
+            LaunchTemplateId=launch_template_id,
+            Versions=[str(version)],
+        )
+        versions = response.get("LaunchTemplateVersions", [])
+        if versions:
+            return versions[0].get("LaunchTemplateData", {})
+        raise AWSClientError(
+            function_name="describe_launch_template_versions",
+            message=f"Launch template {launch_template_id} version {version} not found",
+        )
