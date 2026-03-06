@@ -597,8 +597,6 @@ Resources:
               - elasticloadbalancing:CreateListener
               - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DescribeTags
-              - elasticloadbalancing:RemoveTags
-              - elasticloadbalancing:ModifyTargetGroup
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
