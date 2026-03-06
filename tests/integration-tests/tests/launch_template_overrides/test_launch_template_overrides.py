@@ -20,7 +20,7 @@ from utils import generate_stack_name, get_compute_nodes_instance_ids
 
 def _create_override_launch_template(ec2_client, subnet_id, security_group_id, stack_name):
     """
-    Create a launch template with 18 EFA network interfaces for testing LaunchSpecificationOverrides.
+    Create a launch template with 2 network interfaces for testing LaunchSpecificationOverrides.
 
     Args:
         ec2_client: boto3 EC2 client
@@ -150,8 +150,8 @@ def test_launch_template_overrides(
     Test that LaunchSpecificationOverrides properly applies a custom launch template to compute nodes.
 
     This test:
-    1. Creates a launch template with 16 EFA network interfaces configured with a specific subnet and security group
-    2. Creates a cluster with c5n.18xlarge instances that references this launch template via LaunchSpecificationOverrides
+    1. Creates a launch template with 2 network interfaces configured with a specific subnet and security group
+    2. Creates a cluster with c5n.18xlarge instances that references this launch template
     3. Runs a job on the compute nodes
     4. Verifies that the compute nodes have the expected network interface configuration from the override
     """

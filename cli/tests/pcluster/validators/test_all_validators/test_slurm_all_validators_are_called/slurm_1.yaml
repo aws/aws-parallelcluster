@@ -70,6 +70,9 @@ Scheduling:
           CustomSlurmSettings:
             Param1: Value1
             Param2: Value2
+          LaunchSpecificationOverrides:
+            LaunchTemplateId: lt-01234567890abcdef
+            Version: 1
         - Name: compute_resource2
           InstanceType: c4.xlarge
       CustomActions:
@@ -148,6 +151,9 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+          LaunchSpecificationOverrides:
+            LaunchTemplateId: lt-1234567890abcdef0
+            Version: 1
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
