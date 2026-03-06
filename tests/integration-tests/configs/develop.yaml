@@ -486,6 +486,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
+    test_slurm.py::test_expedited_requeue:
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [{{ OS_X86_5 }}]
+          schedulers: ["slurm"]
     test_slurm.py::test_slurm_config_update:
       dimensions:
         - regions: [ "ap-east-1" ]
