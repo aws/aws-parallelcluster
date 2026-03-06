@@ -597,8 +597,6 @@ Resources:
               - elasticloadbalancing:CreateListener
               - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DescribeTags
-              - elasticloadbalancing:RemoveTags
-              - elasticloadbalancing:ModifyTargetGroup
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
@@ -615,7 +613,11 @@ Resources:
             Sid: LoginNodesFunctionalities
           - Action:
               - autoscaling:CreateAutoScalingGroup
+              - autoscaling:DeleteTags
+              - autoscaling:CreateOrUpdateTags
               - elasticloadbalancing:AddTags
+              - elasticloadbalancing:RemoveTags
+              - elasticloadbalancing:ModifyTargetGroup
               - elasticloadbalancing:CreateLoadBalancer
             Resource: '*'
             Effect: Allow

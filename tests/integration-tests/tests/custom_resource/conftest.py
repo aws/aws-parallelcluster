@@ -158,7 +158,8 @@ def cluster_custom_resource_factory_fixture(
             template=template.to_yaml(),
             parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-            tags=tags or [
+            tags=tags
+            or [
                 {"Key": "cluster_name", "Value": cluster_name},
                 {"Key": "inside_configuration_key", "Value": "stack_level_value"},
             ],  # For testing, add tags to the stack

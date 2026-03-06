@@ -813,6 +813,8 @@ Resources:
               - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
+              - autoscaling:DeleteTags
+              - autoscaling:CreateOrUpdateTags
               - elasticloadbalancing:AddTags
               - elasticloadbalancing:CreateListener
               - elasticloadbalancing:CreateLoadBalancer
