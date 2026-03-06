@@ -136,6 +136,10 @@ class _DummyEc2Client(Ec2Client):
         }
         self.security_groups_cache = {}
 
+    def describe_launch_template_version(self, launch_template_id, version):
+        """Return mock launch template data."""
+        return {"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]}
+
     def get_official_image_id(self, os, architecture, filters=None):
         return "dummy-ami-id"
 
@@ -429,6 +433,10 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo({"BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 35}}]}),
+    )
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_launch_template_version",
+        return_value={"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]},
     )
     if mock_instance_type_info:
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)
