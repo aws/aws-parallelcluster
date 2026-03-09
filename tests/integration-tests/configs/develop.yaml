@@ -145,10 +145,14 @@ test-suites:
           oss: [{{ OS_X86_3 }}]
     test_createami.py::test_build_image:
       dimensions:
-        - regions: ["usw2-az1"]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_rhel9 }}]
           instances: ["g4dn.2xlarge"]
-          schedulers: [ "slurm" ]
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          oss: {{ RHEL_OS_X86 }}
+          schedulers: ["slurm"]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_6_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+          instances: ["g4dn.2xlarge"]
+          oss: {{ NO_RHEL_OS_X86 }}
+          schedulers: ["slurm"]
         - regions: ["cnn1-az1"]
           instances: ["g4dn.2xlarge"]
           schedulers: ["slurm"]
