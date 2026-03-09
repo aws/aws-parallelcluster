@@ -316,7 +316,14 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 # Therefore, for multiple instance types, skip the logic and make reservation directly.
                 instance_type, os_platform, count, end_date, enable_placement_group = specs[0]
                 if _find_and_modify_existing_capacity_reservation(
-                    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
+                    az_for_capacity_reservation,
+                    candidate_regions,
+                    count,
+                    end_date,
+                    instance_type,
+                    var,
+                    os_platform,
+                    enable_placement_group,
                 ):
                     continue
             if not _create_capacity_reservations(az_for_capacity_reservation, candidate_regions, specs, var):
@@ -452,7 +459,14 @@ def _create_single_capacity_reservation(
 
 
 def _find_and_modify_existing_capacity_reservation(  # noqa: C901
-    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
+    az_for_capacity_reservation,
+    candidate_regions,
+    count,
+    end_date,
+    instance_type,
+    var,
+    os_platform,
+    enable_placement_group,
 ):
     """Find existing capacity reservation. Modify the reservation if more capacity or time is needed."""
     found_existing_capacity_reservation = False
@@ -472,6 +486,8 @@ def _find_and_modify_existing_capacity_reservation(  # noqa: C901
             )
             for page in page_iterator:
                 for capacity_reservation in page["CapacityReservations"]:
+                    if enable_placement_group and capacity_reservation.get("PlacementGroupArn") is None:
+                        continue
                     if capacity_reservation["TotalInstanceCount"] >= count and (
                         capacity_reservation["EndDateType"] == "unlimited" or capacity_reservation["EndDate"] > end_date
                     ):
