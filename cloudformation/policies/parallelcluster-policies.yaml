@@ -570,6 +570,7 @@ Resources:
               - logs:DescribeMetricFilters
               - logs:PutMetricFilter
               - logs:deleteMetricFilter
+              - logs:ListTagsForResource
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -612,7 +613,11 @@ Resources:
             Sid: LoginNodesFunctionalities
           - Action:
               - autoscaling:CreateAutoScalingGroup
+              - autoscaling:DeleteTags
+              - autoscaling:CreateOrUpdateTags
               - elasticloadbalancing:AddTags
+              - elasticloadbalancing:RemoveTags
+              - elasticloadbalancing:ModifyTargetGroup
               - elasticloadbalancing:CreateLoadBalancer
             Resource: '*'
             Effect: Allow

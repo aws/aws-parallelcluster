@@ -813,11 +813,14 @@ Resources:
               - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
+              - autoscaling:DeleteTags
+              - autoscaling:CreateOrUpdateTags
               - elasticloadbalancing:AddTags
               - elasticloadbalancing:CreateListener
               - elasticloadbalancing:CreateLoadBalancer
               - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DescribeTags
+              - elasticloadbalancing:RemoveTags
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
               - elasticloadbalancing:DeleteTargetGroup
@@ -826,6 +829,7 @@ Resources:
               - elasticloadbalancing:DescribeTargetGroups
               - elasticloadbalancing:DescribeTargetHealth
               - elasticloadbalancing:ModifyLoadBalancerAttributes
+              - elasticloadbalancing:ModifyTargetGroup
               - ec2:GetSecurityGroupsForVpc
             Resource: '*'
             Effect: Allow
