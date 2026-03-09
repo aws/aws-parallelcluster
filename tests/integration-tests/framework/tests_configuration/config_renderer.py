@@ -300,15 +300,15 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
                 specs.append((instance_type, os_platform, count, end_date, enable_placement_group))
             candidate_regions = [
-                "us-east-1",
-                "us-east-2",
-                "us-west-2",
                 "eu-west-1",
                 "ap-northeast-2",
                 "ap-southeast-2",
                 "ap-northeast-1",
                 "eu-west-2",
                 "eu-north-1",
+                "us-east-2",
+                "us-west-2",
+                "us-east-1",
             ]
             if len(specs) == 1:
                 # Single instance type reservation: check for existing reservation to be frugal.
