@@ -160,8 +160,6 @@ def _test_osu_benchmarks_pt2pt(
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
     # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
     num_instances = 2
-    # Accept a max number of 4 failures on a total of 23-24 packet size tests.
-    accepted_number_of_failures = 4
 
     failed_benchmarks = []
     benchmark_group = "pt2pt"
@@ -178,10 +176,10 @@ def _test_osu_benchmarks_pt2pt(
             network_interfaces_count,
             test_datadir,
         )
-        failures = _check_osu_benchmarks_results(
+        failure_mask = _check_osu_benchmarks_results(
             test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
         )
-        if failures > accepted_number_of_failures:
+        if _has_failure_cluster(failure_mask):
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
     return failed_benchmarks
@@ -200,9 +198,6 @@ def _test_osu_benchmarks_collective(
     slots_per_instance,
     partition=None,
 ):
-    # Accept a max number of 3 failures on a total of 19-21 packet size tests.
-    accepted_number_of_failures = 3
-
     failed_benchmarks = []
     benchmark_group = "collective"
     benchmark_names = ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_barrier"]
@@ -224,10 +219,10 @@ def _test_osu_benchmarks_collective(
             test_datadir,
             timeout=24 + num_instances * 0.1,
         )
-        failures = _check_osu_benchmarks_results(
+        failure_mask = _check_osu_benchmarks_results(
             test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
         )
-        if failures > accepted_number_of_failures:
+        if _has_failure_cluster(failure_mask):
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
     return failed_benchmarks
@@ -314,7 +309,7 @@ def _check_osu_benchmarks_results(
         content=output,
     )
     # Check avg latency for all packet sizes
-    failures = 0
+    failure_mask = []
     evaluation_output = ""
     if benchmark_name == "osu_barrier":
         # osu_barrier outputs only a single latency value without packet size
@@ -355,8 +350,9 @@ def _check_osu_benchmarks_results(
 
                 evaluation_output += f"\n{message}"
 
+                failure_mask.append(is_failure)
+
                 if is_failure:
-                    failures = failures + 1
                     logging.error(message)
                 else:
                     logging.info(message)
@@ -366,4 +362,25 @@ def _check_osu_benchmarks_results(
             content=evaluation_output,
         )
 
-    return failures
+    return failure_mask
+
+
+def _has_failure_cluster(failure_mask, window_size=4, min_failures=3):
+    """
+    Detect clustered failures using a rolling window.
+
+    Instead of counting total failures across all packet sizes, look for clusters
+    of failures in consecutive packet sizes. This catches real regressions in a
+    specific packet-size range while ignoring scattered noise.
+
+    A benchmark is considered failed if any window of `window_size` consecutive
+    packet sizes contains at least `min_failures` failures.
+    """
+    if not failure_mask:
+        return False
+    if len(failure_mask) < window_size:
+        return sum(failure_mask) >= min(min_failures, len(failure_mask))
+    for i in range(len(failure_mask) - window_size + 1):
+        if sum(failure_mask[i : i + window_size]) >= min_failures:  # noqa: E203
+            return True
+    return False
