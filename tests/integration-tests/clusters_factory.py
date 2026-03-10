@@ -229,6 +229,15 @@ class Cluster:
             retry_on_result=lambda result: result["clusterStatus"] != expected_status,
         )(self.describe_cluster)()
 
+    def wait_cluster_stack_status(self, expected_statuses: list, stop_max_delay_minute: int = 15):
+        """Wait for the cluster stack to reach the desired status."""
+        retry(
+            wait_fixed=seconds(10),
+            stop_max_delay=minutes(stop_max_delay_minute),
+            retry_on_result=lambda result: result["cloudFormationStackStatus"] not in expected_statuses,
+        )(self.describe_cluster)()
+        return self.describe_cluster()["cloudFormationStackStatus"]
+
     def describe_compute_fleet(self):
         """Run pcluster describe-compute-fleet and return the result."""
         cmd_args = ["pcluster", "describe-compute-fleet", "--cluster-name", self.name]

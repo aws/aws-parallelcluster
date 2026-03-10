@@ -1,0 +1,56 @@
+Image:
+  Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Name: login1
+      InstanceType: {{ instance }}
+      Count: {{ login_nodes_count }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:{{ partition}}:iam::aws:policy/AmazonS3ReadOnlyAccess
+      CustomActions:
+        OnNodeStart:
+          Script: {{ block_bootstrap_script_s3_uri }}
+          Args:
+            - "{{ blocking_file_ln_on_node_start }}"
+        OnNodeConfigured:
+          Script: {{ block_bootstrap_script_s3_uri }}
+          Args:
+            - "{{ blocking_file_ln_on_node_configured }}"
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ resource_bucket }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: q1
+      ComputeResources:
+        - Name: cr1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 2
+          MaxCount: 5
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+      CustomActions:
+        OnNodeStart:
+          Script: {{ block_bootstrap_script_s3_uri }}
+          Args:
+            - "{{ blocking_file_cn_on_node_start }}"
+        OnNodeConfigured:
+          Script: {{ block_bootstrap_script_s3_uri }}
+          Args:
+            - "{{ blocking_file_cn_on_node_configured }}"
