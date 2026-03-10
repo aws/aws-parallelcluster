@@ -440,7 +440,12 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
         "pcluster.aws.ec2.Ec2Client.describe_launch_template_version",
         return_value={
             "NetworkInterfaces": [
-                {"NetworkCardIndex": 0, "DeviceIndex": 0, "Groups": ["sg-abcd1234"], "SubnetId": "subnet-123456789"}
+                {
+                    "NetworkCardIndex": 0,
+                    "DeviceIndex": 0,
+                    "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                    "SubnetId": "subnet-123456789",
+                }
             ]
             + [
                 eni
@@ -450,13 +455,13 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
                         "NetworkCardIndex": card,
                         "DeviceIndex": 0,
                         "InterfaceType": "efa-only",
-                        "Groups": ["sg-abcd1234"],
+                        "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
                         "SubnetId": "subnet-123456789",
                     },
                     {
                         "NetworkCardIndex": card,
                         "DeviceIndex": 1,
-                        "Groups": ["sg-abcd1234"],
+                        "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
                         "SubnetId": "subnet-123456789",
                     },
                 )
