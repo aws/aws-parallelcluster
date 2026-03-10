@@ -488,8 +488,12 @@ def _find_and_modify_existing_capacity_reservation(  # noqa: C901
                 for capacity_reservation in page["CapacityReservations"]:
                     if enable_placement_group and capacity_reservation.get("PlacementGroupArn") is None:
                         continue
-                    if capacity_reservation["TotalInstanceCount"] >= count and (
-                        capacity_reservation["EndDateType"] == "unlimited" or capacity_reservation["EndDate"] > end_date
+                    if capacity_reservation["EndDateType"] == "unlimited":
+                        # Ignore unlimited capacity reservations, because they are not created by integ tests.
+                        continue
+                    if (
+                        capacity_reservation["TotalInstanceCount"] >= count
+                        and capacity_reservation["EndDate"] > end_date
                     ):
                         az_for_capacity_reservation[var] = capacity_reservation["AvailabilityZoneId"]
                         found_existing_capacity_reservation = True
