@@ -86,6 +86,7 @@ from utils import (
 )
 from xdist import get_xdist_worker_id
 
+from tests.common.capacity_helpers import resolve_instance_with_capacity
 from tests.common.osu_common import PRIVATE_OSES, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.storage.constants import StorageType
@@ -626,6 +627,8 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
+    # Pick up any capacity-fallback substitution applied by resolve_default_instance.
+    instance = request.node.funcargs.get("instance", instance)
 
     def _config_renderer(config_file="pcluster.config.yaml", benchmarks=None, output_file=None, **kwargs):
         config_file_path = test_datadir / config_file
@@ -1209,9 +1212,38 @@ def serial_execution_by_instance(request, instance, region, os_platform):
         yield
 
 
+@pytest.fixture(autouse=True)
+def resolve_default_instance(request):
+    """Resolve default instance types (c5.xlarge / m6g.xlarge) to an alternative with available capacity.
+
+    Uses create_capacity_reservation as a probe — same pattern as _try_reserve_head_node_instance
+    in test_efa.py.  Only activates for the known default instance types; all others pass through.
+    When a substitute is found, ``request.node.funcargs["instance"]`` is updated so that downstream
+    fixtures (architecture, pcluster_config_reader, etc.) and the test itself see the resolved value.
+
+    Skips silently for tests that do not use instance, region, os, or vpc_stack fixtures.
+    """
+    required = ("instance", "region", "os", "vpc_stack")
+    if not all(name in request.fixturenames for name in required):
+        return
+
+    instance = request.getfixturevalue("instance")
+    region = request.getfixturevalue("region")
+    os_name = request.getfixturevalue("os")
+    vpc_stack = request.getfixturevalue("vpc_stack")
+
+    az_id = vpc_stack.az_override or vpc_stack.default_az_id
+    resolved = resolve_instance_with_capacity(region, az_id, instance, os_name)
+    if resolved != instance:
+        logging.info("Substituted default instance %s -> %s (capacity fallback)", instance, resolved)
+        request.node.funcargs["instance"] = resolved
+
+
 @pytest.fixture()
 def architecture(request, instance, region):
     """Return a string describing the architecture supported by the given instance type."""
+    # Pick up any capacity-fallback substitution applied by resolve_default_instance.
+    instance = request.node.funcargs.get("instance", instance)
     supported_architecture = request.config.cache.get(f"{instance}/architecture", None)
     if supported_architecture is None:
         logging.info(f"Getting supported architecture for instance type {instance}")
