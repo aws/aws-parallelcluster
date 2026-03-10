@@ -126,6 +126,9 @@ Scheduling:
         {% for j in range(max_number_of_ondemand_crs) %}
         - Name: compute-resource-ondemand-{{ i }}{{ j }}
           InstanceType: c5.xlarge
+          LaunchTemplateOverrides:
+            LaunchTemplateId: lt-01234567890abcdef
+            Version: 1
           Tags:
             {% for i in range(number_of_tags) %}
             - Key: extremely_long_computetag_key{{ i }}
@@ -197,6 +200,9 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+          LaunchTemplateOverrides:
+            LaunchTemplateId: lt-01234567890abcdef
+            Version: 1
           Networking:
             PlacementGroup:
               Enabled: true

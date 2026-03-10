@@ -434,9 +434,39 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
         "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo({"BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 35}}]}),
     )
+
+    # Mock example b300 override to stress template size limits
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_launch_template_version",
-        return_value={"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]},
+        return_value={
+            "NetworkInterfaces": [
+                {
+                    "NetworkCardIndex": 0,
+                    "DeviceIndex": 0,
+                    "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                    "SubnetId": "subnet-123456789",
+                }
+            ]
+            + [
+                eni
+                for card in range(1, 17)
+                for eni in (
+                    {
+                        "NetworkCardIndex": card,
+                        "DeviceIndex": 0,
+                        "InterfaceType": "efa-only",
+                        "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                        "SubnetId": "subnet-123456789",
+                    },
+                    {
+                        "NetworkCardIndex": card,
+                        "DeviceIndex": 1,
+                        "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                        "SubnetId": "subnet-123456789",
+                    },
+                )
+            ]
+        },
     )
     if mock_instance_type_info:
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

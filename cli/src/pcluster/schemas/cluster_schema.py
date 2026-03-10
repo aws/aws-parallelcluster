@@ -843,12 +843,6 @@ class LaunchTemplateOverridesSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
     )
 
-    @validates_schema
-    def validate_version_required(self, data, **kwargs):
-        """Validate that version is required when launch_template_id is specified."""
-        if data.get("launch_template_id") and not data.get("version"):
-            raise ValidationError("Version is required when LaunchTemplateId is specified.", field_name="Version")
-
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""

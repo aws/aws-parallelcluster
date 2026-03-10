@@ -685,6 +685,7 @@ class Ec2Client(Boto3Client):
         return instance_type, reservation_type
 
     @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_launch_template_version(self, launch_template_id: str, version: str):
         """
         Describe a launch template version and return its data.
@@ -698,7 +699,7 @@ class Ec2Client(Boto3Client):
         """
         response = self._client.describe_launch_template_versions(
             LaunchTemplateId=launch_template_id,
-            Versions=[str(version)],
+            Versions=[version],
         )
         versions = response.get("LaunchTemplateVersions", [])
         if versions:

@@ -903,7 +903,8 @@ def test_instances_memory_scheduling_validator(
             {"NetworkInterfaces": [{"DeviceIndex": 0}], "MetadataOptions": {"HttpTokens": "required"}},
             None,
             "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
-            "properties that are not allowed: MetadataOptions. Only NetworkInterfaces is allowed.",
+            "properties that are not allowed: MetadataOptions. "
+            "Allowed properties are: NetworkInterfaces.",
             id="MetadataOptions not allowed",
         ),
         # Launch template with multiple disallowed properties
@@ -914,7 +915,8 @@ def test_instances_memory_scheduling_validator(
             {"UserData": "base64data", "ImageId": "ami-12345"},
             None,
             "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
-            "properties that are not allowed: ImageId, UserData. Only NetworkInterfaces is allowed.",
+            "properties that are not allowed: ImageId, UserData. "
+            "Allowed properties are: NetworkInterfaces.",
             id="Multiple disallowed properties",
         ),
         # No launch template specified (should pass without validation)
