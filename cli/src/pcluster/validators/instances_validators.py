@@ -372,6 +372,6 @@ class LaunchTemplateValidator(Validator):
             self._add_failure(
                 f"Launch template '{launch_template_id}' in Compute Resource '{compute_resource_name}' contains "
                 f"properties that are not allowed: {', '.join(sorted(disallowed_properties))}. "
-                f"Only NetworkInterfaces is allowed.",
+                f"Only {', '.join(sorted(self.ALLOWED_PROPERTIES))} allowed.",
                 FailureLevel.ERROR,
             )
