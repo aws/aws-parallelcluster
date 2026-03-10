@@ -13,31 +13,10 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import boto3
+from utils import get_similar_instance_types
 
 # Default instance types that are subject to capacity fallback.
 DEFAULT_INSTANCE_TYPES = {"c5.xlarge", "m6g.xlarge"}
-
-# Ordered fallback candidates per architecture. All are .xlarge (4 vCPUs) to keep
-# test assertions (vCPU counts, memory-based scheduling thresholds, etc.) consistent.
-INSTANCES_FALLBACK_X86 = [
-    "c5.xlarge",
-    "m5.xlarge",
-    "c5a.xlarge",
-    "m5a.xlarge",
-    "c6i.xlarge",
-    "m6i.xlarge",
-    "c6a.xlarge",
-    "m6a.xlarge",
-]
-
-INSTANCES_FALLBACK_ARM = [
-    "m6g.xlarge",
-    "c6g.xlarge",
-    "m7g.xlarge",
-    "c7g.xlarge",
-    "c6gn.xlarge",
-    "m6gd.xlarge",
-]
 
 
 def resolve_instance_with_capacity(region, az_id, instance_type, os, minutes=30, count=2):
@@ -56,8 +35,7 @@ def resolve_instance_with_capacity(region, az_id, instance_type, os, minutes=30,
     if instance_type not in DEFAULT_INSTANCE_TYPES:
         return instance_type
 
-    is_arm = instance_type.startswith("m6g") or instance_type.startswith("c6g") or instance_type.startswith("c7g")
-    candidates = INSTANCES_FALLBACK_ARM if is_arm else INSTANCES_FALLBACK_X86
+    candidates = [instance_type] + get_similar_instance_types(instance_type)
 
     ec2_client = boto3.client("ec2", region_name=region)
     instance_platform = "Red Hat Enterprise Linux" if "rhel" in os else "Linux/UNIX"
