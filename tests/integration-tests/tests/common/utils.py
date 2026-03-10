@@ -479,27 +479,33 @@ def wait_process_completion(remote_command_executor, pid):
         return result.stdout.strip()
 
 
-def get_deployed_config_version(cluster, compute_node_ip: str = None):
-    """Retrieves the cluster config version deployed on the cluster node from its dna.json
-    If 'compute_node_ip' is specified, the config version will be retrieved from the compute node;
-    otherwise, it will be retrieved from the head node.
+def get_deployed_config_version(cluster, compute_node_ip: str = None, login_node_ip: str = None, bastion: str = None):
+    """Retrieves the cluster config version deployed on a cluster node from its dna.json.
+
+    If 'compute_node_ip' is specified, the config version is retrieved from that compute node.
+    If 'login_node_ip' and 'bastion' are specified, it is retrieved from that login node via the bastion.
+    Otherwise, it is retrieved from the head node.
     """
-    dna_json = get_deployed_dna_json(cluster, compute_node_ip)
+    dna_json = get_deployed_dna_json(cluster, compute_node_ip, login_node_ip, bastion)
 
     return dna_json["cluster"]["cluster_config_version"]
 
 
-def get_deployed_dna_json(cluster, compute_node_ip: str = None):
-    """Retrieves the dna.json from the cluster node
-    If 'compute_node_ip' is specified, it will be retrieved from the compute node;
-    otherwise, it will be retrieved from the head node.
+def get_deployed_dna_json(cluster, compute_node_ip: str = None, login_node_ip: str = None, bastion: str = None):
+    """Retrieve the dna.json deployed on a cluster node via SSH.
+
+    By default the dna.json is retrieved from the head node.
+    If 'compute_node_ip' is specified, it will be retrieved from that compute node.
+    If 'login_node_ip' is specified, it will be retrieved from that login node.
+
+    Returns the parsed dna.json as a dict.
+
+    Raises:
+        RuntimeError: if the remote command fails (e.g. node is unreachable).
+        ValueError: if the response is not valid JSON or does not contain the expected 'cluster' key.
     """
     command = "sudo cat /etc/chef/dna.json"
-    rce = (
-        RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip)
-        if compute_node_ip
-        else RemoteCommandExecutor(cluster)
-    )
+    rce = RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip, login_node_ip=login_node_ip, bastion=bastion)
 
     try:
         result = rce.run_remote_command(command).stdout
@@ -522,6 +528,21 @@ def get_ddb_item(region_name: str, table_name: str, item_key: dict):
     """
     table = boto3.resource("dynamodb", region_name=region_name).Table(table_name)
     return table.get_item(Key=item_key).get("Item")
+
+
+def get_config_version_from_ddb(region, cluster_name, instance_id):
+    """Get the current cluster config version from DynamoDB."""
+    dynamodb = boto3.client("dynamodb", region_name=region)
+    table_name = f"parallelcluster-{cluster_name}"
+    ddb_key = f"CLUSTER_CONFIG.{instance_id}"
+
+    response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
+
+    if "Item" in response:
+        data = response["Item"].get("Data", {}).get("M", {})
+        return data.get("cluster_config_version", {}).get("S", "")
+
+    raise ValueError(f"No DynamoDB record found for instance {instance_id}")
 
 
 def get_compute_ip_to_num_files(remote_command_executor, slurm_commands):

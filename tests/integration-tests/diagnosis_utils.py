@@ -15,7 +15,9 @@ import re
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import find_all_matches_in_log
+from utils import find_all_matches_in_log, get_username_for_os
+
+from tests.common.utils import get_config_version_from_ddb, get_deployed_config_version
 
 RCA_LOG_FILES = [
     "/var/log/chef-client.log",
@@ -27,6 +29,11 @@ RCA_LOG_FILES = [
 PATTERN_GENERIC_FAILURE = r"error|fail|fatal|exception|critical"
 PATTERN_CHEF_ERROR = r"ERROR:"
 PATTERN_ICE_ERROR = r"InsufficientInstanceCapacity.*?sufficient\s+(\S+)\s+capacity"
+CMD_RETRIEVE_RECIPE_EXECUTION = (
+    "cat /var/log/chef-client.log"
+    " | grep 'INFO: Run List is'"
+    " | sed -E 's/^\\[([^]]+)\\].*recipe\\[([^]]+)\\].*/\\1 \\2/'"
+)
 
 
 def extract_ice_from_rca_details(rca_details):
@@ -71,3 +78,72 @@ def retrieve_rca_details(cluster, num_errors=10):
     ]
 
     return rca_details
+
+
+def get_cluster_nodes_snapshot(cluster):  # noqa: C901
+    """
+    Return an enriched snapshot of all cluster instances (head node, compute, login nodes).
+
+    Calls describe-cluster-instances for each node type and augments each instance dict with:
+    - deployed_config_version: cluster config version from dna.json on the node (via SSH).
+    - ddb_config_version: cluster config version stored in DynamoDB (compute and login nodes only).
+    - recipes: list of {"timestamp", "recipe"} dicts extracted from chef-client.log.
+    - errors: list of error messages for any of the above that failed to retrieve.
+
+    Compute nodes are reached via SSH through the head node (bastion).
+    Login nodes are reached via SSH through the head node (bastion).
+    The head node is reached directly.
+
+    :param cluster: Cluster object (from clusters_factory) with SSH access and API methods.
+    :return: dict with key "instances" containing a list of enriched instance dicts.
+    """
+    instances = []
+    for node_type in ["HeadNode", "Compute", "LoginNode"]:
+        for node in cluster.describe_cluster_instances(node_type=node_type):
+            node["deployed_config_version"] = None
+            node["ddb_config_version"] = None
+            node["recipes"] = None
+            node["errors"] = []
+
+            n_id = node["instanceId"]
+            n_ip = node["privateIpAddress"]
+
+            # Build RemoteCommandExecutor args based on node type
+            if node_type == "HeadNode":
+                rce_args = {}
+            elif node_type == "Compute":
+                rce_args = dict(compute_node_ip=n_ip)
+            else:
+                username = get_username_for_os(cluster.os)
+                rce_args = dict(login_node_ip=n_ip, bastion=f"{username}@{cluster.head_node_ip}")
+
+            # Config version from dna.json on the node
+            try:
+                node["deployed_config_version"] = get_deployed_config_version(cluster, **rce_args)
+            except Exception as e:
+                node["errors"].append(f"Failed to get deployed config version: {e}")
+
+            # Config version from DynamoDB (not applicable for head node)
+            if node_type != "HeadNode":
+                try:
+                    node["ddb_config_version"] = get_config_version_from_ddb(cluster.region, cluster.name, n_id)
+                except Exception as e:
+                    node["errors"].append(f"Failed to get DynamoDB config version: {e}")
+
+            # Executed recipes
+            try:
+                rce = RemoteCommandExecutor(cluster, **rce_args)
+                result = rce.run_remote_command(CMD_RETRIEVE_RECIPE_EXECUTION)
+                node["recipes"] = []
+                for line in result.stdout.strip().splitlines():
+                    parts = line.split(" ", 1)
+                    if len(parts) == 2:
+                        node["recipes"].append({"timestamp": parts[0], "recipe": parts[1]})
+                    else:
+                        node["recipes"].append({"timestamp": None, "recipe": line})
+            except Exception as e:
+                node["errors"].append(f"Failed to get recipes: {e}")
+
+            instances.append(node)
+
+    return {"instances": instances}

@@ -1130,22 +1130,34 @@ def get_file_mtime_age_seconds(remote_command_executor, file_path):
     return current_time - mtime
 
 
-def match_regex_in_log(rce, log_file: str, pattern: str, nlines: int = 50) -> tuple[bool, str]:
+def match_regex_in_log(
+    rce,
+    log_file: str,
+    pattern: str,
+    nlines: int = 50,
+    after_utc: str = None,
+) -> tuple[bool, str]:
     """
-    Search for a regex pattern in a remote log file.
+    Search for a regex pattern in a remote log file, optionally filtering to lines after a UTC timestamp.
 
     Args:
         rce: Remote command executor instance to run commands on the target host.
         log_file: Absolute path to the log file on the remote host.
         pattern: Regular expression pattern to search for in the log content.
         nlines: Number of lines from the end of the log to return if pattern is not found. Defaults to 50.
+        after_utc: Optional UTC timestamp string in ISO format (e.g. "2026-03-10T15:00:00.000Z"). Only lines at or after
+           this timestamp are considered. If None, searches the entire log.
 
     Returns:
         A tuple containing:
             - bool: True if the pattern was found, False otherwise.
             - str: The matched string if found, or the last `nlines` lines of the log if not found.
     """
-    result = rce.run_remote_command(f"cat {log_file}")
+    if after_utc:
+        cmd = f"awk '$0 >= \"{after_utc}\"' {log_file} 2>/dev/null || echo ''"
+        result = rce.run_remote_command(cmd, raise_on_error=False)
+    else:
+        result = rce.run_remote_command(f"cat {log_file}")
     log_content = result.stdout
 
     match = re.search(pattern, log_content)
