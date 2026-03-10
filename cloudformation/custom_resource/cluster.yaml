@@ -202,7 +202,7 @@ Resources:
           def get_stack_tags(stack_name, overrides):
               cfn = boto3.client('cloudformation')
               stack_tags = cfn.describe_stacks(StackName=stack_name)["Stacks"][0].get("Tags", [])
-              return list(filter(lambda t: not (t["Key"].startswith("aws:") or t["Key"] in overrides), stack_tags))
+              return sorted(filter(lambda t: not (t["Key"].startswith("aws:") or t["Key"] in overrides), stack_tags), key=lambda t: t["Key"])
 
           def create_or_update(event):
               properties = event["ResourceProperties"]

@@ -216,20 +216,20 @@ def test_cluster_update_tag_propagation(
     """Verify tags are properly updated at both cluster resource stack and cluster level."""
     old_cluster_tags = [
         {"Key": "old_key", "Value": "old_value"},
-        {"Key": "inside_configuration_key", "Value": "overridden"},
+        {"Key": "inside_configuration_key", "Value": "old_cluster_level_value"},
     ]
     old_stack_tags = [
-        {"Key": "inside_configuration_key", "Value": "overridden"},
+        {"Key": "inside_configuration_key", "Value": "old_stack_level_value"},
     ]
     new_cluster_tags = [
         {"Key": "cluster_name", "Value": "new_cluster_name"},
-        {"Key": "inside_configuration_key", "Value": "stack_level_value"},
-        {"Key": "new_key", "Value": "new_value"},
+        {"Key": "inside_configuration_key", "Value": "new_cluster_level_value"},
+        {"Key": "new_key", "Value": "new_cluster_level_value"},
     ]
     new_stack_tags = [
         {"Key": "cluster_name", "Value": "new_cluster_name"},
-        {"Key": "inside_configuration_key", "Value": "stack_level_value"},
-        {"Key": "new_key", "Value": "new_value"},
+        {"Key": "inside_configuration_key", "Value": "new_stack_level_value"},
+        {"Key": "new_key", "Value": "new_stack_level_value"},
     ]
 
     def tags_to_yaml(tags):
