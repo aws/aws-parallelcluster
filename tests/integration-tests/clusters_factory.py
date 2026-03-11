@@ -100,7 +100,8 @@ class Cluster:
         command = ["pcluster", "update-cluster", "--cluster-configuration", config_file, "--cluster-name", self.name]
         # This changes the default behavior of the update-cluster command and makes it wait for the cluster update to
         # finish before returning.
-        if kwargs.pop("wait", True):
+        wait = kwargs.pop("wait", True)
+        if wait:
             command.append("--wait")
         for k, val in kwargs.items():
             if isinstance(val, (list, tuple)):
@@ -115,13 +116,15 @@ class Cluster:
         )
         logging.info("update-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
-        if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
-            error = f"Cluster update failed for {self.name}"
-            if log_error:
-                logging.error(error)
-            if raise_on_error:
-                raise Exception(error)
-        logging.info("Cluster %s updated successfully", self.name)
+        if wait:
+            if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
+                error = f"Cluster update failed for {self.name}"
+                if log_error:
+                    logging.error(error)
+                if raise_on_error:
+                    raise Exception(error)
+            else:
+                logging.info("Cluster %s updated successfully", self.name)
         # Only update config file attribute if update is successful
         self.config_file = config_file
         with open(self.config_file, encoding="utf-8") as conf_file:
