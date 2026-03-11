@@ -18,7 +18,6 @@ from collections import defaultdict
 from typing import List
 
 import boto3
-import matplotlib.pyplot as plt
 import pandas as pd
 import untangle
 from framework.metrics_publisher import Metric, MetricsPublisher
@@ -606,6 +605,8 @@ def _get_statistics_by_category(  # noqa C901
 
 
 def plot_statistics(result, name_prefix):
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(40, 12))
 
     # Collect and sort all unique time points
