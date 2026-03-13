@@ -425,15 +425,7 @@ def _create_permission_boundary(permission_boundary_name):
                 },
                 {"Action": ["cloudformation:*"], "Effect": "Allow", "Resource": "*"},
                 {
-                    "Action": [
-                        "s3:DeleteObject",
-                        "s3:DeleteObjectVersion",
-                        "s3:ListBucket",
-                        "s3:ListBucketVersions",
-                        "s3:GetObject",
-                        "s3:PutObject",
-                        "s3:GetObjectVersion",
-                    ],
+                    "Action": ["s3:*"],
                     "Effect": "Allow",
                     "Resource": [
                         {"Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete"},
