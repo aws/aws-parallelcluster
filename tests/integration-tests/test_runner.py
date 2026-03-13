@@ -112,6 +112,7 @@ TEST_DEFAULTS = {
     "proxy_stack": None,
     "build_image_roles_stack": None,
     "capacity_reservation_id": None,
+    "skip_ddb_metadata": False,
 }
 
 
@@ -514,6 +515,12 @@ def _init_argparser():
         help="Use an existing capacity reservation.",
         default=TEST_DEFAULTS.get("capacity_reservation_id"),
     )
+    debug_group.add_argument(
+        "--skip-ddb-metadata",
+        action="store_true",
+        help="Skip the setup and push of DDB metadata.",
+        default=TEST_DEFAULTS.get("skip_ddb_metadata"),
+    )
 
     return parser
 
@@ -757,6 +764,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.capacity_reservation_id:
         pytest_args.extend(["--capacity-reservation-id", args.capacity_reservation_id])
+
+    if args.skip_ddb_metadata:
+        pytest_args.append("--skip-ddb-metadata")
 
 
 def _set_validate_instance_type_args(args, pytest_args):

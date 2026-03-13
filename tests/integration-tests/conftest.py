@@ -241,6 +241,12 @@ def pytest_addoption(parser):
         "--capacity-reservation-id",
         help="Use an existing capacity reservation.",
     )
+    parser.addoption(
+        "--skip-ddb-metadata",
+        action="store_true",
+        default=False,
+        help="Skip the setup and push of DDB metadata.",
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -330,6 +336,9 @@ def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config
 
 
 def pytest_collection_finish(session):
+    if session.config.getoption("skip_ddb_metadata", default=False):
+        logging.info("Skipping DDB metadata due to --skip-ddb-metadata flag")
+        return
     _log_collected_tests(session)
     # Create the metadata table after the regions are collected
     try:
