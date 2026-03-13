@@ -156,8 +156,8 @@ def test_update_rollback_failure(
     # Verify clustermgtd is running
     _verify_clustermgtd_running(remote_command_executor)
 
-    # Verify dna.json files are deleted
-    _verify_dna_json_cleaned_up(remote_command_executor)
+    # Verify dna.json files are kept (rollback failure should preserve them for bootstrapping nodes)
+    _verify_dna_json_kept_after_rollback_failure(remote_command_executor)
 
     # Verify metadata_db.json is updated (cfn-hup processed the change)
     _verify_metadata_db_updated(remote_command_executor)
@@ -426,16 +426,16 @@ def _verify_clustermgtd_running(remote_command_executor):
     logger.info("clustermgtd is running ✓")
 
 
-def _verify_dna_json_cleaned_up(remote_command_executor):
-    """Verify that dna.json files are cleaned up after update failure."""
-    logger.info("Verifying dna.json files are cleaned up...")
+def _verify_dna_json_kept_after_rollback_failure(remote_command_executor):
+    """Verify that dna.json files are kept after rollback failure so bootstrapping nodes can use them."""
+    logger.info("Verifying dna.json files are kept after rollback failure...")
 
     result = remote_command_executor.run_remote_command(
         "find /opt/parallelcluster/shared/dna/ -name '*.json' 2>/dev/null | wc -l"
     )
     json_count = int(result.stdout.strip())
-    assert_that(json_count).is_equal_to(0)
-    logger.info("dna.json files are cleaned up ✓")
+    assert_that(json_count).is_greater_than(0)
+    logger.info("dna.json files are kept after rollback failure ✓")
 
 
 def _wait_for_node_config_version_change(region, cluster_name, instance_id, old_version, timeout_minutes=15):
