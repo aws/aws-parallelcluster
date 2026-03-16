@@ -580,8 +580,19 @@ def get_username_for_os(os):
 
 
 def add_keys_to_known_hosts(hostname, host_keys_file):
-    """Add ssh key for a host to a known_hosts file."""
-    os.system("ssh-keyscan -t ed25519 {0} >> {1}".format(hostname, host_keys_file))
+    """Add ssh key for a host to a known_hosts file, retrying if the host is not yet reachable."""
+
+    @retry(wait_fixed=seconds(5), stop_max_attempt_number=3)
+    def _scan_and_verify():
+        os.system("ssh-keyscan -t ed25519 {0} >> {1} 2>/dev/null".format(hostname, host_keys_file))
+        result = subprocess.run(["ssh-keygen", "-F", hostname, "-f", host_keys_file], capture_output=True, text=True)
+        if result.returncode != 0 or not result.stdout.strip():
+            raise Exception(f"ssh-keyscan for {hostname} returned no keys")
+
+    try:
+        _scan_and_verify()
+    except Exception:
+        logging.warning(f"Failed to add host keys for {hostname} to {host_keys_file} after retries")
 
 
 def remove_keys_from_known_hosts(hostname, host_keys_file, env):
