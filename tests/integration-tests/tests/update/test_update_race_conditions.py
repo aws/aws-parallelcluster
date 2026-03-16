@@ -21,21 +21,34 @@ from diagnosis_utils import get_cluster_nodes_snapshot
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import match_regex_in_log
+from utils import get_username_for_os, match_regex_in_log
 
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_deployed_config_version
 
 logger = logging.getLogger(__name__)
 
-UPDATE_DETECTION_SERVICE = "pcluster-check-update.timer"
-UPDATE_ACTION_SCRIPT_CN = "/opt/parallelcluster/scripts/cfn-hup-update-action.sh"
-UPDATE_ACTION_SCRIPT_LN = "/opt/parallelcluster/pyenv/versions/3.14.2/envs/cfn_bootstrap_virtualenv/bin/cfn-init"
 BLOCKING_S3_KEY_PREFIX = "block_bootstrap"
 NODE_TYPE_COMPUTE = "ComputeNode"
 NODE_TYPE_LOGIN = "LoginNode"
 PHASE_ON_NODE_START = "OnNodeStart"
 PHASE_ON_NODE_CONFIGURED = "OnNodeConfigured"
+SERVICE_MANAGEMENT_CMD_BY_NODE_TYPE = {
+    NODE_TYPE_COMPUTE: "systemctl",
+    NODE_TYPE_LOGIN: "/opt/parallelcluster/pyenv/versions/*/envs/cookbook_virtualenv/bin/supervisorctl",
+}
+UPDATE_DETECTION_SERVICE_BY_NODE_TYPE = {
+    NODE_TYPE_COMPUTE: "pcluster-check-update.timer",
+    NODE_TYPE_LOGIN: "cfn-hup",
+}
+UPDATE_ACTION_SCRIPT_BY_NODE_TYPE = {
+    NODE_TYPE_COMPUTE: "/opt/parallelcluster/scripts/cfn-hup-update-action.sh",
+    NODE_TYPE_LOGIN: "/opt/parallelcluster/pyenv/versions/*/envs/cfn_bootstrap_virtualenv/bin/cfn-init",
+}
+LOG_FILE_BY_NODE_TYPE = {
+    NODE_TYPE_COMPUTE: "/var/log/parallelcluster/pcluster-check-update.log",
+    NODE_TYPE_LOGIN: "/var/log/cfn-hup.log",
+}
 
 
 def get_node_ip(rce, node_name):
@@ -45,6 +58,25 @@ def get_node_ip(rce, node_name):
     ip = result.stdout.strip()
     logger.info(f"Resolved node {node_name} to IP {ip}")
     return ip
+
+
+def get_login_node_ip(cluster, instance_id):
+    for node in cluster.describe_login_nodes():
+        if node["instanceId"] == instance_id:
+            return node["privateIpAddress"]
+    raise Exception(f"Login node {instance_id} not found")
+
+
+def get_node_rce(rce, cluster, node_type, node_id):
+    if node_type == NODE_TYPE_COMPUTE:
+        cn_ip = get_node_ip(rce, node_id)
+        return RemoteCommandExecutor(cluster, compute_node_ip=cn_ip)
+    elif node_type == NODE_TYPE_LOGIN:
+        login_node_ip = get_login_node_ip(cluster, node_id)
+        username = get_username_for_os(cluster.os)
+        return RemoteCommandExecutor(cluster, login_node_ip=login_node_ip, bastion=f"{username}@{cluster.head_node_ip}")
+    else:
+        raise ValueError(f"Unsupported node type: {node_type}")
 
 
 def get_blocking_s3_key(node_type: str, phase: str):
@@ -115,19 +147,25 @@ def wait_for_login_nodes_lt_update_complete(cluster, region, after_utc=None):
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
-def wait_for_update_failure_on_node(rce, cluster, node_name: str, after_utc=None):
-    cn_ip = get_node_ip(rce, node_name)
-    cn_rce = RemoteCommandExecutor(cluster, compute_node_ip=cn_ip)
-    update_action_script_path = "/opt/parallelcluster/scripts/cfn-hup-update-action.sh"
+def wait_for_node_update_failure(rce, cluster, node_type, node_id, after_utc=None):
+    node_rce = get_node_rce(rce, cluster, node_type, node_id)
+    log_file = LOG_FILE_BY_NODE_TYPE[node_type]
+    # cfn-hup logs use "%Y-%m-%d %H:%M:%S" format, so convert ISO timestamps for awk comparison
+    if after_utc and node_type == NODE_TYPE_LOGIN:
+        after_utc = after_utc.replace("T", " ").split(".")[0]
     match, lines = match_regex_in_log(
-        cn_rce,
-        "/var/log/parallelcluster/pcluster-check-update.log",
-        rf"Permission denied.*{update_action_script_path}|{update_action_script_path}.*Permission denied",
+        node_rce,
+        log_file,
+        r"(?i)Permission denied",
         after_utc=after_utc,
     )
     if not match:
-        raise Exception(f"No evidence of update script failure in pcluster-check-update.log yet. Last lines: {lines}")
-    logger.info(f"Found evidence of update failure in node {node_name} due to missing execute permissions: {lines}")
+        raise Exception(
+            f"No evidence of update failure in {log_file} on {node_type} {node_id} yet. Last lines: {lines}"
+        )
+    logger.info(
+        f"Found evidence of update failure on {node_type} {node_id} due to missing execute permissions: {lines}"
+    )
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(30))
@@ -182,34 +220,39 @@ def wait_for_new_login_node(cluster, original_instance_ids):
     return next(iter(new_ids))
 
 
-def block_update_detection_on_compute_node(rce, cluster, node_name: str):
-    cn_ip = get_node_ip(rce, node_name)
-    cn_rce = RemoteCommandExecutor(cluster, compute_node_ip=cn_ip)
-    cn_rce.run_remote_command(f"sudo systemctl stop {UPDATE_DETECTION_SERVICE}")
-    logger.info(f"Stopped service {UPDATE_DETECTION_SERVICE} on node {node_name}")
+def block_update_detection(rce, cluster, node_type, node_id):
+    node_rce = get_node_rce(rce, cluster, node_type, node_id)
+    service_management_cmd = SERVICE_MANAGEMENT_CMD_BY_NODE_TYPE[node_type]
+    service = UPDATE_DETECTION_SERVICE_BY_NODE_TYPE[node_type]
+    cmd = f"sudo {service_management_cmd} stop {service}"
+    node_rce.run_remote_command(cmd)
+    logger.info(f"Stopped {service} on {node_type} {node_id}")
 
 
-def unblock_update_detection_on_compute_node(rce, cluster, node_name: str):
-    cn_ip = get_node_ip(rce, node_name)
-    cn_rce = RemoteCommandExecutor(cluster, compute_node_ip=cn_ip)
-    cn_rce.run_remote_command(f"sudo systemctl start {UPDATE_DETECTION_SERVICE}")
-    logger.info(f"Started service {UPDATE_DETECTION_SERVICE} on node {node_name}")
+def unblock_update_detection(rce, cluster, node_type, node_id):
+    node_rce = get_node_rce(rce, cluster, node_type, node_id)
+    service_management_cmd = SERVICE_MANAGEMENT_CMD_BY_NODE_TYPE[node_type]
+    service = UPDATE_DETECTION_SERVICE_BY_NODE_TYPE[node_type]
+    cmd = f"sudo {service_management_cmd} start {service}"
+    node_rce.run_remote_command(cmd)
+    logger.info(f"Started {service} on {node_type} {node_id}")
 
 
-def inject_transient_update_failure_on_compute_node(rce, cluster, node_name: str):
-    cn_ip = get_node_ip(rce, node_name)
-    cn_rce = RemoteCommandExecutor(cluster, compute_node_ip=cn_ip)
-    cn_rce.run_remote_command(f"sudo chmod -x {UPDATE_ACTION_SCRIPT_CN}")
+def inject_transient_update_failure(rce, cluster, node_type, node_id):
+    node_rce = get_node_rce(rce, cluster, node_type, node_id)
+    script_path = UPDATE_ACTION_SCRIPT_BY_NODE_TYPE[node_type]
+    node_rce.run_remote_command(f"sudo chmod -x {script_path}")
     logger.info(
-        f"Removed execute permissions from {UPDATE_ACTION_SCRIPT_CN} on {node_name} to inject transient update failure"
+        f"Removed execute permissions from {script_path} on {node_type} {node_id} "
+        f"to inject transient update failure"
     )
 
 
-def remove_transient_update_failure_on_compute_node(rce, cluster, node_name: str):
-    cn_ip = get_node_ip(rce, node_name)
-    cn_rce = RemoteCommandExecutor(cluster, compute_node_ip=cn_ip)
-    cn_rce.run_remote_command(f"sudo chmod +x {UPDATE_ACTION_SCRIPT_CN}")
-    logger.info(f"Restored execute permissions on {UPDATE_ACTION_SCRIPT_CN} on {node_name}")
+def remove_transient_update_failure(rce, cluster, node_type, node_id):
+    node_rce = get_node_rce(rce, cluster, node_type, node_id)
+    script_path = UPDATE_ACTION_SCRIPT_BY_NODE_TYPE[node_type]
+    node_rce.run_remote_command(f"sudo chmod +x {script_path}")
+    logger.info(f"Restored execute permissions on {script_path} on {node_type} {node_id}")
 
 
 def _node_label(node):
@@ -377,6 +420,9 @@ def test_update_race_conditions(
         CN_2 (q1-dy-cr1-2): dynamic node, bootstrap blocked in OnNodeConfigured before update 2.
         CN_3 (q1-st-cr1-1): static node, transient failure injected in the execution of its update before update 2.
         CN_4 (q1-st-cr1-2): static node, transient failure injected in the detection of its update before update 2.
+        LN_1: login node terminated and replaced by a slow-bootstrapping one before update 2.
+        LN_2: an existing login node with a transient update execution failure (chmod -x cfn-init).
+        LN_3: an existing login node with update detection blocked (cfn-hup stopped).
 
     Update 1: validates race condition #1
         [RaceCondition 1]  CN_1 is launched with its bootstrap blocked before the update is submitted. The update
@@ -388,10 +434,10 @@ def test_update_race_conditions(
         Before submitting the update, the following conditions are set up:
         - [RaceCondition 2] CN_2 has its bootstrap blocked in OnNodeConfigured, so it will complete bootstrapping
           during the readiness check window.
-        - [RaceCondition 3] CN_3 has execute permissions removed from the update action script, causing a transient
-          "Permission denied" failure. Permissions are restored after the failure is confirmed,
+        - [RaceCondition 3] CN_3 and LN_2 has execute permissions removed from the update action script,
+          causing a transient "Permission denied" failure. Permissions are restored after the failure is confirmed,
           so the node can succeed on retry.
-        - [RaceCondition 4] CN_4 has its update detection service (pcluster-check-update) stopped, so it misses
+        - [RaceCondition 4] CN_4 and LN_3 has its update detection service (pcluster-check-update) stopped, so it misses
           the update notification until the service is restarted near the end of the readiness check.
         - [RaceCondition 5] A login node is terminated and replaced by a slow-bootstrapping one (blocked in
           OnNodeStart). After the login node Launch Template is updated in CloudFormation, the
@@ -405,6 +451,7 @@ def test_update_race_conditions(
         - The cluster stack reaches UPDATE_COMPLETE.
         - Every compute and login node has the same config version as the head node.
         - Every compute and login node executed the update recipe after the finalize recipe.
+        - Every node launched before the update executed the update recipe after the update was submitted.
         - The node that completed the bootstrap after the first successful update was able to deploy the update.
     """
     # Upload the blocking bootstrap script to S3
@@ -443,7 +490,7 @@ def test_update_race_conditions(
     logger.info("Submitting cluster update 1")
     config_file_update_1 = pcluster_config_reader(
         output_file="pcluster.config.update-1.yaml",
-        login_nodes_count=2,
+        login_nodes_count=4,
         **common_cluster_config_args,
     )
     cluster.update(config_file_update_1, wait=True, raise_on_error=True)
@@ -465,26 +512,38 @@ def test_update_race_conditions(
     start_slow_dynamic_node(region, bucket_name, rce, CN_2, PHASE_ON_NODE_CONFIGURED)
 
     logger.info(f"Injecting transient failure into node {CN_3} that will cause update failure")
-    inject_transient_update_failure_on_compute_node(rce, cluster, CN_3)
+    inject_transient_update_failure(rce, cluster, NODE_TYPE_COMPUTE, CN_3)
 
     logger.info(f"Injecting transient failure into node {CN_4} that will delay the detection of the update")
-    block_update_detection_on_compute_node(rce, cluster, CN_4)
+    block_update_detection(rce, cluster, NODE_TYPE_COMPUTE, CN_4)
 
     logger.info("Launching a slow login node before cluster update 2")
-    login_node_id = launch_slow_login_node(region, bucket_name, cluster, PHASE_ON_NODE_START)
+    login_node_1_id = launch_slow_login_node(region, bucket_name, cluster, PHASE_ON_NODE_START)
     logger.info(
-        f"New slow login node launched: {login_node_id}. "
+        f"New slow login node launched: {login_node_1_id}. "
         "This login node is exposed to race condition that we kept out of scope for PC 3.15.0."
         "When such race condition occurs, the node is not able to detect the update, "
         "so it ends up with the wrong cluster config version and misses the update recipe."
     )
 
-    # TODO Add transient update failure on login node to verify the update is retried
+    logger.info("Injecting transient failures on existing login nodes")
+    existing_login_nodes = [n for n in cluster.describe_login_nodes() if n["instanceId"] != login_node_1_id]
+    assert_that(len(existing_login_nodes)).described_as(
+        f"Expected at least 2 existing login nodes, found {len(existing_login_nodes)}"
+    ).is_greater_than_or_equal_to(2)
+    login_node_2_id = existing_login_nodes[0]["instanceId"]
+    login_node_3_id = existing_login_nodes[1]["instanceId"]
+
+    logger.info(f"Injecting transient update execution failure on login node {login_node_2_id}")
+    inject_transient_update_failure(rce, cluster, NODE_TYPE_LOGIN, login_node_2_id)
+
+    logger.info(f"Injecting transient update detection failure on login node {login_node_3_id}")
+    block_update_detection(rce, cluster, NODE_TYPE_LOGIN, login_node_3_id)
 
     logger.info("Submitting cluster update 2")
     config_file_update_2 = pcluster_config_reader(
         output_file="pcluster.config.update-2.yaml",
-        login_nodes_count=3,
+        login_nodes_count=6,
         **common_cluster_config_args,
     )
     update_2_submit_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
@@ -492,15 +551,23 @@ def test_update_race_conditions(
 
     logger.info("Waiting for login nodes launch template to be updated")
     wait_for_login_nodes_lt_update_complete(cluster, region, after_utc=update_2_submit_time)
-    logger.info(f"Login nodes LT updated, now unblocking the slow login node {login_node_id}")
+    logger.info(f"Login nodes LT updated, now unblocking the slow login node {login_node_1_id}")
     unblock_node_bootstrap(region, bucket_name, NODE_TYPE_LOGIN, PHASE_ON_NODE_START)
-    logger.info(f"Login node {login_node_id} unblocked")
+    logger.info(f"Login node {login_node_1_id} unblocked")
 
     logger.info(f"Waiting for compute node {CN_3} to fail the update due to transient failure")
-    wait_for_update_failure_on_node(rce, cluster, CN_3)
+    wait_for_node_update_failure(rce, cluster, NODE_TYPE_COMPUTE, CN_3)
     logger.info(f"Transient update failure detected on compute node {CN_3}")
-    remove_transient_update_failure_on_compute_node(rce, cluster, CN_3)
+    remove_transient_update_failure(rce, cluster, NODE_TYPE_COMPUTE, CN_3)
     logger.info(f"Removed transient failure for compute node {CN_3}. If it retries, it will succeed the update.")
+
+    logger.info(f"Waiting for login node {login_node_2_id} to fail the update due to transient failure")
+    wait_for_node_update_failure(rce, cluster, NODE_TYPE_LOGIN, login_node_2_id, after_utc=update_2_submit_time)
+    logger.info(f"Transient update failure detected on login node {login_node_2_id}")
+    remove_transient_update_failure(rce, cluster, NODE_TYPE_LOGIN, login_node_2_id)
+    logger.info(
+        f"Removed transient failure for login node {login_node_2_id}. " "If it retries, it will succeed the update."
+    )
 
     logger.info("Waiting for the readiness check to reach the second-last iteration")
     wait_for_readiness_check_last_retry(rce, after_utc=update_2_submit_time)
@@ -511,12 +578,16 @@ def test_update_race_conditions(
     logger.info(f"Bootstrap unblocked for compute node {CN_2}")
 
     logger.info(f"Unblocking detection of update for compute node {CN_4}")
-    unblock_update_detection_on_compute_node(rce, cluster, CN_4)
+    unblock_update_detection(rce, cluster, NODE_TYPE_COMPUTE, CN_4)
     logger.info(f"Unblocked detection of update for compute node {CN_4}")
 
-    # TODO Once we fix all the race condition, the only valid state will be UPDATE_COMPLETE
-    # We are leaving the other failed state for now so that we can use the verifications
-    # at the end of the test to facilitate troubleshooting
+    logger.info(f"Unblocking detection of update for login node {login_node_3_id}")
+    unblock_update_detection(rce, cluster, NODE_TYPE_LOGIN, login_node_3_id)
+    logger.info(f"Unblocked detection of update for login node {login_node_3_id}")
+
+    # NOTE: The test requires the cluster update to succeed (see assertion at the end of the test).
+    # However, here we are accepting also the failure states so that we can use the verifications below
+    # to gather more information.
     expected_stack_statuses = ["UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "UPDATE_ROLLBACK_FAILED"]
     logger.info(f"Waiting for the cluster stack to reach a final state: {expected_stack_statuses}")
     actual_cluster_stack_status = cluster.wait_cluster_stack_status(
@@ -541,9 +612,9 @@ def test_update_race_conditions(
         assert_config_version_dna_matches_ddb(cluster_snapshot)
         # IMPORTANT NOTE: In ParallelCluster 3.15.0 we are not fixing [RaceCondition 5],
         # so the following two assertions are expected to fail for the slow login node started before update 2.
-        assert_config_version_matches_head_node(cluster_snapshot, expected_failure_instance_ids={login_node_id})
+        assert_config_version_matches_head_node(cluster_snapshot, expected_failure_instance_ids={login_node_1_id})
         assert_update_recipe_executed_on_old_nodes(
-            cluster_snapshot, update_2_submit_time, expected_failure_instance_ids={login_node_id}
+            cluster_snapshot, update_2_submit_time, expected_failure_instance_ids={login_node_1_id}
         )
         assert_correct_recipe_order(cluster_snapshot)
     logger.info("Verifications completed")
