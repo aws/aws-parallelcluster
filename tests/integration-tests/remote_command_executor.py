@@ -14,8 +14,11 @@ import os
 import shlex
 
 from fabric import Connection
+from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 from retrying import retry
 from utils import get_username_for_os, run_command
+
+SSH_RETRY_EXCEPTIONS = (SSHException, NoValidConnectionsError, EOFError, OSError)
 
 
 class RemoteCommandExecutionError(Exception):
@@ -116,9 +119,44 @@ class RemoteCommandExecutor:
         if self.__connection_kwargs:
             self.__connection = Connection(**self.__connection_kwargs)
 
-    @retry(wait_exponential_multiplier=1000, stop_max_attempt_number=5)
+    @retry(
+        retry_on_exception=lambda exc: isinstance(exc, SSH_RETRY_EXCEPTIONS),
+        wait_exponential_multiplier=1000,
+        stop_max_attempt_number=5,
+    )
     def _run_command(self, command, **kwargs):
-        return self.__connection.run(command, **kwargs)
+        try:
+            return self.__connection.run(command, **kwargs)
+        except SSH_RETRY_EXCEPTIONS as e:
+            logging.warning("SSH session error during command execution: %s. Resetting connection before retry.", e)
+            self.reset_connection()
+            raise
+
+    @retry(
+        retry_on_exception=lambda exc: isinstance(exc, SSH_RETRY_EXCEPTIONS),
+        wait_exponential_multiplier=1000,
+        stop_max_attempt_number=5,
+    )
+    def _put_file(self, *args, **kwargs):
+        try:
+            return self.__connection.put(*args, **kwargs)
+        except SSH_RETRY_EXCEPTIONS as e:
+            logging.warning("SSH session error during file upload: %s. Resetting connection before retry.", e)
+            self.reset_connection()
+            raise
+
+    @retry(
+        retry_on_exception=lambda exc: isinstance(exc, SSH_RETRY_EXCEPTIONS),
+        wait_exponential_multiplier=1000,
+        stop_max_attempt_number=5,
+    )
+    def _get_file(self, *args, **kwargs):
+        try:
+            return self.__connection.get(*args, **kwargs)
+        except SSH_RETRY_EXCEPTIONS as e:
+            logging.warning("SSH session error during file download: %s. Resetting connection before retry.", e)
+            self.reset_connection()
+            raise
 
     def run_remote_command(
         self,
@@ -196,7 +234,7 @@ class RemoteCommandExecutor:
         :return: result of the execution.
         """
         script_name = os.path.basename(script_file)
-        self.__connection.put(script_file, script_name)
+        self._put_file(script_file, script_name)
         if not args:
             args = []
         cmd = ["/bin/bash", script_name] + args
@@ -222,7 +260,7 @@ class RemoteCommandExecutor:
             local_remote_paths = [{"local": local, "remote": remote} for local, remote in files.items()]
         for local_remote_path in local_remote_paths or []:
             logging.info("Copying file to remote location: %s", local_remote_path)
-            self.__connection.put(**local_remote_path)
+            self._put_file(**local_remote_path)
 
     def get_remote_files(self, *args, **kwargs):
         """
@@ -241,7 +279,7 @@ class RemoteCommandExecutor:
             file's mode (default: ``True``).
         :returns: A `.Result` object.
         """
-        return self.__connection.get(*args, **kwargs)
+        return self._get_file(*args, **kwargs)
 
     def clear_log_file(self, path: str):
         """Clear a log file in a specific path."""
