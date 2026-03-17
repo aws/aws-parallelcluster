@@ -107,13 +107,13 @@ def override_launch_template(request, region, vpc_stack):
     )
     security_group_id = sg_response["GroupId"]
 
-    # Allow all inbound traffic
+    # Allow all inbound traffic from within the security group (self-referencing)
     ec2_client.authorize_security_group_ingress(
         GroupId=security_group_id,
         IpPermissions=[
             {
                 "IpProtocol": "-1",
-                "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                "UserIdGroupPairs": [{"GroupId": security_group_id}],
             }
         ],
     )
