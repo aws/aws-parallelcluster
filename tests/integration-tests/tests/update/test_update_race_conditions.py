@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
+import re
 import time
 from datetime import datetime, timezone
 
@@ -374,6 +375,34 @@ def assert_update_recipe_executed_on_old_nodes(snapshot, update_submitted_at, ex
         ).is_not_empty()
 
 
+def is_update_failure_only_due_to_known_race_condition(rce, instance_ids, after_utc):
+    """Check if the last readiness check failure was caused only by the given instance IDs.
+
+    Parses the last "wrong records (1)" line from /var/log/chef-client.log after the given timestamp
+    and extracts the instance IDs listed there.
+    Returns True if all wrong-record instance IDs are in the provided set.
+    Returns False if there are no wrong records or if other instance IDs are present.
+    """
+    found, output = match_regex_in_log(
+        rce,
+        "/var/log/chef-client.log",
+        r"wrong records \(1\):.*",
+        after_utc=after_utc,
+    )
+    if not found:
+        logger.info(
+            "No 'wrong records (1)' line found in chef-client.log after the update. "
+            "The cluster update failure, if observed, is not caused by the known race condition."
+        )
+        return False
+    instande_ids_with_wrong_record = set(re.findall(r"'(i-[0-9a-f]+)'", output))
+    logger.info(
+        f"Readiness check wrong records: {output}. "
+        f"Instance IDs with wrong records: {instande_ids_with_wrong_record}"
+    )
+    return instande_ids_with_wrong_record == set(instance_ids)
+
+
 # CN_1: a dynamic compute node that completes the bootstrap after the readiness check
 # CN_2: a dynamic compute node that completes the bootstrap at the second-last iteration of the readiness check
 # CN_3: a static node that fails the update due to a transient failure
@@ -521,7 +550,7 @@ def test_update_race_conditions(
     login_node_1_id = launch_slow_login_node(region, bucket_name, cluster, PHASE_ON_NODE_START)
     logger.info(
         f"New slow login node launched: {login_node_1_id}. "
-        "This login node is exposed to race condition that we kept out of scope for PC 3.15.0."
+        "This login node is exposed to race condition that we kept out of scope for PC 3.15.0. "
         "When such race condition occurs, the node is not able to detect the update, "
         "so it ends up with the wrong cluster config version and misses the update recipe."
     )
@@ -602,10 +631,17 @@ def test_update_race_conditions(
     logger.info(f"Cluster snapshot:\n{json.dumps(cluster_snapshot, indent=2)}")
 
     with soft_assertions():
-        expected_cluster_stack_status = "UPDATE_COMPLETE"
-        assert_that(actual_cluster_stack_status).described_as(
-            f"Cluster stack status should be {expected_cluster_stack_status}, but it is {actual_cluster_stack_status}"
-        ).is_equal_to(expected_cluster_stack_status)
+        # TODO: Once [RaceCondition 5] will be fixed, we will require cluster stack to always be in UPDATE_COMPLETE
+        if actual_cluster_stack_status != "UPDATE_COMPLETE":
+            if is_update_failure_only_due_to_known_race_condition(rce, {login_node_1_id}, update_2_submit_time):
+                logger.warning(
+                    f"Cluster stack status is {actual_cluster_stack_status} but the readiness check failed "
+                    f"only because of {login_node_1_id} (known RaceCondition 5, not blocking the test)"
+                )
+            else:
+                assert_that(actual_cluster_stack_status).described_as(
+                    f"Cluster stack status should be UPDATE_COMPLETE, but it is {actual_cluster_stack_status}"
+                ).is_equal_to("UPDATE_COMPLETE")
         assert_that(is_late_node_updated).described_as(
             f"Compute node {CN_1} completed the bootstrap after update 1 and did not apply the expected update"
         ).is_true()
