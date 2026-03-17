@@ -427,7 +427,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
 
 
 @pytest.fixture(scope="class")
-def vpc_stack_with_endpoints(region, request, key_name):
+def vpc_stack_with_endpoints(region, request, key_name, vpc_stack):
     """
     Create a VPC stack with VPC endpoints.
     Since VPC endpoints modify DNS at VPC level, all the subnets in that VPC will be affected.
@@ -450,8 +450,11 @@ def vpc_stack_with_endpoints(region, request, key_name):
         stack_factory.create_stack(stack)
         return stack
 
-    # tests with VPC endpoints are not using multi-AZ
-    default_az_id, default_az_name, _ = get_az_setup_for_region(region, credential)
+    # Reuse the AZ from vpc_stack so that resolve_default_instance's capacity probe
+    # targets the same AZ where this VPC's subnet will be created.
+    default_az_id = vpc_stack.az_override or vpc_stack.default_az_id
+    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+    default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     bastion_subnet = SubnetConfig(
         name=subnet_name(visibility="Public", az_id=default_az_id),
