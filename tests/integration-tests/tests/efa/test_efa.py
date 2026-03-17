@@ -88,7 +88,6 @@ def _try_reserve_head_node_instance(region, az_id, architecture, os):
     return None
 
 
-@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_efa(
     os,
     region,

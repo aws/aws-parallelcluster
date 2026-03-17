@@ -219,14 +219,14 @@ test-suites:
     test_dcv.py::test_dcv_configuration:
       dimensions:
         # DCV on GPU enabled instance
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_1 }}]
           instances: ["g4dn.2xlarge"]
-          oss: ["rocky8"]
+          oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
         # DCV on ARM + GPU
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ g5g_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_3 }}]
           instances: ["g5g.2xlarge"]
-          oss: ["rhel8"]
+          oss: [{{ DCV_OS_X86_3 }}]
           schedulers: ["slurm"]
         # DCV in cn regions and non GPU enabled instance
         - regions: ["cn-northwest-1"]
@@ -260,11 +260,11 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_X86_0 }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_0 }}]
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
-        - regions: [{{ p4d_24xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_X86_2 }}]   # do not move, unless capacity reservation is moved as well
+        - regions: [{{ p4d_24xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_2 }}]
           instances: ["p4d.24xlarge"]
           oss: [{{ OS_X86_2 }}]  # The capacity reservation cannot use RHEL operating system
           schedulers: ["slurm"]
@@ -272,7 +272,7 @@ test-suites:
           instances: [ "p6-b200.48xlarge" ]
           oss: ["alinux2023", "ubuntu2204", "ubuntu2404", "rocky8", "rocky9", "rhel8", "rhel9"]
           schedulers: [ "slurm" ]
-        - regions: [{{ c6gn_16xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_OS_ARM_0 }}]
+        - regions: [{{ c6gn_16xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_ARM_0 }}]
           instances: ["c6gn.16xlarge"]
           oss: [{{ OS_ARM_0 }}]
           schedulers: ["slurm"]
@@ -298,14 +298,14 @@ test-suites:
   launch_template_overrides:
     test_launch_template_overrides.py::test_launch_template_overrides:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_OS_X86_0 }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_OS_X86_0 }}]
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
-        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_OS_X86_5 }}]
+        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_OS_X86_5 }}]
           instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}]
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
@@ -349,11 +349,11 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_rhel9 }}]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_1_HOURS_NOPG_rhel9 }}]
           instances: ["c6in.32xlarge"]
           oss: {{ RHEL_OS_X86 }}
           schedulers: ["slurm"]
-        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_1_HOURS_NOPG_ubuntu2404 }}]
           instances: ["c6in.32xlarge"]
           oss: {{ NO_RHEL_OS_X86 }}
           schedulers: ["slurm"]
@@ -783,7 +783,7 @@ test-suites:
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
-        - regions: [{{ trn1_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_UBUNTU2404 }}]
+        - regions: [{{ trn1_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_UBUNTU2404 }}]
           schedulers: ["slurm"]
           oss: ["ubuntu2404"]
           instances: ["trn1.32xlarge"]
@@ -876,7 +876,7 @@ test-suites:
   performance_tests:
     test_osu.py::test_osu:
       dimensions:
-        - regions: [ {{ c5n_18xlarge_CAPACITY_RESERVATION_35_INSTANCES_2_HOURS_YESPG_NO_ROCKY_OS_X86_0 }} ]
+        - regions: [ {{ c5n_18xlarge_CAPACITY_RESERVATION_35_INSTANCES_1_HOURS_YESPG_NO_ROCKY_OS_X86_0 }} ]
           instances: [ "c5n.18xlarge" ]
           oss: [{{ NO_ROCKY_OS_X86_0 }}] # ParallelCluster does not release official Rocky images. Skip the test.
           schedulers: [ "slurm" ]
