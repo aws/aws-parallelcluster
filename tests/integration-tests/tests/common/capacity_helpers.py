@@ -19,7 +19,7 @@ from utils import get_similar_instance_types
 DEFAULT_INSTANCE_TYPES = {"c5.xlarge", "m6g.xlarge"}
 
 
-def resolve_instance_with_capacity(region, az_id, instance_type, os, minutes=30, count=2):
+def resolve_instance_with_capacity(region, az_id, instance_type, os, minutes=50, count=2):
     """Try to reserve capacity for *instance_type* in *az_id*, falling back to alternatives on ICE.
 
     Only activates when *instance_type* is one of the known defaults (c5.xlarge / m6g.xlarge).
