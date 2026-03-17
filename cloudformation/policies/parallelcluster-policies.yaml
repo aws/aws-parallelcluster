@@ -440,6 +440,8 @@ Resources:
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
               - cloudwatch:PutCompositeAlarm
+              - cloudwatch:TagResource
+              - cloudwatch:UntagResource
             Resource: '*'
             Effect: Allow
             Condition: !If
