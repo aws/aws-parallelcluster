@@ -50,7 +50,6 @@ def run_openfoam_test(remote_command_executor, test_datadir, number_of_nodes):
     return observed_value
 
 
-@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_openfoam(
     vpc_stack,
     instance,
