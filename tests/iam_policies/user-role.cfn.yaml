@@ -374,6 +374,8 @@ Resources:
               - cloudwatch:PutCompositeAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
+              - cloudwatch:TagResource
+              - cloudwatch:UntagResource
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -992,6 +994,8 @@ Resources:
               - cloudwatch:PutCompositeAlarm
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
+              - cloudwatch:TagResource
+              - cloudwatch:UntagResource
             Resource: "*"
 #          - Effect: Allow # TODO: Refactor it, comment it out now to workaround exceeds quota for PolicySize: 6144
 #            Action:

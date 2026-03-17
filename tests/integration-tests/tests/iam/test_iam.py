@@ -584,6 +584,8 @@ def _create_permission_boundary(permission_boundary_name):
                         "cloudwatch:PutCompositeAlarm",
                         "cloudwatch:DeleteAlarms",
                         "cloudwatch:DescribeAlarms",
+                        "cloudwatch:TagResource",
+                        "cloudwatch:UntagResource",
                     ],
                     "Condition": {
                         "Fn::If": [
