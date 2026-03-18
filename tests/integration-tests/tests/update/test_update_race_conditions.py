@@ -170,6 +170,19 @@ def wait_for_node_update_failure(rce, cluster, node_type, node_id, after_utc=Non
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(30))
+def wait_for_head_node_update_recipe_complete(rce, after_utc=None):
+    match, matched_content = match_regex_in_log(
+        rce,
+        "/var/log/chef-client.log",
+        r"Cinc Client Run complete",
+        after_utc=after_utc,
+    )
+    if not match:
+        raise Exception("Head node chef-client run has not completed yet.")
+    logger.info(f"Head node chef-client run completed: {matched_content}")
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(30))
 def wait_for_stack_rollback_complete(cluster):
     client = boto3.client("cloudformation", region_name=cluster.region)
     stack_status = client.describe_stacks(StackName=cluster.name)["Stacks"][0]["StackStatus"]
@@ -375,32 +388,44 @@ def assert_update_recipe_executed_on_old_nodes(snapshot, update_submitted_at, ex
         ).is_not_empty()
 
 
-def is_update_failure_only_due_to_known_race_condition(rce, instance_ids, after_utc):
-    """Check if the last readiness check failure was caused only by the given instance IDs.
-
-    Parses the last "wrong records (1)" line from /var/log/chef-client.log after the given timestamp
-    and extracts the instance IDs listed there.
+def is_update_failure_only_due_to_known_race_condition(rce, instance_ids: list, after_utc: str):
+    """Check if the last readiness check failure was caused only by the given instance IDs by inspecting the
+    errors returned by the cluster readiness check in /var/log/chef-client.log
     Returns True if all wrong-record instance IDs are in the provided set.
     Returns False if there are no wrong records or if other instance IDs are present.
     """
-    found, output = match_regex_in_log(
+    found, lines = match_regex_in_log(
         rce,
         "/var/log/chef-client.log",
-        r"wrong records \(1\):.*",
+        r"Retrying execution of execute\[Check cluster readiness\], 0 attempt left",
         after_utc=after_utc,
+        nlines_after_match=50,
     )
     if not found:
         logger.info(
-            "No 'wrong records (1)' line found in chef-client.log after the update. "
+            "No final readiness check retry found in chef-client.log after the update. "
             "The cluster update failure, if observed, is not caused by the known race condition."
         )
         return False
-    instande_ids_with_wrong_record = set(re.findall(r"'(i-[0-9a-f]+)'", output))
+
+    logger.info(f"Found last readiness check retry: {lines}")
+
+    wrong_records_match = re.search(r"\* wrong records \(1\):.*", lines)
+    if not wrong_records_match:
+        logger.info(
+            "No '* wrong records (1):' line found in the last readiness check retry output. "
+            "The cluster update failure, if observed, is not caused by the known race condition."
+        )
+        return False
+
+    wrong_records_line = wrong_records_match.group()
+    instance_ids_with_wrong_record = set(re.findall(r"'(i-[0-9a-f]+)'", wrong_records_line))
     logger.info(
-        f"Readiness check wrong records: {output}. "
-        f"Instance IDs with wrong records: {instande_ids_with_wrong_record}"
+        f"Readiness check wrong records: {wrong_records_line}. "
+        f"Instance IDs with wrong records: {instance_ids_with_wrong_record}. "
+        f"Instance IDs with expected failure: {instance_ids}"
     )
-    return instande_ids_with_wrong_record == set(instance_ids)
+    return instance_ids_with_wrong_record == set(instance_ids)
 
 
 # CN_1: a dynamic compute node that completes the bootstrap after the readiness check
@@ -626,6 +651,14 @@ def test_update_race_conditions(
 
     logger.info("Verifications started")
     logger.info(f"Cluster stack status is: {actual_cluster_stack_status}")
+
+    # Known Issue: when the cluster stack reaches the state UPDATE_ROLLBACK_COMPLETE,
+    # the head node may not have completed the update recipe yet.
+    # So, before collecting the cluster snapshot we must wait for it to prevent false positive test failures.
+    if actual_cluster_stack_status == "UPDATE_ROLLBACK_COMPLETE":
+        logger.info("Waiting for head node to complete the update recipe before collecting the cluster snapshot")
+        wait_for_head_node_update_recipe_complete(rce, after_utc=update_2_submit_time)
+
     logger.info("Collecting cluster nodes snapshot")
     cluster_snapshot = get_cluster_nodes_snapshot(cluster)
     logger.info(f"Cluster snapshot:\n{json.dumps(cluster_snapshot, indent=2)}")
@@ -633,7 +666,7 @@ def test_update_race_conditions(
     with soft_assertions():
         # TODO: Once [RaceCondition 5] will be fixed, we will require cluster stack to always be in UPDATE_COMPLETE
         if actual_cluster_stack_status != "UPDATE_COMPLETE":
-            if is_update_failure_only_due_to_known_race_condition(rce, {login_node_1_id}, update_2_submit_time):
+            if is_update_failure_only_due_to_known_race_condition(rce, [login_node_1_id], update_2_submit_time):
                 logger.warning(
                     f"Cluster stack status is {actual_cluster_stack_status} but the readiness check failed "
                     f"only because of {login_node_1_id} (known RaceCondition 5, not blocking the test)"
