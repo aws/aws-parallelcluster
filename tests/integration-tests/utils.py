@@ -1141,12 +1141,28 @@ def get_file_mtime_age_seconds(remote_command_executor, file_path):
     return current_time - mtime
 
 
+# Matches ISO-like timestamps at the start of a log line, with or without brackets.
+# Examples: [2026-03-19T02:44:01+00:00], 2026-03-19 02:44:01, 2026-03-19T02:44:01.000Z
+_LOG_TIMESTAMP_RE = re.compile(r"^\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})")
+
+
+def get_log_after_timestamp(log_content: str, after_utc: str) -> str:
+    after_utc_prefix = after_utc[:19].replace(" ", "T")
+    lines = log_content.splitlines()
+    for i, line in enumerate(lines):
+        m = _LOG_TIMESTAMP_RE.match(line)
+        if m and m.group(1).replace(" ", "T") >= after_utc_prefix:
+            return "\n".join(lines[i:])
+    return ""
+
+
 def match_regex_in_log(
     rce,
     log_file: str,
     pattern: str,
     nlines: int = 50,
     after_utc: str = None,
+    nlines_after_match: int = 0,
 ) -> tuple[bool, str]:
     """
     Search for a regex pattern in a remote log file, optionally filtering to lines after a UTC timestamp.
@@ -1158,22 +1174,27 @@ def match_regex_in_log(
         nlines: Number of lines from the end of the log to return if pattern is not found. Defaults to 50.
         after_utc: Optional UTC timestamp string in ISO format (e.g. "2026-03-10T15:00:00.000Z"). Only lines at or after
            this timestamp are considered. If None, searches the entire log.
+        nlines_after_match: Number of lines to include after the matched line when the pattern is found. Defaults to 0
+           (only the matched line is returned).
 
     Returns:
         A tuple containing:
             - bool: True if the pattern was found, False otherwise.
-            - str: The matched string if found, or the last `nlines` lines of the log if not found.
+            - str: If found, the full line containing the match plus the next `nlines_after_match` lines.
+                   If not found, the last `nlines` lines of the log.
     """
-    if after_utc:
-        cmd = f"awk '$0 >= \"{after_utc}\"' {log_file} 2>/dev/null || echo ''"
-        result = rce.run_remote_command(cmd, raise_on_error=False)
-    else:
-        result = rce.run_remote_command(f"cat {log_file}")
+    result = rce.run_remote_command(f"cat {log_file}")
     log_content = result.stdout
+
+    if after_utc:
+        log_content = get_log_after_timestamp(log_content, after_utc)
 
     match = re.search(pattern, log_content)
     if match:
-        return True, match.group()
+        # Find the start of the line containing the match, then take nlines_after_match additional lines
+        match_line_start = log_content.rfind("\n", 0, match.start()) + 1
+        result_lines = log_content[match_line_start:].splitlines()[: 1 + nlines_after_match]
+        return True, "\n".join(result_lines)
     else:
         last_lines = "\n".join(log_content.splitlines()[-nlines:])
         return False, last_lines
