@@ -4,29 +4,64 @@ CHANGELOG
 3.15.0
 ------
 
-**CHANGES**
-- When EFA is enabled, ParallelCluster now configures network interfaces as `interface` and `efa-only` instead of the combined `efa` type. NCI-0 is configured with an `interface` ENI for IP connectivity plus an `efa-only` ENI for EFA fabric. Secondary cards are configured with an `efa-only` only ENI. This reduces IP address consumption from one per network card to one per instance. EFA performance is unchanged. Customers who need the legacy `efa` behavior can set `DevSettings: EfaInterfaceType: efa`.
-- Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
-- Upgrade jmespath to ~=1.0 (from ~=0.10).
-- Upgrade tabulate to <=0.9.0 (from <=0.8.10).
+**ENHANCEMENTS**
 - Add support for p6-b300 instances for all OSs except AL2.
-- Add alarm on missing clustermgtd heartbeat.
+- Replace cfn-hup in compute nodes with systemd timer to support in place updates in order to improve performance for tightly coupled worloads at scale.
+  This new mechanism relies on shared storage to sync updates between the head node and compute nodes.
+- Disable `dnf-makecache.timer` to improve performance for tightly coupled worloads on RHEL/Rocky at scale.
 - Support updates of `Tags` during cluster-updates.
 - Add `LaunchTemplateOverrides` to cluster config to allow network interfaces to be customized by overriding the launch template of a compute resource.
   - This overrides the parallelcluster default using a shallow merge.
+- Add alarm on missing clustermgtd heartbeat.
+
+**CHANGES**
+- When EFA is enabled, ParallelCluster now configures network interfaces as `interface` and `efa-only` instead of the combined `efa` type. NCI-0 is configured with an `interface` ENI for IP connectivity plus an `efa-only` ENI for EFA fabric. Secondary cards are configured with an `efa-only` only ENI. This reduces IP address consumption from one per network card to one per instance. EFA performance is unchanged. Customers who need the legacy `efa` behavior can set `DevSettings: EfaInterfaceType: efa`.
+- Reduce transient build-image failures in RHEL and Rocky caused by out-of-sync repo mirrors by resetting metadata upon retry.
+- Always start clustermgtd on cluster update and compute fleet status update failure, regardless the failure condition.
+- Improve resiliency of the cluster update rollback workflow.
+- Upgrade Slurm to version 25.11.4 (from 24.11.7).
+- Upgrade Pmix to 5.0.10 (from 5.0.6).
+- Upgrade EFA installer to 1.47.0 (from 1.44.0).
+  - Efa-driver: efa-3.0.0
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.4.0-1
+  - Rdma-core: rdma-core-61.0-1
+  - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.9
+- Upgrade NVIDIA driver to version 580.105.08 (from 570.172.08) for all OSs except Amazon Linux 2.
+- Upgrade GDRCopy to version 2.5.2 (from 2.4.4).
+- Upgrade DCV to version 2025.0-20103 (from 2024.0-19030).
+- Upgrade CUDA Toolkit to version 13.0.2 (from 12.8.1) for all OSs except Amazon Linux 2.
+- Upgrade NVIDIA Fabric manager to 580.105.08 for all OSs except Amazon Linux 2.
+- Upgrade Python to 3.14.2 (from 3.12.11) for all OSs except Amazon Linux 2.
+- Upgrade aws-cfn-bootstrap to version 2.0-38 (from 2.0-33).
+- Upgrade DCGM to version 4.5.1 (from 4.4.1) for all OSs except Amazon Linux 2.
+- Upgrade Munge to version 0.5.17 (from 0.5.16) for all OSs except Amazon Linux 2.
+- Upgrade mysql-community-client to version 8.4.8 (from 8.0.39) for all OSs except Amazon Linux 2.
+- Upgrade Intel MPI Library to 2021.17.2 (from 2021.16.0).
+- Upgrade Cinc Client to version 18.8.54 (from 18.7.10).
+- Upgrade amazon-efs-utils to version 2.4.0 (from v2.1.0) for Amazon Linux AMI's.
+- Upgrade jmespath to ~=1.0 (from ~=0.10).
+- Upgrade tabulate to <=0.9.0 (from <=0.8.10).
+- Add a validator to warn in case in-place updates have been disabled (via DevSettings) on compute and login nodes.
 
 **BUG FIXES**
-- Add validation to block updates that change tag order. Blocking such change prevents update failures.
-- Fix LoginNodes NLB not being publicly accessible when using public subnet with implicit main route table association. 
+- Fix LoginNodes NLB not being publicly accessible when using public subnet with implicit main route table association.
   See https://github.com/aws/aws-parallelcluster/issues/7173
-- Fix cluster creation failure without Internet access when GPU instances and DCV are used.
-- Fix intermittent cluster creation failure caused by eventual consistency issues when head, compute and login nodes have the same security group.
+- Fix a failure when creating a cluster with GPU instances and with DCV enabled but without internet access.
+- Fix an issue where cluster creation would intermittently fail due to eventual consistency when the head/compute/login nodes share the same security group.
 - Fix build-image failure during ubuntu-desktop installation on a Ubuntu parent image with outdated OS packages.
-- Fix HeadNode/LocalStorage update policy to make updates unsupported.
+- Fix validation of HeadNode/LocalStorage. This configuration parameter does not support updates.
 - Fix validator `PlacementGroupCapacityReservationValidator` to accept capacity reservations with cross-account placement group.
+- Fix the CloudWatch agent configuration to ensure proper parsing of timestamps across all log files.
+- Fix logging configuration to capture all Slurm health check events (updating log level from WARNING to INFO to prevent missing log entries).
+- Improve cluster update resiliency by ensuring the update does not fail on nodes completing the bootstrap during the update.
+- Prevent cluster update failure recovery process from running on AWS Batch clusters. This recovery mechanism should only execute on Slurm clusters.
 
 **DEPRECATIONS**
-- The configuration parameter `LoginNodes/Pools/Ssh/KeyName` is no longer supported.
+- The `LoginNodes/Pools/Ssh/KeyName` configuration parameter, deprecated since 3.14.0, is no longer supported.
+- This is the last ParallelCluster release supporting Amazon Linux 2, as Amazon Linux 2 will reach end of support on June 30, 2026.
+- This is the last ParallelCluster release supporting AWS Batch CLI. Starting with v3.16.0, ParallelCluster will no longer support AWS Batch as a scheduler.
 
 3.14.2
 ------
