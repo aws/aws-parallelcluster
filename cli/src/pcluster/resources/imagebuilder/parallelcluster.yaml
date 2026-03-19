@@ -221,8 +221,14 @@ phases:
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
               delays=(1 2 4 8 16 32 64 128 256)
               for i in {0..8}; do
-                curl -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL" && break
-                echo "Curl attempt $((i+1)) failed, retrying in ${!delays[$i]}s..."
+                HTTP_CODE=$(curl -sS -L -w '%{http_code}' -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL")
+                if [[ "$HTTP_CODE" -eq 200 ]]; then
+                  echo "Cookbook download succeeded (HTTP $HTTP_CODE)"
+                  break
+                fi
+                echo "Cookbook download attempt $((i+1)) failed with HTTP $HTTP_CODE. Response body:"
+                cat /etc/chef/aws-parallelcluster-cookbook.tgz
+                echo ""
                 sleep ${!delays[$i]}
               done
               
