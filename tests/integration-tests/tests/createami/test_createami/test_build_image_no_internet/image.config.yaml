@@ -1,0 +1,14 @@
+Image:
+    RootVolume:
+        Size: 200
+        Encrypted: True
+
+Build:
+    InstanceType: {{ instance }}
+    ParentImage: {{ parent_image }}
+    SecurityGroupIds:
+        - {{ security_group_id }}
+    SubnetId: {{ subnet_id }}
+
+DevSettings:
+    TerminateInstanceOnFailure: True

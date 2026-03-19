@@ -174,6 +174,11 @@ test-suites:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
+    test_createami.py::test_build_image_no_internet:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [{{ OS_X86_1 }}]
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_create:
       dimensions:
