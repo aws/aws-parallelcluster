@@ -1,0 +1,328 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Proxy environment for ParallelCluster build-image no-internet test
+
+Parameters:
+  Keypair:
+    Description: EC2 Keypair for SSH access to proxy instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+
+  # VPC with IPv6
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: BuildImageNoInternetVPC
+
+  VpcIpv6Cidr:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref Vpc
+      AmazonProvidedIpv6CidrBlock: true
+
+  VpcIGW:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGWA:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VpcIGW
+      VpcId: !Ref Vpc
+
+  # PUBLIC SUBNET (proxy lives here)
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: VpcIpv6Cidr
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: 10.0.0.0/24
+      Ipv6CidrBlock: !Select [0, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 4, 64]]
+      AssignIpv6AddressOnCreation: true
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref Vpc
+
+  PublicSubnetRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicSubnetRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicSubnetRT
+      SubnetId: !Ref PublicSubnet
+
+  PublicSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGWA
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VpcIGW
+      RouteTableId: !Ref PublicSubnetRT
+
+  PublicSubnetRouteIpv6:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGWA
+    Properties:
+      DestinationIpv6CidrBlock: ::/0
+      GatewayId: !Ref VpcIGW
+      RouteTableId: !Ref PublicSubnetRT
+
+  # PRIVATE SUBNET (build instance lives here, no internet)
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: VpcIpv6Cidr
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: 10.0.1.0/24
+      Ipv6CidrBlock: !Select [1, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 4, 64]]
+      AssignIpv6AddressOnCreation: true
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref Vpc
+
+  PrivateSubnetRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PrivateSubnetRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateSubnetRT
+      SubnetId: !Ref PrivateSubnet
+
+  # Route all traffic from private subnet through proxy instance
+  PrivateSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: Proxy
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref Proxy
+      RouteTableId: !Ref PrivateSubnetRT
+
+  PrivateSubnetRouteIpv6:
+    Type: AWS::EC2::Route
+    DependsOn: Proxy
+    Properties:
+      DestinationIpv6CidrBlock: ::/0
+      InstanceId: !Ref Proxy
+      RouteTableId: !Ref PrivateSubnetRT
+
+  # VPC ENDPOINTS (only services called from the build instance)
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      VpcId: !Ref Vpc
+      RouteTableIds:
+        - !Ref PrivateSubnetRT
+
+  LogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  EC2Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  ImageBuilderEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.imagebuilder
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  # SECURITY GROUPS
+  ProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for proxy instance
+      SecurityGroupIngress:
+        - CidrIp: 10.0.1.0/24
+          IpProtocol: -1
+        - CidrIpv6: !Select [1, !Cidr [!Select [0, !GetAtt Vpc.Ipv6CidrBlocks], 4, 64]]
+          IpProtocol: -1
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+        - CidrIpv6: ::/0
+          IpProtocol: -1
+      VpcId: !Ref Vpc
+
+  # IAM
+  ProxyInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ProxyRole
+
+  ProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  Imdsv2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 4
+          HttpTokens: required
+
+  # PROXY INSTANCE - allowlists only OS package repos
+  Proxy:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - VpcIGW
+      - ProxyENI
+    Properties:
+      IamInstanceProfile: !Ref ProxyInstanceProfile
+      ImageId: resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+      InstanceType: t3.medium
+      KeyName: !Ref Keypair
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          NetworkInterfaceId: !Ref ProxyENI
+      LaunchTemplate:
+        LaunchTemplateId: !Ref Imdsv2LaunchTemplate
+        Version: !GetAtt Imdsv2LaunchTemplate.LatestVersionNumber
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -ex
+          exec > >(tee /var/log/user-data.log) 2>&1
+          dnf install -y tinyproxy iptables-services
+
+          cat << 'EOF' > /etc/tinyproxy/tinyproxy.conf
+          User tinyproxy
+          Group tinyproxy
+          Port 8888
+          Listen 0.0.0.0
+          Listen ::
+          Timeout 3600
+          DefaultErrorFile "/usr/share/tinyproxy/default.html"
+          LogFile "/var/log/tinyproxy/tinyproxy.log"
+          LogLevel Info
+          MaxClients 500
+          MinSpareServers 20
+          MaxSpareServers 100
+          StartServers 20
+          MaxRequestsPerChild 0
+          ConnectPort 443
+          ConnectPort 80
+          Filter "/etc/tinyproxy/allowlist"
+          FilterDefaultDeny Yes
+          FilterURLs On
+          FilterExtended On
+          EOF
+
+          # Allowlist: OS package repos across all supported OSes
+          cat << 'EOF' > /etc/tinyproxy/allowlist
+          # Ubuntu
+          .*\.ubuntu\.com
+          ppa\.launchpadcontent\.net
+          # RHEL / Rocky / CentOS / EPEL
+          .*\.fedoraproject\.org
+          dl\.rockylinux\.org
+          mirrors\.rockylinux\.org
+          download\.rockylinux\.org
+          mirror\.centos\.org
+          vault\.centos\.org
+          # Amazon Linux
+          cdn\.amazonlinux\.com
+          EOF
+
+          systemctl enable tinyproxy
+          systemctl start tinyproxy
+
+          # Redirect HTTP/HTTPS through proxy for both IPv4 and IPv6
+          iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
+          iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8888
+          ip6tables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
+          ip6tables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8888
+
+          service iptables save
+          service ip6tables save
+      Tags:
+        - Key: Name
+          Value: !Sub [ "BuildImageProxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
+
+  ProxyENI:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      GroupSet:
+        - !Ref ProxySecurityGroup
+      SourceDestCheck: false
+      SubnetId: !Ref PublicSubnet
+      Ipv6AddressCount: 1
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+  PrivateSubnetId:
+    Value: !Ref PrivateSubnet
+  DefaultSecurityGroupId:
+    Value: !GetAtt Vpc.DefaultSecurityGroup
