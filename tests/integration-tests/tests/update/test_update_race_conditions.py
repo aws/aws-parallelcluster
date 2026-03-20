@@ -148,22 +148,27 @@ def wait_for_login_nodes_lt_update_complete(cluster, region, after_utc=None):
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
-def wait_for_node_update_failure(rce, cluster, node_type, node_id, after_utc=None):
+def wait_for_node_update_failure(rce, cluster, node_type, node_id, os, after_utc=None):
     node_rce = get_node_rce(rce, cluster, node_type, node_id)
-    log_file = LOG_FILE_BY_NODE_TYPE[node_type]
-    # cfn-hup logs use "%Y-%m-%d %H:%M:%S" format, so convert ISO timestamps for awk comparison
-    if after_utc and node_type == NODE_TYPE_LOGIN:
-        after_utc = after_utc.replace("T", " ").split(".")[0]
-    match, lines = match_regex_in_log(
-        node_rce,
-        log_file,
-        r"(?i)Permission denied",
-        after_utc=after_utc,
-    )
-    if not match:
-        raise Exception(
-            f"No evidence of update failure in {log_file} on {node_type} {node_id} yet. Last lines: {lines}"
+    # On AL2 (systemd 219), StandardOutput=append: is not supported, so pcluster-check-update.log stays empty
+    # and the logs are pushed to the journal, which is persisted in /var/log/messages.
+    if os == "alinux2" and node_type == NODE_TYPE_COMPUTE:
+        match, lines = match_regex_in_log(
+            node_rce, "/var/log/messages", r"pcluster-check-update\.sh.*(?i)Permission denied"
         )
+    else:
+        log_file = LOG_FILE_BY_NODE_TYPE[node_type]
+        # cfn-hup logs use "%Y-%m-%d %H:%M:%S" format, so convert ISO timestamps for awk comparison
+        if after_utc and node_type == NODE_TYPE_LOGIN:
+            after_utc = after_utc.replace("T", " ").split(".")[0]
+        match, lines = match_regex_in_log(
+            node_rce,
+            log_file,
+            r"(?i)Permission denied",
+            after_utc=after_utc,
+        )
+    if not match:
+        raise Exception(f"No evidence of update failure on {node_type} {node_id} yet. Last lines: {lines}")
     logger.info(
         f"Found evidence of update failure on {node_type} {node_id} due to missing execute permissions: {lines}"
     )
@@ -442,6 +447,7 @@ CN_4 = "q1-st-cr1-2"
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_update_race_conditions(
     region,
+    os,
     pcluster_config_reader,
     clusters_factory,
     test_datadir,
@@ -610,13 +616,13 @@ def test_update_race_conditions(
     logger.info(f"Login node {login_node_1_id} unblocked")
 
     logger.info(f"Waiting for compute node {CN_3} to fail the update due to transient failure")
-    wait_for_node_update_failure(rce, cluster, NODE_TYPE_COMPUTE, CN_3)
+    wait_for_node_update_failure(rce, cluster, NODE_TYPE_COMPUTE, CN_3, os)
     logger.info(f"Transient update failure detected on compute node {CN_3}")
     remove_transient_update_failure(rce, cluster, NODE_TYPE_COMPUTE, CN_3)
     logger.info(f"Removed transient failure for compute node {CN_3}. If it retries, it will succeed the update.")
 
     logger.info(f"Waiting for login node {login_node_2_id} to fail the update due to transient failure")
-    wait_for_node_update_failure(rce, cluster, NODE_TYPE_LOGIN, login_node_2_id, after_utc=update_2_submit_time)
+    wait_for_node_update_failure(rce, cluster, NODE_TYPE_LOGIN, login_node_2_id, os, after_utc=update_2_submit_time)
     logger.info(f"Transient update failure detected on login node {login_node_2_id}")
     remove_transient_update_failure(rce, cluster, NODE_TYPE_LOGIN, login_node_2_id)
     logger.info(

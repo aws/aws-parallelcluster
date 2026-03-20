@@ -1183,7 +1183,7 @@ def match_regex_in_log(
             - str: If found, the full line containing the match plus the next `nlines_after_match` lines.
                    If not found, the last `nlines` lines of the log.
     """
-    result = rce.run_remote_command(f"cat {log_file}")
+    result = rce.run_remote_command(f"sudo cat {log_file}")
     log_content = result.stdout
 
     if after_utc:
