@@ -12,7 +12,6 @@
 import datetime
 import json
 import logging
-import os
 import re
 import tarfile
 import tempfile
@@ -43,7 +42,9 @@ from tests.common.utils import (
     get_installed_parallelcluster_base_version,
     get_installed_parallelcluster_version,
     retrieve_latest_ami,
+    upload_github_artifacts_to_s3,
 )
+from tests.proxy.test_proxy import proxy_stack_factory  # noqa: F401
 
 
 class ImageNotFound(Exception):
@@ -52,46 +53,40 @@ class ImageNotFound(Exception):
     pass
 
 
-@pytest.fixture(scope="class")
-def no_internet_proxy_stack(region, request, cfn_stacks_factory):
-    """Deploy a VPC with a proxy that only allows OS repo access and VPC endpoints for AWS services."""
-    proxy_template_path = os.path.join(os.path.dirname(__file__), "test_createami", "test_build_image_no_internet", "proxy_stack.yaml")
-    with open(proxy_template_path) as f:
-        template = f.read()
-
-    stack = CfnStack(
-        name=generate_stack_name("integ-tests-build-image-no-internet", request.config.getoption("stackname_suffix")),
-        region=region,
-        template=template,
-        parameters=[{"ParameterKey": "Keypair", "ParameterValue": request.config.getoption("key_name")}],
-        capabilities=["CAPABILITY_IAM"],
-    )
-    cfn_stacks_factory.create_stack(stack)
-    yield stack
-    if not request.config.getoption("no_delete"):
-        cfn_stacks_factory.delete_stack(stack.name, region)
-
-
 @pytest.mark.usefixtures("instance")
 def test_build_image_no_internet(
     region,
     os,
-    instance,
     pcluster_config_reader,
     architecture,
-    no_internet_proxy_stack,
+    proxy_stack_factory,  # noqa: F811
     images_factory,
+    s3_bucket_factory,
     request,
 ):
     """Test build image in a private subnet with no internet access, only VPC endpoints and a proxy for OS repos."""
     base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
+    # Create proxy stack with build-image mode enabled
+    no_internet_proxy_stack = proxy_stack_factory(enable_build_image_proxy=True)
+
+    # Upload dev packages to S3 so the build instance can access them via the S3 VPC endpoint
+    # instead of GitHub (which is blocked in the no-internet environment).
+    bucket_name = s3_bucket_factory()
+    s3_artifacts = upload_github_artifacts_to_s3(bucket_name, region, request)
+
+    # Get the proxy URL from the stack output
+    install_http_proxy_address = no_internet_proxy_stack.cfn_outputs["ProxyAddress"]
+
     image_id = generate_stack_name("integ-tests-build-image-no-internet", request.config.getoption("stackname_suffix"))
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
-        subnet_id=no_internet_proxy_stack.cfn_outputs["PrivateSubnetId"],
+        subnet_id=no_internet_proxy_stack.cfn_outputs["PrivateSubnet"],
         security_group_id=no_internet_proxy_stack.cfn_outputs["DefaultSecurityGroupId"],
+        chef_cookbook=s3_artifacts["chef_cookbook"],
+        node_package=s3_artifacts["node_package"],
+        install_http_proxy_address=install_http_proxy_address,
     )
 
     image = images_factory(image_id, image_config, region)

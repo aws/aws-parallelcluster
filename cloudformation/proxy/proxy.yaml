@@ -16,6 +16,16 @@ Parameters:
     Type: String
     Default: 0.0.0.0/0
 
+  EnableBuildImageProxy:
+    Description: >-
+      When true, enables build-image isolated network mode: adds VPC endpoints,
+      IP forwarding, tinyproxy domain allowlist, and removes ProxyClient verification.
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -28,10 +38,18 @@ Metadata:
           default: Permissions
         Parameters:
           - Keypair
+      - Label:
+          default: Build Image Proxy
+        Parameters:
+          - EnableBuildImageProxy
   cfn-lint:
     config:
       ignore_checks:
         - E1152
+
+Conditions:
+  IsBuildImageProxy: !Equals [!Ref EnableBuildImageProxy, "true"]
+  IsClusterProxy: !Not [!Condition IsBuildImageProxy]
 
 Resources:
 
@@ -121,6 +139,83 @@ Resources:
       InstanceId: !Ref Proxy
       RouteTableId: !Ref PrivateSubnetRT
 
+  # VPC ENDPOINTS (build-image mode only)
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      VpcId: !Ref Vpc
+      RouteTableIds:
+        - !Ref PrivateSubnetRT
+
+  LogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  EC2Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  ImageBuilderEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.imagebuilder
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
   # SECURITY GROUPS
   ProxySecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -143,6 +238,7 @@ Resources:
 
   ProxyClientSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: IsClusterProxy
     Properties:
       GroupDescription: Security Group for proxy clients
       SecurityGroupIngress:
@@ -203,17 +299,15 @@ Resources:
           HttpPutResponseHopLimit: 4
           HttpTokens: required
 
-  # PROXY
+  # PROXY INSTANCE
   Proxy:
     Type: AWS::EC2::Instance
     DependsOn:
-      # Dependencies required to support ENI updates when VPC, IGW and instance are defined in the same template.
-      # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-networkinterfaces
       - VpcIGW
       - ProxyENI
     Properties:
       IamInstanceProfile: !Ref ProxyInstanceProfile
-      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
       InstanceType: t3.medium
       KeyName: !Ref Keypair
       NetworkInterfaces:
@@ -223,71 +317,124 @@ Resources:
         LaunchTemplateId: !Ref Imdsv2LaunchTemplate
         Version: !GetAtt Imdsv2LaunchTemplate.LatestVersionNumber
       UserData:
-        Fn::Base64: |
-          #!/bin/bash -ex
-          set -o pipefail
-          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-          apt-get update -y
-          apt-get install -y tinyproxy redsocks
-      
-          cat << EOF > /etc/tinyproxy/tinyproxy.conf
-          User tinyproxy
-          Group tinyproxy
-          Port 8888
-          Timeout 3600
-          DefaultErrorFile "/usr/share/tinyproxy/default.html"
-          StatFile "/usr/share/tinyproxy/stats.html"
-          Logfile "/var/log/tinyproxy/tinyproxy.log"
-          LogLevel Info
-          PidFile "/run/tinyproxy/tinyproxy.pid"
-          MaxClients 500
-          MinSpareServers 20
-          MaxSpareServers 100
-          StartServers 20
-          MaxRequestsPerChild 0
-          ViaProxyName "tinyproxy"
-          ConnectPort 443
-          ConnectPort 563
-          EOF
-          
-          /etc/init.d/tinyproxy restart
-      
-          cat << EOF > /etc/redsocks.conf
-          base {
-            log_debug = off;
-            log_info = on;
-            log = "file:/var/log/redsocks";
-            daemon = on;
-            user = redsocks;
-            group = redsocks;
-            redirector = iptables;
-          }
-                        
-          redsocks {
-            local_ip = 0.0.0.0;
-            local_port = 8889;
-            ip = localhost;
-            port = 8888;
-            type = http-connect;
-          }
-          EOF
-      
-          /etc/init.d/redsocks restart
-          
-          iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
-          iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8889
-          
-          mkdir -p /etc/iptables/
-          iptables-save > /etc/iptables/rules.v4
-          
-          # Installing iptables-persistent without manual prompt
-          # https://gist.github.com/alonisser/a2c19f5362c2091ac1e7
-          echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
-          echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
-          apt-get install -y iptables-persistent
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -ex
+            set -o pipefail
+            exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+            BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
+
+            # Enable IP forwarding — without this, the kernel drops packets routed from
+            # the private subnet, causing "connection timed out" in the ConfigureSystem step.
+            if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
+              sysctl -w net.ipv4.ip_forward=1
+              echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+            fi
+
+            apt-get update -y
+            apt-get install -y tinyproxy redsocks
+
+            # Tinyproxy config — build-image mode adds domain allowlist filtering
+            cat << EOF > /etc/tinyproxy/tinyproxy.conf
+            User tinyproxy
+            Group tinyproxy
+            Port 8888
+            Timeout 3600
+            DefaultErrorFile "/usr/share/tinyproxy/default.html"
+            StatFile "/usr/share/tinyproxy/stats.html"
+            Logfile "/var/log/tinyproxy/tinyproxy.log"
+            LogLevel Info
+            PidFile "/run/tinyproxy/tinyproxy.pid"
+            MaxClients 500
+            MinSpareServers 20
+            MaxSpareServers 100
+            StartServers 20
+            MaxRequestsPerChild 0
+            ViaProxyName "tinyproxy"
+            ConnectPort 443
+            ConnectPort 563
+            EOF
+
+            if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
+              # Add domain allowlist filtering for isolated network
+              echo 'Filter "/etc/tinyproxy/filter"' >> /etc/tinyproxy/tinyproxy.conf
+              echo 'FilterDefaultDeny Yes' >> /etc/tinyproxy/tinyproxy.conf
+
+              # Domain allowlist for isolated network:
+              # OS package repos: Ubuntu, Rocky, Amazon Linux
+              # AWS services: awscli, EFA installer, S3 (global + virtual-hosted)
+              # Build dependencies: Rust crates (efs-utils), snap store (Firefox/DCV on Ubuntu)
+              # RHEL repos: Red Hat Update Infrastructure (RHUI)
+              # EPEL GPG key: CloudFront distribution
+              # DCV GPG key: CloudFront distribution (NICE DCV)
+              cat << FILTER > /etc/tinyproxy/filter
+            \.ubuntu\.com$
+            \.launchpadcontent\.net$
+            \.fedoraproject\.org$
+            ^dl\.rockylinux\.org$
+            ^mirrors\.rockylinux\.org$
+            ^download\.rockylinux\.org$
+            ^cdn\.amazonlinux\.com$
+            ^awscli\.amazonaws\.com
+            \.s3\.amazonaws\.com
+            ^s3\.amazonaws\.com
+            ^efa-installer\.amazonaws\.com
+            ^index\.crates\.io
+            ^static\.crates\.io
+            ^api\.snapcraft\.io
+            ^cloudfront\.cdn\.snapcraftcontent\.com
+            ^d2lzkl7pfhq30w\.cloudfront\.net
+            ^d1uj6qtbmh3dt5\.cloudfront\.net
+            \.aws\.ce\.redhat\.com
+            FILTER
+            fi
+
+            /etc/init.d/tinyproxy restart
+
+            # Redsocks bridges transparent HTTPS to tinyproxy via HTTP CONNECT.
+            # Tinyproxy can't handle raw TLS — redsocks wraps port 443 traffic in CONNECT
+            # so tinyproxy can read the hostname and apply its domain allowlist.
+            # Needed for pre-Chef HTTPS calls in parallelcluster.yaml (e.g., apt-get upgrade
+            # ca-certificates in the InstallCincAndCookbooks step). Once Chef runs,
+            # detect_proxy.rb sets explicit proxy env vars and bypasses redsocks.
+            cat << EOF > /etc/redsocks.conf
+            base {
+              log_debug = off;
+              log_info = on;
+              log = "file:/var/log/redsocks";
+              daemon = on;
+              user = redsocks;
+              group = redsocks;
+              redirector = iptables;
+            }
+
+            redsocks {
+              local_ip = 0.0.0.0;
+              local_port = 8889;
+              ip = localhost;
+              port = 8888;
+              type = http-connect;
+            }
+            EOF
+
+            /etc/init.d/redsocks restart
+
+            # HTTP → tinyproxy (reads Host header for filtering)
+            iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
+
+            # HTTPS → redsocks → tinyproxy CONNECT (wraps TLS in CONNECT for filtering)
+            iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8889
+
+            mkdir -p /etc/iptables/
+            iptables-save > /etc/iptables/rules.v4
+
+            echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+            echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
+            apt-get install -y iptables-persistent
       Tags:
-      - Key: Name
-        Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
+        - Key: Name
+          Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
 
   ProxyENI:
     Type: AWS::EC2::NetworkInterface
@@ -297,18 +444,20 @@ Resources:
       SourceDestCheck: false
       SubnetId: !Ref PublicSubnet
 
-  # PROXY Client
+  # PROXY VERIFICATION CLIENT
+  # In cluster mode: tests explicit proxy (http_proxy env var) by downloading from GitHub.
+  # In build-image mode: tests transparent proxy (iptables REDIRECT) by curling allowlisted domains.
   ProxyClient:
     Type: AWS::EC2::Instance
     DependsOn:
       - Proxy
     Properties:
       IamInstanceProfile: !Ref ProxyClientNodeInstanceProfile
-      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
       InstanceType: t3.medium
       KeyName: !Ref Keypair
       SecurityGroupIds:
-        - !Ref ProxyClientSecurityGroup
+        - !If [IsClusterProxy, !Ref ProxyClientSecurityGroup, !GetAtt Vpc.DefaultSecurityGroup]
       SubnetId: !Ref PrivateSubnet
       LaunchTemplate:
         LaunchTemplateId: !Ref Imdsv2LaunchTemplate
@@ -320,21 +469,30 @@ Resources:
             #!/bin/bash -ex
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-            
+            BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
             apt-get update -y
             apt-get -y install python3-pip
-            pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
-            
-            cat >> /home/ubuntu/test-proxy.sh <<TEST
-            http_proxy="http://${ProxyPrivateIp}:${ProxyPort}" wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
-            wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
-            TEST
-            
-            chmod +x /home/ubuntu/test-proxy.sh
-            
-            bash -ex /home/ubuntu/test-proxy.sh
-            
-            /usr/local/bin/cfn-signal --exit-code 0 --stack "${AWS::StackName}" --region "${AWS::Region}" "${ProxyVerificationWaitConditionHandle}"
+
+            if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
+              echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
+              https_proxy="http://${ProxyPrivateIp}:${ProxyPort}" curl -v -o /dev/null https://api.snapcraft.io/v2/snaps/info/core 2>&1 || exit 1
+              echo "==> HTTPS transparent proxy test passed"
+              echo "==> Signaling success via curl"
+              curl -X PUT -H "Content-Type:" \
+                --data-binary '{"Status":"SUCCESS","Reason":"Proxy verification passed","UniqueId":"ProxyClient","Data":"OK"}' \
+                "${ProxyVerificationWaitConditionHandle}"
+            else
+              echo "==> Installing cfn-bootstrap"
+              pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+              echo "==> Testing explicit proxy"
+              echo "http_proxy=\"http://${ProxyPrivateIp}:${ProxyPort}\" wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip" > /home/ubuntu/test-proxy.sh
+              echo "wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip" >> /home/ubuntu/test-proxy.sh
+              chmod +x /home/ubuntu/test-proxy.sh
+              bash -ex /home/ubuntu/test-proxy.sh
+              echo "==> Explicit proxy test passed"
+
+              /usr/local/bin/cfn-signal --exit-code 0 --stack "${AWS::StackName}" --region "${AWS::Region}" "${ProxyVerificationWaitConditionHandle}"
+            fi
 
           - {
               ProxyPrivateIp: !GetAtt Proxy.PrivateIp,
@@ -366,4 +524,8 @@ Outputs:
   ProxyAddress:
     Value: !Sub [ "http://${ProxyPrivateIp}:8888", { ProxyPrivateIp: !GetAtt Proxy.PrivateIp } ]
   ProxyClientSecurityGroup:
+    Condition: IsClusterProxy
     Value: !Ref ProxyClientSecurityGroup
+  DefaultSecurityGroupId:
+    Condition: IsBuildImageProxy
+    Value: !GetAtt Vpc.DefaultSecurityGroup

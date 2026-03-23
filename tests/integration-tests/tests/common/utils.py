@@ -652,3 +652,45 @@ def get_capacity_reservation_id(request, instance_type, region, count, os):
                         }
                     )
     return reservations_ids
+
+
+@retry(stop_max_attempt_number=3, wait_fixed=seconds(10))
+def _download_and_upload_to_s3(url, bucket_name, s3_key, s3_client):
+    """Download a file from a URL and upload it to S3, with retries for transient network failures."""
+    import tempfile
+    import urllib.request
+
+    with tempfile.NamedTemporaryFile(suffix=".tgz") as tmp:
+        urllib.request.urlretrieve(url, tmp.name)
+        s3_client.upload_file(tmp.name, bucket_name, s3_key)
+
+
+def upload_github_artifacts_to_s3(bucket_name, region, request):
+    """Upload GitHub repository tarballs to S3 for use in isolated network environments.
+
+    Downloads packages from GitHub URLs specified in test config options and uploads
+    them to S3 so build instances can access them via S3 VPC endpoints instead of
+    requiring direct internet access to GitHub.
+
+    Returns a dict with S3 URLs keyed by package type.
+    """
+    s3_client = boto3.client("s3", region_name=region)
+    result = {}
+
+    option_to_s3_key = {
+        "createami_custom_chef_cookbook": ("chef_cookbook", "packages/aws-parallelcluster-cookbook.tgz"),
+        "createami_custom_node_package": ("node_package", "packages/aws-parallelcluster-node.tgz"),
+        "custom_awsbatchcli_package": ("awsbatch_cli_package", "packages/aws-parallelcluster-batch-cli.tgz"),
+    }
+
+    for option_name, (result_key, s3_key) in option_to_s3_key.items():
+        url = request.config.getoption(option_name, default=None)
+        if url:
+            logging.info("Downloading %s from %s", option_name, url)
+            _download_and_upload_to_s3(url, bucket_name, s3_key, s3_client)
+            result[result_key] = f"s3://{bucket_name}/{s3_key}"
+            logging.info("Uploaded %s to s3://%s/%s", option_name, bucket_name, s3_key)
+        else:
+            result[result_key] = ""
+
+    return result
