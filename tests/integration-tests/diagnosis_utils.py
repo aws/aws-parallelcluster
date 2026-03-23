@@ -12,6 +12,7 @@
 import logging
 import re
 
+import boto3
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -26,6 +27,7 @@ RCA_LOG_FILES = [
     "/var/log/cloud-init-output.log",
     "/var/log/parallelcluster/slurmctld.log",
 ]
+RCA_HEAD_NODE_CONSOLE_OUTPUT = "HeadNode Console Output"
 PATTERN_GENERIC_FAILURE = r"error|fail|fatal|exception|critical"
 PATTERN_CHEF_ERROR = r"ERROR:"
 PATTERN_ICE_ERROR = r"InsufficientInstanceCapacity.*?sufficient\s+(\S+)\s+capacity"
@@ -34,6 +36,34 @@ CMD_RETRIEVE_RECIPE_EXECUTION = (
     " | grep 'INFO: Run List is'"
     " | sed -E 's/^\\[([^]]+)\\].*recipe\\[([^]]+)\\].*/\\1 \\2/'"
 )
+PATTERN_IMDS_UNREACHABLE = r"cloud-init.*Timed out, no response from urls:.*169\.254\.169\.254"
+PATTERN_NETWORK_FAILURE = r"cloud-init.*Failed to establish a new connection"
+
+
+def retrieve_console_errors(region, instance_id):
+    """
+    Retrieve error lines from the head node EC2 console output.
+
+    Uses boto3 to fetch the latest console output and filters for error lines.
+
+    :param region: AWS region of the cluster.
+    :param instance_id: EC2 instance ID of the head node.
+    :return: String with error lines from console output, or a message if none found / retrieval failed.
+    """
+    try:
+        ec2 = boto3.client("ec2", region_name=region)
+        response = ec2.get_console_output(InstanceId=instance_id, Latest=True)
+        console_output = response.get("Output", "")
+        if not console_output or not console_output.strip():
+            return "No console output available"
+
+        error_lines = [
+            line for line in console_output.splitlines() if re.search(PATTERN_GENERIC_FAILURE, line, re.IGNORECASE)
+        ]
+        return "\n".join(error_lines) if error_lines else "No error found"
+    except Exception as e:
+        logging.warning("Exception retrieving console output: %s", e)
+        return f"Failed to retrieve console output: {e}"
 
 
 def extract_ice_from_rca_details(rca_details):
@@ -43,6 +73,22 @@ def extract_ice_from_rca_details(rca_details):
     for match in re.finditer(PATTERN_ICE_ERROR, clustermgtd_log):
         instance_types.add(match.group(1))
     return [f"InsufficientInstanceCapacity on {it}" for it in sorted(instance_types)]
+
+
+def extract_imds_unreachable_from_rca_details(rca_details):
+    """Check console output for IMDS unreachable errors."""
+    console_log = rca_details.get(RCA_HEAD_NODE_CONSOLE_OUTPUT, "")
+    if re.search(PATTERN_IMDS_UNREACHABLE, console_log):
+        return ["Head Node could not bootstrap due to IMDS being unreachable"]
+    return []
+
+
+def extract_dns_failure_from_rca_details(rca_details):
+    """Check console output for DNS/connectivity failures during bootstrap."""
+    console_log = rca_details.get(RCA_HEAD_NODE_CONSOLE_OUTPUT, "")
+    if re.search(PATTERN_NETWORK_FAILURE, console_log):
+        return ["Head Node could not bootstrap due to network failure"]
+    return []
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=seconds(5))
@@ -73,8 +119,20 @@ def retrieve_rca_details(cluster, num_errors=10):
 
     rce.close_connection()
 
+    # Retrieve head node console output
+    try:
+        instance_id = cluster.head_node_instance_id
+        if instance_id:
+            rca_details[RCA_HEAD_NODE_CONSOLE_OUTPUT] = retrieve_console_errors(cluster.region, instance_id)
+        else:
+            logging.warning("Head node instance ID not available, skipping console output retrieval")
+    except Exception as e:
+        logging.warning("Failed to retrieve head node console output: %s", e)
+
     rca_details["SUMMARY"] = [
         *extract_ice_from_rca_details(rca_details),
+        *extract_imds_unreachable_from_rca_details(rca_details),
+        *extract_dns_failure_from_rca_details(rca_details),
     ]
 
     return rca_details
