@@ -9,6 +9,13 @@ Build:
     SecurityGroupIds:
         - {{ security_group_id }}
     SubnetId: {{ subnet_id }}
+    Iam:
+        AdditionalIamPolicies:
+            - Policy: arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess
 
 DevSettings:
     TerminateInstanceOnFailure: True
+    Cookbook:
+        ChefCookbook: {{ chef_cookbook }}
+        ExtraChefAttributes: '{"cluster": {"skip_awsbatch_cli_install": "true", "install_http_proxy_address": "{{ install_http_proxy_address }}"}}'
+    NodePackage: {{ node_package }}

@@ -30,40 +30,66 @@ def proxy_stack_factory(region, request, cfn_stacks_factory):
     networking, instances, and security groups for a proxy environment. The proxy
     address and subnet are retrieved from the stack outputs and used in the cluster
     configuration.
+
+    When enable_build_image_proxy is True, the stack adds VPC endpoints, IP forwarding,
+    and tinyproxy domain allowlist for build-image in isolated network environments.
     """
     proxy_stack_template_path = "../../cloudformation/proxy/proxy.yaml"
-    with open(proxy_stack_template_path) as proxy_stack_template:
-        if request.config.getoption("proxy_stack"):
-            logging.info("Using proxy stack {0} in region {1}".format(request.config.getoption("proxy_stack"), region))
-            proxy_stack = CfnStack(
-                name=request.config.getoption("proxy_stack"),
-                region=region,
-                template=proxy_stack_template.read(),
-            )
-        else:
-            stack_name = generate_stack_name("integ-tests-proxy", request.config.getoption("stackname_suffix"))
-            stack_parameters = [
-                {"ParameterKey": "Keypair", "ParameterValue": request.config.getoption("key_name")},
-                {"ParameterKey": "VpcCidr", "ParameterValue": "10.0.0.0/16"},
-                {"ParameterKey": "SSHCidr", "ParameterValue": "0.0.0.0/0"},
-            ]
-            capabilities = ["CAPABILITY_IAM"]
-            tags = [{"Key": "parallelcluster:integ-tests-proxy-stack", "Value": "proxy"}]
-            proxy_stack = CfnStack(
-                name=stack_name,
-                region=region,
-                template=proxy_stack_template.read(),
-                parameters=stack_parameters,
-                capabilities=capabilities,
-                tags=tags,
-            )
 
-            cfn_stacks_factory.create_stack(proxy_stack)
+    def _create_proxy_stack(enable_build_image_proxy=False):
+        with open(proxy_stack_template_path) as proxy_stack_template:
+            template_body = proxy_stack_template.read()
 
-        yield proxy_stack
+            if request.config.getoption("proxy_stack"):
+                logging.info(
+                    "Using proxy stack {0} in region {1}".format(request.config.getoption("proxy_stack"), region)
+                )
+                proxy_stack = CfnStack(
+                    name=request.config.getoption("proxy_stack"),
+                    region=region,
+                    template=template_body,
+                )
+            else:
+                stack_name = generate_stack_name("integ-tests-proxy", request.config.getoption("stackname_suffix"))
+                stack_parameters = [
+                    {"ParameterKey": "Keypair", "ParameterValue": request.config.getoption("key_name")},
+                    {"ParameterKey": "VpcCidr", "ParameterValue": "10.0.0.0/16"},
+                    {
+                        "ParameterKey": "SSHCidr",
+                        "ParameterValue": "10.0.0.0/0",
+                    },  # Need for Jenkins to SSH with the Proxy as a Bastion
+                    {
+                        "ParameterKey": "EnableBuildImageProxy",
+                        "ParameterValue": "true" if enable_build_image_proxy else "false",
+                    },
+                ]
+                capabilities = ["CAPABILITY_IAM"]
+                tags = [{"Key": "parallelcluster:integ-tests-proxy-stack", "Value": "proxy"}]
+                proxy_stack = CfnStack(
+                    name=stack_name,
+                    region=region,
+                    template=template_body,
+                    parameters=stack_parameters,
+                    capabilities=capabilities,
+                    tags=tags,
+                )
 
+                cfn_stacks_factory.create_stack(proxy_stack)
+
+            return proxy_stack
+
+    stacks = []
+
+    def _factory(enable_build_image_proxy=False):
+        stack = _create_proxy_stack(enable_build_image_proxy)
+        stacks.append(stack)
+        return stack
+
+    yield _factory
+
+    for stack in stacks:
         if not request.config.getoption("no_delete") and not request.config.getoption("proxy_stack"):
-            cfn_stacks_factory.delete_stack(proxy_stack.name, region)
+            cfn_stacks_factory.delete_stack(stack.name, region)
 
 
 def get_instance_public_ip(instance_id, region):
@@ -84,11 +110,12 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, clusters_factory, sc
     3. Submit a sleep job to the cluster and verify it completes successfully.
     4. Check Internet access by trying to access google.com
     """
-    proxy_address = proxy_stack_factory.cfn_outputs["ProxyAddress"]
-    subnet_with_proxy = proxy_stack_factory.cfn_outputs["PrivateSubnet"]
-    proxy_instance_id = proxy_stack_factory.cfn_resources.get("Proxy")
+    proxy_stack = proxy_stack_factory()
+    proxy_address = proxy_stack.cfn_outputs["ProxyAddress"]
+    subnet_with_proxy = proxy_stack.cfn_outputs["PrivateSubnet"]
+    proxy_instance_id = proxy_stack.cfn_resources.get("Proxy")
     assert_that(proxy_instance_id).is_not_none().described_as("Proxy instance ID should not be None")
-    proxy_public_ip = get_instance_public_ip(proxy_instance_id, proxy_stack_factory.region)
+    proxy_public_ip = get_instance_public_ip(proxy_instance_id, proxy_stack.region)
     assert_that(proxy_public_ip).is_not_none().described_as("Proxy public IP should not be None")
 
     cluster_config = pcluster_config_reader(proxy_address=proxy_address, subnet_with_proxy=subnet_with_proxy)
