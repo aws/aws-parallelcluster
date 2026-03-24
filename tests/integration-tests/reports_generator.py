@@ -18,14 +18,9 @@ from collections import defaultdict
 from typing import List
 
 import boto3
-import pandas as pd
 import untangle
 from framework.metrics_publisher import Metric, MetricsPublisher
 from junitparser import JUnitXml
-from openpyxl.styles import PatternFill
-from scipy import stats
-
-from pcluster.constants import SUPPORTED_OSES
 
 SECONDS_PER_YEAR = 365 * 24 * 60 * 60
 
@@ -277,6 +272,12 @@ def generate_performance_report(reports_output_dir):
 
 def generate_performance_summary(all_benchmark_data, os_comparison_data, reports_output_dir):  # noqa C901
     """Generate a summary Excel file showing performance trends across all benchmarks."""
+    import pandas as pd
+    from openpyxl.styles import PatternFill
+    from scipy import stats
+
+    from pcluster.constants import SUPPORTED_OSES
+
     number_of_os_rotations = [2, 4, 7, 11, 16, 22, 29, 37]
     timeframes = {}
     for num_of_rotation in number_of_os_rotations:
@@ -383,6 +384,9 @@ def generate_performance_summary(all_benchmark_data, os_comparison_data, reports
 
 def _write_os_comparison_sheet(writer, os_comparison_data):  # noqa: C901
     """Write OS comparison sheet: average of last 30 days per OS, with best/worst coloring and spread."""
+    import pandas as pd
+    from openpyxl.styles import PatternFill
+
     current_time = time.time()
     cutoff_30d = current_time - (30 * 24 * 60 * 60)
 
@@ -550,6 +554,8 @@ def _mean(x):
 
 
 def _remove_os_from_string(x):
+    from pcluster.constants import SUPPORTED_OSES
+
     for os_key in SUPPORTED_OSES:
         x = x.replace(os_key, "")
     return x
@@ -558,6 +564,8 @@ def _remove_os_from_string(x):
 def _get_statistics_by_category(  # noqa C901
     all_items, category_name, statistics_name, category_name_processing=None, statistics_processing=None
 ):
+    from pcluster.constants import SUPPORTED_OSES
+
     # This function is used to get "cluster_creation_time", "compute_average_launch_time",
     # "compute_min_launch_time", and "compute_max_launch_time",
     # This function uses a window of the number of operating systems,
@@ -636,6 +644,8 @@ def plot_statistics(result, name_prefix):
 
 
 def create_excel_files(result, name_prefix, reports_output_dir):
+    import pandas as pd
+
     filename = os.path.join(reports_output_dir, f"{name_prefix}_statistics.xlsx")
     print(f"Creating Excel file: {filename}...")
 
