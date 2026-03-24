@@ -599,13 +599,15 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-  proxy:
-    test_proxy.py::test_proxy:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# This test has never passed in isolated regions because our proxy instance setup logic in the test needs to be adjusted
+# If proxy instance is set up correctly, pcluster should be able to use proxy in isolated regions
+#  proxy:
+#    test_proxy.py::test_proxy:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
   pyxis:
     test_pyxis.py::test_pyxis:
       dimensions:
