@@ -29,7 +29,7 @@ RCA_LOG_FILES = [
 ]
 RCA_HEAD_NODE_CONSOLE_OUTPUT = "HeadNode Console Output"
 PATTERN_GENERIC_FAILURE = r"error|fail|fatal|exception|critical"
-PATTERN_CHEF_ERROR = r"ERROR:"
+PATTERN_CHEF_ERROR = r"(ERROR|FATAL):"
 PATTERN_ICE_ERROR = r"InsufficientInstanceCapacity.*?sufficient\s+(\S+)\s+capacity"
 CMD_RETRIEVE_RECIPE_EXECUTION = (
     "cat /var/log/chef-client.log"
