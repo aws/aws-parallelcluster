@@ -289,6 +289,12 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
+    test_update_race_conditions.py::test_update_race_conditions:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2404"]
+          schedulers: ["slurm"]
   ultraserver:
     test_gb200.py::test_gb200:
       dimensions:
