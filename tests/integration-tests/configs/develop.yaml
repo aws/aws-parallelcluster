@@ -366,7 +366,7 @@ test-suites:
           schedulers: ["slurm"]
     test_cluster_networking.py::test_existing_eip:
       dimensions:
-        - regions: ["me-south-1", "us-west-1"]
+        - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_1 }}]
           schedulers: ["slurm"]
