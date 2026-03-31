@@ -36,7 +36,6 @@ CHANGELOG
 - Upgrade Python to 3.14.2 (from 3.12.11) for all OSs except Amazon Linux 2.
 - Upgrade aws-cfn-bootstrap to version 2.0-38 (from 2.0-33).
 - Upgrade DCGM to version 4.5.1 (from 4.4.1) for all OSs except Amazon Linux 2.
-- Upgrade Munge to version 0.5.17 (from 0.5.16) for all OSs except Amazon Linux 2.
 - Upgrade mysql-community-client to version 8.4.8 (from 8.0.39) for all OSs except Amazon Linux 2.
 - Upgrade Intel MPI Library to 2021.17.2 (from 2021.16.0).
 - Upgrade Cinc Client to version 18.8.54 (from 18.7.10).
@@ -341,7 +340,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
-- Allow build-image to be run in an isolated network.
+- Add support for build-image in AWS Top Secret and AWS Secret Regions.
 - Add support for Amazon Linux 2023.
 - Add support for `price-capacity-optimized` as an `AllocationStrategy`.
 - Add validator to prevent the use of Placement Groups with Capacity Blocks.
@@ -484,7 +483,7 @@ CHANGELOG
   - This change removes support for P3, G3, P2 and G2 instances with GPU architecture not supported by OpenRM. The Open Source Nvidia only works on platforms that have the GSP (GPU System Processor).
 - Remove support of `all_or_nothing_batch` configuration parameter in the Slurm resume program, in favor of the new `Scheduling/ScalingStrategy` cluster configuration.
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
-- Change default EBS volume types in ADC regions from `gp2` to `gp3`, for both the root and additional volumes.
+- Change default EBS volume types in AWS Secret and Top Secret regions from `gp2` to `gp3`, for both the root and additional volumes.
 - The optional permissions boundary for the ParallelCluster API is now applied to every IAM role created by the API infrastructure.
 - Upgrade EFA installer to `1.29.1`.
   - Efa-driver: `efa-2.6.0-1`
@@ -564,11 +563,11 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add support for Slurm accounting in US isolated regions.
+- Add support for Slurm accounting in AWS Top Secret and AWS Secret Regions..
 
 **CHANGES**
 - Avoid duplication of nodes seen by `clustermgtd` if compute nodes are added to multiple Slurm partitions.
-- ParallelCluster AMI for US isolated regions are now vended with preconfigured CA certificates to speed up node bootstrap.
+- ParallelCluster AMI for AWS Top Secret and AWS Secret regions are now vended with preconfigured CA certificates to speed up node bootstrap.
 - Replace `nvidia-persistenced` service with `parallelcluster_nvidia` service to avoid conflicts with DLAMI.
 
 **BUG FIXES**
@@ -647,7 +646,7 @@ CHANGELOG
 -----
 **ENHANCEMENTS**
 - Add a new way to distribute ParallelCluster as a self-contained executable shipped with a dedicated installer.
-- Add support for US isolated region us-isob-east-1.
+- Add support for AWS Secret region us-isob-east-1.
 
 **CHANGES**
 - Upgrade EFA installer to `1.22.0`
