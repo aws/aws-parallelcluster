@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.16.0
+------
+
+**BUG FIXES**
+- Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
+
 3.15.0
 ------
 
