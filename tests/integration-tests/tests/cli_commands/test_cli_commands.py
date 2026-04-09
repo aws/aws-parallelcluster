@@ -89,7 +89,9 @@ def test_slurm_cli_commands(
     filters = [{}, {"node_type": "HeadNode"}, {"node_type": "Compute"}, {"queue_name": "ondemand1"}]
     for filter_ in filters:
         _test_describe_instances(cluster, **filter_)
+    _wait_for_no_active_export_tasks(cluster)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster)
+    _wait_for_no_active_export_tasks(cluster)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, True)
     check_pcluster_list_cluster_log_streams(cluster, os)
     _test_pcluster_get_cluster_log_events(cluster)
@@ -276,6 +278,49 @@ def _test_describe_instances(cluster, node_type=None, queue_name=None):
     )
     cluster_instances_from_cli = cluster.get_cluster_instance_ids(node_type=node_type, queue_name=queue_name)
     assert_that(set(cluster_instances_from_cli)).is_equal_to(set(cluster_instances_from_ec2))
+
+
+def _wait_for_no_active_export_tasks(cluster):
+    """Wait until there are no active CloudWatch Logs export tasks in the region.
+
+    CloudWatch Logs allows only one export task per region at a time. This function
+    polls until any running or pending export task completes, preventing conflicts with
+    subsequent export calls.
+    See: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
+    """
+    active_statuses = {"RUNNING", "PENDING", "PENDING_CANCEL"}
+    logs_client = boto3.client("logs", region_name=cluster.region)
+    paginator = logs_client.get_paginator("describe_export_tasks")
+    max_wait = 300  # 5 minutes
+    poll_interval = 10
+    elapsed = 0
+    while elapsed < max_wait:
+        active_tasks = [
+            task
+            for page in paginator.paginate()
+            for task in page.get("exportTasks", [])
+            if task.get("status", {}).get("code") in active_statuses
+        ]
+        if not active_tasks:
+            logging.info("No active export tasks in region %s", cluster.region)
+            return
+        logging.info(
+            "Waiting for %d active export task(s) to complete in region %s (%ds elapsed): %s",
+            len(active_tasks),
+            cluster.region,
+            elapsed,
+            [
+                {
+                    "taskId": t.get("taskId"),
+                    "status": t.get("status", {}).get("code"),
+                    "logGroup": t.get("logGroupName"),
+                }
+                for t in active_tasks
+            ],
+        )
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+    logging.warning("Timed out waiting for export tasks to complete after %ds", max_wait)
 
 
 def _test_pcluster_compute_fleet(cluster, expected_num_nodes):
