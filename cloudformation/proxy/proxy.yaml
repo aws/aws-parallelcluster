@@ -50,6 +50,8 @@ Metadata:
 Conditions:
   IsBuildImageProxy: !Equals [!Ref EnableBuildImageProxy, "true"]
   IsClusterProxy: !Not [!Condition IsBuildImageProxy]
+  # China regions (aws-cn partition) use cn.com.amazonaws prefix for VPC Interface endpoint service names
+  IsChinaRegion: !Equals [!Ref "AWS::Partition", "aws-cn"]
 
 Resources:
 
@@ -140,6 +142,7 @@ Resources:
       RouteTableId: !Ref PrivateSubnetRT
 
   # VPC ENDPOINTS (build-image mode only)
+  # S3 Gateway endpoint uses standard com.amazonaws naming in all partitions
   S3Endpoint:
     Type: AWS::EC2::VPCEndpoint
     Condition: IsBuildImageProxy
@@ -150,6 +153,7 @@ Resources:
       RouteTableIds:
         - !Ref PrivateSubnetRT
 
+  # Interface endpoints use com.amazonaws in all partitions, except for some services in China regions
   LogsEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Condition: IsBuildImageProxy
@@ -161,11 +165,14 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet
 
+  # EC2 VPC endpoint uses cn.com.amazonaws prefix in China regions
   EC2Endpoint:
     Type: AWS::EC2::VPCEndpoint
     Condition: IsBuildImageProxy
     Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2
+      ServiceName: !Sub
+        - "${Prefix}.${AWS::Region}.ec2"
+        - Prefix: !If [IsChinaRegion, "cn.com.amazonaws", "com.amazonaws"]
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
       VpcId: !Ref Vpc
@@ -205,11 +212,14 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet
 
+  # ImageBuilder VPC endpoint uses cn.com.amazonaws prefix in China regions
   ImageBuilderEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Condition: IsBuildImageProxy
     Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.imagebuilder
+      ServiceName: !Sub
+        - "${Prefix}.${AWS::Region}.imagebuilder"
+        - Prefix: !If [IsChinaRegion, "cn.com.amazonaws", "com.amazonaws"]
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
       VpcId: !Ref Vpc
