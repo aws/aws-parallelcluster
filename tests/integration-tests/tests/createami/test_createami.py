@@ -53,6 +53,49 @@ class ImageNotFound(Exception):
     pass
 
 
+def _get_base_ami(region, os, architecture):
+    """Select the appropriate base AMI and feature flags based on OS.
+
+    Uses first-stage AMIs for RHEL/Rocky/Ubuntu (kernel version requirements),
+    remarkable (Deep Learning) AMIs for ubuntu2204, and official AMIs for everything else.
+    Returns (base_ami, feature_flags) where feature_flags is a dict with keys:
+      enable_nvidia, update_os_packages, enable_lustre_client, enable_dcv.
+    """
+    enable_nvidia = os not in ["ubuntu2404"]
+    update_os_packages = os in ["alinux2", "alinux2023", "rocky9"]
+    enable_lustre_client = True
+    enable_dcv = True
+
+    if os in ["ubuntu2204"]:
+        # Test Deep Learning AMIs
+        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+        enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
+    elif "rhel" in os or "ubuntu" in os or os == "rocky8":
+        # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
+        try:
+            base_ami = retrieve_latest_ami(region, os, ami_type="first_stage", architecture=architecture)
+        except IndexError:  # If first stage AMI is not available, use official AMI.
+            # Therefore, the test tries to succeed at best effort.
+            logging.info("First stage AMI not available, using official AMI instead.")
+            base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
+            update_os_packages = True
+            if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
+                enable_lustre_client = False
+    else:
+        # Test vanilla AMIs.
+        base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
+        if os in ["rocky9"]:
+            enable_lustre_client = False
+
+    feature_flags = {
+        "enable_nvidia": enable_nvidia,
+        "update_os_packages": update_os_packages,
+        "enable_lustre_client": enable_lustre_client,
+        "enable_dcv": enable_dcv,
+    }
+    return base_ami, feature_flags
+
+
 @pytest.mark.usefixtures("instance")
 def test_build_image_no_internet(
     region,
@@ -65,7 +108,7 @@ def test_build_image_no_internet(
     request,
 ):
     """Test build image in a private subnet with no internet access, only VPC endpoints and a proxy for OS repos."""
-    base_ami = retrieve_latest_ami(region, os, architecture=architecture)
+    base_ami, _ = _get_base_ami(region, os, architecture)
 
     # Create proxy stack with build-image mode enabled
     no_internet_proxy_stack = proxy_stack_factory(enable_build_image_proxy=True)
@@ -175,49 +218,18 @@ def test_build_image(
     bucket_name = s3_bucket_factory()
     _set_s3_bucket_policy(bucket_name, get_arn_partition(region), region)
 
-    enable_nvidia = True
-    update_os_packages = False
-    enable_lustre_client = True
-
-    # Disable nvidia installation for ubuntu2404 because nvidia drivers are failing with newest kernel
-    if os in ["ubuntu2404"]:
-        enable_nvidia = False
-
-    # Get base AMI
-    if os in ["ubuntu2204"]:
-        # Test Deep Learning AMIs
-        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-        enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
-    elif "rhel" in os or "ubuntu" in os or os == "rocky8":
-        # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
-        try:
-            base_ami = retrieve_latest_ami(region, os, ami_type="first_stage", architecture=architecture)
-        except IndexError:  # If first stage AMI is not available, use official AMI.
-            # Therefore, the test tries to succeed at best effort.
-            logging.info("First stage AMI not available, using official AMI instead.")
-            base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-            update_os_packages = True
-            if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
-                enable_lustre_client = False
-    else:
-        # Test vanilla AMIs.
-        base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-        if os in ["rocky9"]:
-            enable_lustre_client = False
-    if os in ["alinux2", "alinux2023", "rocky9"]:
-        update_os_packages = True
-
-    enable_dcv = True
+    # Get base AMI and feature flags
+    base_ami, flags = _get_base_ami(region, os, architecture)
 
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
         instance_role=instance_role,
         bucket_name=bucket_name,
-        enable_nvidia=str(enable_nvidia and get_gpu_count(instance) > 0).lower(),
-        update_os_packages=str(update_os_packages).lower(),
-        enable_lustre_client=str(enable_lustre_client).lower(),
-        enable_dcv=str(enable_dcv).lower(),
+        enable_nvidia=str(flags["enable_nvidia"] and get_gpu_count(instance) > 0).lower(),
+        update_os_packages=str(flags["update_os_packages"]).lower(),
+        enable_lustre_client=str(flags["enable_lustre_client"]).lower(),
+        enable_dcv=str(flags["enable_dcv"]).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
