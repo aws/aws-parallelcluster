@@ -378,6 +378,7 @@ Resources:
               # RHEL repos: Red Hat Update Infrastructure (RHUI)
               # EPEL GPG key: CloudFront distribution
               # DCV GPG key: CloudFront distribution (NICE DCV)
+              # Rocky mirrors: domains from China mirrorlist resolution
               cat << FILTER > /etc/tinyproxy/filter
             \.ubuntu\.com$
             \.launchpadcontent\.net$
@@ -385,6 +386,21 @@ Resources:
             ^dl\.rockylinux\.org$
             ^mirrors\.rockylinux\.org$
             ^download\.rockylinux\.org$
+            ^mirror\.ps\.kz$
+            \.production\.gcp\.mirrors\.ctrliq\.cloud$
+            ^mirror\.hashy0917\.net$
+            ^rocky\.mirror\.co\.ge$
+            ^in\.mirrors\.cicku\.me$
+            ^mirrors\.ipserverone\.com$
+            ^mirror\.bharatdatacenter\.com$
+            ^mirrors\.esto\.network$
+            ^ftp\.iij\.ad\.jp$
+            ^mirror\.dc\.uz$
+            ^mirror\.ourhost\.az$
+            ^mirror\.maeen\.sa$
+            ^mirror\.nevacloud\.com$
+            ^ftp\.yz\.yamagata-u\.ac\.jp$
+            ^mirror\.twds\.com\.tw$
             ^cdn\.amazonlinux\.com$
             ^awscli\.amazonaws\.com
             \.s3\.amazonaws\.com
