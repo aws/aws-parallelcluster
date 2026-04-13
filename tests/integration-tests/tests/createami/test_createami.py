@@ -42,6 +42,8 @@ from tests.common.utils import (
     get_installed_parallelcluster_base_version,
     get_installed_parallelcluster_version,
     retrieve_latest_ami,
+    upload_github_artifacts_to_s3,
+    wait_for_no_active_export_tasks,
 )
 
 
@@ -198,7 +200,9 @@ def test_build_image(
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
         _test_list_images(image)
+        wait_for_no_active_export_tasks(region)
         _test_export_logs(s3_bucket_factory, image, region)
+        wait_for_no_active_export_tasks(region)
         _test_export_logs(s3_bucket_factory, image, region, True)
 
     _test_cluster_creation(

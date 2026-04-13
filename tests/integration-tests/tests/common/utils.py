@@ -687,3 +687,46 @@ def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None, num_
     except Exception as e:
         logging.error(f"Failed to push result to DynamoDB: {str(e)}")
         raise
+
+
+def wait_for_no_active_export_tasks(region):
+    """Wait until there are no active CloudWatch Logs export tasks in the region.
+
+    CloudWatch Logs allows only one export task per region at a time. This function
+    polls until any running or pending export task completes, preventing conflicts with
+    subsequent export calls.
+    See: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
+    """
+    active_statuses = {"RUNNING", "PENDING", "PENDING_CANCEL"}
+    logs_client = boto3.client("logs", region_name=region)
+    paginator = logs_client.get_paginator("describe_export_tasks")
+    max_wait = 300  # 5 minutes
+    poll_interval = 10
+    elapsed = 0
+    while elapsed < max_wait:
+        active_tasks = [
+            task
+            for page in paginator.paginate()
+            for task in page.get("exportTasks", [])
+            if task.get("status", {}).get("code") in active_statuses
+        ]
+        if not active_tasks:
+            logging.info("No active export tasks in region %s", region)
+            return
+        logging.info(
+            "Waiting for %d active export task(s) to complete in region %s (%ds elapsed): %s",
+            len(active_tasks),
+            region,
+            elapsed,
+            [
+                {
+                    "taskId": t.get("taskId"),
+                    "status": t.get("status", {}).get("code"),
+                    "logGroup": t.get("logGroupName"),
+                }
+                for t in active_tasks
+            ],
+        )
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+    logging.warning("Timed out waiting for export tasks to complete after %ds", max_wait)
