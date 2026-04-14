@@ -4,7 +4,8 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
-from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
+from tests.common.utils import push_result_to_dynamodb
+from tests.performance_tests.common import _log_output_performance_difference
 
 # timeout in seconds
 OPENFOAM_INSTALLATION_TIMEOUT = 300

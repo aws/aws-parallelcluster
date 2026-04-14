@@ -3,20 +3,16 @@ import logging
 import os as os_lib
 import pathlib
 import shutil
-import time
-import uuid
 from math import ceil
 from os import makedirs
 
 import boto3
 from assertpy import assert_that
-from framework.framework_constants import METADATA_DEFAULT_REGION, PERFORMANCE_METADATA_TABLE
-from framework.metadata_table_manager import MetadataTableManager
 from retrying import retry
 from time_utils import seconds
 from utils import get_username_for_os
 
-from tests.common.utils import fetch_instance_slots, get_installed_parallelcluster_version
+from tests.common.utils import fetch_instance_slots
 
 # Common settings used by all test scenarios
 # You can change these variables to adapt the performance test to your needs.
@@ -253,35 +249,3 @@ def _log_output_performance_difference(node, performance_degradation, observed_v
         f"Nodes: {node}, Baseline: {baseline_value} seconds, Observed: {observed_value} seconds, "
         f"Percentage difference: {percentage_difference}%, Outcome: {outcome}"
     )
-
-
-def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None, num_instances=None):
-    reporting_region = METADATA_DEFAULT_REGION
-    logging.info(f"Metadata reporting region {reporting_region}")
-    # Create the metadata table in case it doesn't exist
-    MetadataTableManager(reporting_region, PERFORMANCE_METADATA_TABLE).create_metadata_table()
-    try:
-        # Create DynamoDB resource
-        dynamodb = boto3.resource("dynamodb", region_name=reporting_region)
-        table = dynamodb.Table(PERFORMANCE_METADATA_TABLE)
-
-        # Prepare item to be inserted
-        item = {
-            "id": str(uuid.uuid4().hex),
-            "name": name,
-            "instance": instance,
-            "os": os,
-            "timestamp": int(time.time()),
-            "result": str(result),
-            "pcluster_version": f"v{get_installed_parallelcluster_version()}",
-            "mpi_variation": str(mpi_variation),
-            "num_instances": num_instances,
-        }
-
-        # Put item in the table
-        table.put_item(Item=item)
-        logging.info(f"Successfully pushed result to DynamoDB with id: {item['id']}")
-
-    except Exception as e:
-        logging.error(f"Failed to push result to DynamoDB: {str(e)}")
-        raise

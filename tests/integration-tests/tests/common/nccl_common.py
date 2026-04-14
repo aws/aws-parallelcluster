@@ -17,7 +17,7 @@ import pytest
 from assertpy import assert_that
 from utils import get_instance_info
 
-from tests.performance_tests.common import push_result_to_dynamodb
+from tests.common.utils import push_result_to_dynamodb
 
 NCCL_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/nccl/"
 
