@@ -1,4 +1,11 @@
 #!/bin/bash
+# Uploads the diagnostics folder to the head node of a ParallelCluster and installs dependencies.
+#
+# Usage:
+#   bash deploy.sh --cluster-name <cluster-name> --region <region> [--ssh-key <path-to-key>]
+#
+# Example:
+#   bash deploy.sh --cluster-name my-cluster --region us-east-1 --ssh-key ~/.ssh/my-key.pem
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
