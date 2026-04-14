@@ -36,7 +36,11 @@ from utils import (
 )
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
-from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
+from tests.common.utils import (
+    get_installed_parallelcluster_version,
+    retrieve_latest_ami,
+    wait_for_no_active_export_tasks,
+)
 
 
 @pytest.mark.usefixtures("instance")
@@ -89,7 +93,9 @@ def test_slurm_cli_commands(
     filters = [{}, {"node_type": "HeadNode"}, {"node_type": "Compute"}, {"queue_name": "ondemand1"}]
     for filter_ in filters:
         _test_describe_instances(cluster, **filter_)
+    wait_for_no_active_export_tasks(cluster.region)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster)
+    wait_for_no_active_export_tasks(cluster.region)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, True)
     check_pcluster_list_cluster_log_streams(cluster, os)
     _test_pcluster_get_cluster_log_events(cluster)
