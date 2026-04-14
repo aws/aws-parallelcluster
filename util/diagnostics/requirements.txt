@@ -1,0 +1,6 @@
+pyyaml
+boto3
+pymysql
+click
+# This constraint on urllib3 to support OS shipping old OpenSSL versions, such as AL2.
+urllib3<2.0
