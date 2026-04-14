@@ -128,6 +128,7 @@ def _check_tag_propagation(
                 {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
+            "skip": "us-iso" in cluster.region,
         },
         {
             "resource": "Compute Node",
