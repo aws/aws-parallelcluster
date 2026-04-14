@@ -22,10 +22,10 @@ from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.utils import (
     fetch_instance_slots,
     get_capacity_reservation_id,
+    push_result_to_dynamodb,
     run_system_analyzer,
     write_file,
 )
-from tests.performance_tests.common import push_result_to_dynamodb
 
 # We collected OSU benchmarks results for these instance types
 OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
