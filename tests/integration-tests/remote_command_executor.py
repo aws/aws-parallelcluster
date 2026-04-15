@@ -87,7 +87,7 @@ class RemoteCommandExecutor:
             run_command(
                 f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname", timeout=30, shell=True
             )
-            connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
+            connection_kwargs["gateway"] = f"ssh -W %h:%p -A -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion}"
             connection_kwargs["forward_agent"] = True
             connection_kwargs["connect_kwargs"]["banner_timeout"] = 60
         logging.info(
