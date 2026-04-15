@@ -4,6 +4,10 @@ CHANGELOG
 3.16.0
 ------
 
+**CHANGES**
+- The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
+  consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
+
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
 

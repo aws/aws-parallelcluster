@@ -89,7 +89,9 @@ class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
     def _validate(self, name, scheduling):
-        if scheduling.scheduler == "slurm" and scheduling.settings.database is not None:
+        if scheduling.scheduler == "slurm" and (
+            scheduling.settings.database is not None or scheduling.settings.external_slurmdbd is not None
+        ):
             if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING - 1), name):
                 self._add_failure(
                     (
