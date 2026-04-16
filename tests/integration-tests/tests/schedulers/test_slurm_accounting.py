@@ -11,6 +11,7 @@ from time_utils import seconds
 from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
+from tests.common.assertions import assert_no_defunct_slurm_config_params
 from tests.common.utils import get_aws_domain
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
@@ -245,6 +246,7 @@ def test_slurm_accounting(
     _test_slurm_accounting_password(remote_command_executor)
     _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
     _test_that_slurmdbd_is_running(remote_command_executor)
+    assert_no_defunct_slurm_config_params(remote_command_executor)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -301,6 +303,7 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
         headnode_remote_command_executor,
     )
     _test_jobs_get_recorded(scheduler_commands)
+    assert_no_defunct_slurm_config_params(headnode_remote_command_executor)
 
 
 def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory):
