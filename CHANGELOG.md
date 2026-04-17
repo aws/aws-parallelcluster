@@ -10,6 +10,8 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
+- Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden
+  via custom Slurm settings or the cluster name contains upper-case letters.
 
 3.15.0
 ------
