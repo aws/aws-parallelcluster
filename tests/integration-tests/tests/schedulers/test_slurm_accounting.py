@@ -143,6 +143,15 @@ def _test_that_slurmdbd_is_running(remote_command_executor):
     assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
 
 
+def _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name):
+    """Verify the cluster is registered in Slurm accounting under the expected custom name (lowercased by Slurm)."""
+    expected_name = custom_cluster_name.lower()
+    result = remote_command_executor.run_remote_command("sacctmgr show clusters -nP format=cluster").stdout
+    registered_clusters = [line.strip() for line in result.splitlines() if line.strip()]
+    logging.info("Registered accounting clusters: %s (expecting: %s)", registered_clusters, expected_name)
+    assert_that(registered_clusters).contains(expected_name)
+
+
 def _test_slurm_accounting_password(remote_command_executor):
     storage_pass = remote_command_executor.run_remote_command(
         "sudo grep StoragePass /opt/slurm/etc/slurm_parallelcluster_slurmdbd.conf |" "sed -e 's/StoragePass=//g'",
@@ -173,6 +182,12 @@ def test_slurm_accounting(
     config_params = _get_slurm_database_config_parameters(database.cfn_outputs)
     public_subnet_id = vpc_stack_for_database.get_public_subnet()
     private_subnet_id = vpc_stack_for_database.get_private_subnet()
+
+    # Use a mixed-case ClusterName to exercise the case-insensitive matching
+    # in the accounting bootstrap. Slurm normalizes ClusterName to lowercase,
+    # so the bootstrap must handle the mismatch between the user-specified
+    # name and the name returned by sacctmgr.
+    custom_cluster_name = "My-Custom-ClusterName"
 
     # First create a cluster without Slurm Accounting
     cluster_config = pcluster_config_reader(public_subnet_id=public_subnet_id, private_subnet_id=private_subnet_id)
@@ -237,14 +252,23 @@ def test_slurm_accounting(
         public_subnet_id=public_subnet_id,
         private_subnet_id=private_subnet_id,
         custom_database_name=custom_database_name,
+        custom_cluster_name=custom_cluster_name,
         **config_params,
     )
+
+    # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
+    # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
+    # and refuses to start if the configured ClusterName doesn't match.
+    # Removing this file allows the transition to a custom name.
+    logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
+    remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
 
     # Force update because update is not support unless the compute fleet is stopped
     cluster.update(str(updated_config_file), force_update="true")
     _test_slurm_accounting_password(remote_command_executor)
     _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
     _test_that_slurmdbd_is_running(remote_command_executor)
+    _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
