@@ -622,6 +622,8 @@ Resources:
 
   Post:
     Type: Custom::PostLambda
+    DependsOn:
+      - AdDomainAdminNodeWaitCondition
     Properties:
       ServiceToken: !GetAtt PostLambda.Arn
       AdminNodeInstanceId: !Ref AdDomainAdminNode
