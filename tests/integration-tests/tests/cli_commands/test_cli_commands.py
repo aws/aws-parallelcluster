@@ -93,9 +93,7 @@ def test_slurm_cli_commands(
     filters = [{}, {"node_type": "HeadNode"}, {"node_type": "Compute"}, {"queue_name": "ondemand1"}]
     for filter_ in filters:
         _test_describe_instances(cluster, **filter_)
-    wait_for_no_active_export_tasks(cluster.region)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster)
-    wait_for_no_active_export_tasks(cluster.region)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, True)
     check_pcluster_list_cluster_log_streams(cluster, os)
     _test_pcluster_get_cluster_log_events(cluster)
@@ -371,11 +369,13 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, use_pcluster_
 
     # test with a prefix and an output file
     bucket_prefix = "test_prefix"
+    wait_for_no_active_export_tasks(cluster.region)
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(_test_export_log_files_are_expected)(
         cluster, bucket_name if not use_pcluster_bucket else None, instance_ids, bucket_prefix
     )
 
     # test export-cluster-logs with filter option
+    wait_for_no_active_export_tasks(cluster.region)
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(_test_export_log_files_are_expected)(
         cluster,
         bucket_name if not use_pcluster_bucket else None,
@@ -394,6 +394,7 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, use_pcluster_
     assert_that(bucket_cleaned_up).is_true()
 
     # test without a prefix or output file
+    wait_for_no_active_export_tasks(cluster.region)
     ret = cluster.export_logs(bucket=bucket_name if not use_pcluster_bucket else None)
     assert_that(ret).contains_key("url")
     filename = ret["url"].split(".tar.gz")[0].split("/")[-1] + ".tar.gz"

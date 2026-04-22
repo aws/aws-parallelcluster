@@ -192,6 +192,26 @@ def test_cluster_name_validator(cluster_name, scheduling, should_trigger_error):
             ),
             False,
         ),
+        (
+            "ClusterNameWith40------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    external_slurmdbd=ExternalSlurmdbd(host="test.slurmdbd.host", port=6819),
+                ),
+            ),
+            False,
+        ),
+        (
+            "ClusterNameWith41-------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    external_slurmdbd=ExternalSlurmdbd(host="test.slurmdbd.host", port=6819),
+                ),
+            ),
+            True,
+        ),
     ],
 )
 def test_cluster_name_validator_slurm_accounting(cluster_name, scheduling, should_trigger_error):
