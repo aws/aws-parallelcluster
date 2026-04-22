@@ -91,6 +91,40 @@ def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_fi
         assert_that(log).does_not_contain(message)
 
 
+def assert_no_defunct_slurm_config_params(remote_command_executor: RemoteCommandExecutor, ignore_patterns=None):
+    """
+    Assert slurmctld.log has no warnings about defunct or obsolete slurm.conf parameters.
+
+    Slurm logs messages like "Ignoring obsolete <Param>=<Value> option" when it encounters
+    configuration parameters that have been removed in the running Slurm version.
+    This catches cases where our generated slurm.conf contains settings that are no longer
+    recognized by the installed Slurm version.
+    """
+    __tracebackhide__ = True
+    log_file = "/var/log/slurmctld.log"
+    log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+    log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
+
+    defunct_patterns = [
+        "Ignoring obsolete",
+        "Ignoring defunct",
+        "is defunct",
+    ]
+
+    offending_lines = []
+    for line in log.splitlines():
+        if any(pattern in line for pattern in defunct_patterns):
+            if ignore_patterns and any(ip in line for ip in ignore_patterns):
+                continue
+            offending_lines.append(line.strip())
+
+    if offending_lines:
+        pytest.fail(
+            "slurmctld.log contains warnings about defunct/obsolete slurm.conf parameters:\n"
+            + "\n".join(offending_lines)
+        )
+
+
 def assert_msg_in_log(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str):
     """Assert message is in log_file."""
     __tracebackhide__ = True
