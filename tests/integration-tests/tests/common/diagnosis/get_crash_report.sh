@@ -151,7 +151,7 @@ function scan_directory() {
 function scan_coredumpctl() {
   # Query systemd-coredump via coredumpctl for crash entries.
   # Used on OSes that use systemd-coredump (AL2023, RHEL9, Rocky9).
-  # Adds a single "coredumpctl" entry with the first 100 lines of `coredumpctl info`.
+  # Adds a single "coredumpctl" entry with the first 500 lines of `coredumpctl info`.
   # Retries once if systemd-coredump is still processing a core dump.
   log_info "Checking coredumpctl for systemd-coredump entries..."
   if ! command -v coredumpctl > /dev/null 2>&1; then
@@ -170,7 +170,7 @@ function scan_coredumpctl() {
   for i in $(seq 1 ${attempts}); do
     # Merge stderr into stdout so we can filter notice lines from either stream.
     # Filter out "-- Notice:" lines that appear when systemd-coredump is still processing.
-    content=$(coredumpctl info --no-pager 2>&1 | grep -vF -- '-- Notice:' | grep -vF 'No coredumps found.' | head -100)
+    content=$(coredumpctl info --no-pager 2>&1 | grep -vF -- '-- Notice:' | grep -vF 'No coredumps found.' | head -500)
     if [ -n "${content}" ]; then
       break
     fi
