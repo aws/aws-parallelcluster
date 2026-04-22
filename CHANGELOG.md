@@ -12,6 +12,7 @@ CHANGELOG
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
 - Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden
   via custom Slurm settings or the cluster name contains upper-case letters.
+- Remove deprecated parameter `AccountingStorageUser` from Slurm configuration that was causing harmless error messages.
 
 3.15.0
 ------
