@@ -280,8 +280,8 @@ test-suites:
           instances: ["hpc6id.32xlarge"]
           oss: [{{ OS_X86_4 }}]
           schedulers: [ "slurm" ]
-        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
-          instances: [{{ common.instance("instance_type_1") }}]
+        - regions: ["eun1-az2"]  # do not move, unless instance type support is moved as well
+          instances: ["hpc6a.48xlarge"]
           oss: [{{ OS_X86_6 }}]
           schedulers: [ "slurm" ]
   ultraserver:
