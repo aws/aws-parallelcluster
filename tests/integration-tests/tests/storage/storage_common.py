@@ -250,8 +250,8 @@ def write_file_into_efs(
         package_update: true
         package_upgrade: true
         runcmd:
-        - yum install -y nfs-utils
-        - yum install -y amazon-efs-utils
+        - dnf install -y nfs-utils
+        - dnf install -y amazon-efs-utils
         {write_file_user_data}
         - opt/aws/bin/cfn-signal -e $? --stack ${{AWS::StackName}} --resource InstanceToWriteEFS --region ${{AWS::Region}}
         """  # noqa: E501
@@ -296,7 +296,7 @@ def write_file_into_efs(
         Instance(
             "InstanceToWriteEFS",
             CreationPolicy={"ResourceSignal": {"Timeout": "PT10M"}},
-            ImageId=retrieve_latest_ami(region, "alinux2"),
+            ImageId=retrieve_latest_ami(region, "alinux2023"),
             InstanceType="c5.xlarge",
             LaunchTemplate=LaunchTemplateSpecification(
                 LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
