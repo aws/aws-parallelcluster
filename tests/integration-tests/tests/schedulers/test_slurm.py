@@ -1734,15 +1734,17 @@ def _wait_compute_cloudinit_done(remote_command_executor, compute_node):
     assert_that(compute_cloudinit_status_output).contains("status: done")
 
 
-def _assert_mpi_process_completion(
-    remote_command_executor, slurm_commands, num_nodes, after_completion, check_proc_file
-):
-    result = slurm_commands.submit_command(
-        f'ps aux | grep "mpiexec.hydra.*sleep" | grep -v "grep" >> {check_proc_file}', nodes=num_nodes
+def _assert_mpi_process_completion(remote_command_executor, num_nodes, after_completion):
+    proc_track_result = remote_command_executor.run_remote_command(
+        f'srun -N {num_nodes} bash -c \'ps aux | grep "mpiexec.hydra.*sleep" | grep -v "grep" || true\''
     )
-    job_id = slurm_commands.assert_job_submitted(result.stdout)
-    slurm_commands.wait_job_completed(job_id)
-    proc_track_result = remote_command_executor.run_remote_command(f"cat {check_proc_file}")
+    logging.info(
+        "MPI process check (after_completion=%s) on %d nodes:\nstdout:\n%s\nstderr:\n%s",
+        after_completion,
+        num_nodes,
+        proc_track_result.stdout,
+        proc_track_result.stderr,
+    )
     if after_completion:
         assert_that(proc_track_result.stdout).does_not_match(".*mpiexec.hydra.*sleep")
     else:
@@ -1751,13 +1753,8 @@ def _assert_mpi_process_completion(
 
 def _check_mpi_process(remote_command_executor, slurm_commands, num_nodes, after_completion):
     """Submit script and check for MPI processes."""
-    # Clean up old datafiles
-    check_proc_file = "/shared/check_proc.out"
-
-    # Check completion status of MPI process using the shared datafile
-    remote_command_executor.run_remote_command(f"rm -f {check_proc_file}")
     retry(wait_fixed=seconds(10), stop_max_attempt_number=4)(_assert_mpi_process_completion)(
-        remote_command_executor, slurm_commands, num_nodes, after_completion, check_proc_file
+        remote_command_executor, num_nodes, after_completion
     )
 
 
