@@ -16,7 +16,6 @@ import os as os_lib
 import re
 import tarfile
 import tempfile
-import time
 
 import boto3
 import botocore
@@ -295,14 +294,13 @@ def _test_pcluster_compute_fleet(cluster, expected_num_nodes):
     last_stop_time = compute_fleet["lastStatusUpdatedTime"]
 
     logging.info("Testing pcluster start functionalities")
-    # Do a complicated sequence of start and stop and see if commands will still work
-    cluster.start()
-    time.sleep(15)
-    cluster.stop()
-    time.sleep(15)
-    cluster.stop()
-    time.sleep(30)
-    cluster.start()
+    # Do a complicated sequence of start and stop and see if commands will still work.
+    # We must wait for terminal states between commands to avoid racing with clusterstatusmgtd's
+    # ~60s poll loop, which transitions *_REQUESTED -> *ING and would cause conditional DDB write failures.
+    cluster.start(wait_running=True)
+    cluster.stop(wait_stopped=True)
+    cluster.stop(wait_stopped=True)  # idempotent on already-stopped fleet
+    cluster.start(wait_running=True)
     compute_fleet = cluster.describe_compute_fleet()
     last_start_time = compute_fleet["lastStatusUpdatedTime"]
     logging.info("Checking last status update time is updated")
