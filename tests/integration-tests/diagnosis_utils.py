@@ -38,6 +38,11 @@ CMD_RETRIEVE_RECIPE_EXECUTION = (
 )
 PATTERN_IMDS_UNREACHABLE = r"cloud-init.*Timed out, no response from urls:.*169\.254\.169\.254"
 PATTERN_NETWORK_FAILURE = r"cloud-init.*Failed to establish a new connection"
+# Matches the chef-client.log block in the EC2 console output
+PATTERN_CHEF_CLIENT_LOG_BLOCK = re.compile(
+    r"[^\n]*BEGIN CHEF-CLIENT\.LOG[^\n]*.*?[^\n]*END CHEF-CLIENT\.LOG[^\n]*",
+    re.DOTALL,
+)
 
 
 def retrieve_console_errors(region, instance_id):
@@ -45,6 +50,8 @@ def retrieve_console_errors(region, instance_id):
     Retrieve error lines from the head node EC2 console output.
 
     Uses boto3 to fetch the latest console output and filters for error lines.
+    Also appends the full chef-client.log block when present, so RCA has the full chef run
+    context instead of just lines matching the generic failure pattern.
 
     :param region: AWS region of the cluster.
     :param instance_id: EC2 instance ID of the head node.
@@ -60,7 +67,14 @@ def retrieve_console_errors(region, instance_id):
         error_lines = [
             line for line in console_output.splitlines() if re.search(PATTERN_GENERIC_FAILURE, line, re.IGNORECASE)
         ]
-        return "\n".join(error_lines) if error_lines else "No error found"
+        sections = []
+        sections.append("\n".join(error_lines) if error_lines else "No error found")
+
+        chef_match = PATTERN_CHEF_CLIENT_LOG_BLOCK.search(console_output)
+        if chef_match:
+            sections.append(chef_match.group(0))
+
+        return "\n==========\n".join(sections)
     except Exception as e:
         logging.warning("Exception retrieving console output: %s", e)
         return f"Failed to retrieve console output: {e}"
