@@ -17,6 +17,8 @@ from assertpy import assert_that
 from retrying import retry
 from time_utils import minutes, seconds
 
+from tests.common.utils import is_blank
+
 
 class SchedulerCommands(metaclass=ABCMeta):
     """Define common scheduler commands."""
@@ -398,17 +400,24 @@ class SlurmCommands(SchedulerCommands):
             if match_stdout:
                 stdout = match_stdout.group(1)
                 logging.info("stdout:" + stdout)
-        if stderr is not None or stdout is not None:
-            if stderr == stdout:
-                result = self._remote_command_executor.run_remote_command(f'echo "stderr/stdout:" && cat {stderr}')
+        dump_timeout = 60
+        if not is_blank(stderr) or not is_blank(stdout):
+            if not is_blank(stderr) and stderr == stdout:
+                result = self._remote_command_executor.run_remote_command(
+                    f'echo "stderr/stdout:" && cat {stderr}', timeout=dump_timeout
+                )
                 logging.error(result.stdout)
             else:
-                if stderr is not None:
-                    stderr_result = self._remote_command_executor.run_remote_command(f'echo "stderr" && cat {stderr}')
+                if not is_blank(stderr):
+                    stderr_result = self._remote_command_executor.run_remote_command(
+                        f'echo "stderr" && cat {stderr}', timeout=dump_timeout
+                    )
                     logging.error(stderr_result.stdout)
 
-                if stdout is not None:
-                    stdout_result = self._remote_command_executor.run_remote_command(f'echo "stdout" && cat {stdout}')
+                if not is_blank(stdout):
+                    stdout_result = self._remote_command_executor.run_remote_command(
+                        f'echo "stdout" && cat {stdout}', timeout=dump_timeout
+                    )
                     logging.error(stdout_result.stdout)
         else:
             logging.error("Unable to retrieve job output.")

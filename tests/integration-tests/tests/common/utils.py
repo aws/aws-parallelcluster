@@ -304,6 +304,11 @@ def get_sts_endpoint(region):
     return "https://sts.{0}.{1}".format(region, get_aws_domain(region))
 
 
+def is_blank(value):
+    """Return True if the value is None or an empty/whitespace-only string."""
+    return value is None or value.strip() == ""
+
+
 def generate_random_string():
     """
     Generate a random prefix that is 16 characters long.
