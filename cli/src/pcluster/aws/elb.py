@@ -41,6 +41,15 @@ class ElbClient(Boto3Client):
         return response["LoadBalancers"], response.get("NextMarker")
 
     @AWSExceptionHandler.handle_client_exception
+    def describe_load_balancer(self, load_balancer_arn: str) -> Any:
+        """Retrieve the load balancer matching the given ARN, or None if not found."""
+        if not load_balancer_arn:
+            return None
+        response = self._client.describe_load_balancers(LoadBalancerArns=[load_balancer_arn])
+        load_balancers = response.get("LoadBalancers", [])
+        return load_balancers[0] if load_balancers else None
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_tags(self, load_balancer_arns: []):
         """Retrieve a list of tags associated to the load balancer arns provided as parameter."""
         """You can specify up to 20 load balancer arns in a single call."""

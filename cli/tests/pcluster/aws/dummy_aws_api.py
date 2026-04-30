@@ -24,6 +24,7 @@ from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
 from pcluster.aws.logs import LogsClient
 from pcluster.aws.resource_groups import ResourceGroupsClient
+from pcluster.aws.resource_groups_tagging_api import ResourceGroupsTaggingApiClient
 from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
@@ -112,6 +113,7 @@ class _DummyAWSApi(AWSApi):
         self._ddb_resource = _DummyDynamoResource()
         self._route53 = _DummyRoute53Client()
         self._resource_groups = _DummyResourceGroupsClient()
+        self._resource_groups_tagging_api = _DummyResourceGroupsTaggingApiClient()
         self._secretsmanager = _DummySecretsManagerClient()
         self._ssm = _DummySsmClient()
 
@@ -388,6 +390,16 @@ class _DummyResourceGroupsClient(ResourceGroupsClient):
             if group != "skip_dummy"
             else super().get_capacity_reservation_ids_from_group_resources(group)
         )
+
+
+class _DummyResourceGroupsTaggingApiClient(ResourceGroupsTaggingApiClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+    def get_resources(self, tag_filters, resource_type_filters=None):
+        """Return an empty list of resource ARNs by default."""
+        return []
 
 
 class _DummySecretsManagerClient(SecretsManagerClient):

@@ -510,6 +510,11 @@ Resources:
             Resource: '*'
             Effect: Allow
             Sid: ResourceGroupRead
+          - Action:
+              - tag:GetResources
+            Resource: '*'
+            Effect: Allow
+            Sid: ResourceGroupsTaggingApiRead
           - Action: "secretsmanager:GetSecretValue"
             Resource: !Sub arn:${AWS::Partition}:secretsmanager:${Region}:${AWS::AccountId}:secret:*
             Effect: Allow
