@@ -393,7 +393,9 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, use_pcluster_
 
     # test without a prefix or output file
     wait_for_no_active_export_tasks(cluster.region)
-    ret = cluster.export_logs(bucket=bucket_name if not use_pcluster_bucket else None)
+    ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(cluster.export_logs)(
+        bucket=bucket_name if not use_pcluster_bucket else None
+    )
     assert_that(ret).contains_key("url")
     filename = ret["url"].split(".tar.gz")[0].split("/")[-1] + ".tar.gz"
     archive_found = True
