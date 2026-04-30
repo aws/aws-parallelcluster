@@ -48,8 +48,8 @@ UNTOLERATED_CRASH_PATTERNS = [
 TOLERATED_CRASH_PATTERNS = [
     # gnome-software segfaults in libadwaita related to animated scrolling of UI widget, observed on RHEL9/Rocky9
     re.compile(r"gnome-software.*scroll_to \(libadwaita", re.DOTALL),
-    # tracker-miner-fs-3 and tracker-extract crash on Ubuntu/RHEL — GNOME file indexer, unrelated to DCV
-    re.compile(r"tracker-(miner|extract)", re.DOTALL),
+    # tracker-miner-fs-3, tracker-extract, and tracker-store crash on Ubuntu/RHEL — GNOME file indexer, unrelated to DCV
+    re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
 ]
 
 DIAGNOSIS_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "common" / "diagnosis"
