@@ -1,0 +1,42 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+    AdditionalSecurityGroups:
+      - {{ database_client_security_group }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:{{ partition }}:iam::aws:policy/SecretsManagerReadWrite # Required to read/write the JWT token from Secrets Manager
+    S3Access:
+      - BucketName: {{ bucket_name }} # Required to download custom actions
+  Ssh:
+    KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeStart:
+      Script: {{ rebuild_slurm_script_uri }}
+    OnNodeConfigured:
+      Script: {{ configure_slurmrestd_script_uri }}
+      Args:
+        - "{{ slurm_rest_api_rb_uri }}"
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    Database:
+      Uri: {{ database_host }}
+      UserName: {{ database_admin_user }}
+      PasswordSecretArn: {{ database_secret_arn }}
+  SlurmQueues:
+    - Name: q1
+      ComputeResources:
+        - Name: cr1
+          Instances:
+            {% for instance_type in flexible_instance_types %}
+            - InstanceType: {{ instance_type }}
+            {% endfor %}
+          MinCount: 0
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
