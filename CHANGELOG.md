@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
+- The CLI now requires the additional permission `tag:GetResources`.
 
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
@@ -14,6 +15,8 @@ CHANGELOG
   via custom Slurm settings or the cluster name contains upper-case letters.
 - Remove deprecated parameter `AccountingStorageUser` from Slurm configuration that was causing harmless error messages.
 - Fix clustermgtd failing to detect compute node bootstrap timeouts, which prevented the cluster from entering protected mode.
+- Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags, 
+  which used to cause cluster update failure on clusters with login nodes.
 
 3.15.0
 ------
