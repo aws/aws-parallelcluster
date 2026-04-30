@@ -409,7 +409,6 @@ def _setup_custom_logger(log_file):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_credentials")
 def clusters_factory(request, region):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -522,7 +521,6 @@ def api_client(region, api_server_factory, api_uri):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_credentials")
 def images_factory(request):
     """
     Define a fixture to manage the creation and destruction of images.
@@ -949,7 +947,6 @@ def cfn_stacks_factory(request):
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("setup_credentials")
 def parameterized_cfn_stacks_factory(request):
     """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
@@ -1045,7 +1042,6 @@ def register_cli_credentials(initialize_cli_creds):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("clusters_factory", "images_factory")
 def create_roles_stack(request, region):
     """Define a fixture that returns a stack factory for IAM roles."""
     logging.info("Creating IAM roles stack")
