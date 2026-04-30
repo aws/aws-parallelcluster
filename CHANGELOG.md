@@ -13,6 +13,7 @@ CHANGELOG
 - Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden
   via custom Slurm settings or the cluster name contains upper-case letters.
 - Remove deprecated parameter `AccountingStorageUser` from Slurm configuration that was causing harmless error messages.
+- Fix clustermgtd failing to detect compute node bootstrap timeouts, which prevented the cluster from entering protected mode.
 
 3.15.0
 ------
