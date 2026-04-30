@@ -704,24 +704,23 @@ def upload_github_artifacts_to_s3(bucket_name, region, request):
 def wait_for_no_active_export_tasks(region):
     """Wait until there are no active CloudWatch Logs export tasks in the region.
 
-    CloudWatch Logs allows only one export task per region at a time. This function
-    polls until any running or pending export task completes, preventing conflicts with
-    subsequent export calls.
-    See: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
+    Each account can only have one active (RUNNING or PENDING) export task per region at a time.
+    This function uses the statusCode filter to query only active tasks server-side,
+    preventing conflicts with subsequent export calls and avoiding pagination through
+    years of completed historical tasks.
+    See: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateExportTask.html
     """
-    active_statuses = {"RUNNING", "PENDING", "PENDING_CANCEL"}
+    logging.info("Starting the check for active export tasks in region %s", region)
+    active_statuses = ("RUNNING", "PENDING")
     logs_client = boto3.client("logs", region_name=region)
-    paginator = logs_client.get_paginator("describe_export_tasks")
     max_wait = 300  # 5 minutes
     poll_interval = 10
     elapsed = 0
     while elapsed < max_wait:
-        active_tasks = [
-            task
-            for page in paginator.paginate()
-            for task in page.get("exportTasks", [])
-            if task.get("status", {}).get("code") in active_statuses
-        ]
+        active_tasks = []
+        for status_code in active_statuses:
+            response = logs_client.describe_export_tasks(statusCode=status_code)
+            active_tasks.extend(response.get("exportTasks", []))
         if not active_tasks:
             logging.info("No active export tasks in region %s", region)
             return
