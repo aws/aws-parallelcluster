@@ -160,7 +160,7 @@ jobs:
           java-version: 11
       - run: |
           sudo npm install -g redoc-cli
-          sudo snap install yq
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
       - working-directory: api
         run: ./gradlew buildSmithyModel openApiValidate redoc
       - name: Verify Generation of OpenAPI Specs
