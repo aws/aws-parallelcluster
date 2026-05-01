@@ -37,7 +37,7 @@ jobs:
         java-version: 11
     - run: |
         sudo npm install -g redoc-cli
-        sudo snap install yq
+        sudo apt-get install yq
     - name: Modifiy Code to Change version
       run: ./util/bump-version.sh  --version ${{ inputs.pcluster-version }}
         
