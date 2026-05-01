@@ -160,7 +160,7 @@ jobs:
           java-version: 11
       - run: |
           sudo npm install -g redoc-cli
-          sudo apt-get install yq
+          sudo snap install yq
       - working-directory: api
         run: ./gradlew buildSmithyModel openApiValidate redoc
       - name: Verify Generation of OpenAPI Specs
