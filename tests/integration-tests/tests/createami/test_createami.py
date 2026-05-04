@@ -12,6 +12,7 @@
 import datetime
 import json
 import logging
+import os
 import re
 import tarfile
 import tempfile
@@ -193,7 +194,7 @@ def test_build_image(
     )
 
     with soft_assertions():
-        _test_build_image_success(image)
+        _test_build_image_success(image, request.config.getoption("output_dir"))
         _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
         _test_build_imds_settings(image, "required", region)
         _test_image_tag_and_volume(image)
@@ -277,7 +278,7 @@ def test_kernel4_build_image_run_cluster(
 
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
     image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
-    _test_build_image_success(image)
+    _test_build_image_success(image, request.config.getoption("output_dir"))
     _test_build_imds_settings(image, "required", region)
     _test_list_images(image)
 
@@ -553,7 +554,7 @@ def test_build_image_custom_components(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_success(image)
+    _test_build_image_success(image, request.config.getoption("output_dir"))
 
 
 def _test_build_imds_settings(image, status, region):
@@ -590,7 +591,7 @@ def _test_build_instances_tags(image, build_tags, region):
             assert_instance_has_desired_tags(instance, build_tags)
 
 
-def _test_build_image_success(image):
+def _test_build_image_success(image, output_dir):
     logging.info("Test build image process for image %s.", image.image_id)
 
     pcluster_describe_image_result = image.describe()
@@ -601,7 +602,7 @@ def _test_build_image_success(image):
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)
     if image.image_status != "BUILD_COMPLETE":
-        image.keep_logs = True
+        _export_image_logs(image, output_dir)
         _keep_recent_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
@@ -634,13 +635,13 @@ def test_build_image_wrong_pcluster_version(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_failed(image)
+    _test_build_image_failed(image, request.config.getoption("output_dir"))
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
-def _test_build_image_failed(image):
+def _test_build_image_failed(image, output_dir):
     logging.info("Test build image process for image %s.", image.image_id)
 
     pcluster_describe_image_result = image.describe()
@@ -652,9 +653,23 @@ def _test_build_image_failed(image):
         logging.info(pcluster_describe_image_result)
 
     if image.image_status == "BUILD_FAILED":
-        image.keep_logs = True
+        _export_image_logs(image, output_dir)
         _keep_recent_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_FAILED")
+
+
+def _export_image_logs(image, output_dir):
+    """Export the full image build log archive to the test output directory using pcluster export-image-logs."""
+    log_dir = os.path.join(output_dir, "image_build_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    output_file = os.path.join(log_dir, f"{image.image_id}-logs.tar.gz")
+    try:
+        # Each account can only have one active CloudWatch Logs export task per region at a time.
+        wait_for_no_active_export_tasks(image.region)
+        ret = image.export_logs(output_file=output_file)
+        logging.info(f"Full image build log exported to {ret.get('path', output_file)}")
+    except Exception as e:
+        logging.error(f"Failed to export image build logs for {image.image_id}: {e}")
 
 
 def _keep_recent_logs(image):
