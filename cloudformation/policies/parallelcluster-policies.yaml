@@ -589,6 +589,11 @@ Resources:
             Effect: Allow
             Sid: ResourceGroupRead
           - Action:
+              - tag:GetResources
+            Resource: '*'
+            Effect: Allow
+            Sid: ResourceGroupsTaggingApiRead
+          - Action:
               - autoscaling:DeleteAutoScalingGroup
               - autoscaling:DeleteLifecycleHook
               - autoscaling:DescribeAutoScalingGroups

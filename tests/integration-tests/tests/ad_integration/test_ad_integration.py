@@ -426,8 +426,8 @@ def _check_ssh_key_generation(user, remote_command_executor, scheduler_commands,
 
     # Switch User - Interactive
     switch_user_commands = [
-        f"sudo su {user.alias} --command='ls {ssh_key_path}'",
-        f"sudo su - {user.alias} --command='ls {ssh_key_path}'",
+        f"sudo su {user.alias} --command='sleep 3 && ls {ssh_key_path}'",
+        f"sudo su - {user.alias} --command='sleep 3 && ls {ssh_key_path}'",
         # TODO: Checks for below commands are failing, even if a manual check on the same cluster succeeds.
         # We need to double check these failures, but we can consider them as not blocking.
         # f"sudo -u {user.alias} ls {ssh_key_path}",

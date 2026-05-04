@@ -192,7 +192,7 @@ class Cluster:
             logging.error("Failed starting cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def stop(self):
+    def stop(self, wait_stopped=False):
         """Run pcluster stop and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
@@ -203,7 +203,12 @@ class Cluster:
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} stopped successfully".format(self.name))
-
+            if wait_stopped:
+                retry(
+                    wait_fixed=seconds(10),
+                    stop_max_delay=minutes(2),
+                    retry_on_result=lambda describe_result: "STOPPED" != describe_result["status"],
+                )(self.describe_compute_fleet)()
             return result.stdout
         except subprocess.CalledProcessError as e:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)

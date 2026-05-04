@@ -12,7 +12,6 @@ import logging
 from enum import Enum
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.utils import get_chunks
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,37 +82,21 @@ class PoolStatus:
             self._populate_target_group_health()
 
     def _retrieve_assigned_load_balancer(self):
-        load_balancers = AWSApi.instance().elb.list_load_balancers()
-        tags_list = self._retrieve_all_tags([o.get("LoadBalancerArn") for o in load_balancers])
-        self._load_balancer_arn_from_tags(tags_list)
-        if self._load_balancer_arn:
-            for load_balancer in load_balancers:
-                if load_balancer.get("LoadBalancerArn") == self._load_balancer_arn:
-                    self._map_status(load_balancer.get("State").get("Code"))
-                    self._dns_name = load_balancer.get("DNSName")
-                    self._scheme = load_balancer.get("Scheme")
-                    break
-
-    def _load_balancer_arn_from_tags(self, tags_list):
-        for tags in tags_list:
-            if self._key_value_tag_found(
-                tags, "parallelcluster:cluster-name", self._stack_name
-            ) and self._key_value_tag_found(tags, "parallelcluster:login-nodes-pool", self._pool_name):
-                self._load_balancer_arn = tags.get("ResourceArn")
-                break
-
-    def _key_value_tag_found(self, tags, key, value):
-        if any(key == kv.get("Key") and kv.get("Value") == value for kv in tags.get("Tags")):
-            return True
-        return False
-
-    def _retrieve_all_tags(self, load_balancers):
-        tags = []
-        if len(load_balancers) > 0:
-            chunks = get_chunks(load_balancers)
-            for chunk in chunks:
-                tags.extend(AWSApi.instance().elb.describe_tags(chunk))
-        return tags
+        load_balancer_arns = AWSApi.instance().resource_groups_tagging_api.get_resources(
+            tag_filters={
+                "parallelcluster:cluster-name": self._stack_name,
+                "parallelcluster:login-nodes-pool": self._pool_name,
+            },
+            resource_type_filters=["elasticloadbalancing:loadbalancer"],
+        )
+        if not load_balancer_arns:
+            return
+        self._load_balancer_arn = load_balancer_arns[0]
+        load_balancer = AWSApi.instance().elb.describe_load_balancer(self._load_balancer_arn)
+        if load_balancer:
+            self._map_status(load_balancer.get("State").get("Code"))
+            self._dns_name = load_balancer.get("DNSName")
+            self._scheme = load_balancer.get("Scheme")
 
     def _map_status(self, load_balancer_state):
         if load_balancer_state == "provisioning":
