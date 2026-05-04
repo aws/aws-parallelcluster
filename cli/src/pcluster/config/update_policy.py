@@ -11,6 +11,7 @@
 import re
 from enum import Enum
 
+from pcluster.aws.common import get_region
 from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.update_policy_utils import SharedStorageChangeInfo
 from pcluster.constants import (
@@ -147,6 +148,12 @@ def condition_checker_compute_fleet_stop_on_remove(change, patch):
 
 def is_slurm_queues_change(change):
     return any(path.startswith("SlurmQueues[") for path in change.path)
+
+
+def _is_adc_region():
+    """Return True if the currently configured AWS region belongs to an ADC partition."""
+    region = get_region() or ""
+    return region.startswith("us-iso")
 
 
 def extract_type_and_name_from_path(path):
@@ -728,6 +735,25 @@ UpdatePolicy.UNSUPPORTED = UpdatePolicy(
         else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
     )
     + ". If you need this change, please consider creating a new cluster instead of updating the existing one.",
+)
+
+# Update supported everywhere except ADC regions (us-iso*, us-isob*).
+#
+# In ADC regions there is a CloudFormation behavior where an UpdateStack call that includes
+# both a Tags change and a resource whose change is only in Metadata does not update that
+# resource. This breaks the head node update flow because cfn-hup on the head node polls
+# DescribeStackResource for Metadata changes on HeadNodeLaunchTemplate and never sees them,
+# leaving the HeadNodeWaitCondition to time out.
+#
+# Until the CloudFormation behavior is fixed in ADC, block tag updates in those regions.
+UpdatePolicy.SUPPORTED_UNLESS_ADC = UpdatePolicy(
+    name="SUPPORTED_UNLESS_ADC",
+    level=1000,
+    fail_reason=lambda change, patch: (
+        f"Updating '{change.key}' during a cluster update is not supported in ADC regions."
+    ),
+    action_needed=lambda change, patch: f"Restore '{change.key}' to its previous value.",
+    condition_checker=lambda change, patch: not _is_adc_region(),
 )
 
 # Block update if cluster has a managed Fsx for Lustre FileSystem, otherwise fallback to QueueUpdateStrategy

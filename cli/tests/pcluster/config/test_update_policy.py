@@ -3085,3 +3085,44 @@ def test_head_node_local_storage_update_blocked(
     if expected_action_needed:
         assert_that(action_needed_messages).is_not_empty()
         assert_that(action_needed_messages[0]).is_equal_to(expected_action_needed)
+
+
+@pytest.mark.parametrize(
+    "region, expected_result",
+    [
+        pytest.param("us-east-1", True, id="commercial region allows tag update"),
+        pytest.param("eu-west-1", True, id="commercial EU region allows tag update"),
+        pytest.param("us-gov-west-1", True, id="GovCloud region allows tag update"),
+        pytest.param("cn-north-1", True, id="China region allows tag update"),
+        pytest.param("us-iso-east-1", False, id="us-iso region blocks tag update"),
+        pytest.param("us-iso-west-1", False, id="us-iso-west region blocks tag update"),
+        pytest.param("us-isob-east-1", False, id="us-isob region blocks tag update"),
+        pytest.param("", True, id="empty region falls back to allowing update"),
+    ],
+)
+def test_supported_unless_adc_condition_checker(mocker, region, expected_result):
+    """SUPPORTED_UNLESS_ADC blocks updates only in ADC partitions (us-iso*, us-isob*)."""
+    mocker.patch("pcluster.config.update_policy.get_region", return_value=region)
+
+    change_mock = mocker.MagicMock()
+    patch_mock = mocker.MagicMock()
+
+    assert_that(UpdatePolicy.SUPPORTED_UNLESS_ADC.condition_checker(change_mock, patch_mock)).is_equal_to(
+        expected_result
+    )
+
+
+def test_supported_unless_adc_fail_reason_mentions_adc(mocker):
+    """The fail reason for SUPPORTED_UNLESS_ADC explains the ADC limitation."""
+    mocker.patch("pcluster.config.update_policy.get_region", return_value="us-iso-east-1")
+
+    change_mock = mocker.MagicMock()
+    change_mock.key = "Tags"
+    patch_mock = mocker.MagicMock()
+
+    result, fail_reason, action_needed, _ = UpdatePolicy.SUPPORTED_UNLESS_ADC.check(change_mock, patch_mock)
+
+    assert_that(result).is_equal_to(UpdatePolicy.CheckResult.ACTION_NEEDED)
+    assert_that(fail_reason).contains("ADC")
+    assert_that(fail_reason).contains("Tags")
+    assert_that(action_needed).contains("Tags")
