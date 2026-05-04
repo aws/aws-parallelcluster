@@ -477,3 +477,17 @@ def assert_regex_in_file(rce: RemoteCommandExecutor, file_name: str, pattern: st
     file_content = read_remote_file(rce, file_name)
     assertion = assert_that(bool(re.search(pattern, file_content, re.IGNORECASE)))
     assertion.is_false() if negate else assertion.is_true()
+
+
+def assert_systemd_service_running(remote_command_executor: RemoteCommandExecutor, service_name: str):
+    """Assert that a systemd service is in the 'running' sub-state."""
+    logging.info("Checking that %s systemd service is running", service_name)
+    result = remote_command_executor.run_remote_command(
+        f"sudo systemctl show {service_name} --property=SubState | cut -d= -f2",
+        raise_on_error=False,
+        pty=False,  # Disable PTY to avoid ANSI escape codes in the output
+    )
+    assert_that(result.return_code).is_equal_to(0)
+    assert_that(result.stdout.strip()).described_as(
+        f"Expected systemd service {service_name} to be running"
+    ).is_equal_to("running")
