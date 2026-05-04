@@ -1016,6 +1016,16 @@ def or_regex(items: list):
     return "|".join(map(re.escape, items))
 
 
+def _get_gpu_spec(instance_type_data):
+    """Return the GPU configuration as a frozenset of (manufacturer, count) pairs.
+
+    This captures the full GPU structure so that instances match only when they have
+    the same count for each manufacturer (e.g. NVIDIA:1 won't match NVIDIA:0).
+    """
+    gpu_info = instance_type_data.get("GpuInfo", {})
+    return frozenset((gpu.get("Manufacturer", ""), gpu.get("Count", 0)) for gpu in gpu_info.get("Gpus", []))
+
+
 def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
     ec2 = boto3.client("ec2", region_name=region)
 
@@ -1030,7 +1040,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     target_vcpus = target["VCpuInfo"]["DefaultVCpus"]
     target_threads = target["VCpuInfo"]["DefaultThreadsPerCore"]
     target_has_efa = target.get("NetworkInfo", {}).get("EfaSupported", False)
-    target_has_gpu = "GpuInfo" in target
+    target_gpu_spec = _get_gpu_spec(target)
     target_inference_accelerators = target.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
 
     # Now query for similar instances using filters
@@ -1045,16 +1055,16 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             {"Name": "supported-usage-class", "Values": ["on-demand", "spot"]},
         ],
     ):
-        # Filter for EFA support, GPU presence, and inference accelerator types
+        # Filter for EFA support, GPU configuration, and inference accelerator types
         for instance in page["InstanceTypes"]:
             instance_prefix = instance["InstanceType"].split(".")[0]
             instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
-            instance_has_gpu = "GpuInfo" in instance
+            instance_gpu_spec = _get_gpu_spec(instance)
             instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
             if (
                 instance_prefix not in EXCLUDED_INSTANCE_TYPE_PREFIXES
                 and instance_has_efa == target_has_efa
-                and instance_has_gpu == target_has_gpu
+                and instance_gpu_spec == target_gpu_spec
                 and instance_inference_accelerators == target_inference_accelerators
             ):
                 similar_instances.append(instance["InstanceType"])
