@@ -1,12 +1,25 @@
 Image:
   Os: {{ os }}
 Tags:
+{% if "us-iso" in region %}
+  # In ADC regions a CloudFormation bug causes HeadNodeLaunchTemplate to not be
+  # updated when UpdateStack includes a Tags change together with a metadata-only
+  # change on the resource, so we avoid adding a tag here (see SUPPORTED_UNLESS_ADC
+  # update policy). Tags must match pcluster.config.yaml exactly to avoid a diff.
+  - Key: ConfigFileTag
+    Value: ConfigFileTagValue
+  - Key: QueueOverrideTag
+    Value: ClusterLevelValue
+  - Key: ComputeOverrideTag
+    Value: ClusterLevelValue
+{% else %}
   - Key: ComputeOverrideTag
     Value: ClusterLevelValue
   - Key: ConfigFileTag
     Value: ConfigFileTagValue
   - Key: QueueOverrideTag
     Value: ClusterLevelValue
+{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:

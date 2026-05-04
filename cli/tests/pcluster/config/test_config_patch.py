@@ -1154,11 +1154,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     None,
                     {"Key": "test3", "Value": "val3"},
-                    UpdatePolicy.SUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.SUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="tag_addition",
         ),
         pytest.param(
@@ -1170,11 +1170,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     {"Key": "test2", "Value": "val2"},
                     None,
-                    UpdatePolicy.SUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.SUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="tag_removal",
         ),
         pytest.param(
@@ -1186,11 +1186,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Value",
                     "old_value",
                     "new_value",
-                    UpdatePolicy.SUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=False,
                 )
             ],
-            UpdatePolicy.SUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="tag_value_modification",
         ),
         pytest.param(
@@ -1202,11 +1202,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     None,
                     {"Key": "test3", "Value": "val3"},
-                    UpdatePolicy.SUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.SUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="order_change_plus_addition",
         ),
         pytest.param(

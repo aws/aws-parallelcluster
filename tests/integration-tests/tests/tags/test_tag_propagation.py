@@ -63,8 +63,17 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     # Makes sure that the compute nodes have started before checking tags
     _wait_for_compute_fleet_start(cluster)
 
-    # Checks for tag propagation
-    _check_tag_propagation(cluster, scheduler, os, volume_name, add_additional_config_tags=True)
+    # Checks for tag propagation.
+    # In ADC regions, CloudFormation doesn't properly update stack tags during a cluster update (see the
+    # SUPPORTED_UNLESS_ADC update policy), so AdditionalConfigTag is intentionally
+    # not added to the updated configuration and we skip asserting it here.
+    _check_tag_propagation(
+        cluster,
+        scheduler,
+        os,
+        volume_name,
+        add_additional_config_tags="us-iso" not in cluster.region,
+    )
 
     _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
 

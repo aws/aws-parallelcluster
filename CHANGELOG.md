@@ -38,7 +38,7 @@ CHANGELOG
 - Replace cfn-hup in compute nodes with systemd timer to support in place updates in order to improve performance for tightly coupled worloads at scale.
   This new mechanism relies on shared storage to sync updates between the head node and compute nodes.
 - Disable `dnf-makecache.timer` to improve performance for tightly coupled worloads on RHEL/Rocky at scale.
-- Support updates of `Tags` during cluster-updates.
+- Support updates of `Tags` during cluster-updates except in AWS Top Secret and AWS Secret Regions.
 - Add `LaunchTemplateOverrides` to cluster config to allow network interfaces to be customized by overriding the launch template of a compute resource.
   - This overrides the parallelcluster default using a shallow merge.
 - Add alarm on missing clustermgtd heartbeat.
