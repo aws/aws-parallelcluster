@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
+import random
 import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -310,6 +311,7 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 "us-west-2",
                 "us-east-1",
             ]
+            random.shuffle(candidate_regions)
             if not _create_capacity_reservations(az_for_capacity_reservation, candidate_regions, specs, var):
                 # If failed to create reservation, use use1-az6 to avoid making the test yaml syntactically wrong.
                 logging.info("Failed to create capacity reservation for %s. Using use1-az6", var)
