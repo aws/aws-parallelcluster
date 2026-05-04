@@ -26,6 +26,7 @@ from tags_utils import (
     get_shared_volume_tags,
 )
 from time_utils import minutes, seconds
+from utils import wait_for_computefleet_changed
 
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_installed_parallelcluster_version
@@ -53,10 +54,10 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     _check_tag_propagation(cluster, scheduler, os, volume_name)
 
     cluster.stop()
-
+    wait_for_computefleet_changed(cluster, "STOPPED")
     # Updates cluster with new configuration
     updated_cluster_config = pcluster_config_reader(config_file="pcluster.config.update.yaml", volume_name=volume_name)
-    cluster.update(str(updated_cluster_config), force_update="true")
+    cluster.update(str(updated_cluster_config))
 
     cluster.start()
 
