@@ -417,21 +417,24 @@ class SlurmCommands(SchedulerCommands):
         if stderr or stdout:
             if stderr and stderr == stdout:
                 result = self._remote_command_executor.run_remote_command(
-                    f'echo "stderr/stdout:" && cat {shlex.quote(stderr)}', timeout=dump_timeout
+                    f"timeout {dump_timeout} cat {shlex.quote(stderr)}",
+                    timeout=dump_timeout + 10,
                 )
-                logging.error(result.stdout)
+                logging.error(f"stderr/stdout:\n{result.stdout}")
             else:
                 if stderr:
                     stderr_result = self._remote_command_executor.run_remote_command(
-                        f'echo "stderr" && cat {shlex.quote(stderr)}', timeout=dump_timeout
+                        f"timeout {dump_timeout} cat {shlex.quote(stderr)}",
+                        timeout=dump_timeout + 10,
                     )
-                    logging.error(stderr_result.stdout)
+                    logging.error(f"stderr:\n{stderr_result.stdout}")
 
                 if stdout:
                     stdout_result = self._remote_command_executor.run_remote_command(
-                        f'echo "stdout" && cat {shlex.quote(stdout)}', timeout=dump_timeout
+                        f"timeout {dump_timeout} cat {shlex.quote(stdout)}",
+                        timeout=dump_timeout + 10,
                     )
-                    logging.error(stdout_result.stdout)
+                    logging.error(f"stdout:\n{stdout_result.stdout}")
         else:
             logging.error("Unable to retrieve job output.")
 
