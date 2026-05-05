@@ -19,7 +19,7 @@ from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from utils import to_snake_case
 
-from tests.common.assertions import assert_systemd_service_running
+from tests.common.assertions import assert_no_errors_in_service_log, assert_systemd_service_running
 
 # slurmrestd listens on this unix socket when configured via the upstream postinstall script
 # (aws-samples/aws-parallelcluster-post-install-scripts/rest-api).
@@ -76,6 +76,7 @@ def test_slurm_rest_api(
     with soft_assertions():
         assert_systemd_service_running(rce, "slurmrestd")
         _assert_slurmrestd_endpoint_responsive(rce, "ping")
+        assert_no_errors_in_service_log(rce, "slurmrestd")
 
 
 def _slurmrestd_request(rce, url_path, raise_on_error=True):
