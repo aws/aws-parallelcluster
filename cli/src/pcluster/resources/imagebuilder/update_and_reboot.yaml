@@ -35,9 +35,7 @@ phases:
               set -x
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
 
-              if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
-                OS='alinux2'
-              elif [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
+              if [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
                 OS='alinux2023'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.22'` ]; then
                 OS='ubuntu2204'

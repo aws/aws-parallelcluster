@@ -491,9 +491,7 @@ class TestBuildImage:
         "linux-2-x86/x.x.x"
         "\n\nDevSettings:\n  Cookbook:\n    ChefCookbook: https://github.com/aws/aws-par"
         "allelcluster-cookbook/tarball/26ab8423b84de1a098bc26e8ff1768e930fc7707\n  NodePackage: https://git"
-        "hub.com/aws/aws-parallelcluster-node/tarball/875ef93986a86ea3267835a813d38eaa05e575f3\n  AwsBatchC"
-        "liPackage: https://github.com/aws/aws-parallelcluster/tarball/d5c2a1ec267a865cff3cf350af30d44e68f0"
-        "ef18"
+        "hub.com/aws/aws-parallelcluster-node/tarball/875ef93986a86ea3267835a813d38eaa05e575f3"
     )
 
     def _send_test_request(self, client, dryrun=None, suppress_validators=None, rollback_on_failure=None):
@@ -724,29 +722,29 @@ class TestListOfficialImages:
             pytest.param(
                 None,
                 None,
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                [_create_official_image_info("3.0.0", "alinux2023", "x86_64")],
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2023", "x86_64")]},
                 id="test with no arguments",
             ),
             pytest.param(
-                "alinux2",
+                "alinux2023",
                 None,
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                [_create_official_image_info("3.0.0", "alinux2023", "x86_64")],
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2023", "x86_64")]},
                 id="test with os",
             ),
             pytest.param(
                 None,
                 "x86_64",
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                [_create_official_image_info("3.0.0", "alinux2023", "x86_64")],
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2023", "x86_64")]},
                 id="test with architecture",
             ),
             pytest.param(
-                "alinux2",
+                "alinux2023",
                 "x86_64",
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                [_create_official_image_info("3.0.0", "alinux2023", "x86_64")],
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2023", "x86_64")]},
                 id="test with os and architecture",
             ),
         ],

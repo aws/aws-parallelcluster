@@ -20,6 +20,8 @@ from retrying import retry
 from time_utils import minutes, seconds
 from utils import get_arn_partition, random_alphanumeric
 
+from tests.common.utils import retrieve_latest_ami
+
 SnapshotConfig = namedtuple("ClusterConfig", ["ssh_key", "key_name", "vpc_id", "head_node_subnet_id"])
 
 
@@ -90,7 +92,7 @@ class EBSSnapshotsFactory:
 
     def _create_volume_process(self, region, snapshot_config):
         self.config = snapshot_config
-        ami_id = self._get_amazonlinux2_ami()
+        ami_id = retrieve_latest_ami(region, "alinux2023")
 
         self.security_group_id = self._get_security_group_id()
 
@@ -274,22 +276,6 @@ class EBSSnapshotsFactory:
         logging.info("Instance state: %s" % instance.state)
         logging.info("Public dns: %s" % instance.public_dns_name)
         return instance
-
-    def _get_amazonlinux2_ami(self):
-        # Finds most recent alinux2 ami in region
-        response = self.ec2_client.describe_images(
-            Owners=["amazon"],
-            Filters=[
-                {"Name": "name", "Values": ["amzn2-ami-hvm-*"]},
-                {"Name": "description", "Values": ["Amazon Linux 2 AMI*"]},
-                {"Name": "architecture", "Values": ["x86_64"]},
-                {"Name": "root-device-type", "Values": ["ebs"]},
-                {"Name": "state", "Values": ["available"]},
-            ],
-        )
-
-        amis = sorted(response["Images"], key=lambda x: x["CreationDate"], reverse=True)
-        return amis[0]["ImageId"]
 
     def release_all(self, region):
         """Release all resources"""

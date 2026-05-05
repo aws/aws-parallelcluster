@@ -34,21 +34,15 @@ test-suites:
       dimensions:
         - regions: ["ap-northeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
-        # 1) run the test for all the schedulers with alinux2
         - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_0 }}]
-          schedulers: {{ common.SCHEDULERS_TRAD }}
-        - regions: ["us-gov-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ BATCH_OS_X86_0 }}]
-          schedulers: ["awsbatch"]
-        # 2) run the test for all OSes with slurm
+          schedulers: ["slurm"]
         - regions: ["ap-southeast-7"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: [{{ OS_ARM_0 }}]
@@ -92,7 +86,7 @@ test-suites:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_EFA_SUPPORTED_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
     test_pcluster_configure.py::test_efa_unsupported:
       dimensions:
@@ -173,7 +167,7 @@ test-suites:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
     test_createami.py::test_build_image_no_internet:
       dimensions:
         - regions: ["us-east-1"]
@@ -212,7 +206,7 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_delete_retain:
       dimensions:
-        - oss: [{{ OS_X86_7 }}]
+        - oss: [{{ OS_X86_6 }}]
           regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_cluster_custom_resource.py::test_cluster_create_with_custom_policies:
@@ -319,18 +313,18 @@ test-suites:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ BATCH_OS_X86_0 }}]
-          schedulers: ["slurm", "awsbatch"]
+          oss: [{{ OS_X86_0 }}]
+          schedulers: ["slurm"]
     test_iam.py::test_iam_roles:
       dimensions:
         - regions: ["eu-west-3"]
-          schedulers: ["awsbatch", "slurm"]
-          oss: [{{ BATCH_OS_X86_1 }}]
+          schedulers: ["slurm"]
+          oss: [{{ OS_X86_1 }}]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_iam_image.py::test_iam_roles:
       dimensions:
         - regions: ["eu-south-1"]
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
     test_iam.py::test_s3_read_write_resource:
       dimensions:
@@ -438,21 +432,9 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
   schedulers:
-    test_awsbatch.py::test_awsbatch:
-      dimensions:
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ BATCH_OS_X86_0 }}]
-          schedulers: ["awsbatch"]
-    test_awsbatch.py::test_awsbatch_defaults:
-      dimensions:
-        - regions: ["eu-west-3"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ BATCH_OS_X86_0 }}]
-          schedulers: ["awsbatch"]
     test_slurm.py::test_slurm:
       dimensions:
         - regions: ["eu-central-1"]
@@ -505,7 +487,7 @@ test-suites:
       dimensions:
         - regions: [ "ap-east-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: [ "slurm" ]
     test_slurm.py::test_slurm_memory_based_scheduling:
       dimensions:
@@ -553,7 +535,7 @@ test-suites:
       dimensions:
         - regions: ["ap-northeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
     test_custom_munge_key.py::test_custom_munge_key:
       dimensions:
@@ -650,7 +632,7 @@ test-suites:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
     test_efs.py::test_efs_same_az:
       dimensions:
@@ -664,8 +646,8 @@ test-suites:
       dimensions:
         - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ BATCH_OS_X86_0 }}]
-          schedulers: ["awsbatch"]
+          oss: [{{ OS_X86_2 }}]
+          schedulers: ["slurm"]
         - regions: [ "ca-central-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: [{{ OS_ARM_2 }}]
@@ -698,7 +680,7 @@ test-suites:
           oss: [{{ OS_X86_5 }}]
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
     test_ebs.py::test_ebs_multiple:
       dimensions:
@@ -745,7 +727,7 @@ test-suites:
       dimensions:
         - regions: [ "us-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: [ "slurm" ]
     test_shared_home.py::test_shared_home:
       dimensions:
@@ -789,8 +771,8 @@ test-suites:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ BATCH_OS_X86_0 }}]
-          schedulers: ["slurm", "awsbatch"]
+          oss: [{{ OS_X86_0 }}]
+          schedulers: ["slurm"]
   trainium:
     test_trainium.py::test_trainium:
       dimensions:
@@ -813,7 +795,7 @@ test-suites:
       dimensions:
         - regions: ["ap-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
     test_update.py::test_queue_parameters_update:
       dimensions:
@@ -875,7 +857,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-5"] # c5 instance type is not available in ap-southeast-5
           instances: ["m6i.xlarge"]
-          oss: [{{ OS_X86_7 }}]
+          oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
   pyxis:
     test_pyxis.py::test_pyxis:

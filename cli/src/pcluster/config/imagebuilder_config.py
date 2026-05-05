@@ -332,7 +332,6 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.lustre = None
         self.is_official_ami_build = None
         self.custom_node_package = None
-        self.custom_awsbatchcli_package = None
         self.base_os = None
         self.disable_kernel_update = None
         self.slurm_patches_s3_archive = None
@@ -345,9 +344,6 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.lustre = {"enabled": "yes"} if config.build.installation.lustre_client.enabled else {"enabled": "no"}
         self.is_official_ami_build = "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
-        self.custom_awsbatchcli_package = (
-            dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
-        )
         self.slurm_patches_s3_archive = (
             dev_settings.slurm_patches_s3_archive if dev_settings and dev_settings.slurm_patches_s3_archive else ""
         )

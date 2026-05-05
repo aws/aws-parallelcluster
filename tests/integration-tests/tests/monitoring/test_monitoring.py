@@ -104,10 +104,7 @@ def _test_metrics(cw_client, headnode_instance_id, compute_instance_id, cluster_
     assert_that(mem_values).is_not_empty()
     assert_that(disk_values).is_not_empty()
 
-    if scheduler == "slurm":
-        assert_that(clustermgtd_heartbeat_values).is_not_empty()
-    else:
-        assert_that(clustermgtd_heartbeat_values).is_empty()
+    assert_that(clustermgtd_heartbeat_values).is_not_empty()
 
     # wait for additional 1 minute to reduce the chance of false negative result for compute nodes
     sleep_seconds = 60

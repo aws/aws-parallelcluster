@@ -6,7 +6,7 @@
 # encrypted_ephemeral = true is ignored
 Region: '{{ region }}'
 Image:
-  Os: alinux2
+  Os: alinux2023
 Tags:
   - Key: key
     Value: value

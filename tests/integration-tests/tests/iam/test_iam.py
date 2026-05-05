@@ -27,7 +27,6 @@ from troposphere.template_generator import TemplateGenerator
 from utils import generate_stack_name, get_arn_partition, wait_for_computefleet_changed
 
 from tests.common.assertions import assert_no_errors_in_logs
-from tests.schedulers.test_awsbatch import _test_job_submission as _test_job_submission_awsbatch
 
 
 @pytest.mark.usefixtures("os", "instance")
@@ -40,12 +39,11 @@ def test_iam_roles(
     test_datadir,
     scheduler_commands_factory,
 ):
-    is_awsbatch = scheduler == "awsbatch"
 
     cfn_client, ec2_client, iam_client, lambda_client = _create_boto3_clients(region)
 
     compute_instance_profile, compute_instance_role, head_instance_role, lambda_role = _create_cluster_roles(
-        create_roles_stack, "integ-tests-iam-cluster-roles", "cluster-roles.cfn.yaml", is_awsbatch
+        create_roles_stack, "integ-tests-iam-cluster-roles", "cluster-roles.cfn.yaml"
     )
 
     create_config, update_config = _get_config_create_and_update(test_datadir)
@@ -59,7 +57,6 @@ def test_iam_roles(
         ec2_client,
         head_instance_role,
         iam_client,
-        is_awsbatch,
         lambda_client,
         lambda_role,
         pcluster_config_reader,
@@ -74,14 +71,13 @@ def test_iam_roles(
         ec2_client,
         head_instance_role,
         iam_client,
-        is_awsbatch,
         lambda_client,
         lambda_role,
         pcluster_config_reader,
         update_config,
     )
 
-    _test_cluster_scaling(cluster, is_awsbatch, region, scheduler_commands_factory)
+    _test_cluster_scaling(cluster, region, scheduler_commands_factory)
 
 
 def _get_config_create_and_update(test_datadir):
@@ -112,7 +108,6 @@ def _test_cluster_create(
     ec2_client,
     head_instance_role,
     iam_client,
-    is_awsbatch,
     lambda_client,
     lambda_role,
     pcluster_config_reader,
@@ -127,7 +122,6 @@ def _test_cluster_create(
     )
     cluster = clusters_factory(cluster_config)
     # Check roles are attached to the resources
-    # If scheduler is awsbatch, there will still be IAM roles created.
     _check_roles(
         cfn_client,
         ec2_client,
@@ -137,26 +131,17 @@ def _test_cluster_create(
         head_instance_role,
         compute_instance_role,
         lambda_role,
-        not is_awsbatch,
     )
     return cluster
 
 
-def _test_cluster_scaling(cluster, is_awsbatch, region, scheduler_commands_factory):
+def _test_cluster_scaling(cluster, region, scheduler_commands_factory):
     remote_command_executor = RemoteCommandExecutor(cluster)
-    if is_awsbatch:
-        timeout = (
-            120 if region.startswith("cn-") else 60
-        )  # Longer timeout in china regions due to less reliable networking
-        _test_job_submission_awsbatch(
-            remote_command_executor, f"awsbsub --vcpus 2 --memory 256 --timeout {timeout} sleep 1"
-        )
-    else:
-        scheduler_commands = scheduler_commands_factory(remote_command_executor)
-        job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-            submit_command_args={"command": "sleep 1", "nodes": 1}
-        )
-        scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 1", "nodes": 1}
+    )
+    scheduler_commands.wait_job_completed(job_id)
 
 
 def _test_cluster_update(
@@ -168,7 +153,6 @@ def _test_cluster_update(
     ec2_client,
     head_instance_role,
     iam_client,
-    is_awsbatch,
     lambda_client,
     lambda_role,
     pcluster_config_reader,
@@ -179,19 +163,16 @@ def _test_cluster_update(
         another_compute_instance_role,
         another_head_instance_role,
         another_lambda_role,
-    ) = _create_cluster_roles(
-        create_roles_stack, "integ-tests-iam-cluster-roles", "cluster-roles.cfn.yaml", is_awsbatch
-    )
+    ) = _create_cluster_roles(create_roles_stack, "integ-tests-iam-cluster-roles", "cluster-roles.cfn.yaml")
 
     assert_that(another_lambda_role == lambda_role).is_false()
     assert_that(another_head_instance_role == head_instance_role).is_false()
-    if not is_awsbatch:
-        assert_that(another_compute_instance_profile == compute_instance_profile).is_false()
-        assert_that(another_compute_instance_role == compute_instance_role).is_false()
+    assert_that(another_compute_instance_profile == compute_instance_profile).is_false()
+    assert_that(another_compute_instance_role == compute_instance_role).is_false()
 
     # Update cluster with new roles
     cluster.stop()
-    wait_for_computefleet_changed(cluster, "DISABLED" if is_awsbatch else "STOPPED")
+    wait_for_computefleet_changed(cluster, "STOPPED")
     cluster.update(
         str(
             pcluster_config_reader(
@@ -205,7 +186,7 @@ def _test_cluster_update(
         )
     )
     cluster.start()
-    wait_for_computefleet_changed(cluster, "ENABLED" if is_awsbatch else "RUNNING")
+    wait_for_computefleet_changed(cluster, "RUNNING")
     # Check new roles are attached to the resources
     _check_roles(
         cfn_client,
@@ -216,22 +197,15 @@ def _test_cluster_update(
         another_head_instance_role,
         another_compute_instance_role,
         another_lambda_role,
-        not is_awsbatch,
     )
 
 
-def _create_cluster_roles(create_roles_stack, stack_prefix, roles_file, is_awsbatch):
+def _create_cluster_roles(create_roles_stack, stack_prefix, roles_file):
     cluster_roles_stack = create_roles_stack(stack_prefix=stack_prefix, roles_file=roles_file)
-    if is_awsbatch:
-        head_instance_role = cluster_roles_stack.cfn_outputs["HeadNodeRoleBatch"]
-        lambda_role = cluster_roles_stack.cfn_outputs["CustomLambdaResourcesRoleBatch"]
-        compute_instance_role = ""
-        compute_instance_profile = ""
-    else:
-        head_instance_role = cluster_roles_stack.cfn_outputs["HeadNodeRoleSlurm"]
-        compute_instance_profile = cluster_roles_stack.cfn_outputs["ComputeNodeInstanceProfileSlurm"]
-        compute_instance_role = cluster_roles_stack.cfn_outputs["ComputeNodeRoleSlurm"]
-        lambda_role = cluster_roles_stack.cfn_outputs["CustomLambdaResourcesRoleSlurm"]
+    head_instance_role = cluster_roles_stack.cfn_outputs["HeadNodeRoleSlurm"]
+    compute_instance_profile = cluster_roles_stack.cfn_outputs["ComputeNodeInstanceProfileSlurm"]
+    compute_instance_role = cluster_roles_stack.cfn_outputs["ComputeNodeRoleSlurm"]
+    lambda_role = cluster_roles_stack.cfn_outputs["CustomLambdaResourcesRoleSlurm"]
     return compute_instance_profile, compute_instance_role, head_instance_role, lambda_role
 
 
@@ -244,15 +218,12 @@ def _check_roles(
     head_instance_role,
     compute_instance_role,
     lambda_role,
-    check_no_role_is_created,
 ):
     """Test roles are attached to EC2 instances and Lambda functions."""
     resources = cfn_client.describe_stack_resources(StackName=stack_name)["StackResources"]
     for resource in resources:
         resource_type = resource["ResourceType"]
-        if check_no_role_is_created:
-            # If check_no_role_is_created, check that there is no role created in the stack.
-            assert_that(resource_type).is_not_equal_to("AWS::IAM::Role")
+        assert_that(resource_type).is_not_equal_to("AWS::IAM::Role")
         if resource_type == "AWS::Lambda::Function":
             # Check the role is attached to the Lambda function
             lambda_function = lambda_client.get_function(FunctionName=resource["PhysicalResourceId"])["Configuration"]
@@ -299,9 +270,6 @@ def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factor
 
     _test_s3_access(remote_command_executor, region)
 
-    if scheduler == "awsbatch":
-        _test_batch_access(remote_command_executor, region)
-
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
 
@@ -310,15 +278,6 @@ def _test_s3_access(remote_command_executor, region):
     result = remote_command_executor.run_remote_command(f"sudo aws s3 ls --region {region}").stdout
     # An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
     assert_that(result).does_not_contain("AccessDenied")
-
-
-def _test_batch_access(remote_command_executor, region):
-    logging.info("Testing AWS Batch Access")
-    result = remote_command_executor.run_remote_command(
-        f"aws batch describe-compute-environments --region {region}", timeout=60, pty=False
-    ).stdout
-    # An error occurred (AccessDeniedException) when calling the DescribeComputeEnvironments operation: ...
-    assert_that(result).does_not_contain("AccessDeniedException")
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")

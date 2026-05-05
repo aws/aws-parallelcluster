@@ -34,7 +34,6 @@ from pcluster.constants import (
     PCLUSTER_VERSION_TAG,
     PRIVATE_OSES,
     RETAIN_POLICY,
-    SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_SCHEDULERS,
 )
@@ -42,7 +41,6 @@ from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.utils import (
     get_installed_version,
     get_supported_os_for_architecture,
-    get_supported_os_for_scheduler,
     remove_none_values,
     retrieve_supported_regions,
 )
@@ -89,9 +87,7 @@ class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
     def _validate(self, name, scheduling):
-        if scheduling.scheduler == "slurm" and (
-            scheduling.settings.database is not None or scheduling.settings.external_slurmdbd is not None
-        ):
+        if scheduling.settings.database is not None or scheduling.settings.external_slurmdbd is not None:
             if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING - 1), name):
                 self._add_failure(
                     (
@@ -122,36 +118,6 @@ class RegionValidator(Validator):
         if region not in retrieve_supported_regions():
             self._add_failure(
                 f"Region '{region}' is not yet officially supported by ParallelCluster", FailureLevel.ERROR
-            )
-
-
-class SchedulerDisableSudoAccessForDefaultUserValidator(Validator):
-    """
-    Validator for DisableSudoAccessForDefaultUser and AWS Batch Scheduler.
-
-    Fail if using AWS Batch and DisableSudoAccessForDefaultUser is not supported.
-    """
-
-    def _validate(self, scheduler):
-        if scheduler == "awsbatch":
-            self._add_failure(
-                "DisableSudoAccessForDefaultUser is not supported when using AWS Batch as scheduler.",
-                FailureLevel.ERROR,
-            )
-
-
-class SchedulerOsValidator(Validator):
-    """
-    scheduler - os validator.
-
-    Validate os and scheduler combination.
-    """
-
-    def _validate(self, os, scheduler):
-        supported_os = get_supported_os_for_scheduler(scheduler)
-        if os not in supported_os:
-            self._add_failure(
-                f"{scheduler} scheduler supports the following operating systems: {supported_os}.", FailureLevel.ERROR
             )
 
 
@@ -1309,26 +1275,6 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
 
-class HeadNodeImdsValidator(Validator):
-    """
-    Head Node IMDS configuration validator.
-
-    Verify if the Head Node IMDs configuration is compatible with other configurations.
-    """
-
-    def _validate(self, imds_secured: bool, scheduler: str):
-        if scheduler is None:
-            self._add_failure("Cannot validate IMDS configuration if scheduler is not set.", FailureLevel.ERROR)
-        elif imds_secured is None:
-            self._add_failure("Cannot validate IMDS configuration if IMDS Secured is not set.", FailureLevel.ERROR)
-        elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
-            # TODO move validation for Imds parameter in the schema
-            self._add_failure(
-                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
-                FailureLevel.ERROR,
-            )
-
-
 class HeadNodeMemorySizeValidator(Validator):
     """
     Head Node Memory Size Validator.
@@ -1629,15 +1575,3 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
                     f"public IPs can only be assigned to instances launched with a single network interface.",
                     FailureLevel.ERROR,
                 )
-
-
-class LoginNodesSchedulerValidator(Validator):
-    """Verify that when using LoginNodes, the scheduler must be slurm."""
-
-    def _validate(self, scheduler):
-        if scheduler != "slurm":
-            self._add_failure(
-                "When using LoginNodes, the configured scheduler must be set to Slurm. "
-                "Please set the scheduler to Slurm.",
-                FailureLevel.ERROR,
-            )

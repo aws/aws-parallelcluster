@@ -7,6 +7,7 @@
 #  limitations under the License.
 import os
 import subprocess
+import sys
 
 import pytest
 import yaml
@@ -48,8 +49,9 @@ from tests.pcluster3_config_converter import test_data
 )
 def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input, expected_output, warn):
     config_file_path = os.path.join(str(test_datadir), expected_input)
+    converter_bin = os.path.join(os.path.dirname(sys.executable), "pcluster3-config-converter")
     args = [
-        "pcluster3-config-converter",
+        converter_bin,
         "--config-file",
         config_file_path,
         "--output-file",
@@ -139,67 +141,6 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             None,
             False,
             "cluster_label1",
-        ),
-        (
-            "awsbatch_required.ini",
-            "awsbatch_required.yaml",
-            [
-                "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                + "in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
-                + "during conversion.",
-                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                + "during conversion.",
-                "Warning: Parameter sanity_check = false is no longer supported, please specify "
-                + "`--suppress-validators ALL` during cluster creation.",
-            ],
-            None,
-            False,
-            None,
-        ),
-        (
-            "awsbatch_full.ini",
-            "awsbatch_full.yaml",
-            [
-                "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
-                + "in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
-                + "during conversion.",
-                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
-                + "during conversion.",
-                "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
-                "Warning: Parameter sanity_check = false is no longer supported, please specify "
-                + "`--suppress-validators ALL` during cluster creation.",
-                "Warning: s3_read_resource = arn:aws:s3:::testbucket/* is added to both headnode and scheduling "
-                + "sections. Please review the configuration file after conversion and decide whether to further trim "
-                + "down the permissions and specialize.",
-                "Warning: disable_hyperthreading = true is added to both headnode and scheduling sections. Please "
-                + "review the configuration file after conversion and decide whether to further trim down the "
-                + "permissions and specialize.",
-                "Warning: pre_install = s3://testbucket/pre_install.sh is added to both headnode and scheduling "
-                + "sections. Please review the configuration file after conversion and decide whether to further trim "
-                + "down the permissions and specialize.",
-                "Warning: post_install = s3://testbucket/post_install.sh is added to both headnode and scheduling "
-                + "sections. Please review the configuration file after conversion and decide whether to further trim "
-                + "down the permissions and specialize.",
-                "Warning: proxy_server = https://x.x.x.x:8080 is added to both headnode and scheduling sections. "
-                + "Please review the configuration file after conversion and decide whether to further trim down the "
-                + "permissions and specialize.",
-                "Warning: additional_sg = sg-xxxxxx is added to both headnode and scheduling sections. Please review "
-                + "the configuration file after conversion and decide whether to further trim down the permissions and "
-                + "specialize.",
-                "Warning: vpc_security_group_id = sg-xxxxxx is added to both headnode and scheduling sections. Please "
-                + "review the configuration file after conversion and decide whether to further trim down the "
-                + "permissions and specialize.",
-                "Warning: Parameters ['extra_json'] are not officially supported and not recommended.",
-                "Warning: Duplicate names 'custom1' are not allowed in the SharedStorage section. Please change them "
-                + "before cluster creation.",
-            ],
-            None,
-            True,
-            "default",
         ),
         (
             "slurm_full.ini",

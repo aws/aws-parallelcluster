@@ -62,8 +62,8 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                     {"DeviceName": "/dev/sdb", "VirtualName": "ephemeral0"},
                     {"DeviceName": "/dev/sdc", "VirtualName": "ephemeral1"},
                 ],
-                "Description": "AWS ParallelCluster AMI for alinux2, kernel-4.14.203-156.332.amzn2.x86_64, "
-                "lustre-client-2.10.8-5.amzn2.x86_64, nice-dcv-server-2020.2.9662-1.el7.x86_64, "
+                "Description": "AWS ParallelCluster AMI for alinux2023, kernel-4.14.203-156.332.amzn2023.x86_64, "
+                "lustre-client-2.10.8-5.amzn2023.x86_64, nice-dcv-server-2020.2.9662-1.el7.x86_64, "
                 "slurm-20.02.4, nvidia-450.80.02",
                 "EnaSupport": True,
                 "Hypervisor": "xen",
@@ -72,10 +72,10 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                 "RootDeviceType": "ebs",
                 "SriovNetSupport": "simple",
                 "Tags": [
-                    {"Key": "parallelcluster:os", "Value": "alinux2"},
+                    {"Key": "parallelcluster:os", "Value": "alinux2023"},
                     {"Key": "CreatedBy", "Value": "EC2 Image Builder"},
                     {"Key": "parallelcluster:dcv_server", "Value": "nice-dcv-server-2020.2.9662-1.el7.x86_64"},
-                    {"Key": "parallelcluster:efa_profile", "Value": "efa-profile-1.1-1.amzn2.noarch"},
+                    {"Key": "parallelcluster:efa_profile", "Value": "efa-profile-1.1-1.amzn2023.noarch"},
                     {"Key": "parallelcluster:munge", "Value": "munge-0.5.14"},
                     {
                         "Key": "Ec2ImageBuilderArn",
@@ -86,14 +86,14 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                     {"Key": "parallelcluster:nvidia", "Value": "nvidia-450.80.02"},
                     {"Key": "parallelcluster:version", "Value": get_installed_version()},
                     {"Key": "parallelcluster:pmix", "Value": "pmix-3.1.5"},
-                    {"Key": "parallelcluster:efa_openmpi40_aws", "Value": "openmpi40-aws-4.0.5-1.amzn2.x86_64"},
-                    {"Key": "parallelcluster:kernel", "Value": "4.14.203-156.332.amzn2.x86_64"},
+                    {"Key": "parallelcluster:efa_openmpi40_aws", "Value": "openmpi40-aws-4.0.5-1.amzn2023.x86_64"},
+                    {"Key": "parallelcluster:kernel", "Value": "4.14.203-156.332.amzn2023.x86_64"},
                     {"Key": "parallelcluster:dcv_xdcv", "Value": "nice-xdcv-2020.2.359-1.el7.x86_64"},
-                    {"Key": "parallelcluster:efa_rdma_core", "Value": "rdma-core-31.amzn0-1.amzn2.x86_64"},
-                    {"Key": "parallelcluster:sudo", "Value": "sudo-1.8.23-10.amzn2.1.x86_64"},
+                    {"Key": "parallelcluster:efa_rdma_core", "Value": "rdma-core-31.amzn0-1.amzn2023.x86_64"},
+                    {"Key": "parallelcluster:sudo", "Value": "sudo-1.8.23-10.amzn2023.1.x86_64"},
                     {"Key": "parallelcluster:slurm", "Value": "slurm-20.02.4"},
-                    {"Key": "parallelcluster:lustre", "Value": "lustre-client-2.10.8-5.amzn2.x86_64"},
-                    {"Key": "parallelcluster:efa_config", "Value": "efa-config-1.5-1.amzn2.noarch"},
+                    {"Key": "parallelcluster:lustre", "Value": "lustre-client-2.10.8-5.amzn2023.x86_64"},
+                    {"Key": "parallelcluster:efa_config", "Value": "efa-config-1.5-1.amzn2023.noarch"},
                     {"Key": PCLUSTER_S3_BUCKET_TAG, "Value": "my_bucket"},
                     {"Key": PCLUSTER_S3_IMAGE_DIR_TAG, "Value": "parallelcluster/images/image-abced"},
                     {"Key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "Value": "arn:aws:log:us-east-1:1111111111111:log-group"},
@@ -113,7 +113,7 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                 "version": get_installed_version(),
                 "pcluster_image_id": FAKE_IMAGEBUILDER_STACK_NAME,
                 "config_url": "s3://my_bucket/config_key",
-                "image_os": "alinux2",
+                "image_os": "alinux2023",
             },
         )
     ],

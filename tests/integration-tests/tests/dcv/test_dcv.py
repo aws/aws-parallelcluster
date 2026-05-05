@@ -169,7 +169,7 @@ def _test_dcv_configuration(
         for i, f in enumerate(failures):
             # Unescape literal \n and \t sequences so the output is human-readable
             readable = f.replace("\\n", "\n").replace("\\t", "\t")
-            formatted.append(f"  [{i+1}] {readable}")
+            formatted.append(f"  [{i + 1}] {readable}")
         pytest.fail(f"{len(failures)} DCV configuration check(s) failed:\n" + "\n".join(formatted))
 
 

@@ -58,14 +58,13 @@ def test_ebs_single(
     # Test ebs correctly shared between HeadNode and ComputeNodes
     _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
 
-    if scheduler == "slurm":
-        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
-        # Test ebs correctly shared between LoginNode and ComputeNodes
-        _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
-        # Test ebs correctly shared between HeadNode and LoginNode
-        test_directory_correctly_shared_between_ln_and_hn(
-            remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
-        )
+    remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
+    # Test ebs correctly shared between LoginNode and ComputeNodes
+    _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
+    # Test ebs correctly shared between HeadNode and LoginNode
+    test_directory_correctly_shared_between_ln_and_hn(
+        remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
+    )
 
     _test_ebs_encrypted_with_kms(volume_id, region, encrypted=True, kms_key_id=kms_key_id)
 
@@ -107,7 +106,7 @@ def test_ebs_snapshot(
 
     mount_dir = "/" + mount_dir
     scheduler_commands = scheduler_commands_factory(remote_command_executor_head_node)
-    # In alinux2 the volume is rounded smaller (9.7G)
+    # In alinux2023 the volume is rounded smaller (9.7G)
     test_ebs_correctly_mounted(remote_command_executor_head_node, mount_dir, volume_size="9.[7,8]")
     _test_ebs_resize(remote_command_executor_head_node, mount_dir, volume_size=volume_size)
     _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
@@ -116,16 +115,15 @@ def test_ebs_snapshot(
     result = remote_command_executor_head_node.run_remote_command("cat {}/test.txt".format(mount_dir))
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
-    if scheduler == "slurm":
-        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
-        # Test ebs correctly shared between LoginNode and ComputeNodes
-        _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
-        # Test ebs correctly shared between HeadNode and LoginNode
-        test_directory_correctly_shared_between_ln_and_hn(
-            remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
-        )
-        result_login_node = remote_command_executor_login_node.run_remote_command("cat {}/test.txt".format(mount_dir))
-        assert_that(result_login_node.stdout.strip()).is_equal_to("hello world")
+    remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
+    # Test ebs correctly shared between LoginNode and ComputeNodes
+    _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
+    # Test ebs correctly shared between HeadNode and LoginNode
+    test_directory_correctly_shared_between_ln_and_hn(
+        remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
+    )
+    result_login_node = remote_command_executor_login_node.run_remote_command("cat {}/test.txt".format(mount_dir))
+    assert_that(result_login_node.stdout.strip()).is_equal_to("hello world")
 
 
 def test_ebs_multiple(
@@ -169,14 +167,13 @@ def test_ebs_multiple(
             remote_command_executor_head_node, mount_dir, volume_size if volume_size != 500 else "49[0-9]"
         )
         _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
-        if scheduler == "slurm":
-            remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
-            # Test ebs correctly shared between LoginNode and ComputeNodes
-            _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
-            # Test ebs correctly shared between HeadNode and LoginNode
-            test_directory_correctly_shared_between_ln_and_hn(
-                remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
-            )
+        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
+        # Test ebs correctly shared between LoginNode and ComputeNodes
+        _test_ebs_correctly_shared(remote_command_executor_login_node, mount_dir, scheduler_commands)
+        # Test ebs correctly shared between HeadNode and LoginNode
+        test_directory_correctly_shared_between_ln_and_hn(
+            remote_command_executor_head_node, remote_command_executor_login_node, mount_dir
+        )
 
     volume_ids = get_ebs_volume_ids(cluster, region)
     for i in range(len(volume_ids)):
@@ -242,18 +239,17 @@ def test_ebs_existing(
     result = remote_command_executor_head_node.run_remote_command("cat {}/test.txt".format(existing_mount_dir))
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
-    if scheduler == "slurm":
-        remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
-        # Test ebs correctly shared between LoginNode and ComputeNodes
-        _test_ebs_correctly_shared(remote_command_executor_login_node, existing_mount_dir, scheduler_commands)
-        # Test ebs correctly shared between HeadNode and LoginNode
-        test_directory_correctly_shared_between_ln_and_hn(
-            remote_command_executor_head_node, remote_command_executor_login_node, existing_mount_dir
-        )
-        result_login_node = remote_command_executor_login_node.run_remote_command(
-            "cat {}/test.txt".format(existing_mount_dir)
-        )
-        assert_that(result_login_node.stdout.strip()).is_equal_to("hello world")
+    remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
+    # Test ebs correctly shared between LoginNode and ComputeNodes
+    _test_ebs_correctly_shared(remote_command_executor_login_node, existing_mount_dir, scheduler_commands)
+    # Test ebs correctly shared between HeadNode and LoginNode
+    test_directory_correctly_shared_between_ln_and_hn(
+        remote_command_executor_head_node, remote_command_executor_login_node, existing_mount_dir
+    )
+    result_login_node = remote_command_executor_login_node.run_remote_command(
+        "cat {}/test.txt".format(existing_mount_dir)
+    )
+    assert_that(result_login_node.stdout.strip()).is_equal_to("hello world")
 
     # delete the cluster before detaching the EBS volume
     cluster.delete()
@@ -346,16 +342,11 @@ def _test_ebs_encrypted_with_kms(volume_id, region, encrypted, kms_key_id=None):
 
 def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
     logging.info("Testing root volume encryption.")
-    if scheduler == "slurm":
-        # If the scheduler is slurm, root volumes both on head and compute can be encrypted
-        instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
-        instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
-        for instance in instance_ids:
-            root_volume_id = utils.get_root_volume_id(instance, region, os)
-            _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
-    else:
-        # If the scheduler is awsbatch, only the head_node root volume can be encrypted.
-        root_volume_id = utils.get_root_volume_id(cluster.cfn_resources["HeadNode"], region, os)
+    # If the scheduler is slurm, root volumes both on head and compute can be encrypted
+    instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
+    instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
+    for instance in instance_ids:
+        root_volume_id = utils.get_root_volume_id(instance, region, os)
         _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
 
 
@@ -369,23 +360,21 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
         root_volume_id = utils.get_root_volume_id(head_node, region, os)
         expected_settings = cluster.config["HeadNode"]["LocalStorage"]["RootVolume"]
         _assert_volume_configuration(expected_settings, root_volume_id, region)
-    if scheduler == "slurm":
-        # Only if the scheduler is slurm, root volumes both on compute can be configured
-        instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
-        instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
-        for instance in instance_ids:
-            if instance == head_node:
-                # head node is already checked
-                continue
-            root_volume_id = utils.get_root_volume_id(instance, region, os)
-            if utils.dict_has_nested_key(
-                cluster.config, ("Scheduling", "SlurmQueues", 0, "ComputeSettings", "LocalStorage", "RootVolume")
-            ):
-                logging.info("Checking compute node root volume settings")
-                expected_settings = cluster.config["Scheduling"]["SlurmQueues"][0]["ComputeSettings"]["LocalStorage"][
-                    "RootVolume"
-                ]
-                _assert_volume_configuration(expected_settings, root_volume_id, region)
+    instance_ids = cluster.get_cluster_instance_ids(node_type="HeadNode")
+    instance_ids.extend(cluster.get_cluster_instance_ids(node_type="Compute"))
+    for instance in instance_ids:
+        if instance == head_node:
+            # head node is already checked
+            continue
+        root_volume_id = utils.get_root_volume_id(instance, region, os)
+        if utils.dict_has_nested_key(
+            cluster.config, ("Scheduling", "SlurmQueues", 0, "ComputeSettings", "LocalStorage", "RootVolume")
+        ):
+            logging.info("Checking compute node root volume settings")
+            expected_settings = cluster.config["Scheduling"]["SlurmQueues"][0]["ComputeSettings"]["LocalStorage"][
+                "RootVolume"
+            ]
+            _assert_volume_configuration(expected_settings, root_volume_id, region)
 
 
 def _assert_volume_configuration(expected_settings, volume_id, region):

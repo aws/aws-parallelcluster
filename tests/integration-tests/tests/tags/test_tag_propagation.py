@@ -66,8 +66,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     # Checks for tag propagation
     _check_tag_propagation(cluster, scheduler, os, volume_name, add_additional_config_tags=True)
 
-    if scheduler == "slurm":
-        _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
+    _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -137,7 +136,6 @@ def _check_tag_propagation(
                 {"Name": "Compute", "parallelcluster:node-type": "Compute"},
                 {**config_file_tags, **queue_tags, **compute_resource_tags, **additional_config_tags},
             ),
-            "skip": scheduler == "awsbatch",
         },
         {
             "resource": "Compute Node Root Volume",
@@ -148,7 +146,6 @@ def _check_tag_propagation(
                 {**config_file_tags, **queue_tags, **compute_resource_tags, **additional_config_tags},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
-            "skip": scheduler == "awsbatch",
         },
         {
             "resource": "Shared EBS Volume",

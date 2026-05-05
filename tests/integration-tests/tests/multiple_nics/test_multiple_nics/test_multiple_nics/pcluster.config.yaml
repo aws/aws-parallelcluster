@@ -12,28 +12,20 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 4
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           Efa:
             Enabled: true
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-        {% if scheduler != "awsbatch" %}
         PlacementGroup:
           Enabled: false
-        {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: shared-ebs

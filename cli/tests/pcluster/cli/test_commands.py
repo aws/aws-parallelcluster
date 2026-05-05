@@ -17,7 +17,7 @@ from assertpy import assert_that
 from pcluster.aws.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
+from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
 from tests.pcluster.test_utils import dummy_cluster
 
@@ -42,11 +42,8 @@ def _mock_cluster(
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=describe_stack_side_effect)
         cluster = dummy_cluster()
 
-    if scheduler == "slurm":
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        mocker.patch.object(cluster.config, "get_instance_types_data", return_value={})
-    else:
-        cluster.config = dummy_awsbatch_cluster_config(mocker)
+    cluster.config = dummy_slurm_cluster_config(mocker)
+    mocker.patch.object(cluster.config, "get_instance_types_data", return_value={})
 
     return cluster
 
@@ -72,18 +69,6 @@ def _mock_cluster(
             "dummy_template1",
             "dummy_asset1",
             ["models/../resources/custom_resources"],
-            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
-            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
-            None,
-            True,
-        ),
-        (
-            "awsbatch",
-            "cluster2",
-            "dummy_config2",
-            "dummy_template2",
-            "dummy_asset2",
-            ["models/../resources/custom_resources", "models/../resources/batch"],
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
             None,

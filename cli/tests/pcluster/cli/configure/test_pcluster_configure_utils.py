@@ -12,9 +12,9 @@ from pcluster.cli.commands.configure.utils import get_default_suggestion
         ("Scheduler", None, "slurm", None),
         ("Scheduler", [], "slurm", None),
         ("Scheduler", ["awsbatch"], "slurm", None),
-        ("Operating System", None, "alinux2", None),
-        ("Operating System", [], "alinux2", None),
-        ("Operating System", ["centos7", "ubuntu2404"], "alinux2", None),
+        ("Operating System", None, "alinux2023", None),
+        ("Operating System", [], "alinux2023", None),
+        ("Operating System", ["centos7", "ubuntu2404"], "alinux2023", None),
         # Ensure first item is selected from first nested list/tuple
         ("fake-parameter", [{"id": "a", "key2": "b"}, {"id": "c", "key3": "d"}], "a", None),
         ("fake-parameter", ({"id": "a", "key2": "b"}, {"id": "c", "key3": "d"}), "a", None),

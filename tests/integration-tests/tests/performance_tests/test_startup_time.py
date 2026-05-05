@@ -12,11 +12,6 @@ from utils import describe_cluster_instances
 MINIMUM_DATASET_SIZE = 5
 
 BASELINE = {
-    "alinux2": {
-        "c5.large": [92, 86, 70, 102, 104],
-        "m5.12xlarge": [101, 89, 100, 87, 70],
-        "g4dn.xlarge": [111, 103, 92, 121, 122],
-    },
     "alinux2023": {
         "c5.large": [92, 86, 70, 102, 104],
         "m5.12xlarge": [101, 89, 100, 87, 70],

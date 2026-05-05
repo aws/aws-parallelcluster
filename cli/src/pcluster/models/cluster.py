@@ -287,7 +287,7 @@ class Cluster:
     def login_nodes_status(self):
         """Status of the login nodes."""
         login_nodes_status = LoginNodesStatus(self.stack_name)
-        if self.stack.scheduler == "slurm" and self.config.login_nodes:
+        if self.config.login_nodes:
             login_node_pool_names = [pool.name for pool in self.config.login_nodes.pools]
             login_nodes_status.retrieve_data(login_node_pool_names)
         return login_nodes_status
@@ -296,13 +296,7 @@ class Cluster:
     def compute_fleet_status_with_last_updated_time(self) -> Tuple[ComputeFleetStatus, str]:
         """Status of the cluster compute fleet and the last compute fleet status updated time."""
         if self.stack.is_working_status or self.stack.status == "UPDATE_IN_PROGRESS":
-            if self.stack.scheduler == "awsbatch":
-                status = ComputeFleetStatus(
-                    AWSApi.instance().batch.get_compute_environment_state(self.stack.batch_compute_environment)
-                )
-                last_updated_time = None
-            else:
-                status, last_updated_time = self.compute_fleet_status_manager.get_status_with_last_updated_time()
+            status, last_updated_time = self.compute_fleet_status_manager.get_status_with_last_updated_time()
             return status, last_updated_time
         else:
             LOGGER.info(
@@ -747,12 +741,7 @@ class Cluster:
     def has_running_capacity(self, updated_value: bool = False) -> bool:
         """Return True if the cluster has running capacity. Note: the value will be cached."""
         if self.__has_running_capacity is None or updated_value:
-            if self.stack.scheduler == "awsbatch":
-                self.__has_running_capacity = self.get_running_capacity() > 0
-            else:
-                self.__has_running_capacity = (
-                    self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
-                )
+            self.__has_running_capacity = self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
         return self.__has_running_capacity
 
     def has_running_login_nodes(self, updated_value: bool = False, pool_name: str = None) -> bool:
@@ -773,12 +762,7 @@ class Cluster:
     def get_running_capacity(self, updated_value: bool = False):
         """Return the number of instances or desired capacity. Note: the value will be cached."""
         if self.__running_capacity is None or updated_value:
-            if self.stack.scheduler == "slurm":
-                self.__running_capacity = len(self.compute_instances)
-            elif self.stack.scheduler == "awsbatch":
-                self.__running_capacity = AWSApi.instance().batch.get_compute_environment_capacity(
-                    ce_name=self.stack.batch_compute_environment
-                )
+            self.__running_capacity = len(self.compute_instances)
         return self.__running_capacity
 
     def start(self):
@@ -789,11 +773,7 @@ class Cluster:
                 raise BadRequestClusterActionError(
                     f"Cannot start/enable compute fleet while stack is in {stack_status} status."
                 )
-            scheduler = self.config.scheduling.scheduler
-            if scheduler == "awsbatch":
-                self.enable_awsbatch_compute_environment()
-            else:  # traditional scheduler
-                self.start_compute_fleet()
+            self.start_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
             raise BadRequestClusterActionError(
                 "Failed when starting compute fleet due to a concurrent update of the status. "
@@ -808,21 +788,6 @@ class Cluster:
             ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
         )
 
-    def enable_awsbatch_compute_environment(self):
-        """Enable AWS Batch compute environment."""
-        LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
-        try:
-            compute_resource = self.config.scheduling.queues[0].compute_resources[0]
-
-            AWSApi.instance().batch.enable_compute_environment(
-                ce_name=self.stack.batch_compute_environment,
-                min_vcpus=compute_resource.min_vcpus,
-                max_vcpus=compute_resource.max_vcpus,
-                desired_vcpus=compute_resource.desired_vcpus,
-            )
-        except Exception as e:
-            raise _cluster_error_mapper(e, f"Unable to enable Batch compute environment. {str(e)}")
-
     def stop(self):
         """Stop compute fleet of the cluster."""
         try:
@@ -831,11 +796,7 @@ class Cluster:
                 raise BadRequestClusterActionError(
                     f"Cannot stop/disable compute fleet while stack is in {stack_status} status."
                 )
-            scheduler = self.config.scheduling.scheduler
-            if scheduler == "awsbatch":
-                self.disable_awsbatch_compute_environment()
-            else:  # traditional scheduler
-                self.stop_compute_fleet()
+            self.stop_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
             raise BadRequestClusterActionError(
                 "Failed when stopping compute fleet due to a concurrent update of the status. "
@@ -849,14 +810,6 @@ class Cluster:
         self.compute_fleet_status_manager.update_status(
             ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
         )
-
-    def disable_awsbatch_compute_environment(self):
-        """Disable AWS Batch compute environment."""
-        LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
-        try:
-            AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
-        except Exception as e:
-            raise _cluster_error_mapper(e, f"Unable to disable Batch compute environment. {str(e)}")
 
     def validate_update_request(
         self,

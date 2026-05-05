@@ -88,34 +88,17 @@ def test_generate_random_prefix():
     [
         (
             "x86_64",
-            ["alinux2", "alinux2023", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"],
+            ["alinux2023", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"],
         ),
         (
             "arm64",
-            ["alinux2", "alinux2023", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"],
+            ["alinux2023", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"],
         ),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):
     """Verify that the expected OSes are supported based on a given architecture."""
     assert_that(utils.get_supported_os_for_architecture(architecture)).contains_only(
-        *supported_oses
-    ).does_not_contain_duplicates()
-
-
-@pytest.mark.parametrize(
-    "scheduler, supported_oses",
-    [
-        (
-            "slurm",
-            ["alinux2", "alinux2023", "ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"],
-        ),
-        ("awsbatch", ["alinux2", "alinux2023"]),
-    ],
-)
-def test_get_supported_os_for_scheduler(scheduler, supported_oses):
-    """Verify that the expected OSes are supported based on a given architecture."""
-    assert_that(utils.get_supported_os_for_scheduler(scheduler)).contains_only(
         *supported_oses
     ).does_not_contain_duplicates()
 

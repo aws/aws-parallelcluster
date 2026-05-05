@@ -82,7 +82,7 @@ class TestCreateCluster:
 
     CONFIG = """
 Image:
-  Os: alinux2
+  Os: alinux2023
 HeadNode:
   InstanceType: t3.micro
   Networking:
@@ -649,39 +649,6 @@ class TestDescribeCluster:
                 cfn_describe_stack_mock_response(
                     {
                         "Parameters": [
-                            {"ParameterKey": "Scheduler", "ParameterValue": "awsbatch"},
-                        ],
-                    }
-                ),
-                None,
-                False,
-                "awsbatch",
-                {
-                    "cloudFormationStackStatus": "CREATE_COMPLETE",
-                    "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
-                    "clusterConfiguration": {"url": "presigned-url"},
-                    "clusterName": "clustername",
-                    "clusterStatus": "CREATE_COMPLETE",
-                    "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
-                    "region": "us-east-1",
-                    "tags": [
-                        {"key": "parallelcluster:version", "value": get_installed_version()},
-                        {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
-                        {
-                            "key": "parallelcluster:cluster_dir",
-                            "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
-                        },
-                    ],
-                    "version": get_installed_version(),
-                    "scheduler": {"type": "awsbatch"},
-                },
-            ),
-            (
-                cfn_describe_stack_mock_response(
-                    {
-                        "Parameters": [
                             {"ParameterKey": "Scheduler", "ParameterValue": "slurm"},
                         ],
                     }
@@ -796,7 +763,7 @@ class TestDescribeCluster:
                 },
             ),
         ],
-        ids=["all", "no_head_node", "no_bucket", "mix", "no_head_public_ip"],
+        ids=["all", "no_bucket", "mix", "no_head_public_ip"],
     )
     def test_successful_request(
         self,
@@ -1806,7 +1773,7 @@ class TestUpdateCluster:
     url = "/v3/clusters/{cluster_name}"
     method = "PUT"
 
-    CONFIG = "Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t3.micro"
+    CONFIG = "Image:\n  Os: alinux2023\nHeadNode:\n  InstanceType: t3.micro"
 
     def _send_test_request(
         self,
@@ -1921,7 +1888,7 @@ class TestUpdateCluster:
             assert_that(response.get_json()).is_equal_to(expected_response)
         cluster_update_mock.assert_called_with(
             force=not (force_update or True),
-            target_source_config="Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t3.micro",
+            target_source_config="Image:\n  Os: alinux2023\nHeadNode:\n  InstanceType: t3.micro",
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
         )

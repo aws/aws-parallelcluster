@@ -41,9 +41,10 @@ from pcluster.constants import (
     DEFAULT_MIN_COUNT,
     MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER,
     MAX_NUMBER_OF_QUEUES,
+    SUPPORTED_OSES,
     SUPPORTED_SCHEDULERS,
 )
-from pcluster.utils import error, get_supported_os_for_scheduler
+from pcluster.utils import error
 from pcluster.validators.cluster_validators import NameValidator
 
 LOGGER = logging.getLogger(__name__)
@@ -146,10 +147,7 @@ def configure(args):  # noqa: C901
 
     scheduler = prompt_iterable("Scheduler", SUPPORTED_SCHEDULERS)
 
-    if scheduler == "awsbatch":
-        base_os = "alinux2"
-    else:
-        base_os = prompt_iterable("Operating System", get_supported_os_for_scheduler(scheduler))
+    base_os = prompt_iterable("Operating System", SUPPORTED_OSES)
 
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
@@ -157,18 +155,14 @@ def configure(args):  # noqa: C901
         lambda x: x in AWSApi.instance().ec2.list_instance_types(),
         default_value=default_instance_type,
     )
-    if scheduler == "awsbatch":
-        number_of_queues = 1
-        size_name = "vCPU"
-    else:
-        number_of_queues = int(
-            prompt(
-                "Number of queues",
-                lambda x: str(x).isdigit() and 1 <= int(x) <= MAX_NUMBER_OF_QUEUES,
-                default_value=1,
-            )
+    number_of_queues = int(
+        prompt(
+            "Number of queues",
+            lambda x: str(x).isdigit() and 1 <= int(x) <= MAX_NUMBER_OF_QUEUES,
+            default_value=1,
         )
-        size_name = "instance count"
+    )
+    size_name = "instance count"
 
     queues = []
     queue_names = []
@@ -188,47 +182,42 @@ def configure(args):  # noqa: C901
                 "name."
             )
 
-        if scheduler == "awsbatch":
-            number_of_compute_resources = 1
-        else:
-            crs_per_queue_limit = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // number_of_queues
+        crs_per_queue_limit = MAX_NUMBER_OF_COMPUTE_RESOURCES_PER_CLUSTER // number_of_queues
 
-            number_of_compute_resources = int(
-                prompt(
-                    f"Number of compute resources for {queue_name}",
-                    validator=lambda x, q=crs_per_queue_limit: str(x).isdigit() and 1 <= int(x) <= q,
-                    default_value=1,
-                )
+        number_of_compute_resources = int(
+            prompt(
+                f"Number of compute resources for {queue_name}",
+                validator=lambda x, q=crs_per_queue_limit: str(x).isdigit() and 1 <= int(x) <= q,
+                default_value=1,
             )
+        )
         compute_resources = []
         efa_enabled_in_queue = False
         for compute_resource_index in range(number_of_compute_resources):
             efa_enabled_in_compute_resource = False
-            efa_supported_by_instance_type = False
-            if scheduler != "awsbatch":
-                while True:
-                    compute_instance_type = prompt(
-                        f"Compute instance type for compute resource {compute_resource_index + 1} in {queue_name}",
-                        validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
-                        default_value=default_instance_type,
-                    )
-                    if compute_instance_type not in [
-                        instances["InstanceType"]
-                        for compute_resource in compute_resources
-                        for instances in compute_resource["Instances"]
-                    ]:
-                        break
-                    print(
-                        f"Error: Instance type {compute_instance_type} cannot be specified for multiple compute "
-                        "resources in the same queue. Please insert a different instance type."
-                    )
-                compute_resource_name = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
+            while True:
+                compute_instance_type = prompt(
+                    f"Compute instance type for compute resource {compute_resource_index + 1} in {queue_name}",
+                    validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
+                    default_value=default_instance_type,
+                )
+                if compute_instance_type not in [
+                    instances["InstanceType"]
+                    for compute_resource in compute_resources
+                    for instances in compute_resource["Instances"]
+                ]:
+                    break
+                print(
+                    f"Error: Instance type {compute_instance_type} cannot be specified for multiple compute "
+                    "resources in the same queue. Please insert a different instance type."
+                )
+            compute_resource_name = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
 
-                efa_supported_by_instance_type = instance_type_supports_efa(compute_instance_type)
-                if efa_supported_by_instance_type:
-                    efa_enabled_in_compute_resource = _prompt_for_efa(compute_instance_type)
-                    if efa_enabled_in_compute_resource:
-                        efa_enabled_in_queue = True
+            efa_supported_by_instance_type = instance_type_supports_efa(compute_instance_type)
+            if efa_supported_by_instance_type:
+                efa_enabled_in_compute_resource = _prompt_for_efa(compute_instance_type)
+                if efa_enabled_in_compute_resource:
+                    efa_enabled_in_queue = True
             min_cluster_size = DEFAULT_MIN_COUNT
             max_cluster_size = int(
                 prompt(
@@ -237,31 +226,20 @@ def configure(args):  # noqa: C901
                     default_value=DEFAULT_MAX_COUNT,
                 )
             )
-            if scheduler == "awsbatch":
-                compute_resources.append(
-                    {
-                        "Name": "optimal",
-                        "InstanceTypes": ["optimal"],
-                        "MinvCpus": min_cluster_size,
-                        "DesiredvCpus": min_cluster_size,
-                        "MaxvCpus": max_cluster_size,
-                    }
-                )
-            else:
-                compute_resource = {
-                    "Name": compute_resource_name,
-                    "Instances": [{"InstanceType": compute_instance_type}],
-                    "MinCount": min_cluster_size,
-                    "MaxCount": max_cluster_size,
-                }
-                if efa_supported_by_instance_type:
-                    compute_resource["Efa"] = {"Enabled": efa_enabled_in_compute_resource}
+            compute_resource = {
+                "Name": compute_resource_name,
+                "Instances": [{"InstanceType": compute_instance_type}],
+                "MinCount": min_cluster_size,
+                "MaxCount": max_cluster_size,
+            }
+            if efa_supported_by_instance_type:
+                compute_resource["Efa"] = {"Enabled": efa_enabled_in_compute_resource}
 
-                compute_resources.append(compute_resource)
-                compute_instance_types.append(compute_instance_type)
+            compute_resources.append(compute_resource)
+            compute_instance_types.append(compute_instance_type)
 
             queue_names.append(queue_name)
-            cluster_size += max_cluster_size  # Fixme: is it the right calculation for awsbatch?
+            cluster_size += max_cluster_size
 
         queue = {
             "Name": queue_name,
@@ -279,7 +257,7 @@ def configure(args):  # noqa: C901
 
         queues.append(queue)
 
-    vpc_parameters = _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size)
+    vpc_parameters = _create_vpc_parameters(head_node_instance_type, compute_instance_types, cluster_size)
 
     # Here is the end of prompt. Code below assembles config and write to file
     for queue in queues:
@@ -292,11 +270,7 @@ def configure(args):  # noqa: C901
         "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
         "Ssh": {"KeyName": key_name},
     }
-    if scheduler == "awsbatch":
-        scheduler_prefix = "AwsBatch"
-        head_node_config["Imds"] = {"Secured": False}
-    else:
-        scheduler_prefix = scheduler.capitalize()
+    scheduler_prefix = scheduler.capitalize()
 
     result = {
         "Region": os.environ.get("AWS_DEFAULT_REGION"),
@@ -332,7 +306,7 @@ def _write_configuration_file(config_file_path, content):
     print(f"Configuration file written to {config_file_path}")
 
 
-def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size):
+def _create_vpc_parameters(head_node_instance_type, compute_instance_types, cluster_size):
     vpc_parameters = {}
     min_subnet_size = int(cluster_size)
     vpc_and_subnets = _get_vpcs_and_subnets()
@@ -342,7 +316,7 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
     if not vpc_list or prompt("Automate VPC creation? (y/n)", lambda x: x in ("y", "n"), default_value="n") == "y":
         vpc_parameters.update(
             automate_vpc_with_subnet_creation(
-                _choose_network_configuration(scheduler, head_node_instance_type, compute_instance_types),
+                _choose_network_configuration(head_node_instance_type, compute_instance_types),
                 min_subnet_size,
             )
         )
@@ -351,11 +325,7 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
         vpc_parameters["vpc_id"] = vpc_id
         subnet_list = vpc_and_subnets["vpc_subnets"][vpc_id]
         qualified_head_node_subnets = _filter_subnets_offering_instance_types(subnet_list, [head_node_instance_type])
-        if scheduler != "awsbatch":
-            qualified_compute_subnets = _filter_subnets_offering_instance_types(subnet_list, compute_instance_types)
-        else:
-            # Special case of awsbatch, where compute instance type is not specified
-            qualified_compute_subnets = subnet_list
+        qualified_compute_subnets = _filter_subnets_offering_instance_types(subnet_list, compute_instance_types)
         if (
             not qualified_head_node_subnets
             or not qualified_compute_subnets
@@ -378,7 +348,7 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
             vpc_parameters.update(
                 automate_subnet_creation(
                     vpc_id,
-                    _choose_network_configuration(scheduler, head_node_instance_type, compute_instance_types),
+                    _choose_network_configuration(head_node_instance_type, compute_instance_types),
                     min_subnet_size,
                 )
             )
@@ -403,9 +373,7 @@ def _ask_for_subnets(subnet_list, qualified_head_node_subnets, qualified_compute
     return vpc_parameters
 
 
-def _choose_network_configuration(scheduler, head_node_instance_type, compute_instance_types):
-    if scheduler == "awsbatch":
-        return PublicPrivateNetworkConfig()
+def _choose_network_configuration(head_node_instance_type, compute_instance_types):
     azs_for_head_node_type = AWSApi.instance().ec2.get_supported_az_for_instance_type(head_node_instance_type)
     azs_for_compute_types = _get_common_supported_az_for_multi_instance_types(compute_instance_types)
     common_availability_zones = set(azs_for_head_node_type) & set(azs_for_compute_types)

@@ -354,10 +354,6 @@ def apply_permissions_boundary(boundary, scope):
         PermissionsBoundary.of(scope).apply(boundary)
 
 
-def scheduler_is_slurm(config: BaseClusterConfig):
-    return config.scheduling.scheduler == "slurm"
-
-
 def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource):
     """
     Generate 16 characters hash for compute fleet launch template version cfn parameter.
@@ -509,21 +505,20 @@ class NodeIamResourcesBase(Construct):
             self._config.cluster_name, self._config, "parallelcluster", iam_type="AWS::IAM::Policy"
         )
         common_policies = []
-        if self._config.scheduling.scheduler != "awsbatch":
-            efs_with_iam_authorization_arns = self._get_efs_with_iam_authorization_arns(shared_storage_infos)
-            if efs_with_iam_authorization_arns:
-                common_policies.append(
-                    iam.PolicyStatement(
-                        sid="Efs",
-                        actions=[
-                            "elasticfilesystem:ClientMount",
-                            "elasticfilesystem:ClientRootAccess",
-                            "elasticfilesystem:ClientWrite",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=efs_with_iam_authorization_arns,
-                    ),
-                )
+        efs_with_iam_authorization_arns = self._get_efs_with_iam_authorization_arns(shared_storage_infos)
+        if efs_with_iam_authorization_arns:
+            common_policies.append(
+                iam.PolicyStatement(
+                    sid="Efs",
+                    actions=[
+                        "elasticfilesystem:ClientMount",
+                        "elasticfilesystem:ClientRootAccess",
+                        "elasticfilesystem:ClientWrite",
+                    ],
+                    effect=iam.Effect.ALLOW,
+                    resources=efs_with_iam_authorization_arns,
+                ),
+            )
         iam.CfnPolicy(
             Stack.of(self),
             name,
@@ -742,11 +737,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
             ),
         ]
 
-        if (
-            self._config.scheduling.scheduler == "slurm"
-            and self._config.scheduling.settings
-            and self._config.scheduling.settings.munge_key_secret_arn
-        ):
+        if self._config.scheduling.settings and self._config.scheduling.settings.munge_key_secret_arn:
             policy.extend(
                 [
                     iam.PolicyStatement(
@@ -773,97 +764,96 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                     ]
                 )
 
-        if self._config.scheduling.scheduler != "awsbatch":
+        policy.extend(
+            [
+                iam.PolicyStatement(
+                    sid="EC2Terminate",
+                    actions=["ec2:TerminateInstances"],
+                    effect=iam.Effect.ALLOW,
+                    resources=["*"],
+                    conditions={
+                        "StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": Stack.of(self).stack_name}
+                    },
+                ),
+                iam.PolicyStatement(
+                    sid="EC2RunInstancesCreateFleet",
+                    actions=["ec2:RunInstances", "ec2:CreateFleet"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[
+                        self._format_arn(service="ec2", resource=f"subnet/{subnet_id}")
+                        for subnet_id in self._config.compute_subnet_ids
+                    ]
+                    + [
+                        self._format_arn(service="ec2", resource="fleet/*"),
+                        self._format_arn(service="ec2", resource="network-interface/*"),
+                        self._format_arn(service="ec2", resource="instance/*"),
+                        self._format_arn(service="ec2", resource="volume/*"),
+                        self._format_arn(service="ec2", resource=f"key-pair/{self._config.head_node.ssh.key_name}"),
+                        self._format_arn(service="ec2", resource="security-group/*"),
+                        self._format_arn(service="ec2", resource="launch-template/*"),
+                        self._format_arn(service="ec2", resource="placement-group/*"),
+                    ]
+                    + [
+                        self._format_arn(service="ec2", resource=f"image/{queue_ami}", account="")
+                        for _, queue_ami in self._config.image_dict.items()
+                    ],
+                ),
+                iam.PolicyStatement(
+                    sid="EC2DescribeCapacityReservations",
+                    actions=["ec2:DescribeCapacityReservations"],
+                    effect=iam.Effect.ALLOW,
+                    resources=["*"],
+                ),
+                iam.PolicyStatement(
+                    sid="PassRole",
+                    actions=["iam:PassRole"],
+                    effect=iam.Effect.ALLOW,
+                    resources=self._generate_head_node_pass_role_resources(),
+                ),
+                iam.PolicyStatement(
+                    sid="DynamoDBTable",
+                    actions=[
+                        "dynamodb:UpdateItem",
+                        "dynamodb:PutItem",
+                        "dynamodb:GetItem",
+                        "dynamodb:BatchGetItem",
+                    ],
+                    effect=iam.Effect.ALLOW,
+                    resources=[
+                        self._format_arn(
+                            service="dynamodb",
+                            resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{Stack.of(self).stack_name}",
+                        )
+                    ],
+                ),
+            ]
+        )
+
+        self._add_compute_console_output_policy_statement(policy)
+
+        capacity_reservation_ids = self._config.capacity_reservation_ids
+
+        if capacity_reservation_ids:
+            policy.append(
+                iam.PolicyStatement(
+                    sid="AllowRunningReservedCapacity",
+                    actions=["ec2:RunInstances"],
+                    effect=iam.Effect.ALLOW,
+                    resources=self._config.capacity_reservation_arns,
+                )
+            )
+        capacity_reservation_resource_group_arns = self._config.capacity_reservation_resource_group_arns
+        if capacity_reservation_resource_group_arns:
             policy.extend(
                 [
                     iam.PolicyStatement(
-                        sid="EC2Terminate",
-                        actions=["ec2:TerminateInstances"],
+                        sid="AllowManagingReservedCapacity",
+                        actions=["ec2:RunInstances", "ec2:CreateFleet", "resource-groups:ListGroupResources"],
                         effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                        conditions={
-                            "StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": Stack.of(self).stack_name}
-                        },
-                    ),
-                    iam.PolicyStatement(
-                        sid="EC2RunInstancesCreateFleet",
-                        actions=["ec2:RunInstances", "ec2:CreateFleet"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(service="ec2", resource=f"subnet/{subnet_id}")
-                            for subnet_id in self._config.compute_subnet_ids
-                        ]
-                        + [
-                            self._format_arn(service="ec2", resource="fleet/*"),
-                            self._format_arn(service="ec2", resource="network-interface/*"),
-                            self._format_arn(service="ec2", resource="instance/*"),
-                            self._format_arn(service="ec2", resource="volume/*"),
-                            self._format_arn(service="ec2", resource=f"key-pair/{self._config.head_node.ssh.key_name}"),
-                            self._format_arn(service="ec2", resource="security-group/*"),
-                            self._format_arn(service="ec2", resource="launch-template/*"),
-                            self._format_arn(service="ec2", resource="placement-group/*"),
-                        ]
-                        + [
-                            self._format_arn(service="ec2", resource=f"image/{queue_ami}", account="")
-                            for _, queue_ami in self._config.image_dict.items()
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="EC2DescribeCapacityReservations",
-                        actions=["ec2:DescribeCapacityReservations"],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="PassRole",
-                        actions=["iam:PassRole"],
-                        effect=iam.Effect.ALLOW,
-                        resources=self._generate_head_node_pass_role_resources(),
-                    ),
-                    iam.PolicyStatement(
-                        sid="DynamoDBTable",
-                        actions=[
-                            "dynamodb:UpdateItem",
-                            "dynamodb:PutItem",
-                            "dynamodb:GetItem",
-                            "dynamodb:BatchGetItem",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="dynamodb",
-                                resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{Stack.of(self).stack_name}",
-                            )
-                        ],
-                    ),
+                        resources=capacity_reservation_resource_group_arns,
+                    )
                 ]
             )
-
-            self._add_compute_console_output_policy_statement(policy)
-
-            capacity_reservation_ids = self._config.capacity_reservation_ids
-
-            if capacity_reservation_ids:
-                policy.append(
-                    iam.PolicyStatement(
-                        sid="AllowRunningReservedCapacity",
-                        actions=["ec2:RunInstances"],
-                        effect=iam.Effect.ALLOW,
-                        resources=self._config.capacity_reservation_arns,
-                    )
-                )
-            capacity_reservation_resource_group_arns = self._config.capacity_reservation_resource_group_arns
-            if capacity_reservation_resource_group_arns:
-                policy.extend(
-                    [
-                        iam.PolicyStatement(
-                            sid="AllowManagingReservedCapacity",
-                            actions=["ec2:RunInstances", "ec2:CreateFleet", "resource-groups:ListGroupResources"],
-                            effect=iam.Effect.ALLOW,
-                            resources=capacity_reservation_resource_group_arns,
-                        )
-                    ]
-                )
 
         if self._config.directory_service:
             password_secret_arn = Arn.split(
@@ -884,7 +874,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 )
             )
 
-        if self._config.scheduling.scheduler == "slurm" and self._config.scheduling.settings.database:
+        if self._config.scheduling.settings.database:
             policy.append(
                 iam.PolicyStatement(
                     sid="AllowGettingSlurmDbSecretValue",
