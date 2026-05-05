@@ -76,6 +76,13 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
     setattr(item, "rep_" + rep.when, rep)
 
     if rep.when in ["setup", "call"] and rep.failed:
+        # Track failures at the session level so fixtures with a scope larger than "function"
+        # can decide whether to retain resources when --retain-on-failure is set.
+        failed_tests = getattr(item.session, "_pcluster_failed_tests", None)
+        if failed_tests is None:
+            failed_tests = set()
+            item.session._pcluster_failed_tests = failed_tests
+        failed_tests.add(item.nodeid)
         # TODO clean this up to not use the exception info here.  Reassigning the
         # call to setup messes up timestamps for setup vs call.  For now this will
         # count setup errors in the call phase as failures. We should probably make this

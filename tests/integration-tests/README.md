@@ -45,7 +45,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI] [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
                       [--iam-user-role-stack-name IAM_USER_ROLE_STACK_NAME] [--directory-stack-name DIRECTORY_STACK_NAME] [--slurm-database-stack-name SLURM_DATABASE_STACK_NAME] [--slurm-dbd-stack-name SLURM_DBD_STACK_NAME] [--munge-key-secret-arn MUNGE_KEY_SECRET_ARN]
                       [--external-shared-storage-stack-name EXTERNAL_SHARED_STORAGE_STACK_NAME] [--bucket-name BUCKET_NAME] [--custom-security-groups-stack-name CUSTOM_SECURITY_GROUPS_STACK_NAME] [--force-run-instances] [--force-elastic-ip] [--retain-ad-stack] [--proxy-stack PROXY_STACK]
-                      [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK]
+                      [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK] [--retain-on-failure N] 
 
 Run integration tests suite.
 
@@ -164,6 +164,8 @@ Debugging/Development options:
                         Name of an existing vpc stack. (default: None)
   --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
   --no-delete           Don't delete stacks after tests are complete. (default: False)
+  --retain-on-failure N Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests
+                        (0=disabled, max 5). (default: 0)
   --delete-logs-on-success
                         delete CloudWatch logs when a test succeeds (default: False)
   --stackname-suffix STACKNAME_SUFFIX
@@ -496,6 +498,16 @@ This preserves any stacks created for the test:
 python -m test_runner \
   ...
   --no-delete
+```
+
+Alternatively, use `--retain-on-failure N` to only preserve resources when a test fails.
+This is useful in CI where you want automatic cleanup on success but need the stacks
+available for debugging on failure. Resources are retained for up to N failing tests (max 5):
+
+```bash
+python -m test_runner \
+  ...
+  --retain-on-failure 1
 ```
 
 Then when you have a vpc stack and cluster, reference them when starting a test:
