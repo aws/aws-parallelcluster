@@ -335,6 +335,9 @@ Resources:
 
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
+            APT_RETRY="-o Acquire::Retries=5"
+
             # Enable IP forwarding — without this, the kernel drops packets routed from
             # the private subnet, causing "connection timed out" in the ConfigureSystem step.
             if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
@@ -342,8 +345,8 @@ Resources:
               echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
             fi
 
-            apt-get update -y
-            apt-get install -y tinyproxy redsocks
+            apt-get $APT_RETRY update -y
+            apt-get $APT_RETRY install -y tinyproxy redsocks
 
             # Tinyproxy config — build-image mode adds domain allowlist filtering
             cat << EOF > /etc/tinyproxy/tinyproxy.conf
@@ -457,7 +460,7 @@ Resources:
 
             echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
             echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
-            apt-get install -y iptables-persistent
+            apt-get $APT_RETRY install -y iptables-persistent
       Tags:
         - Key: Name
           Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
@@ -496,8 +499,12 @@ Resources:
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
-            apt-get update -y
-            apt-get -y install python3-pip
+
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
+            APT_RETRY="-o Acquire::Retries=5"
+
+            apt-get $APT_RETRY update -y
+            apt-get $APT_RETRY -y install python3-pip
 
             if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
               echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
