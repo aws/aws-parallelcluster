@@ -1,0 +1,10 @@
+{%- import 'common.jinja2' as common with context -%}
+---
+test-suites:
+  investigation:
+    test_investigation.py::test_investigation:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          instances: [ "t3.large" ]
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: [ "slurm" ]

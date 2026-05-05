@@ -1,0 +1,55 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: "arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  CustomActions:
+    OnNodeStart:
+      Script: {{ on_node_start_script }}
+    OnNodeConfigured:
+      Script: {{ on_node_configured_script }}
+LoginNodes:
+  Pools:
+    - Name: login1
+      InstanceType: {{ instance }}
+      Count: 1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: "arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      CustomActions:
+        OnNodeStart:
+          Script: {{ on_node_start_script }}
+        OnNodeConfigured:
+          Script: {{ on_node_configured_script }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: q1
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: cr1
+          Instances:
+            {% for instance_type in flexible_instance_types %}
+            - InstanceType: {{ instance_type }}
+            {% endfor %}
+          MinCount: 1
+          MaxCount: 2
+      CustomActions:
+        OnNodeStart:
+          Script: {{ on_node_start_script }}
+        OnNodeConfigured:
+          Script: {{ on_node_configured_script }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
