@@ -80,6 +80,15 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
             assert_that(log).does_not_contain(error_level)
 
 
+def assert_no_errors_in_service_log(remote_command_executor: RemoteCommandExecutor, service_name: str):
+    """Assert that the systemd journal for a given service contains no error-level entries."""
+    __tracebackhide__ = True
+    logging.info("Checking %s journal for error-level entries", service_name)
+    log = remote_command_executor.run_remote_command(f"sudo journalctl -u {service_name} --no-pager", hide=True).stdout
+    error_lines = [line for line in log.splitlines() if re.search(r"fail|error|critical", line, re.IGNORECASE)]
+    assert_that(error_lines).described_as(f"Found error-level entries in {service_name} journal logs").is_empty()
+
+
 def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_files: List[str], log_msg: List[str]):
     """Assert log msgs are not in logs."""
     __tracebackhide__ = True
