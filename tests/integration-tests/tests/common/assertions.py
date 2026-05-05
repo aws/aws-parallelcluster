@@ -59,16 +59,13 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         patterns_to_ignore += ice_patterns
     if ignore_patterns:
         patterns_to_ignore += ignore_patterns
-    if scheduler == "slurm":
-        log_files = [
-            "/var/log/parallelcluster/clustermgtd",
-            "/var/log/parallelcluster/clusterstatusmgtd",
-            "/var/log/parallelcluster/slurm_resume.log",
-            "/var/log/parallelcluster/slurm_suspend.log",
-            "/var/log/parallelcluster/slurm_fleet_status_manager.log",
-        ]
-    else:
-        log_files = []
+    log_files = [
+        "/var/log/parallelcluster/clustermgtd",
+        "/var/log/parallelcluster/clusterstatusmgtd",
+        "/var/log/parallelcluster/slurm_resume.log",
+        "/var/log/parallelcluster/slurm_suspend.log",
+        "/var/log/parallelcluster/slurm_fleet_status_manager.log",
+    ]
 
     for log_file in log_files:
         log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)

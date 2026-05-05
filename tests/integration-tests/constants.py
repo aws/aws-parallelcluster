@@ -11,8 +11,6 @@
 import os
 from enum import Enum
 
-SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
-
 OSU_BENCHMARK_VERSION = "5.7.1"
 
 REPOSITORY_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")

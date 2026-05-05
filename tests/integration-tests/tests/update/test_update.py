@@ -550,30 +550,6 @@ def _check_extra_json(command_executor, slurm_commands, host, expected_value):
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-@pytest.mark.usefixtures("os", "instance")
-def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
-    # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader()
-    cluster = clusters_factory(init_config_file)
-
-    # Verify initial configuration
-    _verify_initialization(region, cluster, cluster.config)
-
-    # Update cluster with the same configuration
-    cluster.update(str(init_config_file), force_update="true")
-
-    # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
-    cluster.update(str(updated_config_file))
-
-    # Read updated configuration
-    with open(updated_config_file, encoding="utf-8") as conf_file:
-        updated_config = yaml.safe_load(conf_file)
-
-    # verify updated parameters
-    _verify_initialization(region, cluster, updated_config)
-
-
 @pytest.mark.usefixtures("instance")
 def test_update_instance_list(
     region,
@@ -694,18 +670,6 @@ def _check_instance_type(ec2, instances, expected_instance_type):
     for instance_id in instances:
         instance_info = ec2.describe_instances(Filters=[], InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
         assert_that(instance_info["InstanceType"]).is_equal_to(expected_instance_type)
-
-
-def _verify_initialization(region, cluster, config):
-    # Verify initial settings
-    _test_max_vcpus(
-        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"]
-    )
-    _test_min_vcpus(
-        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MinvCpus"]
-    )
-    spot_bid_percentage = config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["SpotBidPercentage"]
-    assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 
 def _test_max_vcpus(region, stack_name, vcpus):

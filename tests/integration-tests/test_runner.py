@@ -686,9 +686,6 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.createami_custom_node_url:
         pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
 
-    if args.custom_awsbatchcli_url:
-        pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
-
     if args.pcluster_installer_path:
         pytest_args.extend(["--pcluster-installer-path", args.pcluster_installer_path])
 

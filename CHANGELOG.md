@@ -18,6 +18,10 @@ CHANGELOG
 - Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags, 
   which used to cause cluster update failure on clusters with login nodes.
 
+**DEPRECATIONS**
+- Amazon Linux 2 is no longer supported.
+- AWS Batch as a scheduler is no longer supported.
+
 3.15.0
 ------
 

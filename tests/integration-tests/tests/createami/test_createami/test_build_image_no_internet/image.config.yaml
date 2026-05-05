@@ -17,5 +17,5 @@ DevSettings:
     TerminateInstanceOnFailure: True
     Cookbook:
         ChefCookbook: {{ chef_cookbook }}
-        ExtraChefAttributes: '{"cluster": {"skip_awsbatch_cli_install": "true", "install_http_proxy_address": "{{ install_http_proxy_address }}"}}'
+        ExtraChefAttributes: '{"cluster": {"install_http_proxy_address": "{{ install_http_proxy_address }}"}}'
     NodePackage: {{ node_package }}

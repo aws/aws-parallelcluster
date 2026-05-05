@@ -12,7 +12,6 @@ HeadNode:
     AllowedIps: {{ access_from }}
   Imds:
     Secured: {{ imds_secured }}
-{% if scheduler != "awsbatch" %}
 LoginNodes:
   Pools:
     - Name: pool
@@ -25,25 +24,15 @@ LoginNodes:
         Enabled: true
         Port: {{ dcv_port }}
         AllowedIps: {{ access_from }}
-{% endif %}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          # Cpu count is valid for g4dn.2xlarge
-          MinvCpus: 8
-          DesiredvCpus: 8
-          MaxvCpus: 8
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}

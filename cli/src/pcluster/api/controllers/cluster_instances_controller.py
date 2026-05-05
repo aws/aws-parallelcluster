@@ -45,8 +45,6 @@ def delete_cluster_instances(cluster_name, region=None, force=None):
             raise BadRequestException(
                 f"Cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
-        if cluster.stack.scheduler == "awsbatch":
-            raise BadRequestException("the delete cluster instances operation does not support AWS Batch clusters.")
     except StackNotFoundError:
         if not force:
             raise NotFoundException(

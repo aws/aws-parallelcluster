@@ -185,132 +185,6 @@ Resources:
       Roles:
         - !Ref ComputeNodeRoleSlurm
 
-  CustomLambdaResourcesRoleBatch:
-    Properties:
-      Description: Role to be used in 'Iam:Roles:CustomLambdaResources' when the scheduler is AwsBatch
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-        Version: '2012-10-17'
-      Path: /parallelcluster/
-      Policies:
-        - PolicyName: CustomLambdaResourcesRoleBatchPolicy
-          PolicyDocument:
-            Statement:
-              - Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/pcluster-*
-              - Action:
-                  - s3:DeleteObject
-                  - s3:DeleteObjectVersion
-                  - s3:ListBucket
-                  - s3:ListBucketVersions
-                Effect: Allow
-                Resource:
-                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete
-                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
-              - Action:
-                  - ecr:BatchDeleteImage
-                  - ecr:ListImages
-                Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/*parallelcluster*
-              - Action:
-                  - codebuild:BatchGetBuilds
-                  - codebuild:StartBuild
-                Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/pcluster-*
-            Version: '2012-10-17'
-    Type: AWS::IAM::Role
-
-  HeadNodeRoleBatch:
-    Properties:
-      Description: Role to be used in 'HeadNode:Iam:InstanceRole' when the scheduler is AwsBatch
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: !If [ GovCloud, 'ec2.amazonaws-us-gov.com', !If [ China, 'ec2.amazonaws.cn', 'ec2.amazonaws.com']]
-        Version: '2012-10-17'
-      Path: /parallelcluster/
-      ManagedPolicyArns:
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
-      Policies:
-        - PolicyName: HeadNodeRoleBatchPolicy
-          PolicyDocument:
-            Statement:
-              - Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:GetObjectVersion
-                Effect: Allow
-                Resource:
-                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
-              - Action: s3:GetObject
-                Effect: Allow
-                Resource:
-                  - !Sub arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*
-                  - !Sub arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*
-              - Action:
-                  - iam:PassRole
-                Resource:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
-                Effect: Allow
-                Condition:
-                  StringEquals:
-                    iam:PassedToService:
-                      - batch.amazonaws.com
-              - Action:
-                  - batch:DescribeJobQueues
-                  - batch:DescribeJobs
-                  - batch:ListJobs
-                  - batch:DescribeComputeEnvironments
-                Effect: Allow
-                Resource: '*'
-              - Action:
-                  - batch:SubmitJob
-                  - batch:TerminateJob
-                  - logs:GetLogEvents
-                  - ecs:ListContainerInstances
-                  - ecs:DescribeContainerInstances
-                Effect: Allow
-                Resource:
-                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:PclusterJobDefinition*
-                  - !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/AWSBatch-PclusterComputeEnviron*
-                  - !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/AWSBatch-Pcluster*
-                  - !Sub arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job-queue/PclusterJobQueue*
-                  - !Sub arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job-definition/PclusterJobDefinition*:*
-                  - !Sub arn:${AWS::Partition}:batch:${AWS::Region}:${AWS::AccountId}:job/*
-              - Action:
-                  - ec2:DescribeInstances
-                  - ec2:DescribeInstanceStatus
-                  - ec2:DescribeVolumes
-                  - ec2:DescribeInstanceAttribute
-                Effect: Allow
-                Resource: '*'
-              - Action:
-                  - ec2:CreateTags
-                  - ec2:AttachVolume
-                Effect: Allow
-                Resource:
-                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
-                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
-              - Action:
-                  - cloudformation:DescribeStackResource
-                  - cloudformation:DescribeStacks
-                  - cloudformation:SignalResource
-                Effect: Allow
-                Resource: '*'
-            Version: '2012-10-17'
-    Type: AWS::IAM::Role
-
   ### INTEG-TESTS POLICIES
 
   IntegTestsPolicy:
@@ -319,7 +193,6 @@ Resources:
       Roles:
         - !Ref HeadNodeRoleSlurm
         - !Ref ComputeNodeRoleSlurm
-        - !Ref HeadNodeRoleBatch
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -340,7 +213,3 @@ Outputs:
     Value: !GetAtt ComputeNodeInstanceProfileSlurm.Arn
   CustomLambdaResourcesRoleSlurm:
     Value: !GetAtt CustomLambdaResourcesRoleSlurm.Arn
-  HeadNodeRoleBatch:
-    Value: !GetAtt HeadNodeRoleBatch.Arn
-  CustomLambdaResourcesRoleBatch:
-    Value: !GetAtt CustomLambdaResourcesRoleBatch.Arn

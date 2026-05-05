@@ -6,146 +6,134 @@ test-suites:
       dimensions:
         - regions: ["sa-east-1"]
           instances: ["c5n.9xlarge"]
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   schedulers:
-    test_awsbatch.py::test_awsbatch:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
-    test_awsbatch.py::test_awsbatch_defaults:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
     test_slurm.py::test_slurm:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_scaling:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_error_handling:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_protected_mode:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_protected_mode_on_cluster_create:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_fast_capacity_failover:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_config_update:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_memory_based_scheduling:
       dimensions:
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_scontrol_reboot:
       dimensions:
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_scontrol_reboot_ec2_health_checks:
       dimensions:
         - regions: ["us-east-2"]
           instances: ["t3.medium"]
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_overrides:
       dimensions:
         - regions: ["me-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_scontrol_update_nodelist_sorting:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm_accounting.py::test_slurm_accounting:
       dimensions:
         - regions: ["us-east-1", "ap-south-1"]
           instances:  {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_reconfigure_race_condition:
       dimensions:
         - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: [ "slurm" ]
     test_slurm.py::test_slurm_custom_config_parameters:
       dimensions:
         - regions: ["euw1-az1"]
           instances: ["c5.xlarge"]
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_slurm.py::test_slurm_ticket_17399:
       dimensions:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   update:
     test_update.py::test_update_slurm:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
     test_update.py::test_queue_parameters_update:
       dimensions:
         - regions: ["ap-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
         - regions: ["af-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_dns.py::test_existing_hosted_zone:
       dimensions:
         - regions: ["eu-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]

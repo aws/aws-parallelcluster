@@ -33,8 +33,6 @@ class ComputeFleetStatus(Enum):
     STARTING = "STARTING"  # clustermgtd is handling the start request.
     STOP_REQUESTED = "STOP_REQUESTED"  # A request to stop the fleet has been submitted.
     START_REQUESTED = "START_REQUESTED"  # A request to start the fleet has been submitted.
-    ENABLED = "ENABLED"  # AWS Batch only. The compute environment is enabled
-    DISABLED = "DISABLED"  # AWS Batch only. The compute environment is disabled
     UNKNOWN = "UNKNOWN"  # Cannot determine fleet status
     # PROTECTED indicates that some partitions have consistent bootstrap failures. Affected partitions are inactive.
     PROTECTED = "PROTECTED"

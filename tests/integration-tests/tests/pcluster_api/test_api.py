@@ -194,32 +194,6 @@ def test_cluster_slurm(
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_awsbatch(
-    region,
-    api_client,
-    create_cluster,
-    request,
-    pcluster_config_reader,
-    scheduler,
-    instance,
-    custom_actions_bucket_name,
-    test_datadir,
-):
-    assert_that(scheduler).is_equal_to("awsbatch")
-    _test_cluster_workflow(
-        region,
-        api_client,
-        create_cluster,
-        request,
-        pcluster_config_reader,
-        scheduler,
-        instance,
-        custom_actions_bucket_name,
-        test_datadir,
-    )
-
-
-@pytest.mark.usefixtures("os", "instance")
 def test_login_nodes(
     region,
     api_client,
@@ -297,10 +271,6 @@ def _test_cluster_workflow(
     _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_COMPLETE")
     _test_describe_cluster(region, cluster_operations_client, cluster_name, "CREATE_COMPLETE")
 
-    # We wait for instances to be ready before transitioning stack to CREATE_COMPLETE only when using Slurm
-    if scheduler == "awsbatch":
-        wait_for_num_instances_in_cluster(region=region, cluster_name=cluster_name, desired=NUM_OF_COMPUTE_INSTANCES)
-
     # Update cluster with new configuration
     with open(updated_config_file, encoding="utf-8") as config_file:
         updated_cluster_config = config_file.read()
@@ -309,10 +279,9 @@ def _test_cluster_workflow(
 
     head_node = _test_describe_cluster_head_node(region, cluster_instances_client, cluster_name)
     compute_node_map = _test_describe_cluster_compute_nodes(region, cluster_instances_client, cluster_name)
-    if scheduler == "slurm":
-        _test_delete_cluster_instances(region, cluster_instances_client, cluster_name, head_node, compute_node_map)
+    _test_delete_cluster_instances(region, cluster_instances_client, cluster_name, head_node, compute_node_map)
 
-    running_state = "RUNNING" if scheduler == "slurm" else "ENABLED"
+    running_state = "RUNNING"
     _test_describe_compute_fleet(region, cluster_compute_fleet_client, cluster_name, running_state)
     _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_instances_client, cluster_name, scheduler)
 
@@ -393,8 +362,7 @@ def _test_describe_cluster_login_nodes(region, client, cluster_name):
 
 def _add_compute_nodes(instances, compute_node_map):
     for instance in instances:
-        # The AWS Batch queue name is not populated
-        queue_name = instance.get("queue_name", "awsbatch_queue")
+        queue_name = instance.get("queue_name")
         if queue_name not in compute_node_map:
             compute_node_map[queue_name] = set()
         compute_node_map[queue_name].add(instance.instance_id)
@@ -422,8 +390,8 @@ def _test_describe_compute_fleet(region, client, cluster_name, status):
 
 
 def _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_instances_client, cluster_name, scheduler):
-    stop_status = "STOP_REQUESTED" if scheduler == "slurm" else "DISABLED"
-    terminal_state = "STOPPED" if scheduler == "slurm" else "DISABLED"
+    stop_status = "STOP_REQUESTED"
+    terminal_state = "STOPPED"
 
     head_node = _test_describe_cluster_head_node(region, cluster_instances_client, cluster_name)
     compute_node_map = _test_describe_cluster_compute_nodes(region, cluster_instances_client, cluster_name)
@@ -439,19 +407,14 @@ def _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_insta
         region=region,
     )
 
-    if scheduler == "slurm":
-        # AWS Batch does not terminate all compute nodes, it just resizes the compute fleet down to a number
-        # of instances equal to MinvCpus. For AWS Batch we simply check that the compute fleet status has been
-        # updated, while for the Slurm case we wait for the previous compute instances to have been terminated.
-        _ec2_wait_terminated(region, instances_to_terminate)
+    _ec2_wait_terminated(region, instances_to_terminate)
 
     response = cluster_compute_fleet_client.describe_compute_fleet(cluster_name=cluster_name, region=region)
     assert_that(response.status).is_equal_to(ComputeFleetStatus(terminal_state))
 
-    if scheduler == "slurm":
-        new_head_node = _test_describe_cluster_head_node(region, cluster_instances_client, cluster_name)
-        assert_that(new_head_node).is_equal_to(head_node)
-        _test_describe_cluster_compute_nodes(region, cluster_instances_client, cluster_name, all_terminated=True)
+    new_head_node = _test_describe_cluster_head_node(region, cluster_instances_client, cluster_name)
+    assert_that(new_head_node).is_equal_to(head_node)
+    _test_describe_cluster_compute_nodes(region, cluster_instances_client, cluster_name, all_terminated=True)
 
 
 def _get_instances_to_terminate(compute_node_map):

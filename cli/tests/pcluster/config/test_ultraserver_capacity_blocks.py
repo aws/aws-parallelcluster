@@ -126,7 +126,7 @@ class TestUltraserverCapacityBlocks:
         # Create cluster config
         cluster_config = SlurmClusterConfig(
             cluster_name="test-cluster",
-            image=Image(os="alinux2"),
+            image=Image(os="alinux2023"),
             head_node=HeadNode(
                 instance_type="t3.micro",
                 networking=HeadNodeNetworking(subnet_id="subnet-12345"),
@@ -171,7 +171,7 @@ class TestUltraserverCapacityBlocks:
         # Create cluster config
         cluster_config = SlurmClusterConfig(
             cluster_name="test-cluster",
-            image=Image(os="alinux2"),
+            image=Image(os="alinux2023"),
             head_node=HeadNode(
                 instance_type="t3.micro",
                 networking=HeadNodeNetworking(subnet_id="subnet-12345"),

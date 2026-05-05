@@ -108,7 +108,6 @@ class _DummyAWSApi(AWSApi):
         self._sts = _DummyStsClient()
         self._s3_resource = _DummyS3Resource()
         self._iam = _DummyIamClient()
-        self._batch = _DummyBatchClient()
         self._logs = _DummyLogsClient()
         self._ddb_resource = _DummyDynamoResource()
         self._route53 = _DummyRoute53Client()

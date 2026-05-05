@@ -154,7 +154,7 @@ test-suites:
         - regions: [ "us-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
+          schedulers: ["slurm"]
         - regions: [ "cn-north-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
@@ -164,12 +164,6 @@ test-suites:
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
   schedulers:
-    test_awsbatch.py::test_awsbatch:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
-          schedulers: ["awsbatch"]
     test_slurm.py::test_slurm:
       dimensions:
         - regions: ["eu-central-1"]

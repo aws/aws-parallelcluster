@@ -25,7 +25,6 @@ from utils import InstanceTypesData
 from pcluster.constants import (
     EXCLUDED_INSTANCE_TYPE_PREFIXES,
     SUPPORTED_OSES,
-    SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
@@ -57,9 +56,6 @@ def _get_os_parameters(config=None, args=None):
         if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
     ]
     _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
-
-    batch_supported_oses = SUPPORTED_OSES_FOR_SCHEDULER["awsbatch"]
-    _propagate_os_jinja_variables("BATCH_", result, today_number, batch_supported_oses)
 
     lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
     _propagate_os_jinja_variables("LUSTRE_", result, today_number, lustre_supported_oses)

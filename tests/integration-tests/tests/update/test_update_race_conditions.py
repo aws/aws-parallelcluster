@@ -150,23 +150,16 @@ def wait_for_login_nodes_lt_update_complete(cluster, region, after_utc=None):
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(5))
 def wait_for_node_update_failure(rce, cluster, node_type, node_id, os, after_utc=None):
     node_rce = get_node_rce(rce, cluster, node_type, node_id)
-    # On AL2 (systemd 219), StandardOutput=append: is not supported, so pcluster-check-update.log stays empty
-    # and the logs are pushed to the journal, which is persisted in /var/log/messages.
-    if os == "alinux2" and node_type == NODE_TYPE_COMPUTE:
-        match, lines = match_regex_in_log(
-            node_rce, "/var/log/messages", r"pcluster-check-update\.sh.*(?i)Permission denied"
-        )
-    else:
-        log_file = LOG_FILE_BY_NODE_TYPE[node_type]
-        # cfn-hup logs use "%Y-%m-%d %H:%M:%S" format, so convert ISO timestamps for awk comparison
-        if after_utc and node_type == NODE_TYPE_LOGIN:
-            after_utc = after_utc.replace("T", " ").split(".")[0]
-        match, lines = match_regex_in_log(
-            node_rce,
-            log_file,
-            r"(?i)Permission denied",
-            after_utc=after_utc,
-        )
+    log_file = LOG_FILE_BY_NODE_TYPE[node_type]
+    # cfn-hup logs use "%Y-%m-%d %H:%M:%S" format, so convert ISO timestamps for awk comparison
+    if after_utc and node_type == NODE_TYPE_LOGIN:
+        after_utc = after_utc.replace("T", " ").split(".")[0]
+    match, lines = match_regex_in_log(
+        node_rce,
+        log_file,
+        r"(?i)Permission denied",
+        after_utc=after_utc,
+    )
     if not match:
         raise Exception(f"No evidence of update failure on {node_type} {node_id} yet. Last lines: {lines}")
     logger.info(

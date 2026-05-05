@@ -19,7 +19,6 @@ import collections.abc
 import json
 from collections import defaultdict, namedtuple
 from datetime import datetime, timezone
-from typing import Union
 
 from aws_cdk import aws_cloudformation as cfn
 from aws_cdk import aws_cloudwatch as cloudwatch
@@ -45,7 +44,6 @@ from aws_cdk.core import (
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
-    AwsBatchClusterConfig,
     BaseSharedFsx,
     ExistingFileCache,
     ExistingFsxOntap,
@@ -78,11 +76,9 @@ from pcluster.constants import (
     P6E_GB200,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
-    SLURM,
     SLURM_PORTS_RANGE,
 )
 from pcluster.models.s3_bucket import S3Bucket
-from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     CdkLaunchTemplateBuilder,
     HeadNodeIamResources,
@@ -123,7 +119,7 @@ class ClusterCdkStack:
         scope: Construct,
         construct_id: str,
         stack_name: str,
-        cluster_config: Union[SlurmClusterConfig, AwsBatchClusterConfig],
+        cluster_config: SlurmClusterConfig,
         bucket: S3Bucket,
         log_group_name=None,
         **kwargs,
@@ -295,27 +291,11 @@ class ClusterCdkStack:
         # Head Node
         self.head_node_instance = self._add_head_node()
         # Add a dependency to the cleanup Route53 resource, so that Route53 Hosted Zone is cleaned after node is deleted
-        if self._condition_is_slurm() and hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
+        if hasattr(self.scheduler_resources, "cleanup_route53_custom_resource"):
             self.head_node_instance.add_depends_on(self.scheduler_resources.cleanup_route53_custom_resource)
 
         # Initialize Login Nodes
         self._add_login_nodes_resources()
-
-        # AWS Batch related resources
-        if self._condition_is_batch():
-            self.scheduler_resources = AwsBatchConstruct(
-                scope=self.stack,
-                id="AwsBatch",
-                stack_name=self._stack_name,
-                cluster_config=self.config,
-                bucket=self.bucket,
-                create_lambda_roles=self._condition_create_lambda_iam_role(),
-                compute_security_group=self._compute_security_group,
-                shared_storage_infos=self.shared_storage_infos,
-                shared_storage_mount_dirs=self.shared_storage_mount_dirs,
-                head_node_instance=self.head_node_instance,
-                managed_head_node_instance_role=self._managed_head_node_instance_role,  # None if provided by the user
-            )
 
         # Alarms
         if self.config.are_alarms_enabled:
@@ -385,7 +365,7 @@ class ClusterCdkStack:
         }
 
         # These alarms required Cw logging enabled because they are based on CW Metrics Filters.
-        if self._condition_is_slurm() and self.config.is_cw_logging_enabled:
+        if self.config.is_cw_logging_enabled:
             # Create metric filter to extract heartbeat metric from clustermgtd event logs
             clustermgtd_heartbeat_metric_filter = logs.CfnMetricFilter(
                 scope=self.stack,
@@ -478,55 +458,52 @@ class ClusterCdkStack:
     def _add_fleet_and_scheduler_resources(self, cleanup_lambda, cleanup_lambda_role):
         # Compute Fleet and scheduler related resources
         self.scheduler_resources = None
-        if self._condition_is_slurm():
-            self.scheduler_resources = SlurmConstruct(
-                scope=self.stack,
-                id="Slurm",
-                stack_name=self._stack_name,
-                cluster_config=self.config,
-                bucket=self.bucket,
-                managed_head_node_instance_role=self._managed_head_node_instance_role,
-                cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
-                cleanup_lambda=cleanup_lambda,
-            )
-        if not self._condition_is_batch():
-            _dynamodb_table_status = dynamomdb.CfnTable(
-                self.stack,
-                "DynamoDBTable",
-                table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack.stack_name,
-                attribute_definitions=[
-                    dynamomdb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
-                ],
-                key_schema=[dynamomdb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
-                billing_mode="PAY_PER_REQUEST",
-            )
-            _dynamodb_table_status.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
-            _dynamodb_table_status.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
-            self.dynamodb_table_status = _dynamodb_table_status
+        self.scheduler_resources = SlurmConstruct(
+            scope=self.stack,
+            id="Slurm",
+            stack_name=self._stack_name,
+            cluster_config=self.config,
+            bucket=self.bucket,
+            managed_head_node_instance_role=self._managed_head_node_instance_role,
+            cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
+            cleanup_lambda=cleanup_lambda,
+        )
+        _dynamodb_table_status = dynamomdb.CfnTable(
+            self.stack,
+            "DynamoDBTable",
+            table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack.stack_name,
+            attribute_definitions=[
+                dynamomdb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
+            ],
+            key_schema=[dynamomdb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
+            billing_mode="PAY_PER_REQUEST",
+        )
+        _dynamodb_table_status.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        _dynamodb_table_status.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
+        self.dynamodb_table_status = _dynamodb_table_status
         self.compute_fleet_resources = None
-        if not self._condition_is_batch():
-            self.compute_fleet_resources = ComputeFleetConstruct(
-                scope=self.stack,
-                id="ComputeFleet",
-                cluster_config=self.config,
-                log_group=self.log_group,
-                cleanup_lambda=cleanup_lambda,
-                cleanup_lambda_role=cleanup_lambda_role,
-                compute_security_group=self._compute_security_group,
-                shared_storage_infos=self.shared_storage_infos,
-                shared_storage_mount_dirs=self.shared_storage_mount_dirs,
-                shared_storage_attributes=self.shared_storage_attributes,
-                cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
-                dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
-                head_eni=self._head_eni,
-                slurm_construct=self.scheduler_resources,
-                cluster_bucket=self.bucket,
-            )
+        self.compute_fleet_resources = ComputeFleetConstruct(
+            scope=self.stack,
+            id="ComputeFleet",
+            cluster_config=self.config,
+            log_group=self.log_group,
+            cleanup_lambda=cleanup_lambda,
+            cleanup_lambda_role=cleanup_lambda_role,
+            compute_security_group=self._compute_security_group,
+            shared_storage_infos=self.shared_storage_infos,
+            shared_storage_mount_dirs=self.shared_storage_mount_dirs,
+            shared_storage_attributes=self.shared_storage_attributes,
+            cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
+            dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
+            head_eni=self._head_eni,
+            slurm_construct=self.scheduler_resources,
+            cluster_bucket=self.bucket,
+        )
 
     def _add_login_nodes_resources(self):
         """Add Login Nodes related resources."""
         self.login_nodes_stack = None
-        if self._condition_is_slurm() and self.config.login_nodes:
+        if self.config.login_nodes:
             self.login_nodes_stack = LoginNodesStack(
                 scope=self.stack,
                 id="LoginNodes",
@@ -670,7 +647,7 @@ class ClusterCdkStack:
         managed_login_security_groups = dict()
         custom_login_security_groups = set()
         managed_login_security_group_required = False
-        if self._condition_is_slurm() and self.config.login_nodes:
+        if self.config.login_nodes:
             for pool in self.config.login_nodes.pools:
                 pool_security_groups = pool.networking.security_groups
                 if pool_security_groups:
@@ -1329,12 +1306,10 @@ class ClusterCdkStack:
         # Process ultraserver capacity block information for DNA JSON
         # This section collects capacity block sizes for ultraserver instances (e.g., p6e-gb200)
         # and validates that they conform to allowed size configurations for Slurm topology
-        cluster_ultraserver_capacity_block_sizes_dict = {}
-        if self.config.scheduling.scheduler == SLURM:
-            cluster_ultraserver_capacity_block_dict = self.config.ultraserver_capacity_block_dict
-            cluster_ultraserver_capacity_block_sizes_dict = process_ultraserver_capacity_block_sizes(
-                cluster_ultraserver_capacity_block_dict
-            )
+        cluster_ultraserver_capacity_block_dict = self.config.ultraserver_capacity_block_dict
+        cluster_ultraserver_capacity_block_sizes_dict = process_ultraserver_capacity_block_sizes(
+            cluster_ultraserver_capacity_block_dict
+        )
 
         dna_json = json.dumps(
             {
@@ -1397,7 +1372,7 @@ class ClusterCdkStack:
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
-                    "ddb_table": self.dynamodb_table_status.ref if not self._condition_is_batch() else "NONE",
+                    "ddb_table": self.dynamodb_table_status.ref,
                     "log_group_name": (
                         self.log_group.log_group_name if self.config.monitoring.logs.cloud_watch.enabled else "NONE"
                     ),
@@ -1417,7 +1392,6 @@ class ClusterCdkStack:
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/"
                     f"{PCLUSTER_S3_ARTIFACTS_DICT.get('instance_types_data_name')}",
                     "custom_node_package": self.config.custom_node_package or "",
-                    "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
                     "compute_node_bootstrap_timeout": get_attr(
                         self.config, "dev_settings.timeouts.compute_node_bootstrap_timeout", NODE_BOOTSTRAP_TIMEOUT
@@ -1435,11 +1409,7 @@ class ClusterCdkStack:
                         and cluster_ultraserver_capacity_block_sizes_dict[P6E_GB200]
                         else {}
                     ),
-                    **(
-                        get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)
-                        if self._condition_is_slurm()
-                        else {}
-                    ),
+                    **(get_slurm_specific_dna_json_for_head_node(self.config, self.scheduler_resources)),
                     **get_directory_service_dna_json_for_head_node(self.config),
                 },
             },
@@ -1581,13 +1551,12 @@ class ClusterCdkStack:
             },
         }
 
-        if not self._condition_is_batch():
-            cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch-templates-config.json"] = {
-                "mode": "000644",
-                "owner": "root",
-                "group": "root",
-                "content": self._get_launch_templates_config(),
-            }
+        cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch-templates-config.json"] = {
+            "mode": "000644",
+            "owner": "root",
+            "group": "root",
+            "content": self._get_launch_templates_config(),
+        }
 
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
         head_node_instance = ec2.CfnInstance(
@@ -1603,8 +1572,7 @@ class ClusterCdkStack:
             )
             + get_custom_tags(self.config),
         )
-        if not self._condition_is_batch():
-            head_node_instance.node.add_dependency(self.compute_fleet_resources)
+        head_node_instance.node.add_dependency(self.compute_fleet_resources)
 
         return head_node_instance
 
@@ -1635,12 +1603,6 @@ class ClusterCdkStack:
             or not self.config.iam.roles.lambda_functions_role
             or self.config.iam.roles.get_param("lambda_functions_role").implied
         )
-
-    def _condition_is_slurm(self):
-        return self.config.scheduling.scheduler == "slurm"
-
-    def _condition_is_batch(self):
-        return self.config.scheduling.scheduler == "awsbatch"
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 

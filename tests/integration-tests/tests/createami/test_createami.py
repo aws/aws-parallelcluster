@@ -63,7 +63,7 @@ def _get_base_ami(region, os, architecture):
       enable_nvidia, update_os_packages, enable_lustre_client, enable_dcv.
     """
     enable_nvidia = os not in ["ubuntu2404"]
-    update_os_packages = os in ["alinux2", "alinux2023", "rocky9"]
+    update_os_packages = os in ["alinux2023", "rocky9"]
     enable_lustre_client = True
     enable_dcv = True
 
@@ -166,11 +166,7 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AL2 AMIs are failing because of conflicts between openssl-devel packages
-    if os not in ["alinux2"]:
-        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-    else:
-        base_ami = retrieve_latest_ami(region, os, architecture=architecture)
+    base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
 
     image_config = pcluster_config_reader(
         config_file="warnings.image.config.yaml", parent_image=base_ami, bucket_name=bucket_name
@@ -296,44 +292,6 @@ def _wait_for_creation_of_delete_stack_function(stack_name, cfn_client):
         cfn_client.describe_stack_resource(StackName=stack_name, LogicalResourceId="DeleteStackFunction")
         .get("StackResourceDetail")
         .get("ResourceStatus")
-    )
-
-
-@pytest.mark.usefixtures("instance", "scheduler")
-def test_kernel4_build_image_run_cluster(
-    region,
-    os,
-    pcluster_config_reader,
-    architecture,
-    images_factory,
-    request,
-    scheduler_commands_factory,
-    clusters_factory,
-):
-    """
-    Test build image for given region and os and run a job in a new cluster created from the new images.
-
-    Also check that the build instance has the desired ImdsSupport setting (IMDSv2, v1.0 is optional).
-
-    Note: This test has been introduced to verify the build-image with Amazon Linux based on kernel 4,
-    because the base AMI for Amazon Linux were based on kernel 5.10.
-
-    At the moment this test is no longer relevant,
-    kernel 5.10 in Amazon Linux 2 has been introduced on Nov 2021 and kernel 4.14 is now EOL.
-    """
-    # Get base AMI from kernel4
-    base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
-
-    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami, region=region)
-
-    image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
-    image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
-    _test_build_image_success(image, request.config.getoption("output_dir"))
-    _test_build_imds_settings(image, "required", region)
-    _test_list_images(image)
-
-    _test_cluster_creation(
-        image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
     )
 
 

@@ -1,6 +1,6 @@
 Region: us-east-1
 Image:
-  Os: alinux2
+  Os: alinux2023
 LoginNodes:
   Pools:
     - Name: login

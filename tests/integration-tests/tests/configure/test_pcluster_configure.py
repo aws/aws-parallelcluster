@@ -27,7 +27,7 @@ PROMPTS = {
     "region": lambda region: {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
     "key_pair": lambda key_name: {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
     "scheduler": lambda scheduler: {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
-    "os": lambda os: {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
+    "os": lambda os: {"prompt": r"Operating System \[alinux2023\]: ", "response": os, "skip_for_batch": True},
     "head_instance_type": lambda free_tier_instance_types, instance: {
         "prompt": rf"Head node instance type \[({or_regex(free_tier_instance_types)})\]: ",
         "response": instance,
@@ -320,7 +320,7 @@ def prompt_compute_node_subnet_id(subnet_id, head_node_subnet_id, no_of_omitted_
 
 
 def prompt_max_size(scheduler, size=""):
-    size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
+    size_name = "instance count"
     return {"prompt": rf"Maximum {size_name} \[10\]: ", "response": f"{size}"}
 
 
@@ -393,13 +393,13 @@ def assert_config_contains_expected_values(
         {"parameter_path": ["Region"], "expected_value": region},
         {"parameter_path": ["HeadNode", "Ssh", "KeyName"], "expected_value": key_name},
         {"parameter_path": ["Scheduling", "Scheduler"], "expected_value": scheduler},
-        {"parameter_path": ["Image", "Os"], "expected_value": os if scheduler != "awsbatch" else "alinux2"},
+        {"parameter_path": ["Image", "Os"], "expected_value": os},
         {"parameter_path": ["HeadNode", "InstanceType"], "expected_value": instance},
         {"parameter_path": ["HeadNode", "Networking", "SubnetId"], "expected_value": head_node_subnet_id},
         {
             "parameter_path": [
                 "Scheduling",
-                "AwsBatchQueues" if scheduler == "awsbatch" else "SlurmQueues",
+                "SlurmQueues",
                 0,
                 "Networking",
                 "SubnetIds",
@@ -409,55 +409,47 @@ def assert_config_contains_expected_values(
         },
     ]
 
-    if scheduler == "slurm":
-        param_validators += [
+    param_validators += [
+        {
+            "parameter_path": [
+                "Scheduling",
+                "SlurmQueues",
+                0,
+                "ComputeResources",
+                0,
+                "Instances",
+                0,
+                "InstanceType",
+            ],
+            "expected_value": instance,
+        },
+        {
+            "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "MinCount"],
+            "expected_value": 0,
+        },
+    ]
+    if efa_config and "enabled" in efa_config:
+        param_validators.append(
             {
-                "parameter_path": [
-                    "Scheduling",
-                    "SlurmQueues",
-                    0,
-                    "ComputeResources",
-                    0,
-                    "Instances",
-                    0,
-                    "InstanceType",
-                ],
-                "expected_value": instance,
-            },
-            {
-                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "MinCount"],
-                "expected_value": 0,
-            },
-        ]
-        if efa_config and "enabled" in efa_config:
+                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "Efa", "Enabled"],
+                "expected_value": efa_config["enabled"],
+            }
+        )
+    if placement_group_config:
+        if "enabled" in placement_group_config:
             param_validators.append(
                 {
-                    "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "Efa", "Enabled"],
-                    "expected_value": efa_config["enabled"],
+                    "parameter_path": ["Scheduling", "SlurmQueues", 0, "Networking", "PlacementGroup", "Enabled"],
+                    "expected_value": placement_group_config["enabled"],
                 }
             )
-        if placement_group_config:
-            if "enabled" in placement_group_config:
-                param_validators.append(
-                    {
-                        "parameter_path": ["Scheduling", "SlurmQueues", 0, "Networking", "PlacementGroup", "Enabled"],
-                        "expected_value": placement_group_config["enabled"],
-                    }
-                )
-            if "id" in placement_group_config:
-                param_validators.append(
-                    {
-                        "parameter_path": ["Scheduling", "SlurmQueues", 0, "Networking", "PlacementGroup", "Id"],
-                        "expected_value": placement_group_config["id"],
-                    }
-                )
-    elif scheduler == "awsbatch":
-        param_validators += [
-            {
-                "parameter_path": ["Scheduling", "AwsBatchQueues", 0, "ComputeResources", 0, "MinvCpus"],
-                "expected_value": 0,
-            }
-        ]
+        if "id" in placement_group_config:
+            param_validators.append(
+                {
+                    "parameter_path": ["Scheduling", "SlurmQueues", 0, "Networking", "PlacementGroup", "Id"],
+                    "expected_value": placement_group_config["id"],
+                }
+            )
     for validator in param_validators:
         expected_value = validator.get("expected_value")
         logging.info(validator.get("parameter_path"))
@@ -478,7 +470,7 @@ def _get_value_by_nested_key(d, keys):
 
 def orchestrate_pcluster_configure_stages(prompts, scheduler):
     # When a user selects Batch as the scheduler, pcluster configure does not prompt for OS or compute instance type.
-    return [prompt for prompt in prompts if scheduler != "awsbatch" or not prompt.get("skip_for_batch")]
+    return [prompt for prompt in prompts]
 
 
 @pytest.fixture(scope="class")
