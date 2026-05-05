@@ -151,6 +151,7 @@ def _get_instance_type_parameters():  # noqa: C901
                             else:
                                 gpu_instances.append(instance_type["InstanceType"])
 
+            logging.info(f"Selected GPU instance types: {gpu_instances}")
             xlarge_sorted = sorted(xlarge_instances)
             gpu_sorted = sorted(gpu_instances)
             today_number = (date.today() - date(2020, 1, 1)).days
