@@ -702,7 +702,7 @@ def wait_for_no_active_export_tasks(region):
     active_statuses = ("RUNNING", "PENDING")
     logs_client = boto3.client("logs", region_name=region)
     max_wait = 300  # 5 minutes
-    poll_interval = 10
+    poll_interval = random.randint(10, 20)
     elapsed = 0
     while elapsed < max_wait:
         active_tasks = []
