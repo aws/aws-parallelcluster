@@ -83,11 +83,10 @@ class RemoteCommandExecutor:
             },
         }
         if bastion:
+            ssh_opts = f"-i {cluster.ssh_key} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
             # Need to execute simple ssh command before using Connection to avoid Paramiko _check_banner error
-            run_command(
-                f"ssh -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion} hostname", timeout=30, shell=True
-            )
-            connection_kwargs["gateway"] = f"ssh -W %h:%p -A -i {cluster.ssh_key} -o StrictHostKeyChecking=no {bastion}"
+            run_command(f"ssh {ssh_opts} {bastion} hostname", timeout=30, shell=True)
+            connection_kwargs["gateway"] = f"ssh -W %h:%p -A {ssh_opts} {bastion}"
             connection_kwargs["forward_agent"] = True
             connection_kwargs["connect_kwargs"]["banner_timeout"] = 60
         logging.info(
