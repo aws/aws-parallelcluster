@@ -44,7 +44,6 @@ from tests.common.utils import (
     get_installed_parallelcluster_version,
     retrieve_latest_ami,
     upload_github_artifacts_to_s3,
-    wait_for_no_active_export_tasks,
 )
 from tests.proxy.test_proxy import proxy_stack_factory  # noqa: F401
 
@@ -254,9 +253,7 @@ def test_build_image(
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
         _test_list_images(image)
-        wait_for_no_active_export_tasks(region)
         _test_export_logs(s3_bucket_factory, image, region)
-        wait_for_no_active_export_tasks(region)
         _test_export_logs(s3_bucket_factory, image, region, True)
 
     _test_cluster_creation(
@@ -437,6 +434,7 @@ def _set_s3_bucket_policy(bucket_name, partition, region):
 
 
 def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=False):
+    bucket_name = None
     if not use_pcluster_bucket:
         bucket_name = s3_bucket_factory()
         logging.info("bucket is %s", bucket_name)
@@ -451,14 +449,11 @@ def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=Fals
         output_file = f"{tempdir}/testfile.tar.gz"
         bucket_prefix = "test_prefix"
 
-        if not use_pcluster_bucket:
-            ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))(image.export_logs)(
-                bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix
-            )
-        else:
-            ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))(image.export_logs)(
-                output_file=output_file, bucket_prefix=bucket_prefix
-            )
+        ret = image.export_logs(
+            bucket=bucket_name,
+            output_file=output_file,
+            bucket_prefix=bucket_prefix,
+        )
 
         assert_that(ret["path"]).contains(output_file)
 
@@ -717,8 +712,6 @@ def _export_image_logs(image, output_dir):
     os.makedirs(log_dir, exist_ok=True)
     output_file = os.path.join(log_dir, f"{image.image_id}-logs.tar.gz")
     try:
-        # Each account can only have one active CloudWatch Logs export task per region at a time.
-        wait_for_no_active_export_tasks(image.region)
         ret = image.export_logs(output_file=output_file)
         logging.info(f"Full image build log exported to {ret.get('path', output_file)}")
     except Exception as e:
