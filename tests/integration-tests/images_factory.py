@@ -14,7 +14,11 @@ import logging
 
 import yaml
 from framework.credential_providers import run_pcluster_command
+from retrying import retry
+from time_utils import minutes, seconds
 from utils import kebab_case
+
+from tests.common.utils import wait_for_no_active_export_tasks
 
 
 class Image:
@@ -111,14 +115,26 @@ class Image:
             self._update_image_info(response)
         return response
 
+    @retry(
+        wait_random_min=seconds(10),
+        wait_random_max=seconds(20),
+        stop_max_delay=minutes(10),
+        retry_on_exception=lambda e: "Resource limit exceeded" in str(e.stderr),
+    )
     def export_logs(self, **args):
         """Export the logs from the image build process."""
         logging.info("Get image %s build log.", self.image_id)
         command = ["pcluster", "export-image-logs", "--region", self.region, "--image-id", self.image_id]
         for k, val in args.items():
-            command.extend([f"--{kebab_case(k)}", str(val)])
-        result = run_pcluster_command(command)
-        return json.loads(result.stdout)
+            if val is not None:
+                command.extend([f"--{kebab_case(k)}", str(val)])
+        wait_for_no_active_export_tasks(self.region)
+        try:
+            result = run_pcluster_command(command)
+            return json.loads(result.stdout)
+        except Exception as e:
+            logging.error("Failed exporting image logs with error: %s", getattr(e, "stderr", str(e)).strip())
+            raise
 
     def get_log_events(self, log_stream_name, **args):
         """Get image build log events."""
