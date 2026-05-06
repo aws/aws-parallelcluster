@@ -18,8 +18,13 @@ import boto3
 import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes
+
+from tests.common.assertions import assert_no_errors_in_service_log
+
+CUSTOM_CW_AGENT_CONFIG_SCRIPT = "custom_cw_agent_config.sh"
 
 
 # TODO This test should be converted into a unit test validating the content of the CFN template +
@@ -36,13 +41,21 @@ def test_monitoring(
     region,
     scheduler,
     pcluster_config_reader,
+    s3_bucket_factory,
     clusters_factory,
     test_datadir,
 ):
+    # Upload custom CloudWatch agent config script to S3
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / CUSTOM_CW_AGENT_CONFIG_SCRIPT), CUSTOM_CW_AGENT_CONFIG_SCRIPT)
+
     cluster_config = pcluster_config_reader(
         dashboard_enabled=str(dashboard_enabled).lower(),
         cw_log_enabled=str(cw_log_enabled).lower(),
         alarms_enabled=str(alarms_enabled).lower(),
+        bucket_name=bucket_name,
+        custom_cw_agent_script_url=f"s3://{bucket_name}/{CUSTOM_CW_AGENT_CONFIG_SCRIPT}",
     )
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
@@ -65,6 +78,13 @@ def test_monitoring(
 
     # test detailed monitoring
     _test_detailed_monitoring(region, compute_instance_ids)
+
+    # test custom CWAgent metric from OnNodeConfigured custom action
+    _test_custom_metrics(cw_client, headnode_instance_id)
+
+    # verify no errors in CloudWatch agent log
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    assert_no_errors_in_service_log(remote_command_executor, "amazon-cloudwatch-agent")
 
 
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
@@ -100,6 +120,38 @@ def _test_metrics(cw_client, headnode_instance_id, compute_instance_id, cluster_
     disk_values = _get_metric_data_values(metrics_response_compute, "disk")
     assert_that(mem_values).is_empty()
     assert_that(disk_values).is_empty()
+
+
+@retry(stop_max_attempt_number=10, wait_fixed=minutes(1))
+def _test_custom_metrics(cw_client, headnode_instance_id):
+    """Verify that the custom cpu_usage_idle metric from the OnNodeStart CWAgent config is available."""
+    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
+
+    logging.info(f"Retrieving custom cpu_usage_idle metric for head node {headnode_instance_id}")
+    response = cw_client.get_metric_data(
+        MetricDataQueries=[
+            {
+                "Id": "cpu_idle",
+                "MetricStat": {
+                    "Metric": {
+                        "Namespace": "CWAgent",
+                        "MetricName": "cpu_usage_idle",
+                        "Dimensions": [
+                            {"Name": "InstanceId", "Value": headnode_instance_id},
+                            {"Name": "cpu", "Value": "cpu-total"},
+                        ],
+                    },
+                    "Period": 60,
+                    "Stat": "Average",
+                },
+            },
+        ],
+        StartTime=start_timestamp,
+        EndTime=end_timestamp,
+    )
+    cpu_idle_values = _get_metric_data_values(response, "cpu_idle")
+    logging.info(f"cpu_usage_idle values: {cpu_idle_values}")
+    assert_that(cpu_idle_values).is_not_empty()
 
 
 def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_enabled):
