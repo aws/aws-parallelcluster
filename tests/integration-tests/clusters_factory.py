@@ -36,7 +36,7 @@ from utils import (
     retry_if_subprocess_error,
 )
 
-from tests.common.utils import read_remote_file
+from tests.common.utils import read_remote_file, wait_for_no_active_export_tasks
 
 TAG_CLUSTER_NAME = "parallelcluster:cluster-name"
 TAG_NODE_TYPE = "parallelcluster:node-type"
@@ -362,6 +362,12 @@ class Cluster:
 
         return None
 
+    @retry(
+        wait_random_min=seconds(10),
+        wait_random_max=seconds(20),
+        stop_max_delay=minutes(10),
+        retry_on_exception=lambda e: "Resource limit exceeded" in str(e.stderr),
+    )
     def export_logs(self, bucket=None, output_file=None, bucket_prefix=None, filters=None):
         """Run pcluster export-cluster-logs and return the result."""
         cmd_args = ["pcluster", "export-cluster-logs", "--cluster-name", self.name]
@@ -373,6 +379,7 @@ class Cluster:
             cmd_args += ["--bucket-prefix", bucket_prefix]
         if filters:
             cmd_args += ["--filters", filters]
+        wait_for_no_active_export_tasks(self.region)
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
