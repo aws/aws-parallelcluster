@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.15.1
+------
+
+**CHANGES**
+- Patch official ParallelCluster AMIs to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+
 3.15.0
 ------
 
