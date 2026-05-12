@@ -42,10 +42,19 @@ def add_properties_to_report(item: pytest.Item):
     props = []
 
     # Add properties for test dimensions, obtained from fixtures passed to tests
+    # Try funcargs first, fall back to callspec.params (needed for @pytest.mark.usefixtures)
     for dimension in DIMENSIONS_MARKER_ARGS:
         value = item.funcargs.get(dimension)
+        if value and dimension == "region":
+            logging.info(f"region={value} (from funcargs) for {item.nodeid}")
+        if not value and hasattr(item, "callspec"):
+            value = item.callspec.params.get(dimension)
+            if value and dimension == "region":
+                logging.info(f"region={value} (from callspec.params) for {item.nodeid}")
         if value:
             props.append((dimension, value))
+        elif dimension == "region":
+            logging.warning(f"region=None for {item.nodeid}")
 
     # Add property for feature tested, obtained from filename containing the test
     props.append(("feature", extract_tested_component_from_filename(item)))
@@ -335,7 +344,10 @@ def _get_launch_time(logs, instance_id):
 
 
 def get_reporting_region(region: str):
-    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    """Get partition for the given region. If region is None, fall back to DEFAULT_REPORTING_REGION."""
+    if not region:
+        logging.warning("Region is None in get_reporting_region, falling back to default reporting region")
+        return DEFAULT_REPORTING_REGION
     curr_partition = next(
         (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
         DEFAULT_PARTITION,
