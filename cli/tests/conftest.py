@@ -34,10 +34,12 @@ def clear_env(mocker):
 
 @pytest.fixture(autouse=True)
 def reset_aws_api():
-    """Reset AWSApi singleton to remove dependencies between tests."""
+    """Reset AWSApi singleton and caches to remove dependencies between tests."""
     from pcluster.aws.aws_api import AWSApi
+    from pcluster.aws.common import Cache
 
     AWSApi._instance = None
+    Cache.clear_all()
 
 
 @pytest.fixture
