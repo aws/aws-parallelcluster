@@ -317,7 +317,15 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
     except Exception as e:
         logging.warning("Failed to prepare known_hosts file %s: %s", host_keys_file, e)
 
-    dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
+    dcv_connect_args = [
+        "pcluster",
+        "dcv-connect",
+        "--cluster-name",
+        cluster.name,
+        "--key-path",
+        cluster.ssh_key,
+        "--show-url",
+    ]
 
     if use_login_node:
         dcv_connect_args.extend(["--login-node-ip", node_ip])
