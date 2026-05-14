@@ -43,7 +43,6 @@ from tests.common.utils import (
     get_installed_parallelcluster_base_version,
     get_installed_parallelcluster_version,
     retrieve_latest_ami,
-    upload_github_artifacts_to_s3,
 )
 
 
