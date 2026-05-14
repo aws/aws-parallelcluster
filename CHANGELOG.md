@@ -8,6 +8,7 @@ CHANGELOG
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
 - The CLI now requires the additional permission `tag:GetResources`.
+- Add support for Python 3.11, 3.12 in pcluster CLI
 
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.

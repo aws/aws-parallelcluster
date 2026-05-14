@@ -36,6 +36,7 @@ jobs:
           - Python 3.10 Tests
           - Python 3.11 Tests
           - Python 3.12 Tests
+          - Python 3.13 Tests
           - Python 3.10 Tests Coverage
           - Code Checks
           - CLI CloudFormation Templates Checks
@@ -58,6 +59,10 @@ jobs:
             python: '3.12'
             toxdir: cli
             toxenv: py312-nocov
+          - name: Python 3.13 Tests
+            python: '3.13'
+            toxdir: cli
+            toxenv: py313-nocov
           - name: Python 3.10 Tests Coverage
             python: '3.10'
             toxdir: cli
