@@ -58,10 +58,10 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         wait_for_computefleet_changed(cluster, "STOPPED")
     # Updates cluster with new configuration
     updated_cluster_config = pcluster_config_reader(config_file="pcluster.config.update.yaml", volume_name=volume_name)
-    force_update = None
-    if scheduler != "slurm":
-        force_update = "true"
-    cluster.update(str(updated_cluster_config), force_update=force_update)
+    if scheduler == "slurm":
+        cluster.update(str(updated_cluster_config))
+    else:
+        cluster.update(str(updated_cluster_config), force_update="true")
 
     cluster.start()
 
