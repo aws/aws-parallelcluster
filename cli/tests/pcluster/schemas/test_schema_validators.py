@@ -457,7 +457,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"AutomaticBackupRetentionDays": ""}, "Not a valid integer"),
         ({"AutomaticBackupRetentionDays": 0}, None),
         ({"AutomaticBackupRetentionDays": 35}, None),
-        ({"AutomaticBackupRetentionDays": 36}, "Must be.*less than or equal to 35"),
+        ({"AutomaticBackupRetentionDays": 91}, "Must be.*less than or equal to 90"),
         ({"CopyTagsToBackups": ""}, "Not a valid boolean"),
         ({"CopyTagsToBackups": "NONE"}, "Not a valid boolean"),
         ({"CopyTagsToBackups": True}, None),
