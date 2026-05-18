@@ -41,7 +41,13 @@ from conftest_markers import (
 )
 from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
-from conftest_utils import add_filename_markers, get_reporting_region
+from conftest_utils import (
+    add_filename_markers,
+    get_reporting_region,
+    is_region_retained,
+    register_retained_stack,
+    retain_resources_on_teardown,
+)
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
@@ -171,6 +177,12 @@ def pytest_addoption(parser):
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
     )
     parser.addoption(
+        "--retain-on-failure",
+        type=int,
+        default=0,
+        help="Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests (0=disabled, max 5).",
+    )
+    parser.addoption(
         "--retain-ad-stack", action="store_true", default=False, help="Retain AD stack and corresponding VPC stack."
     )
     parser.addoption("--benchmarks", action="store_true", default=False, help="enable benchmark tests")
@@ -262,6 +274,11 @@ def pytest_generate_tests(metafunc):
 
 def pytest_configure(config):
     """This hook is called for every plugin and initial conftest file after command line options have been parsed."""
+    # Validate --retain-on-failure range
+    retain_on_failure = config.getoption("retain_on_failure", default=0)
+    if retain_on_failure < 0 or retain_on_failure > 5:
+        raise pytest.UsageError("--retain-on-failure must be between 0 and 5")
+
     # read tests config file if used
     if config.getoption("tests_config_file", None):
         config.option.tests_config = read_config_file(config.getoption("tests_config_file"), config=config)
@@ -441,12 +458,15 @@ def clusters_factory(request, region):
         return cluster
 
     yield _cluster_factory
-    if not request.config.getoption("no_delete"):
+    if not retain_resources_on_teardown(request, scope="class"):
         try:
             test_passed = request.node.rep_call.passed
         except AttributeError:
             test_passed = False
         factory.destroy_all_clusters(test_passed=test_passed)
+    else:
+        for cluster in factory._ClustersFactory__created_clusters.values():
+            register_retained_stack(request, cluster.cfn_stack_arn)
 
 
 @pytest.fixture(scope="class")
@@ -936,14 +956,20 @@ def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
-    if not request.config.getoption("no_delete"):
-        excluded_stacks = []
-        if request.config.getoption("retain_ad_stack"):
-            excluded_stacks.extend(["vpc", "SimpleAD", "MicrosoftAD"])
-            logging.warning("Skipping deletion of AD and VPC stacks because --retain-ad-stack option is set")
-        factory.delete_all_stacks(excluded_stacks)
-    else:
+    if request.config.getoption("no_delete"):
         logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+        return
+    excluded_stacks = []
+    if request.config.getoption("retain_ad_stack"):
+        excluded_stacks.extend(["vpc", "SimpleAD", "MicrosoftAD"])
+        logging.warning("Skipping deletion of AD and VPC stacks because --retain-ad-stack option is set")
+    if request.config.getoption("retain_on_failure"):
+        for stack in factory._CfnStacksFactory__created_stacks.values():
+            if is_region_retained(request, stack.region):
+                excluded_stacks.append(stack.name)
+                register_retained_stack(request, stack.cfn_stack_id)
+                logging.warning("Retaining stack %s because a test in region %s was retained", stack.name, stack.region)
+    factory.delete_all_stacks(excluded_stacks)
 
 
 @pytest.fixture()
@@ -1028,10 +1054,19 @@ def initialize_cli_creds(request):
 
         yield cli_creds
 
-        if not request.config.getoption("no_delete"):
-            stack_factory.delete_all_stacks()
-        else:
+        if request.config.getoption("no_delete"):
             logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+        elif request.config.getoption("retain_on_failure"):
+            for stack in stack_factory._CfnStacksFactory__created_stacks.values():
+                if is_region_retained(request, stack.region):
+                    register_retained_stack(request, stack.cfn_stack_id)
+                    logging.warning(
+                        "Retaining IAM stack %s because a test in region %s was retained", stack.name, stack.region
+                    )
+                else:
+                    stack_factory.delete_stack(stack.name, stack.region)
+        else:
+            stack_factory.delete_all_stacks()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -1135,6 +1170,8 @@ def s3_bucket_factory(request, region):
     for bucket in created_buckets:
         if request.config.getoption("no_delete"):
             logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        elif request.config.getoption("retain_on_failure") and is_region_retained(request, bucket[1]):
+            logging.info(f"Not deleting S3 bucket {bucket[0]} because a test in region {bucket[1]} was retained")
         else:
             logging.info(f"Deleting S3 bucket {bucket[0]}")
             try:
@@ -1178,6 +1215,8 @@ def s3_bucket_factory_shared(request):
     for bucket in created_buckets:
         if request.config.getoption("no_delete"):
             logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        elif request.config.getoption("retain_on_failure") and is_region_retained(request, bucket[1]):
+            logging.info(f"Not deleting S3 bucket {bucket[0]} because a test in region {bucket[1]} was retained")
         else:
             logging.info(f"Deleting S3 bucket {bucket[0]}")
             try:

@@ -419,6 +419,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("no_delete"),
     )
     debug_group.add_argument(
+        "--retain-on-failure",
+        type=int,
+        help="Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests (0=disabled, max 5).",
+        default=TEST_DEFAULTS.get("retain_on_failure"),
+    )
+    debug_group.add_argument(
         "--delete-logs-on-success",
         help="delete CloudWatch logs when a test succeeds",
         action="store_true",
@@ -725,6 +731,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.no_delete:
         pytest_args.append("--no-delete")
+
+    if args.retain_on_failure:
+        pytest_args.extend(["--retain-on-failure", str(args.retain_on_failure)])
 
     if args.force_run_instances:
         pytest_args.append("--force-run-instances")
