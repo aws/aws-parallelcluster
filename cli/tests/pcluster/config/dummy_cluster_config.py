@@ -12,11 +12,6 @@ from typing import List
 from unittest.mock import PropertyMock
 
 from pcluster.config.cluster_config import (
-    AwsBatchClusterConfig,
-    AwsBatchComputeResource,
-    AwsBatchQueue,
-    AwsBatchQueueNetworking,
-    AwsBatchScheduling,
     ClusterIam,
     CustomAction,
     CustomActions,
@@ -52,25 +47,6 @@ class _DummySlurmClusterConfig(SlurmClusterConfig):
 
     def __init__(self, scheduling: SlurmScheduling, login_nodes: LoginNodes, **kwargs):
         super().__init__("clustername", scheduling, login_nodes, **kwargs)
-
-    @property
-    def region(self):
-        return "us-east-1"
-
-    @property
-    def partition(self):
-        return "aws"
-
-    @property
-    def vpc_id(self):
-        return "dummy_vpc_id"
-
-
-class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
-    """Generate dummy Slurm cluster config."""
-
-    def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__("clustername", scheduling, **kwargs)
 
     @property
     def region(self):
@@ -122,7 +98,7 @@ def dummy_head_node(mocker):
 
 def dummy_slurm_cluster_config(mocker):
     """Generate dummy cluster."""
-    image = Image(os="alinux2")
+    image = Image(os="alinux2023")
     head_node = dummy_head_node(mocker)
     queue_iam = Iam(
         s3_access=[
@@ -161,37 +137,6 @@ def dummy_slurm_cluster_config(mocker):
 
     cluster = _DummySlurmClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, login_nodes=login_nodes, shared_storage=shared_storage
-    )
-    cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
-    cluster.additional_resources = "https://additional.template.url"
-    cluster.config_version = "1.0"
-    cluster.iam = ClusterIam()
-
-    cluster.tags = [Tag(key="test", value="testvalue")]
-    return cluster
-
-
-def dummy_awsbatch_cluster_config(mocker):
-    """Generate dummy cluster."""
-    image = Image(os="alinux2")
-    head_node = dummy_head_node(mocker)
-    compute_resources = [
-        AwsBatchComputeResource(name="dummy_compute_resource1", instance_types=["dummyc5.xlarge", "optimal"])
-    ]
-    queue_networking = AwsBatchQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
-    queues = [AwsBatchQueue(name="queue1", networking=queue_networking, compute_resources=compute_resources)]
-    scheduling = AwsBatchScheduling(queues=queues)
-    # shared storage
-    shared_storage: List[Resource] = []
-    shared_storage.append(dummy_fsx())
-    shared_storage.append(dummy_ebs("/ebs1"))
-    shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
-    shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
-    shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
-    shared_storage.append(dummy_raid("/raid1"))
-
-    cluster = _DummyAwsBatchClusterConfig(
-        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"

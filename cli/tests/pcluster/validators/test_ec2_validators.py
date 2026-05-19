@@ -441,7 +441,7 @@ def test_instance_type_base_ami_compatible_validator(
         ),
         (
             "t3.micro",
-            "alinux2",
+            "alinux2023",
             None,
         ),
         (
@@ -460,12 +460,6 @@ def test_instance_type_base_ami_compatible_validator(
             "p6e-gb200.36xlarge",
             "rocky9",
             None,
-        ),
-        (
-            "p6-b300.WHATEVER_SIZE",
-            "alinux2",
-            "The instance type p6-b300.WHATEVER_SIZE is not supported with OS alinux2. "
-            "Please use one of the following OS",
         ),
         (
             "p6-b300.WHATEVER_SIZE",
@@ -513,8 +507,8 @@ BadKeyPairsDict = {"KeyPairs": [{"KeyType": "rsa"}]}
         ),
         ("key-name", GoodKeyPairsDict, "rhel8", None, None),
         ("key-name", BadKeyPairsDict, "rhel8", None, None),
-        ("key-name", GoodKeyPairsDict, "alinux2", None, None),
-        ("key-name", BadKeyPairsDict, "alinux2", None, None),
+        ("key-name", GoodKeyPairsDict, "alinux2023", None, None),
+        ("key-name", BadKeyPairsDict, "alinux2023", None, None),
     ],
 )
 def test_key_pair_validator(mocker, key_pair, ec2_return, os, side_effect, expected_message):
@@ -597,18 +591,23 @@ def test_capacity_type_validator(
 @pytest.mark.parametrize(
     "image_id, os, ami_info, expected_message",
     [
-        ("ami-000000000000", "alinux2", ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "alinux2"}]}), None),
+        (
+            "ami-000000000000",
+            "alinux2023",
+            ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "alinux2023"}]}),
+            None,
+        ),
         (
             "ami-111111111111",
-            "alinux2",
+            "alinux2023",
             ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "ubuntu2404"}]}),
-            "The OS of node AMI ami-111111111111 is ubuntu2404, it is not compatible with cluster OS alinux2.",
+            "The OS of node AMI ami-111111111111 is ubuntu2404, it is not compatible with cluster OS alinux2023.",
         ),
         (
             "ami-222222222222",
-            "alinux2",
+            "alinux2023",
             ImageInfo({"Tags": {}}),
-            "Could not check node AMI ami-222222222222 OS and cluster OS alinux2 compatibility, "
+            "Could not check node AMI ami-222222222222 OS and cluster OS alinux2023 compatibility, "
             "please make sure they are compatible before cluster creation and update operations.",
         ),
     ],
@@ -756,7 +755,7 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             None,
-            "alinux2",
+            "alinux2023",
             [],
         ),
         # Wrong instance type
@@ -830,7 +829,7 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
-            "alinux2",
+            "alinux2023",
             [
                 "Unexpected failure. InstanceType parameter cannot be empty when using CapacityReservationId",
                 "Capacity reservation .* must use the same availability zone as subnet",
@@ -903,7 +902,7 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
-            "alinux2",
+            "alinux2023",
             [
                 "Capacity reservation cr-123 is not a Capacity Block reservation. "
                 "It cannot be used when specifying CapacityType: CAPACITY_BLOCK."
@@ -939,7 +938,7 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             CapacityType.CAPACITY_BLOCK,
-            "alinux2",
+            "alinux2023",
             [],
         ),
         (
@@ -950,10 +949,10 @@ def test_placement_group_validator(
             False,
             "us-east-1a",
             CapacityType.ONDEMAND,
-            "alinux2",
+            "alinux2023",
             [
                 "Capacity reservation .* has platform SUSE Linux, which is not compatible"
-                + " with the cluster OS alinux2. Please use a reservation with platform Linux/UNIX."
+                + " with the cluster OS alinux2023. Please use a reservation with platform Linux/UNIX."
             ],
         ),
         # Flexible instance type, with a single instance and capacity_reservation_id

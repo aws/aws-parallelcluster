@@ -52,6 +52,19 @@ TOLERATED_CRASH_PATTERNS = [
     re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
 ]
 
+
+INSTANCE_TOLERATED_CRASH_PATTERNS = {
+    # dcvsessionlauncher SEGV on g5g: intermittent crash caused by a known issue in DCV.
+    # We can tolerate this crash because it only impacts intermittently the first DCV connection
+    # and when it does the test already fails the check specific to the connectivity.
+    "g5g": [
+        re.compile(
+            r"dcvsessionlauncher.*SIGSEGV.*g_subprocess_send_signal.*dcv/libgio",
+            re.DOTALL,
+        ),
+    ],
+}
+
 DIAGNOSIS_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "common" / "diagnosis"
 
 
@@ -133,8 +146,8 @@ def _test_dcv_configuration(
         ),
         ("shared dir (head node)", lambda: _check_shared_dir(head_node_remote_command_executor, shared_dir)),
         ("shared dir (login node)", lambda: _check_shared_dir(login_node_remote_command_executor, shared_dir)),
-        ("no crashes (head node)", lambda: _assert_no_crashes(head_node_remote_command_executor)),
-        ("no crashes (login node)", lambda: _assert_no_crashes(login_node_remote_command_executor)),
+        ("no crashes (head node)", lambda: _assert_no_crashes(head_node_remote_command_executor, instance)),
+        ("no crashes (login node)", lambda: _assert_no_crashes(login_node_remote_command_executor, instance)),
         (
             "cloudwatch logs",
             lambda: FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
@@ -156,7 +169,7 @@ def _test_dcv_configuration(
         for i, f in enumerate(failures):
             # Unescape literal \n and \t sequences so the output is human-readable
             readable = f.replace("\\n", "\n").replace("\\t", "\t")
-            formatted.append(f"  [{i+1}] {readable}")
+            formatted.append(f"  [{i + 1}] {readable}")
         pytest.fail(f"{len(failures)} DCV configuration check(s) failed:\n" + "\n".join(formatted))
 
 
@@ -207,11 +220,20 @@ def _get_crash_report(remote_command_executor):
         ) from e
 
 
-def _is_tolerated_crash(content):
+def _is_tolerated_crash(content, instance=None):
     """A crash is tolerated only if it matches a TOLERATED pattern and no UNTOLERATED pattern.
 
     Unknown/unclassified crashes are untolerated by default.
+    Instance-specific patterns (INSTANCE_TOLERATED_CRASH_PATTERNS) take precedence over
+    UNTOLERATED_CRASH_PATTERNS for the matching instance type.
     """
+    # Check instance-specific tolerations first — these override UNTOLERATED patterns.
+    if instance:
+        for prefix, patterns in INSTANCE_TOLERATED_CRASH_PATTERNS.items():
+            if instance.startswith(prefix):
+                for pattern in patterns:
+                    if pattern.search(content):
+                        return True
     for pattern in UNTOLERATED_CRASH_PATTERNS:
         if pattern.search(content):
             return False
@@ -221,7 +243,7 @@ def _is_tolerated_crash(content):
     return False
 
 
-def _assert_no_crashes(remote_command_executor):
+def _assert_no_crashes(remote_command_executor, instance=None):
     """Get crash report, log all crashes, and fail only on non-tolerated ones."""
     try:
         crash_report = _get_crash_report(remote_command_executor)
@@ -229,8 +251,10 @@ def _assert_no_crashes(remote_command_executor):
         raise AssertionError(f"Crash report could not be determined: {e}") from e
     if crash_report:
         logging.warning("Crash report for %s:\n%s", remote_command_executor.target, json.dumps(crash_report, indent=2))
-    tolerated = {path: content for path, content in crash_report.items() if _is_tolerated_crash(content)}
-    untolerated = {path: content for path, content in crash_report.items() if not _is_tolerated_crash(content)}
+    tolerated = {path: content for path, content in crash_report.items() if _is_tolerated_crash(content, instance)}
+    untolerated = {
+        path: content for path, content in crash_report.items() if not _is_tolerated_crash(content, instance)
+    }
     if tolerated:
         logging.warning("Tolerated crashes on %s:\n%s", remote_command_executor.target, json.dumps(tolerated, indent=2))
     assert_that(untolerated).is_empty()
@@ -293,7 +317,15 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
     except Exception as e:
         logging.warning("Failed to prepare known_hosts file %s: %s", host_keys_file, e)
 
-    dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
+    dcv_connect_args = [
+        "pcluster",
+        "dcv-connect",
+        "--cluster-name",
+        cluster.name,
+        "--key-path",
+        cluster.ssh_key,
+        "--show-url",
+    ]
 
     if use_login_node:
         dcv_connect_args.extend(["--login-node-ip", node_ip])

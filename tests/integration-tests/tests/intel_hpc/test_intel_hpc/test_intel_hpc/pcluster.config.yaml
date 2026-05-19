@@ -13,27 +13,20 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
-      {% if scheduler == "slurm" %}
       AllocationStrategy: capacity-optimized
       CapacityType: SPOT
-      {% endif %}
       ComputeSettings:
         LocalStorage:
           RootVolume:
             Size: 80
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: c5.18xlarge
             - InstanceType: c5n.18xlarge
             - InstanceType: c5n.metal
-          {% endif %}
           MinCount: 2
       Networking:
         SubnetIds:

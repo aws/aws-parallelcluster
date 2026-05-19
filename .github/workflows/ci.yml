@@ -19,12 +19,6 @@ jobs:
           with:
             name: CLI Depcheck report
             path: ${{github.workspace}}/reports
-        - name: AWS Batch CLI Dependency Check
-          uses: dependency-check/Dependency-Check_Action@main
-          with:
-            path: './awsbatch-cli'
-            format: 'HTML'
-            project: 'aws-parallelcluster'
         - name: Upload AWS Batch CLI Test results
           uses: actions/upload-artifact@master
           with:
@@ -42,6 +36,7 @@ jobs:
           - Python 3.10 Tests
           - Python 3.11 Tests
           - Python 3.12 Tests
+          - Python 3.13 Tests
           - Python 3.10 Tests Coverage
           - Code Checks
           - CLI CloudFormation Templates Checks
@@ -64,6 +59,10 @@ jobs:
             python: '3.12'
             toxdir: cli
             toxenv: py312-nocov
+          - name: Python 3.13 Tests
+            python: '3.13'
+            toxdir: cli
+            toxenv: py313-nocov
           - name: Python 3.10 Tests Coverage
             python: '3.10'
             toxdir: cli
@@ -101,55 +100,6 @@ jobs:
           files: cli/coverage.xml
           flags: unittests
           verbose: true
-  awsbatch-cli-tests:
-    name: AWS Batch CLI Tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        name:
-          - Python 3.9 AWS Batch CLI Tests
-          - Python 3.10 AWS Batch CLI Tests
-          - Python 3.11 AWS Batch CLI Tests
-          - Python 3.12 AWS Batch CLI Tests
-          - Python 3.10 AWS Batch CLI Tests Coverage
-          - Code Checks AWS Batch CLI
-        include:
-          - name: Python 3.9 AWS Batch CLI Tests
-            python: 3.9
-            toxdir: awsbatch-cli
-            toxenv: py39-nocov
-          - name: Python 3.10 AWS Batch CLI Tests
-            python: '3.10'
-            toxdir: awsbatch-cli
-            toxenv: py310-nocov
-          - name: Python 3.11 AWS Batch CLI Tests
-            python: '3.11'
-            toxdir: awsbatch-cli
-            toxenv: py311-nocov
-          - name: Python 3.12 AWS Batch CLI Tests
-            python: '3.12'
-            toxdir: awsbatch-cli
-            toxenv: py312-nocov
-          - name: Python 3.10 AWS Batch CLI Tests Coverage
-            python: '3.10'
-            toxdir: awsbatch-cli
-            toxenv: py310-cov
-          - name: Code Checks AWS Batch CLI
-            python: '3.10'
-            toxdir: awsbatch-cli
-            toxenv: code-linters
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Install Tox and any other packages
-        run: pip install tox
-      - name: Run Tox
-        run: cd ${{ matrix.toxdir }} && tox -e ${{ matrix.toxenv }}
   validate-api-model:
     name: API Model Validation
     runs-on: ubuntu-latest

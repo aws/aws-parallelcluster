@@ -6,7 +6,7 @@
 # The default setup of AWS ParallelCluster version 2 uses an EBS volume to share the /shared directory over NFS. This configuration utility preserves this behavior by default. If you do not need the /shared directory, you can remove the default-ebs from the SharedStorage section of your configuration.
 Region: ${REGION}
 Image:
-  Os: alinux2
+  Os: alinux2023
 SharedStorage:
   - MountDir: /shared
     Name: default-ebs

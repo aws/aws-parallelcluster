@@ -42,10 +42,7 @@ def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head
     Example: [[HeadNode SubnetId], [<queue-0-SubnetIds>], [<queue-1-SubnetIds>], ...]
     """
     head_node_subnet_id = cluster.config.get("HeadNode", {}).get("Networking", {}).get("SubnetId")
-    if scheduler == "slurm":
-        queues = cluster.config.get("Scheduling", {}).get("SlurmQueues", [])
-    else:
-        queues = cluster.config.get("Scheduling", {}).get("AwsBatchQueues", [])
+    queues = cluster.config.get("Scheduling", {}).get("SlurmQueues", [])
 
     compute_subnet_ids = [queue.get("Networking", {}).get("SubnetIds", []) for queue in queues]
     if include_head_node:

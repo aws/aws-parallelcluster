@@ -19,13 +19,12 @@ from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from utils import to_snake_case
 
-from tests.common.assertions import assert_systemd_service_running
+from tests.common.assertions import assert_no_errors_in_service_log, assert_systemd_service_running
 
 # slurmrestd listens on this unix socket when configured via the upstream postinstall script
 # (aws-samples/aws-parallelcluster-post-install-scripts/rest-api).
 SLURMRESTD_SOCKET = "/var/spool/socket/slurmrestd.sock"
 
-REBUILD_SCRIPT_NAME = "rebuild_slurm.sh"
 CONFIGURE_SCRIPT_NAME = "configure_slurmrestd.sh"
 SLURM_REST_API_RB_NAME = "slurm_rest_api.rb"
 
@@ -48,11 +47,9 @@ def test_slurm_rest_api(
     """Verify that the Slurm REST API (slurmrestd) is functional on a cluster where it is enabled."""
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / REBUILD_SCRIPT_NAME), f"scripts/{REBUILD_SCRIPT_NAME}")
     bucket.upload_file(str(test_datadir / CONFIGURE_SCRIPT_NAME), f"scripts/{CONFIGURE_SCRIPT_NAME}")
     bucket.upload_file(str(test_datadir / SLURM_REST_API_RB_NAME), f"scripts/{SLURM_REST_API_RB_NAME}")
 
-    rebuild_slurm_script_uri = f"s3://{bucket_name}/scripts/{REBUILD_SCRIPT_NAME}"
     configure_slurmrestd_script_uri = f"s3://{bucket_name}/scripts/{CONFIGURE_SCRIPT_NAME}"
     slurm_rest_api_rb_uri = f"s3://{bucket_name}/scripts/{SLURM_REST_API_RB_NAME}"
 
@@ -64,7 +61,6 @@ def test_slurm_rest_api(
         public_subnet_id=public_subnet_id,
         private_subnet_id=private_subnet_id,
         bucket_name=bucket_name,
-        rebuild_slurm_script_uri=rebuild_slurm_script_uri,
         configure_slurmrestd_script_uri=configure_slurmrestd_script_uri,
         slurm_rest_api_rb_uri=slurm_rest_api_rb_uri,
         **database_params,
@@ -76,6 +72,7 @@ def test_slurm_rest_api(
     with soft_assertions():
         assert_systemd_service_running(rce, "slurmrestd")
         _assert_slurmrestd_endpoint_responsive(rce, "ping")
+        assert_no_errors_in_service_log(rce, "slurmrestd")
 
 
 def _slurmrestd_request(rce, url_path, raise_on_error=True):

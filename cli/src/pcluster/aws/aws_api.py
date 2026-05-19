@@ -10,7 +10,6 @@
 # limitations under the License.
 import os
 
-from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
@@ -45,7 +44,6 @@ class AWSApi:
     def __init__(self):
         self.aws_region = os.environ.get("AWS_DEFAULT_REGION")
 
-        self._batch = None
         self._cfn = None
         self._ec2 = None
         self._efs = None
@@ -72,13 +70,6 @@ class AWSApi:
         if not self._cfn:
             self._cfn = CfnClient()
         return self._cfn
-
-    @property
-    def batch(self):
-        """AWS Batch client."""
-        if not self._batch:
-            self._batch = BatchClient()
-        return self._batch
 
     @property
     def ec2(self):

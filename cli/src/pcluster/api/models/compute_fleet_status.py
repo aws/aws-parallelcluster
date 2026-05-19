@@ -30,8 +30,6 @@ class ComputeFleetStatus(Model):
     STOPPING = "STOPPING"
     STOPPED = "STOPPED"
     UNKNOWN = "UNKNOWN"
-    ENABLED = "ENABLED"
-    DISABLED = "DISABLED"
 
     def __init__(self):
         """ComputeFleetStatus - a model defined in OpenAPI"""

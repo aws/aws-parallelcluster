@@ -120,10 +120,7 @@ class CloudWatchLoggingClusterState:
     @property
     def compute_nodes_count(self):
         """Return the number of compute nodes in the cluster."""
-        if self.scheduler == "awsbatch":
-            return 0  # batch "computes" use a different log group
-        else:
-            return self.scheduler_commands.compute_nodes_count()
+        return self.scheduler_commands.compute_nodes_count()
 
     @property
     def login_nodes(self):
@@ -176,7 +173,7 @@ class CloudWatchLoggingClusterState:
         """Turn the name of a base OS into the platform."""
         # Special case: in the files of the cookbook regarding the cloudwatch agent under
         # cookbooks/aws-parallelcluster-config/files/default/cloudwatch the configurations refers to:
-        # * "alinux2" as platform "amazon"
+        # * "alinux2023" as platform "amazon"
         # * "rhel8" as platform "redhat"
         if "alinux" in base_os:
             return "amazon"
@@ -228,11 +225,10 @@ class CloudWatchLoggingClusterState:
                 continue
             elif tags.get("Name", "") == "HeadNode":
                 self._set_head_node_instance(instance)
-            elif self.scheduler != "awsbatch":  # AWS Batch Compute instances do not use CloudWatch
-                if tags.get("Name", "") == "LoginNode":
-                    self._add_login_instance(instance)
-                else:
-                    self._add_compute_instance(instance)
+            elif tags.get("Name", "") == "LoginNode":
+                self._add_login_instance(instance)
+            else:
+                self._add_compute_instance(instance)
 
         LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 
@@ -254,8 +250,6 @@ class CloudWatchLoggingClusterState:
         """Read the node configuration JSON file at NODE_CONFIG_PATH on a compute node."""
         compute_node_config = {}
         # Do not try to fetch dna.json from compute if batch
-        if self.scheduler == "awsbatch":
-            return compute_node_config
         compute_hostname_to_config = self._run_command_on_computes("cat {{redirect}} {0}".format(NODE_CONFIG_PATH))
 
         # Use first one, since ParallelCluster-specific node config should be the same on every compute node
@@ -356,7 +350,7 @@ class CloudWatchLoggingClusterState:
         """Populate self._relevant_logs with the entries of logs."""
         # When the scheduler is AWS Batch, only keep log that whose config's node_role value is HeadNode, since
         # Batch doesn't have compute nodes in the traditional sense.
-        desired_node_roles = {HEAD_NODE_ROLE_NAME} if self.scheduler == "awsbatch" else NODE_ROLE_NAMES
+        desired_node_roles = NODE_ROLE_NAMES
         for log in logs:
             for node_role in set(log.get("node_roles")) & desired_node_roles:
                 self._relevant_logs[node_role].append(self._clean_log_config(log))
@@ -446,18 +440,14 @@ class CloudWatchLoggingClusterState:
 
     def _populate_head_node_log_existence(self):
         """Figure out which of the relevant logs for the head node don't exist."""
-        critical_head_node_logs = (
-            [
-                "/var/log/parallelcluster/clustermgtd",
-                "/var/log/parallelcluster/clusterstatusmgtd",
-                "/var/log/parallelcluster/slurm_resume.log",
-                "/var/log/parallelcluster/slurm_suspend.log",
-                "/var/log/parallelcluster/slurm_fleet_status_manager.log",
-                "/var/log/slurmdbd.log",
-            ]
-            if self.scheduler == "slurm"
-            else []
-        )
+        critical_head_node_logs = [
+            "/var/log/parallelcluster/clustermgtd",
+            "/var/log/parallelcluster/clusterstatusmgtd",
+            "/var/log/parallelcluster/slurm_resume.log",
+            "/var/log/parallelcluster/slurm_suspend.log",
+            "/var/log/parallelcluster/slurm_fleet_status_manager.log",
+            "/var/log/slurmdbd.log",
+        ]
         for log_path, log_dict in self._cluster_log_state.get(HEAD_NODE_ROLE_NAME).get("logs").items():
             # If a log is of critical importance for debugging operational issues, make sure
             # it's not empty so that we can later assert that the data is making it to CloudWatch.
@@ -471,11 +461,10 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for the ComputeFleet nodes don't exist."""
         if self.compute_nodes_count == 0:
             return
-        critical_compute_node_logs = (
-            ["/var/log/parallelcluster/computemgtd", "/var/log/parallelcluster/bootstrap_error_msg"]
-            if self.scheduler == "slurm"
-            else []
-        )
+        critical_compute_node_logs = [
+            "/var/log/parallelcluster/computemgtd",
+            "/var/log/parallelcluster/bootstrap_error_msg",
+        ]
         for log_dict in self._relevant_logs.get(COMPUTE_NODE_ROLE_NAME):
             log_path = log_dict.get("file_path")
             if log_path in critical_compute_node_logs:

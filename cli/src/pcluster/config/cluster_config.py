@@ -16,7 +16,6 @@ import logging
 from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum
-from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from typing import Dict, List, Union
 
 from pcluster.aws.aws_api import AWSApi
@@ -71,12 +70,6 @@ from pcluster.utils import (
     get_resource_name_from_resource_arn,
     to_snake_case,
 )
-from pcluster.validators.awsbatch_validators import (
-    AwsBatchComputeInstanceTypeValidator,
-    AwsBatchComputeResourceSizeValidator,
-    AwsBatchFsxValidator,
-    AwsBatchInstancesArchitectureCompatibilityValidator,
-)
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ClusterNameValidator,
@@ -95,14 +88,12 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HeadNodeMemorySizeValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
-    LoginNodesSchedulerValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -115,8 +106,6 @@ from pcluster.validators.cluster_validators import (
     RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
-    SchedulerDisableSudoAccessForDefaultUserValidator,
-    SchedulerOsValidator,
     SchedulerValidator,
     SharedEbsPerformanceBottleNeckValidator,
     SharedFileCacheNotHomeValidator,
@@ -817,13 +806,6 @@ class SlurmQueueNetworking(_QueueNetworking):
         super().__init__(**kwargs)
         self.placement_group = placement_group or PlacementGroup(implied=True)
         self.proxy = proxy
-
-
-class AwsBatchQueueNetworking(_QueueNetworking):
-    """Represent the networking configuration for the aws batch Queue."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
 
 class _BaseSsh(Resource):
@@ -1680,10 +1662,6 @@ class BaseClusterConfig(Resource):
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
         self._register_validator(SchedulerValidator, scheduler=self.scheduling.scheduler)
-        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
-        self._register_validator(
-            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
-        )
         ami_volume_size = AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
         root_volume = self.head_node.local_storage.root_volume
         root_volume_size = root_volume.size
@@ -1704,10 +1682,6 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
-        if self.deployment_settings and self.deployment_settings.disable_sudo_access_default_user:
-            self._register_validator(
-                SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler
-            )
 
     def _register_additional_package_validator(self):
         if self.additional_packages and self.additional_packages.intel_software:
@@ -2085,11 +2059,6 @@ class BaseClusterConfig(Resource):
         return self.dev_settings.node_package if self.dev_settings else None
 
     @property
-    def custom_aws_batch_cli_package(self):
-        """Return custom custom aws batch cli package value or None."""
-        return self.dev_settings.aws_batch_cli_package if self.dev_settings else None
-
-    @property
     def official_ami(self):
         """Return official ParallelCluster AMI by filter."""
         if not self._official_ami:
@@ -2115,111 +2084,6 @@ class BaseClusterConfig(Resource):
     def get_instance_types_data(self) -> dict:
         """Get instance type infos for all instance types used in the configuration file."""
         return {}
-
-
-class AwsBatchComputeResource(BaseComputeResource):
-    """Represent the AwsBatch Compute Resource."""
-
-    def __init__(
-        self,
-        instance_types: List[str] = None,
-        max_vcpus: int = None,
-        min_vcpus: int = None,
-        desired_vcpus: int = None,
-        spot_bid_percentage: float = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.instance_types = Resource.init_param(instance_types)
-        self.max_vcpus = Resource.init_param(max_vcpus, default=DEFAULT_MAX_COUNT)
-        self.min_vcpus = Resource.init_param(min_vcpus, default=DEFAULT_MIN_COUNT)
-        self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
-        self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(
-            AwsBatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
-        )
-        self._register_validator(
-            AwsBatchComputeResourceSizeValidator,
-            min_vcpus=self.min_vcpus,
-            max_vcpus=self.max_vcpus,
-            desired_vcpus=self.desired_vcpus,
-        )
-
-
-class AwsBatchQueue(BaseQueue):
-    """Represent the AwsBatch Queue resource."""
-
-    def __init__(self, compute_resources: List[AwsBatchComputeResource], networking: AwsBatchQueueNetworking, **kwargs):
-        super().__init__(**kwargs)
-        self.compute_resources = compute_resources
-        self.networking = networking
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(
-            DuplicateNameValidator,
-            name_list=[compute_resource.name for compute_resource in self.compute_resources],
-            resource_name="Compute resource",
-        )
-
-
-class AwsBatchSettings(Resource):
-    """Represent the AwsBatchSettings resource."""
-
-    pass
-
-
-class AwsBatchScheduling(Resource):
-    """Represent a AwsBatch Scheduling resource."""
-
-    def __init__(self, queues: List[AwsBatchQueue], settings: AwsBatchSettings = None):
-        super().__init__()
-        self.scheduler = "awsbatch"
-        self.queues = queues
-        self.settings = settings
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
-        )
-
-
-class AwsBatchClusterConfig(BaseClusterConfig):
-    """Represent the full AwsBatch Cluster configuration."""
-
-    def __init__(self, cluster_name: str, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__(cluster_name, **kwargs)
-        self.scheduling = scheduling
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
-        # TODO add InstanceTypesBaseAMICompatibleValidator
-
-        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
-        self._register_validator(
-            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
-        )
-        if self.shared_storage:
-            for storage in self.shared_storage:
-                if isinstance(storage, BaseSharedFsx):
-                    self._register_validator(AwsBatchFsxValidator)
-
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                self._register_validator(
-                    AwsBatchInstancesArchitectureCompatibilityValidator,
-                    instance_types=compute_resource.instance_types,
-                    architecture=self.head_node.architecture,
-                )
-
-    @property
-    def scheduler_resources(self):
-        """Return scheduler specific resources."""
-        return str(files(__package__).parent / "resources" / "batch")
 
 
 class _BaseSlurmComputeResource(BaseComputeResource):
@@ -3088,7 +2952,6 @@ class SlurmClusterConfig(BaseClusterConfig):
             SubnetsValidator,
             subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id],
         )
-        self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
 
         self._register_validator(
             MaxCountValidator,

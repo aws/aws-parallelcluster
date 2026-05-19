@@ -28,7 +28,6 @@ HeadNode:
   Dcv:
     Enabled: True
   {% endif %}
-{% if scheduler != "awsbatch" %}
 LoginNodes:
   Pools:
     - Name: pool
@@ -53,10 +52,9 @@ LoginNodes:
       Iam:
         AdditionalIamPolicies:
           - Policy: "arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess"
-{% endif %}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     # queue with different quotes for custom bootstrap script
     - Name: bootstrap-scripts-args
       CustomActions:
@@ -74,15 +72,9 @@ Scheduling:
             - 'arg3 arg3'
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 0
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 0
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -98,15 +90,10 @@ Scheduling:
             - "no args"
       ComputeResources:
         - Name: compute-i1
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 0
           MaxCount: 2
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -117,14 +104,9 @@ Scheduling:
     - Name: rotation
       ComputeResources:
         - Name: compute-i1
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -135,15 +117,10 @@ Scheduling:
       ComputeResources:
         - Name: compute-i1
           DisableSimultaneousMultithreading: true
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: {{ max_queue_size }}
-          {% endif %}
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }} # Use shorter scaledown time to test logs in slurm_suspend
 Monitoring:

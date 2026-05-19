@@ -25,7 +25,6 @@ from utils import InstanceTypesData
 from pcluster.constants import (
     EXCLUDED_INSTANCE_TYPE_PREFIXES,
     SUPPORTED_OSES,
-    SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
@@ -57,9 +56,6 @@ def _get_os_parameters(config=None, args=None):
         if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
     ]
     _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
-
-    batch_supported_oses = SUPPORTED_OSES_FOR_SCHEDULER["awsbatch"]
-    _propagate_os_jinja_variables("BATCH_", result, today_number, batch_supported_oses)
 
     lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
     _propagate_os_jinja_variables("LUSTRE_", result, today_number, lustre_supported_oses)
@@ -136,7 +132,7 @@ def _get_instance_type_parameters():  # noqa: C901
                 gpu_instance_type_batch = all_gpu_list[i : i + batch_size]  # noqa: E203
                 for page in paginator.paginate(InstanceTypes=gpu_instance_type_batch):
                     for instance_type in page["InstanceTypes"]:
-                        if _is_nvidia_gpu_instance_type(instance_type) and "g6f" not in instance_type["InstanceType"]:
+                        if _is_nvidia_gpu_instance_type(instance_type):
                             if instance_type.get("GpuInfo").get("Gpus")[0].get(
                                 "Count"
                             ) >= 4 and _is_current_instance_type_generation(
@@ -151,6 +147,7 @@ def _get_instance_type_parameters():  # noqa: C901
                             else:
                                 gpu_instances.append(instance_type["InstanceType"])
 
+            logging.info(f"Selected GPU instance types: {gpu_instances}")
             xlarge_sorted = sorted(xlarge_instances)
             gpu_sorted = sorted(gpu_instances)
             today_number = (date.today() - date(2020, 1, 1)).days
@@ -181,11 +178,13 @@ def _get_instance_type_parameters():  # noqa: C901
 
 
 def _is_nvidia_gpu_instance_type(instance_type):
-    return (
-        instance_type.get("GpuInfo")
-        and instance_type.get("GpuInfo").get("Gpus")
-        and instance_type.get("GpuInfo").get("Gpus")[0].get("Manufacturer") == "NVIDIA"
-    )
+    """
+    Return True if the instance type exposes a full NVIDIA GPU.
+
+    Fractional-GPU instances (e.g. g6f, gr6f) are filtered out.
+    """
+    gpu = next(iter((instance_type.get("GpuInfo") or {}).get("Gpus") or []), {})
+    return gpu.get("Manufacturer") == "NVIDIA" and (gpu.get("Count") or 0) >= 1
 
 
 def _is_current_instance_type_generation(excluded_instance_type_prefixes, instance_type):

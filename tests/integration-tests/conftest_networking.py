@@ -410,7 +410,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
 
         with aws_credential_provider(region, credential):
-            bastion_image_id = retrieve_latest_ami(region, "alinux2")
+            bastion_image_id = retrieve_latest_ami(region, "alinux2023")
         template = NetworkTemplateBuilder(
             vpc_configuration=vpc_config,
             default_availability_zone=default_az_name,
@@ -484,7 +484,7 @@ def vpc_stack_with_endpoints(region, request, key_name, vpc_stack):
     )
 
     with aws_credential_provider(region, credential):
-        bastion_image_id = retrieve_latest_ami(region, "alinux2")
+        bastion_image_id = retrieve_latest_ami(region, "alinux2023")
 
     template = NetworkTemplateBuilder(
         vpc_configuration=vpc_config,

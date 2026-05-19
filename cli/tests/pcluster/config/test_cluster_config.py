@@ -338,7 +338,7 @@ class TestBaseClusterConfig:
     def base_cluster_config(self):
         return BaseClusterConfig(
             cluster_name="clustername",
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
         )
 
@@ -346,7 +346,7 @@ class TestBaseClusterConfig:
     def base_slurm_cluster_config(self):
         return SlurmClusterConfig(
             cluster_name="clustername",
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(
                 [
@@ -367,7 +367,7 @@ class TestBaseClusterConfig:
         cluster_config = SlurmClusterConfig(
             cluster_name="clustername",
             login_nodes=None,
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(
                 [
@@ -507,7 +507,7 @@ class TestBaseClusterConfig:
         assert_that(ami_id).is_equal_to(expected_ami)
 
         if not (global_custom_ami or head_node_custom_ami):
-            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2", "x86_64", ami_filters)
+            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2023", "x86_64", ami_filters)
         else:
             aws_api_mock.ec2.get_official_image_id.assert_not_called()
 
@@ -539,7 +539,7 @@ class TestBaseClusterConfig:
             assert_that(image_dict[queue.name]).is_equal_to(expected_ami)
 
         if not (global_custom_ami or compute_custom_ami):
-            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2", "x86_64", ami_filters)
+            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2023", "x86_64", ami_filters)
         else:
             aws_api_mock.ec2.get_official_image_id.assert_not_called()
 
@@ -723,7 +723,7 @@ class TestBaseClusterConfig:
 
         cluster_config = BaseClusterConfig(
             cluster_name="clustername",
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
         )
 
@@ -842,7 +842,7 @@ class TestBaseClusterConfig:
                     )
                 ]
             ),
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet"), ssh=head_node_ssh),
             scheduling=SlurmScheduling(
                 [

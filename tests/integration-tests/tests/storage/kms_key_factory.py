@@ -25,7 +25,6 @@ class KMSKeyFactory:
         self.partition = None
         self.iam_role_name = None
         self.iam_role_arn = None
-        self.iam_policy_arn_batch = None
         self.iam_policy_arn_traditional = None
 
     def create_kms_key(self, region):
@@ -55,8 +54,6 @@ class KMSKeyFactory:
         random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
         iam_role_name = "Integ_test_InstanceRole_{0}_{1}".format(self.region, random_string)
 
-        iam_policy_name_batch = "".join("Integ_test_InstancePolicy_batch" + random_string)
-        logging.info("iam policy for awsbatch is {0}".format(iam_policy_name_batch))
         iam_policy_name_traditional = "".join("Integ_test_InstancePolicy" + random_string)
         logging.info("iam_policy for traditional scheduler is {0}".format(iam_policy_name_traditional))
 
@@ -90,15 +87,10 @@ class KMSKeyFactory:
         # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
         time.sleep(15)
 
-        # create instance policies for awsbatch and traditional schedulers
-        self.iam_policy_arn_batch = self._create_iam_policies(iam_policy_name_batch, "awsbatch")
         self.iam_policy_arn_traditional = self._create_iam_policies(iam_policy_name_traditional, "traditional")
 
         # attach the Instance policies to the role
         logging.info("Attaching iam policy to the role {0}...".format(iam_role_name))
-
-        # attach the Instance policy for awsBatch
-        self.iam_client.attach_role_policy(RoleName=iam_role_name, PolicyArn=self.iam_policy_arn_batch)
 
         # attach the Instance policy for traditional scheduler
         self.iam_client.attach_role_policy(RoleName=iam_role_name, PolicyArn=self.iam_policy_arn_traditional)
@@ -107,16 +99,13 @@ class KMSKeyFactory:
         return iam_role_name, iam_role_arn
 
     def _create_iam_policies(self, iam_policy_name, scheduler):
-        # the param "scheduler" here can have the value "awsbatch" and "traditional"
 
         # create the iam policy
         # for different scheduler, attach different instance policy
         logging.info("Creating iam policy {0} for iam role...".format(iam_policy_name))
         file_loader = FileSystemLoader(Path(__file__).parent.parent.parent / "resources")
         env = SandboxedEnvironment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
-        policy_filename = (
-            "batch_instance_policy.json" if scheduler == "awsbatch" else "traditional_instance_policy.json"
-        )
+        policy_filename = "traditional_instance_policy.json"
         parallel_cluster_instance_policy = env.get_template(policy_filename).render(
             partition=self.partition,
             region=self.region,
@@ -185,12 +174,7 @@ class KMSKeyFactory:
         self._release_kms_key()
 
     def _release_iam_policy(self):
-        if self.iam_policy_arn_batch or self.iam_policy_arn_traditional:
-            logging.info("Deleting iam policy for awsbatch %s" % self.iam_policy_arn_batch)
-            # detach iam policy for awsbatch from iam role
-            self.iam_client.detach_role_policy(RoleName=self.iam_role_name, PolicyArn=self.iam_policy_arn_batch)
-            # delete the awsbatch policy
-            self.iam_client.delete_policy(PolicyArn=self.iam_policy_arn_batch)
+        if self.iam_policy_arn_traditional:
             logging.info("Deleting iam policy for traditional scheduler %s" % self.iam_policy_arn_traditional)
             # detach iam policy for traditional scheduler from iam role
             self.iam_client.detach_role_policy(RoleName=self.iam_role_name, PolicyArn=self.iam_policy_arn_traditional)

@@ -12,6 +12,7 @@
 import datetime
 import json
 import logging
+import os
 import re
 import tarfile
 import tempfile
@@ -43,7 +44,6 @@ from tests.common.utils import (
     get_installed_parallelcluster_version,
     retrieve_latest_ami,
     upload_github_artifacts_to_s3,
-    wait_for_no_active_export_tasks,
 )
 from tests.proxy.test_proxy import proxy_stack_factory  # noqa: F401
 
@@ -63,7 +63,7 @@ def _get_base_ami(region, os, architecture):
       enable_nvidia, update_os_packages, enable_lustre_client, enable_dcv.
     """
     enable_nvidia = os not in ["ubuntu2404"]
-    update_os_packages = os in ["alinux2", "alinux2023", "rocky9"]
+    update_os_packages = os in ["alinux2023", "rocky9"]
     enable_lustre_client = True
     enable_dcv = True
 
@@ -134,7 +134,7 @@ def test_build_image_no_internet(
     )
 
     image = images_factory(image_id, image_config, region)
-    _test_build_image_success(image)
+    _test_build_image_success(image, request.config.getoption("output_dir"))
 
 
 @pytest.mark.usefixtures("instance")
@@ -166,11 +166,7 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AL2 AMIs are failing because of conflicts between openssl-devel packages
-    if os not in ["alinux2"]:
-        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-    else:
-        base_ami = retrieve_latest_ami(region, os, architecture=architecture)
+    base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
 
     image_config = pcluster_config_reader(
         config_file="warnings.image.config.yaml", parent_image=base_ami, bucket_name=bucket_name
@@ -246,16 +242,14 @@ def test_build_image(
     )
 
     with soft_assertions():
-        _test_build_image_success(image)
+        _test_build_image_success(image, request.config.getoption("output_dir"))
         _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
         _test_build_imds_settings(image, "required", region)
         _test_image_tag_and_volume(image)
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
         _test_list_images(image)
-        wait_for_no_active_export_tasks(region)
         _test_export_logs(s3_bucket_factory, image, region)
-        wait_for_no_active_export_tasks(region)
         _test_export_logs(s3_bucket_factory, image, region, True)
 
     _test_cluster_creation(
@@ -298,44 +292,6 @@ def _wait_for_creation_of_delete_stack_function(stack_name, cfn_client):
         cfn_client.describe_stack_resource(StackName=stack_name, LogicalResourceId="DeleteStackFunction")
         .get("StackResourceDetail")
         .get("ResourceStatus")
-    )
-
-
-@pytest.mark.usefixtures("instance", "scheduler")
-def test_kernel4_build_image_run_cluster(
-    region,
-    os,
-    pcluster_config_reader,
-    architecture,
-    images_factory,
-    request,
-    scheduler_commands_factory,
-    clusters_factory,
-):
-    """
-    Test build image for given region and os and run a job in a new cluster created from the new images.
-
-    Also check that the build instance has the desired ImdsSupport setting (IMDSv2, v1.0 is optional).
-
-    Note: This test has been introduced to verify the build-image with Amazon Linux based on kernel 4,
-    because the base AMI for Amazon Linux were based on kernel 5.10.
-
-    At the moment this test is no longer relevant,
-    kernel 5.10 in Amazon Linux 2 has been introduced on Nov 2021 and kernel 4.14 is now EOL.
-    """
-    # Get base AMI from kernel4
-    base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
-
-    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami, region=region)
-
-    image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
-    image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
-    _test_build_image_success(image)
-    _test_build_imds_settings(image, "required", region)
-    _test_list_images(image)
-
-    _test_cluster_creation(
-        image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
     )
 
 
@@ -436,6 +392,7 @@ def _set_s3_bucket_policy(bucket_name, partition, region):
 
 
 def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=False):
+    bucket_name = None
     if not use_pcluster_bucket:
         bucket_name = s3_bucket_factory()
         logging.info("bucket is %s", bucket_name)
@@ -450,14 +407,11 @@ def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=Fals
         output_file = f"{tempdir}/testfile.tar.gz"
         bucket_prefix = "test_prefix"
 
-        if not use_pcluster_bucket:
-            ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))(image.export_logs)(
-                bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix
-            )
-        else:
-            ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))(image.export_logs)(
-                output_file=output_file, bucket_prefix=bucket_prefix
-            )
+        ret = image.export_logs(
+            bucket=bucket_name,
+            output_file=output_file,
+            bucket_prefix=bucket_prefix,
+        )
 
         assert_that(ret["path"]).contains(output_file)
 
@@ -606,7 +560,7 @@ def test_build_image_custom_components(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_success(image)
+    _test_build_image_success(image, request.config.getoption("output_dir"))
 
 
 def _test_build_imds_settings(image, status, region):
@@ -643,7 +597,7 @@ def _test_build_instances_tags(image, build_tags, region):
             assert_instance_has_desired_tags(instance, build_tags)
 
 
-def _test_build_image_success(image):
+def _test_build_image_success(image, output_dir):
     logging.info("Test build image process for image %s.", image.image_id)
 
     pcluster_describe_image_result = image.describe()
@@ -654,7 +608,7 @@ def _test_build_image_success(image):
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)
     if image.image_status != "BUILD_COMPLETE":
-        image.keep_logs = True
+        _export_image_logs(image, output_dir)
         _keep_recent_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
@@ -687,13 +641,13 @@ def test_build_image_wrong_pcluster_version(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_failed(image)
+    _test_build_image_failed(image, request.config.getoption("output_dir"))
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
-def _test_build_image_failed(image):
+def _test_build_image_failed(image, output_dir):
     logging.info("Test build image process for image %s.", image.image_id)
 
     pcluster_describe_image_result = image.describe()
@@ -705,9 +659,21 @@ def _test_build_image_failed(image):
         logging.info(pcluster_describe_image_result)
 
     if image.image_status == "BUILD_FAILED":
-        image.keep_logs = True
+        _export_image_logs(image, output_dir)
         _keep_recent_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_FAILED")
+
+
+def _export_image_logs(image, output_dir):
+    """Export the full image build log archive to the test output directory using pcluster export-image-logs."""
+    log_dir = os.path.join(output_dir, "image_build_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    output_file = os.path.join(log_dir, f"{image.image_id}-logs.tar.gz")
+    try:
+        ret = image.export_logs(output_file=output_file)
+        logging.info(f"Full image build log exported to {ret.get('path', output_file)}")
+    except Exception as e:
+        logging.error(f"Failed to export image build logs for {image.image_id}: {e}")
 
 
 def _keep_recent_logs(image):

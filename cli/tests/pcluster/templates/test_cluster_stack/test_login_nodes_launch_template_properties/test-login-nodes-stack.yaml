@@ -1,6 +1,6 @@
 Region: eu-west-1
 Image:
-  Os: alinux2
+  Os: alinux2023
 LoginNodes:
   Pools:
   - Name: testloginnodespool1

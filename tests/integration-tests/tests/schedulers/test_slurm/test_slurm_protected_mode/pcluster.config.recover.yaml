@@ -13,17 +13,13 @@ HeadNode:
         EnableWriteAccess: true
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler =="slurm" %}
   ScalingStrategy: {{ scaling_strategy }}
-  {% endif %}
   {{ scheduler_prefix }}Queues:
     - Name: broken
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-          {% if scheduler == "slurm" %}
           - {{ private_subnet_ids[1] }}
-          {% endif %}
       ComputeResources:
         - Name: broken-static
           Instances:
@@ -37,9 +33,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-          {% if scheduler == "slurm" %}
           - {{ private_subnet_ids[1] }}
-          {% endif %}
       ComputeResources:
         - Name: broken-dynamic
           Instances:
@@ -55,9 +49,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-          {% if scheduler == "slurm" %}
           - {{ private_subnet_ids[1] }}
-          {% endif %}
       ComputeResources:
         - Name: normal
           Instances:

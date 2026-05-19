@@ -35,7 +35,6 @@ SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.s
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
     "ubuntu2204": {
@@ -59,13 +58,6 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
-    # Using a patched DLAMI which has uninstalled openssl11-devel, openssl11-libs and openssl11-pkcs
-    # so that it will not conflict with pcluster build image.
-    "alinux2": {
-        "name": "Deep Learning OSS Nvidia Driver AMI (Amazon Linux 2) Version 83.9 for ParallelCluster*",
-        # If you are running in your personal account, then you must have this patched AMI
-        "owners": ["self"],
-    },
     "alinux2023": {
         "name": {
             "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
@@ -93,15 +85,10 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "rocky9": {"name": "Rocky-9-EC2-Base-9.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
-OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
-}
-
 # Get official pcluster AMIs or get from dev account
 PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "alinux2023": {"name": "amzn2023-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2404": {"name": "ubuntu-2404-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
@@ -113,7 +100,6 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
 
 FIRST_STAGE_AMI_OWNERS = ["self", "447714826191"]
 OS_TO_FIRST_STAGE_AMI_NAME_MAP = {
-    "alinux2": {"name": "first-stage-aws-parallelcluster-*-amzn2-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "alinux2023": {"name": "first-stage-aws-parallelcluster-*-amzn2023-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2204": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2204-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2404": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2404-*", "owners": FIRST_STAGE_AMI_OWNERS},
@@ -127,7 +113,6 @@ AMI_TYPE_DICT = {
     "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
     "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
     "pcluster": OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP,
-    "kernel4": OS_TO_KERNEL4_AMI_NAME_OWNER_MAP,
     "first_stage": OS_TO_FIRST_STAGE_AMI_NAME_MAP,
 }
 
@@ -685,7 +670,6 @@ def upload_github_artifacts_to_s3(bucket_name, region, request):
     option_to_s3_key = {
         "createami_custom_chef_cookbook": ("chef_cookbook", "packages/aws-parallelcluster-cookbook.tgz"),
         "createami_custom_node_package": ("node_package", "packages/aws-parallelcluster-node.tgz"),
-        "custom_awsbatchcli_package": ("awsbatch_cli_package", "packages/aws-parallelcluster-batch-cli.tgz"),
     }
 
     for option_name, (result_key, s3_key) in option_to_s3_key.items():
@@ -714,7 +698,7 @@ def wait_for_no_active_export_tasks(region):
     active_statuses = ("RUNNING", "PENDING")
     logs_client = boto3.client("logs", region_name=region)
     max_wait = 300  # 5 minutes
-    poll_interval = 10
+    poll_interval = random.randint(10, 20)
     elapsed = 0
     while elapsed < max_wait:
         active_tasks = []

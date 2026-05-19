@@ -45,7 +45,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--api-infrastructure-s3-uri API_INFRASTRUCTURE_S3_URI] [--api-uri API_URI] [--policies-uri POLICIES_URI] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete] [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
                       [--iam-user-role-stack-name IAM_USER_ROLE_STACK_NAME] [--directory-stack-name DIRECTORY_STACK_NAME] [--slurm-database-stack-name SLURM_DATABASE_STACK_NAME] [--slurm-dbd-stack-name SLURM_DBD_STACK_NAME] [--munge-key-secret-arn MUNGE_KEY_SECRET_ARN]
                       [--external-shared-storage-stack-name EXTERNAL_SHARED_STORAGE_STACK_NAME] [--bucket-name BUCKET_NAME] [--custom-security-groups-stack-name CUSTOM_SECURITY_GROUPS_STACK_NAME] [--force-run-instances] [--force-elastic-ip] [--retain-ad-stack] [--proxy-stack PROXY_STACK]
-                      [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK]
+                      [--build-image-roles-stack BUILD_IMAGE_ROLES_STACK] [--api-stack API_STACK] [--retain-on-failure N] 
 
 Run integration tests suite.
 
@@ -164,6 +164,8 @@ Debugging/Development options:
                         Name of an existing vpc stack. (default: None)
   --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
   --no-delete           Don't delete stacks after tests are complete. (default: False)
+  --retain-on-failure N Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests
+                        (0=disabled, max 5). (default: 0)
   --delete-logs-on-success
                         delete CloudWatch logs when a test succeeds (default: False)
   --stackname-suffix STACKNAME_SUFFIX
@@ -257,11 +259,11 @@ test-suites:
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
-        # 1) run the test for all of the schedulers with alinux2
+        # 1) run the test for all of the schedulers with alinux2023
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: {{ common.SCHEDULERS_ALL }}
+          oss: ["alinux2023"]
+          schedulers: ["slurm"]
         # 2) run the test for all of the OSes with slurm
         - regions: ["ap-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -270,7 +272,7 @@ test-suites:
         # 3) run the test for a single scheduler-OS combination on an ARM instance
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
 ```
 
@@ -281,12 +283,12 @@ of the selected test function which consist in the combination of all defined di
 cloudwatch_logging suite defined above will produce the following parametrization:
 
 ```
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2023-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-awsbatch]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[eu-west-1-m6g.xlarge-alinux2-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2023-awsbatch]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2023-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[eu-west-1-m6g.xlarge-alinux2023-slurm]
 ```
 
 Jinja directives can be used to simplify the declaration of the tests suites.
@@ -414,7 +416,7 @@ tests_outputs
 └── $timestamp.out: directory containing tests reports
     ├── $region_i: directory containing tests reports for a single region
     │         ├── clusters_configs: directory storing all cluster configs used by test
-    │         │         ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux2-awsbatch].config
+    │         │         ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux2023-awsbatch].config
     │         │         └── ...
     │         ├── pytest.out: stdout of pytest for the given region
     │         ├── results.html: html report for the given region
@@ -498,6 +500,16 @@ python -m test_runner \
   --no-delete
 ```
 
+Alternatively, use `--retain-on-failure N` to only preserve resources when a test fails.
+This is useful in CI where you want automatic cleanup on success but need the stacks
+available for debugging on failure. Resources are retained for up to N failing tests (max 5):
+
+```bash
+python -m test_runner \
+  ...
+  --retain-on-failure 1
+```
+
 Then when you have a vpc stack and cluster, reference them when starting a test:
 
 ```bash
@@ -569,12 +581,12 @@ Here is how to define a simple parametrized test case:
 def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
-For example, given as input dimensions `--regions "eu-west-1" --instances "c5.xlarge" --oss "alinux2"
+For example, given as input dimensions `--regions "eu-west-1" --instances "c5.xlarge" --oss "alinux2023"
 "ubuntu1804" --scheduler "awsbatch" "slurm"`, the following tests will run:
 ```
-test_case_1[eu-west-1-c5.xlarge-alinux2-awsbatch]
+test_case_1[eu-west-1-c5.xlarge-alinux2023-awsbatch]
 test_case_1[eu-west-1-c5.xlarge-ubuntu1804-awsbatch]
-test_case_1[eu-west-1-c5.xlarge-alinux2-slurm]
+test_case_1[eu-west-1-c5.xlarge-alinux2023-slurm]
 test_case_1[eu-west-1-c5.xlarge-ubuntu1804-slurm]
 ```
 
@@ -584,7 +596,7 @@ function arguments with this annotation: `@pytest.mark.usefixtures("region", "os
 ```python
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t3.large"])
-@pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
+@pytest.mark.dimensions("*", "*", "alinux2023", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_case_2():
 ```
@@ -621,25 +633,25 @@ For example, given the following test definition:
 ```python
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t3.large"])
-@pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
+@pytest.mark.dimensions("*", "*", "alinux2023", "awsbatch")
 def test_case_1(region, instance, os, scheduler):
 ```
 The test is allowed to run against the following subset of dimensions:
 * region has to be one of `["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"]`
 * instance has to be one of `"c5.xlarge", "t3.large"`
-* os has to be `alinux2`
+* os has to be `alinux2023`
 * scheduler has to be `awsbatch`
 
 While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
-@pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
+@pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2023", "awsbatch")
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "centos7", "slurm")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
-* the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
+* the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2023", "awsbatch")` or
 `("c5.xlarge", "ubuntu2204", "slurm")`
 
 #### Default Invalid Dimensions

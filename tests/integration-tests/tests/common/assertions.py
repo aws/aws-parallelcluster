@@ -59,16 +59,13 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         patterns_to_ignore += ice_patterns
     if ignore_patterns:
         patterns_to_ignore += ignore_patterns
-    if scheduler == "slurm":
-        log_files = [
-            "/var/log/parallelcluster/clustermgtd",
-            "/var/log/parallelcluster/clusterstatusmgtd",
-            "/var/log/parallelcluster/slurm_resume.log",
-            "/var/log/parallelcluster/slurm_suspend.log",
-            "/var/log/parallelcluster/slurm_fleet_status_manager.log",
-        ]
-    else:
-        log_files = []
+    log_files = [
+        "/var/log/parallelcluster/clustermgtd",
+        "/var/log/parallelcluster/clusterstatusmgtd",
+        "/var/log/parallelcluster/slurm_resume.log",
+        "/var/log/parallelcluster/slurm_suspend.log",
+        "/var/log/parallelcluster/slurm_fleet_status_manager.log",
+    ]
 
     for log_file in log_files:
         log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
@@ -78,6 +75,15 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         )
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
+
+
+def assert_no_errors_in_service_log(remote_command_executor: RemoteCommandExecutor, service_name: str):
+    """Assert that the systemd journal for a given service contains no error-level entries."""
+    __tracebackhide__ = True
+    logging.info("Checking %s journal for error-level entries", service_name)
+    log = remote_command_executor.run_remote_command(f"sudo journalctl -u {service_name} --no-pager", hide=True).stdout
+    error_lines = [line for line in log.splitlines() if re.search(r"fail|error|critical", line, re.IGNORECASE)]
+    assert_that(error_lines).described_as(f"Found error-level entries in {service_name} journal logs").is_empty()
 
 
 def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_files: List[str], log_msg: List[str]):

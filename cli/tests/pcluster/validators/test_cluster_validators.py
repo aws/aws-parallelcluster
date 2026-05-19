@@ -17,7 +17,6 @@ from munch import DefaultMunch
 from pcluster.aws.aws_resources import InstanceTypeInfo, NetworkCardInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
-    AwsBatchScheduling,
     BaseQueue,
     CapacityReservationTarget,
     Database,
@@ -51,7 +50,6 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
@@ -68,8 +66,6 @@ from pcluster.validators.cluster_validators import (
     RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
-    SchedulerDisableSudoAccessForDefaultUserValidator,
-    SchedulerOsValidator,
     SharedFileCacheNotHomeValidator,
     SharedStorageEfsSettingsValidator,
     SharedStorageMountDirValidator,
@@ -118,11 +114,6 @@ def boto3_stubber_path():
         ("2AClusterCanNotBeginByANumber", SlurmScheduling(queues=None), True),
         ("ClusterCanNotContainUnderscores_LikeThis", SlurmScheduling(queues=None), True),
         ("ClusterCanNotContainSpaces LikeThis", SlurmScheduling(queues=None), True),
-        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", AwsBatchScheduling(queues=None), False),
-        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", AwsBatchScheduling(queues=None), True),
-        ("2AClusterCanNotBeginByANumber", AwsBatchScheduling(queues=None), True),
-        ("ClusterCanNotContainUnderscores_LikeThis", AwsBatchScheduling(queues=None), True),
-        ("ClusterCanNotContainSpaces LikeThis", AwsBatchScheduling(queues=None), True),
     ],
 )
 def test_cluster_name_validator(cluster_name, scheduling, should_trigger_error):
@@ -566,42 +557,6 @@ def test_region_validator(region, expected_message):
 
 
 @pytest.mark.parametrize(
-    "os, scheduler, expected_message",
-    [
-        ("ubuntu2404", "slurm", None),
-        ("alinux2", "slurm", None),
-        ("rhel8", "slurm", None),
-        ("rocky8", "slurm", None),
-        ("awsbatch", "awsbatch", "scheduler supports the following operating systems"),
-        ("rhel8", "awsbatch", "scheduler supports the following operating systems"),
-        ("rocky8", "awsbatch", "scheduler supports the following operating systems"),
-        ("ubuntu2204", "awsbatch", "scheduler supports the following operating systems"),
-        ("alinux2", "awsbatch", None),
-    ],
-)
-def test_scheduler_os_validator(os, scheduler, expected_message):
-    actual_failures = SchedulerOsValidator().execute(os, scheduler)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-@pytest.mark.parametrize(
-    "scheduler, expected_message, expected_failure_level",
-    [
-        ("slurm", None, None),
-        (
-            "awsbatch",
-            "DisableSudoAccessForDefaultUser is not supported when using AWS Batch as scheduler.",
-            FailureLevel.ERROR,
-        ),
-    ],
-)
-def test_scheduler_disable_sudo_access_for_default_user_validator(scheduler, expected_message, expected_failure_level):
-    actual_failures = SchedulerDisableSudoAccessForDefaultUserValidator().execute(scheduler)
-    assert_failure_messages(actual_failures, expected_message)
-    assert_failure_level(actual_failures, expected_failure_level)
-
-
-@pytest.mark.parametrize(
     "min_count, max_count, capacity_type, expected_messages",
     [
         (0, 0, None, None),
@@ -995,9 +950,8 @@ def test_efa_security_group_validator(
 @pytest.mark.parametrize(
     "efa_enabled, os, architecture, expected_message",
     [
-        (True, "alinux2", "x86_64", None),
-        (True, "alinux2", "arm64", None),
         (True, "alinux2023", "x86_64", None),
+        (True, "alinux2023", "arm64", None),
         (True, "ubuntu2204", "arm64", None),
         (True, "ubuntu2404", "x86_64", None),
         (True, "rocky9", "arm64", None),
@@ -1034,8 +988,8 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
     "os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux2", "x86_64", None),
-        ("alinux2", "x86_64", None),
+        ("alinux2023", "x86_64", None),
+        ("alinux2023", "x86_64", None),
         ("rhel8", "x86_64", None),
         ("rhel8", "x86_64", None),
         (
@@ -1045,8 +999,8 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
         ),
         ("ubuntu2404", "x86_64", None),
         # All OSes supported for ARM
-        ("alinux2", "arm64", None),
-        ("alinux2", "arm64", None),
+        ("alinux2023", "arm64", None),
+        ("alinux2023", "arm64", None),
         (
             "ubuntu04",
             "arm64",
@@ -1627,12 +1581,12 @@ def test_fsx_network_validator(
     "architecture, os, expected_message",
     [
         # Supported combinations
-        ("x86_64", "alinux2", None),
+        ("x86_64", "alinux2023", None),
         ("x86_64", "rhel8", None),
         ("x86_64", "ubuntu2204", None),
         ("arm64", "ubuntu2404", None),
         ("arm64", "rhel8", None),
-        ("arm64", "alinux2", None),
+        ("arm64", "alinux2023", None),
         # Unsupported combinations
         (
             "x86_64",
@@ -1646,13 +1600,6 @@ def test_fsx_network_validator(
             "ubuntu1804",
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "UnsupportedArchitecture",
-            "alinux2",
-            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
-                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
             ),
         ),
     ],
@@ -1840,13 +1787,12 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
         (True, "rhel8", "t3.medium", None, None, 1, None),
         (True, "ubuntu1804", "t3.medium", None, "1.2.3.4/32", 1, "Please double check the os configuration"),
         (True, "ubuntu2404", "t3.medium", None, None, 1, None),
-        (True, "alinux2", "t3.medium", None, None, 1, None),
-        (True, "alinux2", "t3.nano", None, None, 1, "is recommended to use an instance type with at least"),
-        (True, "alinux2", "t3.micro", None, None, 1, "is recommended to use an instance type with at least"),
-        (False, "alinux2", "t3.micro", None, None, 1, None),  # doesn't fail because DCV is disabled
-        (True, "alinux2", "m6g.xlarge", None, None, 1, None),
-        (True, "rhel8", "m6g.xlarge", None, None, 1, None),
+        (True, "alinux2023", "t3.medium", None, None, 1, None),
+        (True, "alinux2023", "t3.nano", None, None, 1, "is recommended to use an instance type with at least"),
+        (True, "alinux2023", "t3.micro", None, None, 1, "is recommended to use an instance type with at least"),
+        (False, "alinux2023", "t3.micro", None, None, 1, None),  # doesn't fail because DCV is disabled
         (True, "alinux2023", "m6g.xlarge", None, None, 1, None),
+        (True, "rhel8", "m6g.xlarge", None, None, 1, None),
         (False, "rhel9", "m6g.xlarge", None, None, 0, None),
         (
             True,
@@ -1908,41 +1854,14 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
 @pytest.mark.parametrize(
     "os, expected_message",
     [
-        ("centos7", None),
-        ("alinux2", "the operating system is required to be set"),
+        ("alinux2023", "the operating system is required to be set"),
         ("ubuntu2204", "the operating system is required to be set"),
         ("ubuntu2404", "the operating system is required to be set"),
         ("rhel8", "the operating system is required to be set"),
-        # TODO migrate the parametrization below to unit test for the whole model
-        # intel hpc disabled, you can use any os
-        # ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
     ],
 )
 def test_intel_hpc_os_validator(os, expected_message):
     actual_failures = IntelHpcOsValidator().execute(os)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-@pytest.mark.parametrize(
-    "imds_secured, scheduler, expected_message",
-    [
-        (None, "slurm", "Cannot validate IMDS configuration if IMDS Secured is not set."),
-        (True, "slurm", None),
-        (False, "slurm", None),
-        (None, "awsbatch", "Cannot validate IMDS configuration if IMDS Secured is not set."),
-        (False, "awsbatch", None),
-        (
-            True,
-            "awsbatch",
-            "IMDS Secured cannot be enabled when using scheduler awsbatch. Please, disable IMDS Secured.",
-        ),
-        (None, None, "Cannot validate IMDS configuration if scheduler is not set."),
-        (True, None, "Cannot validate IMDS configuration if scheduler is not set."),
-        (False, None, "Cannot validate IMDS configuration if scheduler is not set."),
-    ],
-)
-def test_head_node_imds_validator(imds_secured, scheduler, expected_message):
-    actual_failures = HeadNodeImdsValidator().execute(imds_secured=imds_secured, scheduler=scheduler)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -3681,7 +3600,7 @@ def test_multi_network_interfaces_instances_validator(
     "custom_ami_id, os, expected_message, expected_failure_level",
     [
         ("ami-000000000000", "rocky8", None, None),
-        ("ami-000000000000", "alinux2", None, None),
+        ("ami-000000000000", "alinux2023", None, None),
         ("ami-000000000000", "rhel8", None, None),
         ("ami-000000000000", "ubuntu2204", None, None),
         ("ami-000000000000", "ubuntu2404", None, None),
@@ -3694,7 +3613,7 @@ def test_multi_network_interfaces_instances_validator(
             "https://docs.aws.amazon.com/parallelcluster/latest/ug/building-custom-ami-v3.html",
             FailureLevel.ERROR,
         ),
-        (None, "alinux2", None, None),
+        (None, "alinux2023", None, None),
         (None, "rhel8", None, None),
         (None, "ubuntu2204", None, None),
         (None, "ubuntu2404", None, None),

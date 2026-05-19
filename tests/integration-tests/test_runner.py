@@ -419,6 +419,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("no_delete"),
     )
     debug_group.add_argument(
+        "--retain-on-failure",
+        type=int,
+        help="Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests (0=disabled, max 5).",
+        default=TEST_DEFAULTS.get("retain_on_failure"),
+    )
+    debug_group.add_argument(
         "--delete-logs-on-success",
         help="delete CloudWatch logs when a test succeeds",
         action="store_true",
@@ -680,9 +686,6 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.createami_custom_node_url:
         pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
 
-    if args.custom_awsbatchcli_url:
-        pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
-
     if args.pcluster_installer_path:
         pytest_args.extend(["--pcluster-installer-path", args.pcluster_installer_path])
 
@@ -725,6 +728,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.no_delete:
         pytest_args.append("--no-delete")
+
+    if args.retain_on_failure:
+        pytest_args.extend(["--retain-on-failure", str(args.retain_on_failure)])
 
     if args.force_run_instances:
         pytest_args.append("--force-run-instances")

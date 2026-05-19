@@ -8,6 +8,7 @@ CHANGELOG
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
 - The CLI now requires the additional permission `tag:GetResources`.
+- Add support for Python 3.11, 3.12 in pcluster CLI
 
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
@@ -17,6 +18,10 @@ CHANGELOG
 - Fix clustermgtd failing to detect compute node bootstrap timeouts, which prevented the cluster from entering protected mode.
 - Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags, 
   which used to cause cluster update failure on clusters with login nodes.
+
+**DEPRECATIONS**
+- Amazon Linux 2 is no longer supported.
+- AWS Batch as a scheduler is no longer supported.
 
 3.15.0
 ------
