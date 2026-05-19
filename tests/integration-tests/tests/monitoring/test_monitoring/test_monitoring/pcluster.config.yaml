@@ -16,24 +16,19 @@ HeadNode:
       - BucketName: {{ bucket_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue1
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
       ComputeResources:
         - Name: compute-resource1
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           # set MinCount to 1 to ensure the existence of compute nodes
           # in order to test compute node disk and memory metrics are not gathered
           # and test detailed monitoring setting
           MinCount: 1
-          {% endif %}
 Monitoring:
   DetailedMonitoring: true
   Logs:

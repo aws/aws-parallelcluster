@@ -26,12 +26,6 @@ from pcluster.config.cluster_config import (
     Alarms,
     AllocationStrategy,
     AmiSearchFilters,
-    AwsBatchClusterConfig,
-    AwsBatchComputeResource,
-    AwsBatchQueue,
-    AwsBatchQueueNetworking,
-    AwsBatchScheduling,
-    AwsBatchSettings,
     CapacityReservationTarget,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -759,22 +753,6 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return SlurmQueueNetworking(**data)
-
-
-class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
-    """Represent the schema of the Networking, child of aws batch Queue."""
-
-    subnet_ids = fields.List(
-        fields.Str(validate=get_field_validator("subnet_id")),
-        required=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.MANAGED_FSX},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchQueueNetworking(**data)
 
 
 class BaseSshSchema(BaseSchema):
@@ -1655,33 +1633,6 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         return SlurmComputeResource(**data)
 
 
-class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
-    """Represent the schema of the Batch ComputeResource."""
-
-    instance_types = fields.List(
-        fields.Str(), required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-    max_vcpus = fields.Int(
-        data_key="MaxvCpus",
-        validate=validate.Range(min=1),
-        metadata={"update_policy": UpdatePolicy.AWSBATCH_CE_MAX_RESIZE},
-    )
-    min_vcpus = fields.Int(
-        data_key="MinvCpus", validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
-    desired_vcpus = fields.Int(
-        data_key="DesiredvCpus", validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.IGNORED}
-    )
-    spot_bid_percentage = fields.Int(
-        validate=validate.Range(min=0, max=100, min_inclusive=False), metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchComputeResource(**data)
-
-
 class ComputeSettingsSchema(BaseSchema):
     """Represent the schema of the compute_settings schedulers queues."""
 
@@ -1751,25 +1702,6 @@ class SlurmQueueSchema(_CommonQueueSchema):
         """Validate tags."""
         validate_no_reserved_tag(tags)
         validate_no_duplicate_tag(tags)
-
-
-class AwsBatchQueueSchema(BaseQueueSchema):
-    """Represent the schema of a Batch Queue."""
-
-    compute_resources = fields.Nested(
-        AwsBatchComputeResourceSchema,
-        many=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-    networking = fields.Nested(
-        AwsBatchQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchQueue(**data)
 
 
 class DnsSchema(BaseSchema):
@@ -1847,21 +1779,12 @@ class SlurmSettingsSchema(BaseSchema):
         return SlurmSettings(**data)
 
 
-class AwsBatchSettingsSchema(BaseSchema):
-    """Represent the schema of the AwsBatch Scheduling Settings."""
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchSettings(**data)
-
-
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch"]),
+        validate=validate.OneOf(["slurm"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     scaling_strategy = fields.Str(
@@ -1874,75 +1797,24 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
+        required=True,
         metadata={"update_policy": UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE, "update_key": "Name"},
     )
-    # Awsbatch schema:
-    aws_batch_queues = fields.Nested(
-        AwsBatchQueueSchema,
-        many=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-    aws_batch_settings = fields.Nested(
-        AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-
-    @validates_schema
-    def no_coexist_schedulers(self, data, **kwargs):
-        """Validate that *_settings and *_queues for different schedulers do not co-exist."""
-        scheduler = data.get("scheduler")
-        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings"], **kwargs):
-            raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
-        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues"], one_required=True, **kwargs):
-            if scheduler == "awsbatch":
-                scheduler_prefix = "AwsBatch"
-            else:
-                scheduler_prefix = scheduler.capitalize()
-            raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
-
-    @validates_schema
-    def right_scheduler_schema(self, data, **kwargs):
-        """Validate that *_settings field is associated to the right scheduler."""
-        for scheduler, settings, queues in [
-            ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
-            ("slurm", "slurm_settings", "slurm_queues"),
-        ]:
-            # Verify the settings section is associated to the right scheduler type
-            configured_scheduler = data.get("scheduler")
-            if settings in data and scheduler != configured_scheduler:
-                raise ValidationError(
-                    f"Scheduling > *Settings section is not appropriate to the Scheduler: {configured_scheduler}."
-                )
-            if queues in data and scheduler != configured_scheduler:
-                raise ValidationError(
-                    f"Scheduling > *Queues section is not appropriate to the Scheduler: {configured_scheduler}."
-                )
 
     @post_load
     def make_resource(self, data, **kwargs):
-        """Generate the right type of scheduling according to the child type (Slurm vs AwsBatch vs Custom)."""
-        scheduler = data.get("scheduler")
-        if scheduler == "slurm":
-            return SlurmScheduling(
-                queues=data.get("slurm_queues"),
-                settings=data.get("slurm_settings", None),
-                scaling_strategy=data.get("scaling_strategy", None),
-            )
-        if scheduler == "awsbatch":
-            # scaling_strategy is ignored by AWS Batch plugin
-            return AwsBatchScheduling(
-                queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
-            )
-        return None
+        """Generate resource."""
+        return SlurmScheduling(
+            queues=data.get("slurm_queues"),
+            settings=data.get("slurm_settings", None),
+            scaling_strategy=data.get("scaling_strategy", None),
+        )
 
     @pre_dump
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema, see post_load action."""
         adapted_data = copy.deepcopy(data)
-        if adapted_data.scheduler == "awsbatch":
-            scheduler_prefix = "aws_batch"
-        else:
-            scheduler_prefix = adapted_data.scheduler
+        scheduler_prefix = adapted_data.scheduler
         setattr(adapted_data, f"{scheduler_prefix}_queues", copy.copy(getattr(adapted_data, "queues", None)))
         setattr(adapted_data, f"{scheduler_prefix}_settings", copy.copy(getattr(adapted_data, "settings", None)))
         return adapted_data
@@ -2018,35 +1890,9 @@ class ClusterSchema(BaseSchema):
         validate_no_reserved_tag(tags)
         validate_no_duplicate_tag(tags)
 
-    @validates_schema
-    def no_settings_for_batch(self, data, **kwargs):
-        """Ensure IntelSoftware and DirectoryService section is not included when AWS Batch is the scheduler."""
-        scheduling = data.get("scheduling")
-        head_node = data.get("head_node")
-        if scheduling and scheduling.scheduler == "awsbatch":
-            error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
-            additional_packages = data.get("additional_packages")
-            if (
-                additional_packages
-                and additional_packages.intel_software
-                and additional_packages.intel_software.intel_hpc_platform
-            ):
-                raise ValidationError(error_message.format("IntelSoftware"))
-            if head_node.custom_actions and head_node.custom_actions.on_node_updated:
-                raise ValidationError(error_message.format("OnNodeUpdated"))
-            if data.get("directory_service"):
-                raise ValidationError(error_message.format("DirectoryService"))
-
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):
         """Generate cluster according to the scheduler. Save original configuration."""
-        scheduler = data.get("scheduling").scheduler
-        if scheduler == "slurm":
-            cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
-        elif scheduler == "awsbatch":
-            cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
-        else:
-            raise ValidationError(f"Unsupported scheduler {scheduler}.")
-
+        cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         cluster.source_config = original_data
         return cluster

@@ -69,7 +69,7 @@ from tests.pcluster.test_utils import FAKE_NAME
                         },
                     }
                 ],
-                "Description": "AWS ParallelCluster AMI for alinux2",
+                "Description": "AWS ParallelCluster AMI for alinux2023",
             },
             None,
             [
@@ -110,7 +110,6 @@ def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validat
                 "dev_settings": {
                     "cookbook": {"chef_cookbook": "https:///test/aws-parallelcluster-cookbook-3.0.tgz"},
                     "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
-                    "aws_batch_cli_package": "ftp://test/aws-parallelcluster-batch-3.0.tgz",
                 },
             },
             True,
@@ -166,7 +165,6 @@ def test_imagebuilder_url_validator(
                     },
                     "dev_settings": {
                         "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
-                        "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
                         "disable_kernel_update": "true",
                     },
                 }
@@ -174,7 +172,6 @@ def test_imagebuilder_url_validator(
             {
                 "cluster": {
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "disable_kernel_update": "true",
                     "is_official_ami_build": "false",
@@ -205,7 +202,6 @@ def test_imagebuilder_url_validator(
             {
                 "cluster": {
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "custom_awsbatchcli_package": "",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "dcv": "no",
                     "disable_kernel_update": "false",
@@ -231,14 +227,12 @@ def test_imagebuilder_url_validator(
                             "extra_chef_attributes": '{"cluster": {"nvidia": { "enabled" : "yes" }, "dcv" :"no"}, '
                             '"nfs": "true"}',
                         },
-                        "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     },
                 },
             },
             {
                 "cluster": {
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "",
                     "dcv": "no",
                     "disable_kernel_update": "false",
@@ -264,14 +258,12 @@ def test_imagebuilder_url_validator(
                             "chef_cookbook": "https://test/aws-parallelcluster-cookbook-3.0.tgz",
                             "extra_chef_attributes": '{"cluster": {"is_official_ami_build": "true"},"nfs": "true"}',
                         },
-                        "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     },
                 },
             },
             {
                 "cluster": {
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "",
                     "disable_kernel_update": "false",
                     "is_official_ami_build": "true",
@@ -306,7 +298,6 @@ def test_imagebuilder_url_validator(
             {
                 "cluster": {
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "custom_awsbatchcli_package": "",
                     "custom_node_package": "",
                     "disable_kernel_update": "false",
                     "is_official_ami_build": "false",

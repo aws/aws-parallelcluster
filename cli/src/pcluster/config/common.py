@@ -354,18 +354,14 @@ class BaseDevSettings(Resource):
         self,
         cookbook: Cookbook = None,
         node_package: str = None,
-        aws_batch_cli_package: str = None,
     ):
         super().__init__()
         self.cookbook = cookbook
         self.node_package = Resource.init_param(node_package)
-        self.aws_batch_cli_package = Resource.init_param(aws_batch_cli_package)
 
     def _register_validators(self, context: ValidatorContext = None):
         if self.node_package:
             self._register_validator(UrlValidator, url=self.node_package)
-        if self.aws_batch_cli_package:
-            self._register_validator(UrlValidator, url=self.aws_batch_cli_package)
 
 
 class Imds(Resource):

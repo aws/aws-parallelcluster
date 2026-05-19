@@ -55,8 +55,6 @@ MAX_RESOURCES_PER_TEMPLATE = 500
     [
         "slurm.required.yaml",
         "slurm.full.yaml",
-        "awsbatch.simple.yaml",
-        "awsbatch.full.yaml",
     ],
 )
 def test_cluster_builder_from_configuration_file(
@@ -251,8 +249,6 @@ def test_add_efs_shared_storage(mocker, test_datadir, config_file_name, expected
         "slurm.required.yaml",
         "slurm.full.yaml",
         "slurm.logging_disabled.yaml",
-        "awsbatch.simple.yaml",
-        "awsbatch.full.yaml",
     ],
 )
 def test_add_alarms(mocker, config_file_name):
@@ -316,7 +312,7 @@ def test_add_alarms(mocker, config_file_name):
         },
     }
 
-    if cluster.scheduling.scheduler == "slurm" and cluster.is_cw_logging_enabled:
+    if cluster.is_cw_logging_enabled:
         expected_alarms["Clustermgtd-Heartbeat"] = {
             "name": "clustername-HeadNode-ClustermgtdHeartbeat",
             "metric_name": "ClustermgtdHeartbeat",
@@ -1025,16 +1021,6 @@ def test_login_nodes_traffic_management_resources_values_properties(
             {"scheduler": "slurm", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1000},
         ),
         (
-            "awsbatch-imds-secured-false.yaml",
-            {"scheduler": "awsbatch", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1201},
-        ),
-        (
-            "awsbatch-headnode-hooks-partial.yaml",
-            {
-                "scheduler": "awsbatch",
-            },
-        ),
-        (
             "slurm-headnode-hooks-full.yaml",
             {
                 "scheduler": "slurm",
@@ -1076,8 +1062,7 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
         "use_private_hostname": "false",
     }
 
-    if expected_head_node_dna_json_fields["scheduler"] == "slurm":
-        default_head_node_dna_json["cluster"].update(slurm_specific_settings)
+    default_head_node_dna_json["cluster"].update(slurm_specific_settings)
 
     default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
 
@@ -1090,8 +1075,6 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     [
         ("slurm.required.yaml", "2100"),
         ("slurm.full.yaml", "1201"),
-        ("awsbatch.simple.yaml", "2100"),
-        ("awsbatch.full.yaml", "1000"),
     ],
 )
 def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_node_bootstrap_timeout):
@@ -1133,24 +1116,8 @@ def _get_cfn_init_file_content(template, resource, file):
                 "Name": "HeadNode",
                 "parallelcluster:cluster-name": "clustername",
                 "parallelcluster:node-type": "HeadNode",
-                "parallelcluster:attributes": "alinux2, slurm, [0-9\\.A-Za-z]+, x86_64",
+                "parallelcluster:attributes": "alinux2023, slurm, [0-9\\.A-Za-z]+, x86_64",
                 "parallelcluster:filesystem": "efs=2, multiebs=1, raid=0, fsx=3",
-                "parallelcluster:networking": "EFA=NONE",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
-        (
-            "awsbatch.full.yaml",
-            {
-                "Name": "HeadNode",
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                "parallelcluster:attributes": "alinux2, awsbatch, [0-9\\.A-Za-z]+, x86_64",
-                "parallelcluster:filesystem": "efs=1, multiebs=0, raid=2, fsx=0",
                 "parallelcluster:networking": "EFA=NONE",
                 # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
                 #  but some refactoring is required to check it within this test.
@@ -1202,11 +1169,8 @@ def test_head_node_tags(mocker, config_file_name, expected_head_node_tags):
     "config_file_name, imds_support, http_tokens",
     [
         ("slurm.required.yaml", "v1.0", "optional"),
-        ("awsbatch.simple.yaml", "v1.0", "optional"),
         ("slurm.required.yaml", None, "required"),
-        ("awsbatch.simple.yaml", None, "required"),
         ("slurm.required.yaml", "v2.0", "required"),
-        ("awsbatch.simple.yaml", "v2.0", "required"),
     ],
 )
 def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_tokens):
@@ -1236,9 +1200,7 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
     "config_file_name, vpc_config",
     [
         ("slurm.required.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
-        ("awsbatch.simple.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
         ("slurm.required.yaml", None),
-        ("awsbatch.simple.yaml", None),
     ],
 )
 def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_config):

@@ -76,11 +76,6 @@ class ClusterStack(StackInfo):
         """Delete stack."""
         AWSApi.instance().cfn.delete_stack(self.name)
 
-    @property
-    def batch_compute_environment(self):
-        """Return Batch compute environment."""
-        return self._get_output("BatchComputeEnvironmentArn")
-
     def _get_failure_reason(self):
         """Reason of the failure when the cluster_status is in CREATE_FAILED."""
 

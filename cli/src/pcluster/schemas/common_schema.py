@@ -270,7 +270,6 @@ class BaseDevSettingsSchema(BaseSchema):
 
     cookbook = fields.Nested(CookbookSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     node_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    aws_batch_cli_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
 class ImdsSchema(BaseSchema):

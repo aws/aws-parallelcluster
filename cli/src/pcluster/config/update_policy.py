@@ -14,10 +14,8 @@ from enum import Enum
 from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.update_policy_utils import SharedStorageChangeInfo
 from pcluster.constants import (
-    AWSBATCH,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
-    SLURM,
     STORAGE_TYPES_SUPPORTING_LIVE_UPDATES,
 )
 from pcluster.utils import get_dictionary_diff, parse_json_string
@@ -220,14 +218,6 @@ def unchanged_managed_fsx_lustre_names(_, patch):
     return managed_fsx_names_before_update.intersection(managed_fsx_names_after_update)
 
 
-def is_slurm_scheduler(patch):
-    return patch.cluster.stack.scheduler == SLURM
-
-
-def is_awsbatch_scheduler(_, patch):
-    return patch.cluster.stack.scheduler == AWSBATCH
-
-
 def is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
     return (
         patch.cluster.has_running_capacity()
@@ -280,8 +270,6 @@ def is_home_change(change):
 def fail_reason_shared_storage_update_policy(change, patch):
     if is_home_change(change):
         return "The /home directory cannot be changed during an update"
-    if is_awsbatch_scheduler(change, patch):
-        return f"Update actions are not currently supported for the '{change.key}' parameter"
 
     reasons = []
     if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
@@ -428,13 +416,6 @@ def condition_checker_managed_fsx(change, patch):
 def actions_needed_shared_storage_update(change, patch):
     if is_home_change(change):
         return "Please revert any changes to the /home mount"
-    if is_awsbatch_scheduler(change, patch):
-        return (
-            f"Restore '{change.key}' value to '{change.old_value}'"
-            if change.old_value is not None
-            else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
-            + ". If you need this change, please consider creating a new cluster instead of updating the existing one."
-        )
     actions = []
     if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
         actions.append(f"{UpdatePolicy.ACTIONS_NEEDED['compute_nodes_stop'](change, patch)}")
@@ -460,12 +441,9 @@ def condition_checker_shared_storage_update_policy(change, patch):
     Check different requirements for different schedulers.
 
     Compute and login fleet stop is required for plugin scheduler.
-    Update for awsbatch scheduler is not supported.
     QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues for slurm scheduler.
     """
     if is_home_change(change):
-        return False
-    if is_awsbatch_scheduler(change, patch):
         return False
     if patch.cluster.has_running_login_nodes() and not is_login_fleet_update_supported_for_shared_storage(change):
         return False
@@ -615,18 +593,6 @@ UpdatePolicy.EXTRA_CHEF_ATTRIBUTES = UpdatePolicy(
     condition_checker=condition_checker_extra_chef_attributes,
 )
 
-# Checks resize of max_vcpus in Batch Compute Environment
-UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
-    name="AWSBATCH_CE_MAX_RESIZE",
-    level=1,
-    fail_reason=lambda change, patch: "Max vCPUs can not be lower than the current Desired vCPUs ({0})".format(
-        patch.cluster.get_running_capacity()
-    ),
-    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: patch.cluster.get_running_capacity()
-    <= patch.target_config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"],
-)
-
 # Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
 UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
     name="QUEUE_UPDATE_STRATEGY",
@@ -657,7 +623,7 @@ UpdatePolicy.MANAGED_PLACEMENT_GROUP = UpdatePolicy(
 # Update policy for updating SharedStorage
 UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY = UpdatePolicy(
     name="SHARED_STORAGE_UPDATE_POLICY",
-    level=6 if not is_awsbatch_scheduler else 1000,
+    level=6,
     fail_reason=fail_reason_shared_storage_update_policy,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["shared_storage_update_conditional"],
     condition_checker=condition_checker_shared_storage_update_policy,

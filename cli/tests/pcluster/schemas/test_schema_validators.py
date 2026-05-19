@@ -15,9 +15,6 @@ from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
 from pcluster.schemas.cluster_schema import (
-    AwsBatchComputeResourceSchema,
-    AwsBatchQueueNetworkingSchema,
-    AwsBatchQueueSchema,
     BaseIamSchema,
     CloudWatchLogsSchema,
     ClusterSchema,
@@ -101,7 +98,6 @@ def test_root_volume_size_validator(size, expected_message):
 )
 def test_compute_type_validator(capacity_type, expected_message):
     _validate_and_assert_error(SlurmQueueSchema(), {"CapacityType": capacity_type}, expected_message)
-    _validate_and_assert_error(AwsBatchQueueSchema(), {"CapacityType": capacity_type}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -130,46 +126,6 @@ def test_slurm_compute_resource_validator(section_dict, expected_message):
     # Add required field
     section_dict.update({"InstanceType": "t3.micro"})
     _validate_and_assert_error(SlurmComputeResourceSchema(), section_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"MinvCpus": -1}, "Must be greater than or equal"),
-        ({"MinvCpus": 0}, None),
-        ({"DesiredvCpus": -1}, "Must be greater than or equal"),
-        ({"DesiredvCpus": 0}, None),
-        ({"MaxvCpus": 0}, "Must be greater than or equal"),
-        ({"MaxvCpus": 1}, None),
-        ({"SpotBidPercentage": ""}, "Not a valid integer"),
-        ({"SpotBidPercentage": "wrong_value"}, "Not a valid integer"),
-        ({"SpotBidPercentage": 1}, None),
-        ({"SpotBidPercentage": 22}, None),
-        ({"SpotBidPercentage": 101}, "Must be.*less than or equal to 100"),
-    ],
-)
-def test_awsbatch_compute_resource_validator(section_dict, expected_message):
-    _validate_and_assert_error(AwsBatchComputeResourceSchema(), section_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"ComputeResources": []}, "Length must be 1"),
-        ({"ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}]}, None),
-        (
-            {
-                "ComputeResources": [
-                    {"Name": "compute_resource1", "InstanceTypes": ["c4.xlarge", "c5.xlarge"]},
-                    {"Name": "compute_resource1", "InstanceTypes": ["c4.xlarge"]},
-                ]
-            },
-            "Length must be 1",
-        ),
-    ],
-)
-def test_awsbatch_queue_validator(section_dict, expected_message):
-    _validate_and_assert_error(AwsBatchQueueSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -593,23 +549,6 @@ def test_base_networking_validator(section_dict, expected_message):
 def test_subnet_id_validator_head_node(subnet_id, expected_message):
     """Verify that subnet ids behaves as expected when parsed in a config file."""
     _validate_and_assert_error(HeadNodeNetworkingSchema(), {"SubnetId": subnet_id}, expected_message)
-
-
-@pytest.mark.parametrize(
-    "subnet_ids, expected_message",
-    [
-        ([""], "does not match expected pattern"),
-        (["subnet-12345"], "does not match expected pattern"),
-        (["subnet-123456789"], "does not match expected pattern"),
-        (["NONE"], "does not match expected pattern"),
-        (["subnet-12345678"], None),
-        (["subnet-12345678901234567"], None),
-        (["subnet-1234", "subnet-5678"], "does not match expected pattern"),
-    ],
-)
-def test_subnet_id_validator_aws_batch(subnet_ids, expected_message):
-    """Verify that subnet ids behaves as expected when parsed in a config file."""
-    _validate_and_assert_error(AwsBatchQueueNetworkingSchema(), {"SubnetIds": subnet_ids}, expected_message)
 
 
 @pytest.mark.parametrize(

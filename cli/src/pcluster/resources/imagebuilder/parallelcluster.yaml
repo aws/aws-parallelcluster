@@ -23,7 +23,6 @@ phases:
               . /etc/os-release
               RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               case "$RELEASE" in
-                amzn.2) echo 'alinux2' ;;
                 amzn.2023) echo 'alinux2023' ;;
                 ubuntu.22*) echo 'ubuntu2204' ;;
                 ubuntu.24*) echo 'ubuntu2404' ;;
@@ -208,7 +207,6 @@ phases:
               
               OS="{{ build.OperatingSystemName.outputs.stdout }}"
               ChefVersion={{ ChefVersion }}
-              [[ $OS == alinux2 ]] && ChefVersion=18.4.12
               
               curl --retry 3 -L $CINC_URL | bash -s -- -v $ChefVersion
               

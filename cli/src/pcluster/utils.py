@@ -43,7 +43,6 @@ from yaml.resolver import BaseResolver
 from pcluster.aws.common import get_region
 from pcluster.constants import (
     SUPPORTED_OSES_FOR_ARCHITECTURE,
-    SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_FEATURES_MAP,
     Feature,
 )
@@ -161,16 +160,6 @@ def zip_dir(path):
                 )
     file_out.seek(0)
     return file_out
-
-
-def get_supported_os_for_scheduler(scheduler):
-    """
-    Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
-
-    :param scheduler: the scheduler for which we want to know the supported os
-    :return: an array of strings of the supported OSes
-    """
-    return SUPPORTED_OSES_FOR_SCHEDULER.get(scheduler, [])
 
 
 def get_supported_os_for_architecture(architecture):

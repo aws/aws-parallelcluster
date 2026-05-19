@@ -229,14 +229,6 @@ class TestDeleteClusterInstances:
         "stack_param, force, expected_response",
         [
             (
-                {"scheduler": "awsbatch"},
-                False,
-                {
-                    "message": "Bad Request: the delete cluster instances operation does not support "
-                    "AWS Batch clusters."
-                },
-            ),
-            (
                 {"version": "2.11.0"},
                 True,
                 {

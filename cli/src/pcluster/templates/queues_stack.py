@@ -30,7 +30,6 @@ from pcluster.templates.cdk_builder_utils import (
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_user_data_content,
-    scheduler_is_slurm,
     to_comma_separated_string,
 )
 from pcluster.templates.slurm_builder import SlurmConstruct
@@ -138,11 +137,10 @@ class QueuesStack(NestedStack):
             )
         self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
         self.managed_compute_instance_roles = {k: v.instance_role for k, v in iam_resources.items()}
-        if scheduler_is_slurm(self._config):
-            self._slurm_construct.register_policies_with_role(
-                scope=Stack.of(self),
-                managed_compute_instance_roles=self.managed_compute_instance_roles,
-            )
+        self._slurm_construct.register_policies_with_role(
+            scope=Stack.of(self),
+            managed_compute_instance_roles=self.managed_compute_instance_roles,
+        )
 
     def _add_launch_templates(self):
         self.compute_launch_templates = {}
@@ -279,7 +277,6 @@ class QueuesStack(NestedStack):
                         "compute" if compute_resource.efa and compute_resource.efa.gdr_support else "NONE"
                     ),
                     "custom_node_package": self._config.custom_node_package or "",
-                    "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
                     "use_private_hostname": str(
                         get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                     ).lower(),

@@ -4,12 +4,17 @@ on:
       types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
 
 jobs:
-  # Prevent security exclusions
   security-exclusions-check:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-security-exclusions-check') }}
     runs-on: ubuntu-latest
     steps:
-    - name: Check PR
-      uses: francesco-giordano/gh-pr-content-checker@v1.0.0
+    - uses: actions/checkout@v4
       with:
-        diffDoesNotContainRegex: "\\bnosec\\b|\\bnosemgrep\\b"
-        skipLabels: skip-security-exclusions-check
+        fetch-depth: 0
+    - name: Check for nosec/nosemgrep in added lines
+      run: |
+        if git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "^+" | grep -qP '\bnosec\b|\bnosemgrep\b'; then
+          echo "::error::Found nosec or nosemgrep annotations in added lines"
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "^+" | grep -P '\bnosec\b|\bnosemgrep\b'
+          exit 1
+        fi

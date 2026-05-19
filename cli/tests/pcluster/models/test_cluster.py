@@ -838,11 +838,6 @@ class TestCluster:
         mocker.patch("pcluster.models.login_nodes_status.LoginNodesStatus.get_unhealthy_nodes", return_value=unhealthy)
         assert_that(cluster.has_running_login_nodes()).is_equal_to(expected_result)
 
-    def test_login_nodes_on_batch(self, mocker, cluster):
-        mocker.patch("pcluster.models.cluster_resources.ClusterStack.scheduler", return_value="awsbatch")
-        lns = cluster.login_nodes_status
-        assert_that(lns.get_login_nodes_pool_available()).is_false()
-
     @pytest.mark.parametrize(
         "cluster_config_dict, expected_error",
         [
@@ -873,7 +868,7 @@ class TestCluster:
 
 OLD_CONFIGURATION = """
 Image:
-  Os: alinux2
+  Os: alinux2023
   CustomAmi: ami-08cf50b131bcd4db2
 HeadNode:
   InstanceType: t3.micro

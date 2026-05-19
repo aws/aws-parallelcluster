@@ -315,6 +315,7 @@ class Ec2Client(Boto3Client):
 
         filters = [{"Name": "name", "Values": [name]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
+        filters.append({"Name": "state", "Values": ["available"]})
         images = self._describe_images_with_pagination(Owners=[owner], Filters=filters, IncludeDeprecated=True)
         if not images:
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")

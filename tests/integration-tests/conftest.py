@@ -48,7 +48,7 @@ from conftest_utils import (
     register_retained_stack,
     retain_resources_on_teardown,
 )
-from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
+from constants import NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.fixture_utils import xdist_session_fixture
@@ -146,7 +146,6 @@ def pytest_addoption(parser):
     parser.addoption("--createami-custom-node-package", help="url to a custom node package for the build-image command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
-    parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--pcluster-installer-path", help="Path to ParallelCluster installer")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
@@ -716,7 +715,6 @@ def inject_additional_image_configs_settings(image_config, request):
         )
 
     for option, config_param in [
-        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
         ("createami_custom_node_package", "NodePackage"),
     ]:
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
@@ -858,7 +856,6 @@ def inject_additional_config_settings(  # noqa C901
                         _add_policy_for_pre_post_install(queue, option, request, region)
 
     for option, config_param in [
-        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
         ("custom_node_package", "NodePackage"),
     ]:
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
@@ -946,7 +943,7 @@ def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     default_values["partition"] = get_arn_partition(default_values["region"])
     default_values["key_name"] = request.config.getoption("key_name")
 
-    default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    default_values["imds_secured"] = True
     default_values["scheduler_prefix"] = {"slurm": "Slurm", "awsbatch": "AwsBatch"}.get(default_values.get("scheduler"))
     return default_values
 

@@ -1,5 +1,5 @@
 Image:
-  Os: alinux2
+  Os: alinux2023
   CustomAmi: ami-12345678
 HeadNode:
   InstanceType: t3.micro  # t3.micro
@@ -245,7 +245,6 @@ DevSettings:
     ChefCookbook: https://tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
       {"cluster": {"scheduler_slots": "cores"}}
-  AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
 DeploymentSettings:
   LambdaFunctionsVpcConfig:

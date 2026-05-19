@@ -215,7 +215,6 @@ class Pool(Construct):
                     ),
                     "cluster_config_version": self._config.config_version,
                     "custom_node_package": self._config.custom_node_package or "",
-                    "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
                     "cw_logging_enabled": "true" if self._config.is_cw_logging_enabled else "false",
                     "directory_service": {
                         "enabled": str(ds_config is not None).lower(),

@@ -24,8 +24,6 @@ class RequestedComputeFleetStatus(Model):
     """
     START_REQUESTED = "START_REQUESTED"
     STOP_REQUESTED = "STOP_REQUESTED"
-    ENABLED = "ENABLED"
-    DISABLED = "DISABLED"
 
     def __init__(self):
         """RequestedComputeFleetStatus - a model defined in OpenAPI"""

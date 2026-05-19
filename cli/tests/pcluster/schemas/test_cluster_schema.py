@@ -63,19 +63,12 @@ def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
     _check_cluster_schema(config_file_name)
 
 
-@pytest.mark.parametrize("config_file_name", ["awsbatch.simple.yaml", "awsbatch.full.yaml"])
-def test_cluster_schema_awsbatch(mocker, test_datadir, config_file_name):
-    mock_aws_api(mocker)
-    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
-    _check_cluster_schema(config_file_name)
-
-
 @pytest.mark.parametrize(
     "os, custom_ami, failure_message",
     [
         (None, None, "Missing data for required field"),
         ("ubuntu2204", "ami-12345678", None),
-        ("alinux2", None, None),
+        ("alinux2023", None, None),
     ],
 )
 def test_image_schema(os, custom_ami, failure_message):
@@ -188,13 +181,6 @@ def test_head_node_root_volume_schema(mocker, config_dict, failure_message):
             HeadNodeRootVolumeSchema().load(config_dict)
     else:
         HeadNodeRootVolumeSchema().load(config_dict)
-
-
-DUMMY_AWSBATCH_QUEUE = {
-    "Name": "queue1",
-    "Networking": {"SubnetIds": ["subnet-12345678"]},
-    "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
-}
 
 
 @pytest.mark.parametrize(
@@ -372,24 +358,7 @@ def dummy_slurm_compute_resource(name, instance_type):
     "config_dict, failure_message",
     [
         # failures
-        ({"Scheduler": "awsbatch"}, "AwsBatchQueues section must be specified"),
-        ({"Scheduler": "slurm"}, "SlurmQueues section must be specified"),
-        (
-            {"Scheduler": "slurm", "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
-            "Queues section is not appropriate to the Scheduler",
-        ),
-        (
-            {"Scheduler": "awsbatch", "SlurmQueues": [dummy_slurm_queue()]},
-            "Queues section is not appropriate to the Scheduler",
-        ),
-        (
-            {"Scheduler": "slurm", "SlurmQueues": [dummy_slurm_queue()], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
-            "Queues section is not appropriate to the Scheduler",
-        ),
-        (
-            {"Scheduler": "slurm", "SlurmSettings": {}, "AwsBatchSettings": {}},
-            "Multiple .*Settings sections cannot be specified in the Scheduling section",
-        ),
+        ({"Scheduler": "slurm"}, "Missing data for required field"),
         # success
         ({"Scheduler": "slurm", "SlurmQueues": [dummy_slurm_queue()]}, None),
         (
@@ -704,8 +673,6 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
     [
         ("slurm", True, None),
         ("slurm", False, None),
-        ("awsbatch", True, "use of the IntelSoftware configuration is not supported when using awsbatch"),
-        ("awsbatch", False, None),
     ],
 )
 def test_scheduler_constraints_for_intel_packages(
@@ -731,14 +698,6 @@ def test_scheduler_constraints_for_intel_packages(
         ("slurm", "on_node_start", None),
         ("slurm", "on_node_configured", None),
         ("slurm", "on_node_updated", None),
-        ("awsbatch", "no_actions", None),
-        ("awsbatch", "on_node_start", None),
-        ("awsbatch", "on_node_configured", None),
-        (
-            "awsbatch",
-            "on_node_updated",
-            "The use of the OnNodeUpdated configuration is not supported when using awsbatch as the scheduler",
-        ),
     ],
 )
 def test_scheduler_constraints_for_custom_actions(mocker, test_datadir, scheduler, custom_action, failure_message):

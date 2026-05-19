@@ -164,7 +164,7 @@ class CWDashboardConstruct(Construct):
 
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
-            if self.config.scheduling.scheduler == "slurm" and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
+            if is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
                 self._add_custom_health_metrics()
             self._add_cw_log()
 
@@ -574,7 +574,7 @@ class CWDashboardConstruct(Construct):
 
         # Custom Metrics
         pcluster_metrics = []
-        if self.config.scheduling.scheduler == "slurm" and self.config.is_cw_logging_enabled:
+        if self.config.is_cw_logging_enabled:
             pcluster_metrics.append(
                 new_pcluster_metric(
                     title="Daemons Heartbeats",
@@ -668,7 +668,6 @@ class CWDashboardConstruct(Construct):
         self._add_text_widget("# Head Node Logs")
 
         dcv_enabled = self.config.is_dcv_enabled
-        scheduler = self.config.scheduling.scheduler
         base_os = self.config.image.os
         head_private_ip = self.head_node_instance.attr_private_ip
 
@@ -681,17 +680,14 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="clustermgtd",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*clustermgtd")],
                     ),
                     self._new_cw_log_widget(
                         title="slurm_resume",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*slurm_resume")],
                     ),
                     self._new_cw_log_widget(
                         title="slurm_suspend",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*slurm_suspend")],
                     ),
                 ],
@@ -701,7 +697,6 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="slurmctld",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*slurmctld")],
                     ),
                 ],
@@ -751,9 +746,7 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="system-messages",
-                        conditions=[
-                            Condition(["alinux2", "alinux2023", "rhel8", "rocky8", "rhel9", "rocky9"], base_os)
-                        ],
+                        conditions=[Condition(["alinux2023", "rhel8", "rocky8", "rhel9", "rocky9"], base_os)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*system-messages")],
                     ),
                     self._new_cw_log_widget(

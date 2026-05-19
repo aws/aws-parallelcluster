@@ -94,8 +94,6 @@ class TestUpdateComputeFleetStatus:
             ("slurm", "START_REQUESTED", True, datetime.now()),
             ("slurm", "STOP_REQUESTED", False, datetime.now()),
             ("slurm", "START_REQUESTED", False, datetime.now()),
-            ("awsbatch", "ENABLED", None, None),
-            ("awsbatch", "DISABLED", None, None),
         ],
     )
     def test_successful_request(
@@ -109,22 +107,13 @@ class TestUpdateComputeFleetStatus:
         )
         config_mock = mocker.patch("pcluster.models.cluster.Cluster.config")
         config_mock.scheduling.scheduler = scheduler
-        if scheduler == "slurm":
-            # mock the method to check the status before update
-            mocker.patch(
-                "pcluster.aws.dynamo.DynamoResource.get_item",
-                return_value=_build_dynamodb_item(
-                    status, last_status_updated_time, use_plain_text_fleet_status_manager
-                ),
-            )
-            # mock the method to update the item in dynamodb
-            mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item")
-        elif scheduler == "awsbatch":
-            mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
-            if status == "ENABLED":
-                mocker.patch("pcluster.aws.batch.BatchClient.enable_compute_environment")
-            elif status == "DISABLED":
-                mocker.patch("pcluster.aws.batch.BatchClient.disable_compute_environment")
+        # mock the method to check the status before update
+        mocker.patch(
+            "pcluster.aws.dynamo.DynamoResource.get_item",
+            return_value=_build_dynamodb_item(status, last_status_updated_time, use_plain_text_fleet_status_manager),
+        )
+        # mock the method to update the item in dynamodb
+        mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item")
         response = self._send_test_request(client, request_body={"status": status})
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
@@ -177,15 +166,6 @@ class TestUpdateComputeFleetStatus:
             ),
             (
                 {"region": "us-east-1"},
-                "awsbatch",
-                {"status": "START_REQUESTED"},
-                {
-                    "message": "Bad Request: the update compute fleet status can only be set to"
-                    " `ENABLED` or `DISABLED` for AWS Batch scheduler clusters."
-                },
-            ),
-            (
-                {"region": "us-east-1"},
                 "slurm",
                 {"status": None},
                 {
@@ -220,15 +200,6 @@ class TestUpdateComputeFleetStatus:
                 {
                     "message": "Bad Request: Failed when stopping compute fleet with error: Cannot stop/disable"
                     " compute fleet while stack is in CREATE_IN_PROGRESS status."
-                },
-            ),
-            (
-                "DELETE_IN_PROGRESS",
-                "awsbatch",
-                {"status": "ENABLED"},
-                {
-                    "message": "Bad Request: Failed when starting compute fleet with error: "
-                    "Cannot start/enable compute fleet while stack is in DELETE_IN_PROGRESS status."
                 },
             ),
         ],
@@ -368,8 +339,6 @@ class TestDescribeComputeFleet:
             ("slurm", "UNKNOWN", None, None),
             ("slurm", "RUNNING", False, datetime.now()),
             ("slurm", "STOPPED", False, datetime.now()),
-            ("awsbatch", "ENABLED", None, None),
-            ("awsbatch", "DISABLED", None, None),
         ],
     )
     def test_successful_request(
@@ -382,17 +351,14 @@ class TestDescribeComputeFleet:
                 use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager,
             ),
         )
-        if scheduler == "slurm":
-            mocker.patch(
-                "pcluster.aws.dynamo.DynamoResource.get_item",
-                return_value=_build_dynamodb_item(
-                    status,
-                    last_status_updated_time=last_status_updated_time,
-                    use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager,
-                ),
-            )
-        elif scheduler == "awsbatch":
-            mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
+        mocker.patch(
+            "pcluster.aws.dynamo.DynamoResource.get_item",
+            return_value=_build_dynamodb_item(
+                status,
+                last_status_updated_time=last_status_updated_time,
+                use_plain_text_fleet_status_manager=use_plain_text_fleet_status_manager,
+            ),
+        )
         response = self._send_test_request(client)
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
@@ -426,7 +392,7 @@ class TestDescribeComputeFleet:
 
     @pytest.mark.parametrize(
         "scheduler, stack_status",
-        [("slurm", "CREATE_IN_PROGRESS"), ("awsbatch", "DELETE_IN_PROGRESS")],
+        [("slurm", "CREATE_IN_PROGRESS")],
     )
     def test_unknown_status_on_unstable_stack(self, mocker, client, scheduler, stack_status):
         """When stack is in unstable status, the status should be UNKNOWN."""

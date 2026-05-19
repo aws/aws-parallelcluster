@@ -169,7 +169,7 @@ def _test_dcv_configuration(
         for i, f in enumerate(failures):
             # Unescape literal \n and \t sequences so the output is human-readable
             readable = f.replace("\\n", "\n").replace("\\t", "\t")
-            formatted.append(f"  [{i+1}] {readable}")
+            formatted.append(f"  [{i + 1}] {readable}")
         pytest.fail(f"{len(failures)} DCV configuration check(s) failed:\n" + "\n".join(formatted))
 
 
@@ -317,7 +317,15 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
     except Exception as e:
         logging.warning("Failed to prepare known_hosts file %s: %s", host_keys_file, e)
 
-    dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
+    dcv_connect_args = [
+        "pcluster",
+        "dcv-connect",
+        "--cluster-name",
+        cluster.name,
+        "--key-path",
+        cluster.ssh_key,
+        "--show-url",
+    ]
 
     if use_login_node:
         dcv_connect_args.extend(["--login-node-ip", node_ip])

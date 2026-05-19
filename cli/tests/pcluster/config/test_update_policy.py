@@ -992,21 +992,6 @@ external_fsx_lustre = {
         ),
         pytest.param(
             False,
-            True,
-            "SharedStorage",
-            [],
-            None,
-            managed_ebs,
-            None,
-            False,
-            "Update actions are not currently supported for the 'SharedStorage' parameter",
-            "Restore the parameter 'SharedStorage'. If you need this change, please consider creating a new cluster "
-            "instead of updating the existing one.",
-            "awsbatch",
-            id="Compute running, login running, add managed EBS, update strategy not set, with awsbatch: rejected",
-        ),
-        pytest.param(
-            False,
             False,
             "SharedStorage",
             [],
@@ -1092,21 +1077,6 @@ external_fsx_lustre = {
             "Stop the login nodes by setting Count parameter to 0 "
             "and update the cluster with the pcluster update-cluster command",
             "slurm",
-            id="Compute running, login running, remove managed EFS, update strategy not set: rejected",
-        ),
-        pytest.param(
-            False,
-            True,
-            "SharedStorage",
-            [],
-            managed_efs,
-            None,
-            None,
-            False,
-            "Update actions are not currently supported for the 'SharedStorage' parameter",
-            "Restore 'SharedStorage' value to "
-            "'{'MountDir': '/efs-managed', 'Name': 'efs-managed', 'StorageType': 'Efs'}'",
-            "awsbatch",
             id="Compute running, login running, remove managed EFS, update strategy not set: rejected",
         ),
         pytest.param(
@@ -1526,22 +1496,13 @@ def test_shared_storage_update_policy_condition_checker(
     cluster_has_running_login_nodes_mock = mocker.patch.object(
         cluster, "has_running_login_nodes", return_value=has_running_login_nodes
     )
-    mocker.patch(
-        "pcluster.config.update_policy.is_awsbatch_scheduler", return_value=True if scheduler == "awsbatch" else False
-    )
-    mocker.patch(
-        "pcluster.config.update_policy.is_slurm_scheduler", return_value=True if scheduler == "slurm" else False
-    )
     patch_mock = mocker.MagicMock()
     patch_mock.cluster = cluster
-    if scheduler == "slurm":
-        patch_mock.target_config = (
-            {"Scheduling": {"SlurmSettings": {"QueueUpdateStrategy": update_strategy}}}
-            if update_strategy
-            else {"Scheduling": {"SlurmSettings": {}}}
-        )
-    else:
-        patch_mock.target_config = {"Scheduling": {}}
+    patch_mock.target_config = (
+        {"Scheduling": {"SlurmSettings": {"QueueUpdateStrategy": update_strategy}}}
+        if update_strategy
+        else {"Scheduling": {"SlurmSettings": {}}}
+    )
 
     change_mock = mocker.MagicMock()
     change_mock.path = path
@@ -1559,11 +1520,8 @@ def test_shared_storage_update_policy_condition_checker(
         assert_that(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.action_needed(change_mock, patch_mock)).is_equal_to(
             expected_actions_needed
         )
-    if scheduler != "awsbatch":
-        cluster_has_running_login_nodes_mock.assert_called()
-        cluster_has_running_capacity_mock.assert_called()
-    else:
-        cluster_has_running_login_nodes_mock.assert_not_called()
+    cluster_has_running_login_nodes_mock.assert_called()
+    cluster_has_running_capacity_mock.assert_called()
 
 
 @pytest.mark.parametrize(
@@ -2741,6 +2699,7 @@ def test_home_change_policy(
 ):
     cluster = dummy_cluster()
     mocker.patch.object(cluster, "has_running_capacity", return_value=False)
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=False)
     patch_mock = mocker.MagicMock()
     change_mock = mocker.MagicMock()
     change_mock.new_value = {"MountDir": new_storage_value}
