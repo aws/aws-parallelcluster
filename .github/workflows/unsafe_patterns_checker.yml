@@ -12,9 +12,11 @@ jobs:
       with:
         fetch-depth: 0
     - name: Check for disallowed URL suffixes in added lines
+      env:
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
-        if git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "^+" | grep -qP 'amazonaws\.com|amazonaws\.com\.cn|c2s\.ic\.gov|sc2s\.sgov\.gov'; then
+        if git diff "origin/${BASE_REF}...HEAD" | grep "^+" | grep -qP 'amazonaws\.com|amazonaws\.com\.cn|c2s\.ic\.gov|sc2s\.sgov\.gov'; then
           echo "::error::Found disallowed URL suffixes in added lines"
-          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "^+" | grep -P 'amazonaws\.com|amazonaws\.com\.cn|c2s\.ic\.gov|sc2s\.sgov\.gov'
+          git diff "origin/${BASE_REF}...HEAD" | grep "^+" | grep -P 'amazonaws\.com|amazonaws\.com\.cn|c2s\.ic\.gov|sc2s\.sgov\.gov'
           exit 1
         fi

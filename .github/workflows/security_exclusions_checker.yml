@@ -12,9 +12,11 @@ jobs:
       with:
         fetch-depth: 0
     - name: Check for nosec/nosemgrep in added lines
+      env:
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
-        if git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "^+" | grep -qP '\bnosec\b|\bnosemgrep\b'; then
+        if git diff "origin/${BASE_REF}...HEAD" | grep "^+" | grep -qP '\bnosec\b|\bnosemgrep\b'; then
           echo "::error::Found nosec or nosemgrep annotations in added lines"
-          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "^+" | grep -P '\bnosec\b|\bnosemgrep\b'
+          git diff "origin/${BASE_REF}...HEAD" | grep "^+" | grep -P '\bnosec\b|\bnosemgrep\b'
           exit 1
         fi
