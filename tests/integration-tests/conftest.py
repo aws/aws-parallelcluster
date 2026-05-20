@@ -82,10 +82,10 @@ from utils import (
     generate_stack_name,
     get_architecture_supported_by_instance_type,
     get_arn_partition,
+    get_flexible_instance_types,
     get_instance_info,
     get_metadata,
     get_network_interfaces_count,
-    get_similar_instance_types,
     get_vpc_snakecase_value,
     random_alphanumeric,
     to_pascal_case,
@@ -698,7 +698,7 @@ def inject_placement_group_settings(vpc_stack, instance, region, kwargs):
 
 
 def inject_flexible_instance_types_settings(instance, region, kwargs):
-    kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
+    kwargs["flexible_instance_types"] = get_flexible_instance_types(instance, region)
 
 
 def inject_additional_image_configs_settings(image_config, request):

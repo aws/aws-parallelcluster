@@ -19,12 +19,12 @@ import socket
 import string
 import subprocess
 from datetime import datetime, timedelta
-from functools import cache
 from hashlib import sha1
 
 import boto3
 import requests
 from assertpy import assert_that
+from framework.file_cache import file_cache
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
@@ -1026,9 +1026,10 @@ def _get_gpu_spec(instance_type_data):
     return frozenset((gpu.get("Manufacturer", ""), gpu.get("Count", 0)) for gpu in gpu_info.get("Gpus", []))
 
 
+@file_cache("pcluster_similar_instance_types.cache")
 def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
+    """Return instance types compatible with ``instance_type`` in ``region``."""
     ec2 = boto3.client("ec2", region_name=region)
-
     # First, get the target instance details to use as filter criteria
     target_response = ec2.describe_instance_types(InstanceTypes=[instance_type])
 
@@ -1046,6 +1047,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     # Now query for similar instances using filters
     paginator = ec2.get_paginator("describe_instance_types")
     similar_instances = []
+    reached_max_items = False
 
     for page in paginator.paginate(
         Filters=[
@@ -1069,17 +1071,26 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             ):
                 similar_instances.append(instance["InstanceType"])
                 if max_items and len(similar_instances) >= max_items:
-                    return similar_instances
+                    reached_max_items = True
+                    break
+        if reached_max_items:
+            break
+
+    logging.info(f"Retrieved instance types equivalent to {instance_type} in {region}: {similar_instances}")
 
     return similar_instances
 
 
-@cache
+def get_flexible_instance_types(instance, region):
+    """Return ``instance`` plus up to 5 similar instance types available in ``region``."""
+    return list({instance, *get_similar_instance_types(instance, region)[:5]})
+
+
 def get_flexible_gpu_instance_types(instance, region):
     """Return a list of NVIDIA GPU instance types compatible with ``instance``'s architecture."""
     architecture = get_architecture_supported_by_instance_type(instance, region)
     gpu_instance_type = "g4dn.2xlarge" if architecture == "x86_64" else "g5g.2xlarge"
-    return list({gpu_instance_type, *get_similar_instance_types(gpu_instance_type, region, 5)})
+    return list({gpu_instance_type, *get_similar_instance_types(gpu_instance_type, region)[:5]})
 
 
 def verify_cluster_node_config_version_in_ddb(region, cluster_name, instance_id, expected_version):
