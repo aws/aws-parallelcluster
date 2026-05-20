@@ -15,7 +15,7 @@ import boto3
 from assertpy import assert_that, soft_assertions
 from constants import UNSUPPORTED_OSES_FOR_DCV
 from remote_command_executor import RemoteCommandExecutor
-from utils import check_status, is_dcv_supported, test_cluster_health_metric
+from utils import check_status, get_flexible_gpu_instance_types, is_dcv_supported, test_cluster_health_metric
 
 from tests.basic.disable_hyperthreading_utils import _test_disable_hyperthreading_settings
 from tests.basic.log_rotation_utils import _test_compute_log_rotation, _test_headnode_log_rotation
@@ -65,6 +65,7 @@ def test_essential_features(
         dcv_enabled=dcv_enabled,
         max_queue_size=max_queue_size,
         scaledown_idletime=scaledown_idletime,
+        flexible_gpu_instance_types=get_flexible_gpu_instance_types(instance, region),
     )
     cluster = clusters_factory(cluster_config)
 

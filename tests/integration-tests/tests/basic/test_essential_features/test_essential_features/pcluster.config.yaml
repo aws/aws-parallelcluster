@@ -128,7 +128,9 @@ Scheduling:
       ComputeResources:
         - Name: cr1
           Instances:
-            - InstanceType: g4dn.2xlarge
+            {% for instance_type in flexible_gpu_instance_types %}
+            - InstanceType: {{ instance_type }}
+            {% endfor %}
           MinCount: 0
           MaxCount: 1
   SlurmSettings:
