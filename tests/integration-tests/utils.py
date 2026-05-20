@@ -19,6 +19,7 @@ import socket
 import string
 import subprocess
 from datetime import datetime, timedelta
+from functools import cache
 from hashlib import sha1
 
 import boto3
@@ -1071,6 +1072,14 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
                     return similar_instances
 
     return similar_instances
+
+
+@cache
+def get_flexible_gpu_instance_types(instance, region):
+    """Return a list of NVIDIA GPU instance types compatible with ``instance``'s architecture."""
+    architecture = get_architecture_supported_by_instance_type(instance, region)
+    gpu_instance_type = "g4dn.2xlarge" if architecture == "x86_64" else "g5g.2xlarge"
+    return list({gpu_instance_type, *get_similar_instance_types(gpu_instance_type, region, 5)})
 
 
 def verify_cluster_node_config_version_in_ddb(region, cluster_name, instance_id, expected_version):
