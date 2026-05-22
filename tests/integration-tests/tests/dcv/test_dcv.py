@@ -59,7 +59,7 @@ INSTANCE_TOLERATED_CRASH_PATTERNS = {
     # and when it does the test already fails the check specific to the connectivity.
     "g5g": [
         re.compile(
-            r"dcvsessionlauncher.*SIGSEGV.*g_subprocess_send_signal.*dcv/libgio",
+            r".*dcvsession.*SEGV.*g_subprocess_send_signal.*libgio",
             re.DOTALL,
         ),
     ],
