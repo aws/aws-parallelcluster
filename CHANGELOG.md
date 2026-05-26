@@ -18,6 +18,7 @@ CHANGELOG
 - Fix clustermgtd failing to detect compute node bootstrap timeouts, which prevented the cluster from entering protected mode.
 - Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags, 
   which used to cause cluster update failure on clusters with login nodes.
+- Fail `pcluster build-image` early when the downloaded cookbook version does not match the ParallelCluster CLI version.
 
 **DEPRECATIONS**
 - Amazon Linux 2 is no longer supported.
