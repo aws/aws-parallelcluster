@@ -32,6 +32,23 @@ from pcluster.constants import (
 )
 
 
+def _get_global_build_number(config=None, args=None):
+    """
+    Gets the global build number from args or pytest config.
+    Returns the build number as an int, or 0 if not provided.
+    """
+    global_build_number = 0
+    if args:
+        args_dict = vars(args)
+        global_build_number = args_dict.get("global_build_number", 0)
+    elif config:
+        global_build_number = config.getoption("--global-build-number", default=0)
+    try:
+        return int(global_build_number)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _get_os_parameters(config=None, args=None):
     """
     Gets OS jinja parameters.
@@ -42,9 +59,17 @@ def _get_os_parameters(config=None, args=None):
     available_amis_oss_x86 = _get_available_amis_oss("x86", config=config, args=args)
     available_amis_oss_arm = _get_available_amis_oss("arm", config=config, args=args)
     result = {"AVAILABLE_AMIS_OSS_X86": available_amis_oss_x86, "AVAILABLE_AMIS_OSS_ARM": available_amis_oss_arm}
-    today_number = (date.today() - date(2020, 1, 1)).days
 
-    _propagate_os_jinja_variables("", result, today_number, SUPPORTED_OSES)
+    # Use global-build-number as the rotation seed if available and non-zero.
+    # This allows the OS rotation to advance on every build, enabling full coverage
+    # when running tests multiple times per day. Falls back to day-based rotation otherwise.
+    global_build_number = _get_global_build_number(config=config, args=args)
+    if global_build_number:
+        rotation_seed = global_build_number
+    else:
+        rotation_seed = (date.today() - date(2020, 1, 1)).days
+
+    _propagate_os_jinja_variables("", result, rotation_seed, SUPPORTED_OSES)
 
     # DCV doesn't support AL2023. Therefore, the following logic makes sure the DCV jinja parameter is not AL2023
     dcv_supported_oses = [
@@ -55,26 +80,26 @@ def _get_os_parameters(config=None, args=None):
         for os in SUPPORTED_OSES
         if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
     ]
-    _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
+    _propagate_os_jinja_variables("DCV_", result, rotation_seed, dcv_supported_oses, dcv_supported_arm_oses)
 
     batch_supported_oses = SUPPORTED_OSES_FOR_SCHEDULER["awsbatch"]
-    _propagate_os_jinja_variables("BATCH_", result, today_number, batch_supported_oses)
+    _propagate_os_jinja_variables("BATCH_", result, rotation_seed, batch_supported_oses)
 
     lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
-    _propagate_os_jinja_variables("LUSTRE_", result, today_number, lustre_supported_oses)
+    _propagate_os_jinja_variables("LUSTRE_", result, rotation_seed, lustre_supported_oses)
 
     no_rhel_oss = [os for os in SUPPORTED_OSES if "rhel" not in os]
-    _propagate_os_jinja_variables("NO_RHEL_", result, today_number, no_rhel_oss)
+    _propagate_os_jinja_variables("NO_RHEL_", result, rotation_seed, no_rhel_oss)
 
     no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
-    _propagate_os_jinja_variables("NO_ROCKY_", result, today_number, no_rocky_oss)
+    _propagate_os_jinja_variables("NO_ROCKY_", result, rotation_seed, no_rocky_oss)
 
     rhel_oss = [os for os in SUPPORTED_OSES if "rhel" in os]
-    _propagate_os_jinja_variables("RHEL_", result, today_number, rhel_oss)
+    _propagate_os_jinja_variables("RHEL_", result, rotation_seed, rhel_oss)
     return result
 
 
-def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_oses, supported_arm_oses=None):
+def _propagate_os_jinja_variables(prefix, result, rotation_seed, supported_x86_oses, supported_arm_oses=None):
     available_amis_oss_x86 = result["AVAILABLE_AMIS_OSS_X86"]
     available_amis_oss_arm = result["AVAILABLE_AMIS_OSS_ARM"]
     if supported_arm_oses is None:
@@ -86,8 +111,12 @@ def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_os
     result[f"{prefix}OS_X86"] = available_amis_oss_x86
     result[f"{prefix}OS_ARM"] = available_amis_oss_arm
     for index in range(len(supported_x86_oses)):
-        result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
-        result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
+        result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[
+            (rotation_seed + index) % len(available_amis_oss_x86)
+        ]
+        result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[
+            (rotation_seed + index) % len(available_amis_oss_arm)
+        ]
 
 
 def _get_instance_type_parameters():  # noqa: C901
