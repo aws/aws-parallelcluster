@@ -164,6 +164,8 @@ def test_build_image(
             enable_lustre_client = False
     if os in ["alinux2", "alinux2023", "rocky9"]:
         update_os_packages = True
+    if os in ["rhel9"]:
+        update_os_packages = False
 
     enable_dcv = True
 
