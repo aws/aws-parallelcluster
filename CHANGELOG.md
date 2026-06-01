@@ -4,6 +4,10 @@ CHANGELOG
 3.16.0
 ------
 
+**ENHANCEMENTS**
+- Improve cluster update resiliency on login nodes by reusing the head-node-driven orchestration already in place on compute nodes,
+  removing the dependency on cfn-hup and cfn-init.
+
 **CHANGES**
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
@@ -19,6 +23,7 @@ CHANGELOG
 - Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags, 
   which used to cause cluster update failure on clusters with login nodes.
 - Fail `pcluster build-image` early when the downloaded cookbook version does not match the ParallelCluster CLI version.
+- Fix login nodes not mounting `/opt/parallelcluster/shared` when EFS is used as the internal shared storage type.
 
 **DEPRECATIONS**
 - Amazon Linux 2 is no longer supported.

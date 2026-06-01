@@ -590,8 +590,14 @@ class LoginNodeLTAssertion:
         if self.custom_tags:
             for tag in self.custom_tags:
                 assert tag in properties["LaunchTemplateData"]["TagSpecifications"][0]["Tags"]
+        # The new login node bootstrap delivers dna.json/extra.json via cloud-init write_files
+        # rather than cfn-init, so the LT should not carry any AWS::CloudFormation::Init metadata
+        # and the user_data substitutions must include DnaJson/ExtraJson.
+        assert "Metadata" not in resources or "AWS::CloudFormation::Init" not in resources.get("Metadata", {})
+        lt_user_data_variables = properties["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]
+        assert "DnaJson" in lt_user_data_variables
+        assert "ExtraJson" in lt_user_data_variables
         if self.user_data_variables:
-            lt_user_data_variables = properties["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]
             for k, v in self.user_data_variables.items():
                 assert_that(lt_user_data_variables[k]).is_equal_to(v)
 
@@ -610,10 +616,11 @@ class LoginNodeLTAssertion:
                     # Managed instance profile
                     iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the managed role name within the managed instance profile
-                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -631,10 +638,11 @@ class LoginNodeLTAssertion:
                     # Custom instance profile
                     iam_instance_profile_name="INSTANCE_PROFILE_NAME",
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the custom role within the custom instance profile
-                        "CfnInitRole": "Mocked-RoleName",
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -652,10 +660,11 @@ class LoginNodeLTAssertion:
                     # Managed instance profile containing the custom instance role
                     iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the custom role
-                        "CfnInitRole": "ROLE_NAME",
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -673,10 +682,11 @@ class LoginNodeLTAssertion:
                     # Managed instance profile
                     iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the managed role name within the managed instance profile
-                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -698,10 +708,11 @@ class LoginNodeLTAssertion:
                         {"Key": "rs:project", "Value": "solutions"},
                     ],
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the managed role name within the managed instance profile
-                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -1104,6 +1115,50 @@ def _get_cfn_init_file_content(template, resource, file):
     content_separator = content_join[0]
     content_elements = content_join[1]
     return content_separator.join(str(elem) for elem in content_elements)
+
+
+@pytest.mark.parametrize(
+    "config_file_name, expected_login_pools",
+    [
+        (
+            "test-login-nodes-stack.yaml",
+            {
+                "testloginnodespool1": {
+                    "LaunchTemplate": {
+                        "Name": "clustername-testloginnodespool1",
+                        "Version": "$Latest",
+                        "LogicalId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                    }
+                }
+            },
+        ),
+        ("no-login-nodes-stack.yaml", None),
+    ],
+)
+def test_launch_templates_config_login_pools(
+    mocker, pcluster_config_reader, test_datadir, config_file_name, expected_login_pools
+):
+    """The head node launch-templates-config.json carries LoginPools with Name/Version/LogicalId."""
+    rendered_config_file = pcluster_config_reader(config_file_name)
+    generated_template, _ = get_generated_template_and_cdk_assets(mocker, rendered_config_file, test_datadir)
+
+    cfn_init = generated_template["Resources"]["HeadNodeLaunchTemplate"]["Metadata"]["AWS::CloudFormation::Init"]
+    content = cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch-templates-config.json"][
+        "content"
+    ]
+    # The content embeds CFN tokens (Ref/GetAtt) for the compute fleet, so CDK serializes it
+    # as an Fn::Join. Stringify the whole content and assert on the LoginPools literals, which
+    # are plain strings preserved verbatim.
+    content_blob = json.dumps(content, default=str)
+    if expected_login_pools is None:
+        assert_that(content_blob).does_not_contain("LoginPools")
+    else:
+        for _, pool in expected_login_pools.items():
+            lt = pool["LaunchTemplate"]
+            assert_that(content_blob).contains("LoginPools")
+            assert_that(content_blob).contains(lt["Name"])
+            assert_that(content_blob).contains(lt["Version"])
+            assert_that(content_blob).contains(lt["LogicalId"])
 
 
 @freeze_time("2021-01-01T01:01:01")

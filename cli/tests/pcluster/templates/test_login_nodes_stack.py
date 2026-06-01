@@ -1,6 +1,8 @@
+import email
 import json
 
 import pytest
+import yaml
 from assertpy import assert_that
 from freezegun import freeze_time
 
@@ -41,29 +43,46 @@ def test_login_nodes_dna_json(
     login_node_lt_id = "LoginNodeLaunchTemplate2736fab291f04e69"
     login_node_lt_asset = get_asset_content_with_resource_name(cdk_assets, login_node_lt_id)
     login_node_lt = login_node_lt_asset["Resources"][login_node_lt_id]
-    login_node_cfn_init_files = login_node_lt["Metadata"]["AWS::CloudFormation::Init"]["deployConfigFiles"]["files"]
-    login_node_dna_json = login_node_cfn_init_files["/tmp/dna.json"]
-    login_node_extra_json = login_node_cfn_init_files["/tmp/extra.json"]
+    login_node_user_data = login_node_lt["Properties"]["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"]
+    login_node_user_data_template = login_node_user_data[0]
+    login_node_user_data_substitutions = login_node_user_data[1]
+
+    login_node_dna_json = render_join(login_node_user_data_substitutions["DnaJson"]["Fn::Join"])
+    login_node_extra_json = login_node_user_data_substitutions["ExtraJson"]
 
     # Expected dna.json and extra.json
     expected_login_node_dna_json = load_json_dict(test_datadir / expected_login_node_dna_json_file_name)
     expected_login_node_extra_json = load_json_dict(test_datadir / expected_login_node_extra_json_file_name)
-    expected_owner = expected_group = "root"
-    expected_mode = "000644"
 
     # Assertions on dna.json
-    rendered_dna_json_content = render_join(login_node_dna_json["content"]["Fn::Join"])
-    rendered_dna_json_content_as_json = json.loads(rendered_dna_json_content)
-    assert_that(login_node_dna_json["owner"]).is_equal_to(expected_owner)
-    assert_that(login_node_dna_json["group"]).is_equal_to(expected_group)
-    assert_that(login_node_dna_json["mode"]).is_equal_to(expected_mode)
-    assert_that(rendered_dna_json_content_as_json).is_equal_to(expected_login_node_dna_json)
+    assert_that(json.loads(login_node_dna_json)).is_equal_to(expected_login_node_dna_json)
 
     # Assertions on extra.json
-    assert_that(login_node_extra_json["owner"]).is_equal_to(expected_owner)
-    assert_that(login_node_extra_json["group"]).is_equal_to(expected_group)
-    assert_that(login_node_extra_json["mode"]).is_equal_to(expected_mode)
-    assert_that(json.loads(login_node_extra_json["content"])).is_equal_to(expected_login_node_extra_json)
+    assert_that(json.loads(login_node_extra_json)).is_equal_to(expected_login_node_extra_json)
+
+    # Assertions on the cloud-init write_files directives that materialize dna.json and
+    # extra.json to check they are created with the correct ownership and permissions.
+    expected_owner = "root:root"
+    expected_permissions = "0644"
+
+    _assert_write_files_directive(login_node_user_data_template, "/tmp/dna.json", expected_owner, expected_permissions)
+    _assert_write_files_directive(
+        login_node_user_data_template, "/tmp/extra.json", expected_owner, expected_permissions
+    )
+
+
+def _assert_write_files_directive(mime_user_data: str, path: str, expected_owner: str, expected_permissions: str):
+    """Assert the cloud-init write_files directive for the given path exists with the expected ownership/permissions."""
+    message = email.message_from_string(mime_user_data)
+    directive = None
+    for part in message.walk():
+        if part.get_content_type() == "text/cloud-config":
+            write_files = yaml.safe_load(part.get_payload()).get("write_files") or []
+            directive = next((d for d in write_files if d.get("path") == path), None)
+            break
+    assert_that(directive).is_not_none()
+    assert_that(directive["owner"]).is_equal_to(expected_owner)
+    assert_that(directive["permissions"]).is_equal_to(expected_permissions)
 
 
 def render_join(elem: dict):
