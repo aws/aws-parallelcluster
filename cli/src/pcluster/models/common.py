@@ -230,6 +230,10 @@ class CloudWatchLogsExporter:
             decompressed_path = decompressed_path.replace(
                 r"{unwanted_path_segment}{sep}".format(unwanted_path_segment=prefix, sep=os.path.sep), ""
             )
+            decompressed_path = os.path.realpath(decompressed_path)
+            if not decompressed_path.startswith(os.path.realpath(destdir) + os.sep):
+                LOGGER.warning("Skipping unsafe S3 key (path traversal detected): %s", archive_object.key)
+                continue
             compressed_path = f"{decompressed_path}.gz"
 
             LOGGER.debug("Downloading object with key=%s to %s", archive_object.key, compressed_path)
