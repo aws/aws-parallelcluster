@@ -163,8 +163,11 @@ def test_build_image(
         base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
         if os in ["rocky9"]:
             enable_lustre_client = False
-    if os in ["alinux2", "alinux2023", "rocky9"]:
+    if os in ["alinux2", "alinux2023"]:
         update_os_packages = True
+
+    if os in ["rhel9", "rocky9"]:
+        update_os_packages = False
 
     enable_dcv = True
 
