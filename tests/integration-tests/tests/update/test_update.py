@@ -14,7 +14,6 @@ import os
 import os.path as os_path
 import re
 import time
-from collections import defaultdict
 from datetime import datetime
 
 import boto3
@@ -1004,14 +1003,11 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
         if request.config.getoption(option):
             stack = CfnStack(name=request.config.getoption(option), region=region, template=None)
         else:
-            # Choose subnets from different availability zones
-            subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
-            subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
-            subnets_by_az = defaultdict(list)
-            for subnet in subnets:
-                subnets_by_az[subnet["AvailabilityZone"]].append(subnet["SubnetId"])
-            azs = [az for az in subnets_by_az.keys()]
-            one_subnet_per_az = [subnets_by_az[az][0] for az in azs]
+            # Deploy the storage in the private subnet used by the cluster compute nodes.
+            # The head node, login nodes and compute nodes all live in the same Availability Zone,
+            # so a single EFS mount target in the compute node subnet covers every node in the cluster.
+            # The other single-AZ storage resources (FSx, File Cache, EBS) are co-located there as well.
+            compute_subnet_id = vpc_stack.get_private_subnet()
 
             # The EBS volume must be placed in the same AZ where the head node is.
             # The head node is deployed in the public subnet.
@@ -1029,12 +1025,9 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             params = [
                 # Networking
                 {"ParameterKey": "Vpc", "ParameterValue": vpc},
-                {"ParameterKey": "SubnetOne", "ParameterValue": one_subnet_per_az[0]},
-                {"ParameterKey": "SubnetTwo", "ParameterValue": one_subnet_per_az[1]},
-                {
-                    "ParameterKey": "SubnetThree",
-                    "ParameterValue": "" if len(one_subnet_per_az) == 2 else one_subnet_per_az[2],
-                },
+                {"ParameterKey": "SubnetOne", "ParameterValue": compute_subnet_id},
+                {"ParameterKey": "SubnetTwo", "ParameterValue": ""},
+                {"ParameterKey": "SubnetThree", "ParameterValue": ""},
                 # EBS
                 {"ParameterKey": "CreateEbs", "ParameterValue": "true"},
                 {"ParameterKey": "EbsVolumeAz", "ParameterValue": ebs_volume_az},
