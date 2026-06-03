@@ -191,6 +191,13 @@ class ImageBuilderCdkStack(Stack):
             self, "CfnParamCincInstaller", type="String", default=custom_cinc_installer_url, description="CincInstaller"
         )
 
+        custom_cinc_version = (
+            self.config.dev_settings.cinc_version
+            if self.config.dev_settings and self.config.dev_settings.cinc_version
+            else ""
+        )
+        CfnParameter(self, "CfnParamCincVersion", type="String", default=custom_cinc_version, description="CincVersion")
+
         CfnParameter(
             self,
             "CfnParamChefDnaJson",
