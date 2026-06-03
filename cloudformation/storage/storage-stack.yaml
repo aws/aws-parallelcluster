@@ -71,7 +71,8 @@ Parameters:
     Default: ''
   SubnetTwo:
     Description: ID of the Subnet (second Availability Zone) where the storage will be deployed.
-    Type: AWS::EC2::Subnet::Id
+    # The type has to be String to allow empty values.
+    Type: String
     Default: ''
   SubnetThree:
     Description: ID of the Subnet (third Availability Zone) where the storage will be deployed.
@@ -115,6 +116,9 @@ Parameters:
 Conditions:
   CreateEbs: !Equals [!Ref CreateEbs, 'true']
   CreateEfs: !Equals [!Ref CreateEfs, 'true']
+  CreateMountTargetResourceEfs0SubnetTwo: !And
+    - !Equals [!Ref CreateEfs, 'true']
+    - !Not [!Equals [!Ref SubnetTwo, '']]
   CreateMountTargetResourceEfs0SubnetThree: !And
     - !Equals [!Ref CreateEfs, 'true']
     - !Not [!Equals [!Ref SubnetThree, '']]
@@ -157,7 +161,7 @@ Resources:
       SubnetId: !Ref SubnetOne
   MountTargetResourceEfs0SubnetTwo:
     Type: 'AWS::EFS::MountTarget'
-    Condition: CreateEfs
+    Condition: CreateMountTargetResourceEfs0SubnetTwo
     Properties:
       FileSystemId: !Ref EfsFileSystem
       SecurityGroups:
