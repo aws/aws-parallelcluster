@@ -207,6 +207,7 @@ phases:
               
               OS="{{ build.OperatingSystemName.outputs.stdout }}"
               ChefVersion={{ ChefVersion }}
+              [ -n "${CfnParamCincVersion}" ] && ChefVersion="${CfnParamCincVersion}"
               
               curl --retry 3 -L $CINC_URL | bash -s -- -v $ChefVersion
               
