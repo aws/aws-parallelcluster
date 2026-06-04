@@ -1205,7 +1205,12 @@ def test_dynamic_file_systems_update(
     )
     for mount_dir in all_mount_dirs_update_1:
         verify_directory_correctly_shared(
-            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1", "queue2"],
+            cluster=cluster,
+            login_node_pools=["login"],
         )
 
     # # Update cluster to stop login nodes
