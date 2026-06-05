@@ -36,6 +36,7 @@ from pcluster.config.common import (
 )
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    COMPUTE_INSTANCE_INFO_TIMEOUT,
     CW_ALARMS_ENABLED_DEFAULT,
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
@@ -1189,13 +1190,21 @@ class AmiSearchFilters(Resource):
 class Timeouts(Resource):
     """Represent the configuration for node boostrap timeout."""
 
-    def __init__(self, head_node_bootstrap_timeout: int = None, compute_node_bootstrap_timeout: int = None):
+    def __init__(
+        self,
+        head_node_bootstrap_timeout: int = None,
+        compute_node_bootstrap_timeout: int = None,
+        compute_instance_info_timeout: int = None,
+    ):
         super().__init__()
         self.head_node_bootstrap_timeout = Resource.init_param(
             head_node_bootstrap_timeout, default=NODE_BOOTSTRAP_TIMEOUT
         )
         self.compute_node_bootstrap_timeout = Resource.init_param(
             compute_node_bootstrap_timeout, default=NODE_BOOTSTRAP_TIMEOUT
+        )
+        self.compute_instance_info_timeout = Resource.init_param(
+            compute_instance_info_timeout, default=COMPUTE_INSTANCE_INFO_TIMEOUT
         )
 
 
