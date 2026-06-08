@@ -1,21 +1,19 @@
 name: Cherry-pick to branch
 
 on:
-  pull_request:
-    types: [labeled, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Number of the PR to cherry-pick"
+        required: true
+        type: string
+      target_branches:
+        description: "Space-separated list of target branches to cherry-pick into"
+        required: true
+        type: string
 
 jobs:
   cherry-pick:
-    # Run when:
-    # 1. A cherry-pick:* label is added to a merged PR — triggers immediately
-    # 2. A PR with cherry-pick:* labels is merged — triggers at merge time
-    if: >
-      (github.event.action == 'labeled' &&
-       startsWith(github.event.label.name, 'cherry-pick:') &&
-       github.event.pull_request.merged == true) ||
-      (github.event.action == 'closed' &&
-       github.event.pull_request.merged == true &&
-       contains(toJSON(github.event.pull_request.labels.*.name), 'cherry-pick:'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -25,28 +23,18 @@ jobs:
         id: pr-info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          SOURCE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          EVENT_ACTION: ${{ github.event.action }}
-          LABEL_NAME: ${{ github.event.label.name }}
-          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          TARGET_BRANCHES: ${{ inputs.target_branches }}
           REPO: ${{ github.repository }}
         run: |
-          # Determine target branches from cherry-pick:* labels
-          if [ "${EVENT_ACTION}" = "labeled" ]; then
-            # Single label was just added
-            TARGET_BRANCHES="${LABEL_NAME#cherry-pick:}"
-          else
-            # PR was closed/merged — pick up all cherry-pick:* labels
-            LABELS=$(echo "${LABELS_JSON}" | jq -r '.[] | select(startswith("cherry-pick:"))')
-            TARGET_BRANCHES=""
-            for LABEL in $LABELS; do
-              TARGET="${LABEL#cherry-pick:}"
-              TARGET_BRANCHES="${TARGET_BRANCHES}${TARGET} "
-            done
-          fi
+          # workflow_dispatch has no PR event payload, so fetch everything we need
+          # about the PR from the API.
+          PR_JSON=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" \
+            --json baseRefName,title,author,commits)
+
+          SOURCE_BRANCH=$(echo "${PR_JSON}" | jq -r '.baseRefName')
+          PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
+          PR_AUTHOR=$(echo "${PR_JSON}" | jq -r '.author.login')
 
           # Validate target branches contain only safe characters
           for BRANCH in ${TARGET_BRANCHES}; do
@@ -57,7 +45,7 @@ jobs:
           done
 
           # Get all commit SHAs from the PR
-          COMMITS=$(gh pr view "$PR_NUMBER" --repo "${REPO}" --json commits --jq '.commits[].oid' | tr '\n' ' ')
+          COMMITS=$(echo "${PR_JSON}" | jq -r '.commits[].oid' | tr '\n' ' ')
 
           echo "commits=${COMMITS}" >> "$GITHUB_OUTPUT"
           echo "source_branch=${SOURCE_BRANCH}" >> "$GITHUB_OUTPUT"
