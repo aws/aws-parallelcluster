@@ -241,6 +241,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         terminate_instance_on_failure: bool = None,
         disable_validate_and_test: bool = None,
         cinc_installer_url: str = None,
+        cinc_version: str = None,
         disable_kernel_update: bool = None,
         slurm_patches_s3_archive: str = None,
         **kwargs
@@ -251,6 +252,10 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
         self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=True)
         self.cinc_installer_url = Resource.init_param(cinc_installer_url, default="")
+        # Optional override for the CINC client version baked into the AMI
+        # (CfnParamCincVersion -> ChefVersion in parallelcluster.yaml). When
+        # left empty the YAML-rendered default ChefVersion is used.
+        self.cinc_version = Resource.init_param(cinc_version, default="")
         self.disable_kernel_update = Resource.init_param(disable_kernel_update, default=False)
         self.slurm_patches_s3_archive = Resource.init_param(slurm_patches_s3_archive, default="")
 

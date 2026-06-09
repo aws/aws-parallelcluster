@@ -88,6 +88,11 @@ jobs:
           TARGET_BRANCHES: ${{ steps.pr-info.outputs.target_branches }}
           REPO: ${{ github.repository }}
         run: |
+          # Fetch the PR's commits. They may live in a fork (different account),
+          # so they are not present in the base repo checkout. The refs/pull/*/head
+          # ref makes them available regardless of which fork the PR came from.
+          git fetch origin "refs/pull/${PR_NUMBER}/head"
+
           HAS_FAILURE=false
           for TARGET_BRANCH in ${TARGET_BRANCHES}; do
             CHERRY_PICK_BRANCH="cherry-pick/pr-${PR_NUMBER}-to-${TARGET_BRANCH}"
@@ -110,15 +115,17 @@ jobs:
 
             if [ "${CHERRY_PICK_FAILED}" = "false" ]; then
               git push origin "${CHERRY_PICK_BRANCH}"
-              gh pr create \
+              NEW_PR_URL=$(gh pr create \
                 --base "${TARGET_BRANCH}" \
                 --head "${CHERRY_PICK_BRANCH}" \
                 --title "Cherry-pick #${PR_NUMBER}: ${PR_TITLE}" \
                 --body "Automated cherry-pick of #${PR_NUMBER} from \`${SOURCE_BRANCH}\` to \`${TARGET_BRANCH}\`.
 
           Original PR by @${PR_AUTHOR}." \
-                --label "cherry-pick"
-              echo "✅ Cherry-pick PR to ${TARGET_BRANCH} created successfully"
+                --label "cherry-pick")
+              gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                --body "✅ Cherry-pick to \`${TARGET_BRANCH}\` opened: ${NEW_PR_URL}"
+              echo "✅ Cherry-pick PR to ${TARGET_BRANCH} created successfully: ${NEW_PR_URL}"
             else
               HAS_FAILURE=true
               gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
