@@ -30,6 +30,16 @@ CHANGELOG
 - Amazon Linux 2 is no longer supported.
 - AWS Batch as a scheduler is no longer supported.
 
+3.15.1
+------
+
+**CHANGES**
+- Patch official ParallelCluster AMIs to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+- Disable `algif_aead` kernel module on Ubuntu to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+- Upgrade NVIDIA driver to version 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2 to address CVE-2025-33219.
+- Upgrade NVIDIA Fabric manager to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
+- Upgrade NVIDIA IMEX to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
+
 3.15.0
 ------
 
@@ -38,7 +48,7 @@ CHANGELOG
 - Replace cfn-hup in compute nodes with systemd timer to support in place updates in order to improve performance for tightly coupled worloads at scale.
   This new mechanism relies on shared storage to sync updates between the head node and compute nodes.
 - Disable `dnf-makecache.timer` to improve performance for tightly coupled worloads on RHEL/Rocky at scale.
-- Support updates of `Tags` during cluster-updates.
+- Support updates of `Tags` during cluster-updates except in AWS Top Secret and AWS Secret Regions.
 - Add `LaunchTemplateOverrides` to cluster config to allow network interfaces to be customized by overriding the launch template of a compute resource.
   - This overrides the parallelcluster default using a shallow merge.
 - Add alarm on missing clustermgtd heartbeat.
