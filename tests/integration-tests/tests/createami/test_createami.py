@@ -625,7 +625,10 @@ def test_build_image_wrong_pcluster_version(
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
     current_version = get_installed_parallelcluster_version()
-    wrong_version = "3.9.3"
+    # Compute a wrong version that is 2 minor versions before the current one, with patch set to 0.
+    # For example, if the current version is 3.15.1, the wrong_version is 3.13.0.
+    major, minor, _ = (int(part) for part in current_version.split("."))
+    wrong_version = f"{major}.{minor - 2}.0"
     logging.info("Asserting wrong_version is different from current_version")
     assert_that(current_version != wrong_version).is_true()
     # Retrieve an AMI without 'aws-parallelcluster-<version>' in its name.
