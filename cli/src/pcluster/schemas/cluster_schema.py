@@ -1103,6 +1103,9 @@ class TimeoutsSchema(BaseSchema):
     compute_node_bootstrap_timeout = fields.Int(
         validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
+    compute_instance_info_timeout = fields.Int(
+        validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load()
     def make_resource(self, data, **kwargs):

@@ -1,0 +1,133 @@
+name: Cherry-pick to branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Number of the PR to cherry-pick"
+        required: true
+        type: string
+      target_branches:
+        description: "Space-separated list of target branches to cherry-pick into"
+        required: true
+        type: string
+
+jobs:
+  cherry-pick:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Get PR details
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          TARGET_BRANCHES: ${{ inputs.target_branches }}
+          REPO: ${{ github.repository }}
+        run: |
+          # workflow_dispatch has no PR event payload, so fetch everything we need
+          # about the PR from the API.
+          PR_JSON=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" \
+            --json baseRefName,title,author,commits)
+
+          SOURCE_BRANCH=$(echo "${PR_JSON}" | jq -r '.baseRefName')
+          PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
+          PR_AUTHOR=$(echo "${PR_JSON}" | jq -r '.author.login')
+
+          # Validate target branches contain only safe characters
+          for BRANCH in ${TARGET_BRANCHES}; do
+            if ! echo "${BRANCH}" | grep -qE '^[a-zA-Z0-9._/-]+$'; then
+              echo "::error::Invalid branch name '${BRANCH}' — must match [a-zA-Z0-9._/-]+"
+              exit 1
+            fi
+          done
+
+          # Get all commit SHAs from the PR
+          COMMITS=$(echo "${PR_JSON}" | jq -r '.commits[].oid' | tr '\n' ' ')
+
+          echo "commits=${COMMITS}" >> "$GITHUB_OUTPUT"
+          echo "source_branch=${SOURCE_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
+          echo "pr_author=${PR_AUTHOR}" >> "$GITHUB_OUTPUT"
+          echo "target_branches=${TARGET_BRANCHES}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Cherry-pick and create PR(s)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMITS: ${{ steps.pr-info.outputs.commits }}
+          SOURCE_BRANCH: ${{ steps.pr-info.outputs.source_branch }}
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          PR_TITLE: ${{ steps.pr-info.outputs.pr_title }}
+          PR_AUTHOR: ${{ steps.pr-info.outputs.pr_author }}
+          TARGET_BRANCHES: ${{ steps.pr-info.outputs.target_branches }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Fetch the PR's commits. They may live in a fork (different account),
+          # so they are not present in the base repo checkout. The refs/pull/*/head
+          # ref makes them available regardless of which fork the PR came from.
+          git fetch origin "refs/pull/${PR_NUMBER}/head"
+
+          HAS_FAILURE=false
+          for TARGET_BRANCH in ${TARGET_BRANCHES}; do
+            CHERRY_PICK_BRANCH="cherry-pick/pr-${PR_NUMBER}-to-${TARGET_BRANCH}"
+
+            echo "Cherry-picking commits from PR #${PR_NUMBER} to ${TARGET_BRANCH}"
+            echo "Commits: ${COMMITS}"
+
+            git fetch origin "${TARGET_BRANCH}"
+            git checkout -b "${CHERRY_PICK_BRANCH}" "origin/${TARGET_BRANCH}"
+
+            # Cherry-pick all commits in order (works for both squash and rebase)
+            CHERRY_PICK_FAILED=false
+            for COMMIT in ${COMMITS}; do
+              if ! git cherry-pick "${COMMIT}" --no-edit; then
+                CHERRY_PICK_FAILED=true
+                git cherry-pick --abort
+                break
+              fi
+            done
+
+            if [ "${CHERRY_PICK_FAILED}" = "false" ]; then
+              git push origin "${CHERRY_PICK_BRANCH}"
+              NEW_PR_URL=$(gh pr create \
+                --base "${TARGET_BRANCH}" \
+                --head "${CHERRY_PICK_BRANCH}" \
+                --title "Cherry-pick #${PR_NUMBER}: ${PR_TITLE}" \
+                --body "Automated cherry-pick of #${PR_NUMBER} from \`${SOURCE_BRANCH}\` to \`${TARGET_BRANCH}\`.
+
+          Original PR by @${PR_AUTHOR}." \
+                --label "cherry-pick")
+              gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                --body "✅ Cherry-pick to \`${TARGET_BRANCH}\` opened: ${NEW_PR_URL}"
+              echo "✅ Cherry-pick PR to ${TARGET_BRANCH} created successfully: ${NEW_PR_URL}"
+            else
+              HAS_FAILURE=true
+              gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                --body "⚠️ Automated cherry-pick to \`${TARGET_BRANCH}\` failed due to merge conflicts.
+
+          Please cherry-pick manually"
+              echo "::error::Cherry-pick to ${TARGET_BRANCH} failed due to conflicts."
+            fi
+
+            # Clean up for next iteration
+            git checkout --detach 2>/dev/null || true
+            git branch -D "${CHERRY_PICK_BRANCH}" 2>/dev/null || true
+          done
+
+          if [ "${HAS_FAILURE}" = "true" ]; then
+            exit 1
+          fi

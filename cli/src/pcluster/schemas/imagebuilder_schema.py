@@ -243,6 +243,7 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
     terminate_instance_on_failure = fields.Bool()
     disable_validate_and_test = fields.Bool()
     cinc_installer_url = fields.Str()
+    cinc_version = fields.Str()
     disable_kernel_update = fields.Bool()
 
     @post_load

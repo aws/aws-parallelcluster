@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import json
 import logging
-import re
 import time
 from datetime import datetime, timezone
 
@@ -36,19 +35,19 @@ PHASE_ON_NODE_START = "OnNodeStart"
 PHASE_ON_NODE_CONFIGURED = "OnNodeConfigured"
 SERVICE_MANAGEMENT_CMD_BY_NODE_TYPE = {
     NODE_TYPE_COMPUTE: "systemctl",
-    NODE_TYPE_LOGIN: "/opt/parallelcluster/pyenv/versions/*/envs/cookbook_virtualenv/bin/supervisorctl",
+    NODE_TYPE_LOGIN: "systemctl",
 }
 UPDATE_DETECTION_SERVICE_BY_NODE_TYPE = {
     NODE_TYPE_COMPUTE: "pcluster-check-update.timer",
-    NODE_TYPE_LOGIN: "cfn-hup",
+    NODE_TYPE_LOGIN: "pcluster-check-update.timer",
 }
 UPDATE_ACTION_SCRIPT_BY_NODE_TYPE = {
     NODE_TYPE_COMPUTE: "/opt/parallelcluster/scripts/cfn-hup-update-action.sh",
-    NODE_TYPE_LOGIN: "/opt/parallelcluster/pyenv/versions/*/envs/cfn_bootstrap_virtualenv/bin/cfn-init",
+    NODE_TYPE_LOGIN: "/opt/parallelcluster/scripts/cfn-hup-update-action.sh",
 }
 LOG_FILE_BY_NODE_TYPE = {
     NODE_TYPE_COMPUTE: "/var/log/parallelcluster/pcluster-check-update.log",
-    NODE_TYPE_LOGIN: "/var/log/cfn-hup.log",
+    NODE_TYPE_LOGIN: "/var/log/parallelcluster/pcluster-check-update.log",
 }
 
 
@@ -151,9 +150,6 @@ def wait_for_login_nodes_lt_update_complete(cluster, region, after_utc=None):
 def wait_for_node_update_failure(rce, cluster, node_type, node_id, os, after_utc=None):
     node_rce = get_node_rce(rce, cluster, node_type, node_id)
     log_file = LOG_FILE_BY_NODE_TYPE[node_type]
-    # cfn-hup logs use "%Y-%m-%d %H:%M:%S" format, so convert ISO timestamps for awk comparison
-    if after_utc and node_type == NODE_TYPE_LOGIN:
-        after_utc = after_utc.replace("T", " ").split(".")[0]
     match, lines = match_regex_in_log(
         node_rce,
         log_file,
@@ -386,46 +382,6 @@ def assert_update_recipe_executed_on_old_nodes(snapshot, update_submitted_at, ex
         ).is_not_empty()
 
 
-def is_update_failure_only_due_to_known_race_condition(rce, instance_ids: list, after_utc: str):
-    """Check if the last readiness check failure was caused only by the given instance IDs by inspecting the
-    errors returned by the cluster readiness check in /var/log/chef-client.log
-    Returns True if all wrong-record instance IDs are in the provided set.
-    Returns False if there are no wrong records or if other instance IDs are present.
-    """
-    found, lines = match_regex_in_log(
-        rce,
-        "/var/log/chef-client.log",
-        r"Retrying execution of execute\[Check cluster readiness\], 0 attempt left",
-        after_utc=after_utc,
-        nlines_after_match=50,
-    )
-    if not found:
-        logger.info(
-            "No final readiness check retry found in chef-client.log after the update. "
-            "The cluster update failure, if observed, is not caused by the known race condition."
-        )
-        return False
-
-    logger.info(f"Found last readiness check retry: {lines}")
-
-    wrong_records_match = re.search(r"\* wrong records \(1\):.*", lines)
-    if not wrong_records_match:
-        logger.info(
-            "No '* wrong records (1):' line found in the last readiness check retry output. "
-            "The cluster update failure, if observed, is not caused by the known race condition."
-        )
-        return False
-
-    wrong_records_line = wrong_records_match.group()
-    instance_ids_with_wrong_record = set(re.findall(r"'(i-[0-9a-f]+)'", wrong_records_line))
-    logger.info(
-        f"Readiness check wrong records: {wrong_records_line}. "
-        f"Instance IDs with wrong records: {instance_ids_with_wrong_record}. "
-        f"Instance IDs with expected failure: {instance_ids}"
-    )
-    return instance_ids_with_wrong_record == set(instance_ids)
-
-
 # CN_1: a dynamic compute node that completes the bootstrap after the readiness check
 # CN_2: a dynamic compute node that completes the bootstrap at the second-last iteration of the readiness check
 # CN_3: a static node that fails the update due to a transient failure
@@ -448,9 +404,9 @@ def test_update_race_conditions(
     s3_bucket_factory,
 ):
     """
-    Test that a cluster update succeeds despite concurrent race conditions on compute and login nodes.
+    Test that a cluster update succeeds despite exposure to the risk of race conditions on compute and login nodes.
 
-    Race conditions under test:
+    The test verifies that all the known race conditions below are solved:
         * [RaceCondition 1] A node that completes the bootstrap after the update is not able to execute the update.
            We know this could happen when DNA files are removed at the end of a successful update.
         * [RaceCondition 2] A node that completes the bootstrap close to the end of the readiness check can cause
@@ -460,8 +416,8 @@ def test_update_race_conditions(
         * [RaceCondition 4] A node that faces a transient failure in the detection of the update does not retry
            the update.
         * [RaceCondition 5] A login node that is started before the update but completes the config phase during
-           the update will skip the update. This happens because cfn-hup will see the updated
-           launch template and will think thereafter that it has deployed the updated config,
+           the update will skip the update. This happens because the update detection mechanism will see the
+           updated launch template and will think thereafter that it has deployed the updated config,
            even if it did not.
 
     The test creates a cluster with 2 static compute nodes, 1 login node, and capacity for dynamic
@@ -474,8 +430,8 @@ def test_update_race_conditions(
         CN_3 (q1-st-cr1-1): static node, transient failure injected in the execution of its update before update 2.
         CN_4 (q1-st-cr1-2): static node, transient failure injected in the detection of its update before update 2.
         LN_1: login node terminated and replaced by a slow-bootstrapping one before update 2.
-        LN_2: an existing login node with a transient update execution failure (chmod -x cfn-init).
-        LN_3: an existing login node with update detection blocked (cfn-hup stopped).
+        LN_2: an existing login node with a transient update execution failure (chmod -x of the update action script).
+        LN_3: an existing login node with update detection blocked (pcluster-check-update.timer stopped).
 
     Update 1: validates race condition #1
         [RaceCondition 1]  CN_1 is launched with its bootstrap blocked before the update is submitted. The update
@@ -495,10 +451,10 @@ def test_update_race_conditions(
         - [RaceCondition 5] A login node is terminated and replaced by a slow-bootstrapping one (blocked in
           OnNodeStart). After the login node Launch Template is updated in CloudFormation, the
           slow login node is unblocked so it completes bootstrap with the already-updated LT.
-          This node is exposed to a race condition where it bootstraps with the old LT, but when cfn-hup starts
-          it detects the new LT and will think thereafter to have deplpoyed the updated LT.
-          As a result, when the login node ends the bootstrap, it will not detect the update
-          because cfn-hup thinks it already has deployed the updated config.
+          This node is exposed to a race condition where it bootstraps with the old LT, but when the update
+          detection mechanism starts it detects the new LT and will think thereafter to have deployed the
+          updated LT. As a result, when the login node ends the bootstrap, it will not detect the update
+          because the update detection mechanism thinks it already has deployed the updated config.
 
     Verifications (soft assertions - all run even if some fail):
         - The cluster stack reaches UPDATE_COMPLETE.
@@ -663,17 +619,9 @@ def test_update_race_conditions(
     logger.info(f"Cluster snapshot:\n{json.dumps(cluster_snapshot, indent=2)}")
 
     with soft_assertions():
-        # TODO: Once [RaceCondition 5] will be fixed, we will require cluster stack to always be in UPDATE_COMPLETE
-        if actual_cluster_stack_status != "UPDATE_COMPLETE":
-            if is_update_failure_only_due_to_known_race_condition(rce, [login_node_1_id], update_2_submit_time):
-                logger.warning(
-                    f"Cluster stack status is {actual_cluster_stack_status} but the readiness check failed "
-                    f"only because of {login_node_1_id} (known RaceCondition 5, not blocking the test)"
-                )
-            else:
-                assert_that(actual_cluster_stack_status).described_as(
-                    f"Cluster stack status should be UPDATE_COMPLETE, but it is {actual_cluster_stack_status}"
-                ).is_equal_to("UPDATE_COMPLETE")
+        assert_that(actual_cluster_stack_status).described_as(
+            f"Cluster stack status should be UPDATE_COMPLETE, but it is {actual_cluster_stack_status}"
+        ).is_equal_to("UPDATE_COMPLETE")
         assert_that(is_late_node_updated).described_as(
             f"Compute node {CN_1} completed the bootstrap after update 1 and did not apply the expected update"
         ).is_true()
