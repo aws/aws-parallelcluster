@@ -5,8 +5,13 @@ import boto3
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
-from tests.common.utils import assert_no_file_handler_leak, fetch_instance_slots, get_compute_ip_to_num_files
-from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
+from tests.common.utils import (
+    assert_no_file_handler_leak,
+    fetch_instance_slots,
+    get_compute_ip_to_num_files,
+    push_result_to_dynamodb,
+)
+from tests.performance_tests.common import _log_output_performance_difference
 
 # timeout in seconds
 STARCCM_INSTALLATION_TIMEOUT = 1800

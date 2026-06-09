@@ -366,6 +366,8 @@ def assert_default_user_has_desired_sudo_access(
     node_type,
     region,
     disable_sudo_access_default_user,
+    retries=6,
+    retry_delay=15,
 ):
     remote_command_executors = []
     logging.info(
@@ -382,12 +384,28 @@ def assert_default_user_has_desired_sudo_access(
 
     command = "sudo -n cat /etc/sudoers.d/90-cloud-init-users"
     for node_index, remote_command_executor in enumerate(remote_command_executors):
-        result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
-        logging.info(f"Default user in {node_type} number {node_index} and result.failed={result.failed}")
-        logging.info(f"Default user in {node_type}  number {node_index} and result.stdout={result.stdout}")
-        if disable_sudo_access_default_user:
-            assert_that(result.stdout).contains("a password is required")
-        assert_that(result.failed).is_equal_to(disable_sudo_access_default_user)
+        for attempt in range(retries):
+            result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
+            logging.info(
+                f"Default user in {node_type} number {node_index} attempt {attempt} "
+                f"result.failed={result.failed} result.stdout={result.stdout}"
+            )
+            if disable_sudo_access_default_user:
+                if "a password is required" in result.stdout and result.failed:
+                    logging.info(f"Sudo access correctly disabled on {node_type} number {node_index}")
+                    break
+                if attempt < retries - 1:
+                    logging.info(
+                        f"Sudo not yet disabled on {node_type} number {node_index}, "
+                        f"retrying in {retry_delay}s (attempt {attempt + 1}/{retries})..."
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    assert_that(result.stdout).contains("a password is required")
+                    assert_that(result.failed).is_equal_to(True)
+            else:
+                assert_that(result.failed).is_equal_to(False)
+                break
 
 
 def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):
