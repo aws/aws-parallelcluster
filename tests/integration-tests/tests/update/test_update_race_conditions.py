@@ -42,8 +42,8 @@ UPDATE_DETECTION_SERVICE_BY_NODE_TYPE = {
     NODE_TYPE_LOGIN: "pcluster-check-update.timer",
 }
 UPDATE_ACTION_SCRIPT_BY_NODE_TYPE = {
-    NODE_TYPE_COMPUTE: "/opt/parallelcluster/scripts/cfn-hup-update-action.sh",
-    NODE_TYPE_LOGIN: "/opt/parallelcluster/scripts/cfn-hup-update-action.sh",
+    NODE_TYPE_COMPUTE: "/opt/parallelcluster/scripts/cluster-update-action.sh",
+    NODE_TYPE_LOGIN: "/opt/parallelcluster/scripts/cluster-update-action.sh",
 }
 LOG_FILE_BY_NODE_TYPE = {
     NODE_TYPE_COMPUTE: "/var/log/parallelcluster/pcluster-check-update.log",
