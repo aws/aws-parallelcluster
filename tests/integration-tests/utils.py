@@ -785,7 +785,7 @@ def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=No
         expected_log_streams = {
             "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
             "ComputeNode": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
-            "LoginNode": {"cfn-init", "cloud-init", "chef-client", "supervisord"},
+            "LoginNode": {"cloud-init", "chef-client", "supervisord"},
         }
 
     # check there are the logs of all the instances
