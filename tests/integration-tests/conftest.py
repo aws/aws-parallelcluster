@@ -1744,6 +1744,18 @@ def scheduler_commands_factory(scheduler):
     return partial(get_scheduler_commands, scheduler=scheduler)
 
 
+@pytest.fixture()
+def flags():
+    """
+    Return the list of flags enabled for the test.
+
+    This is the default value used when the 'flags' dimension is not specified in the tests config file.
+    When the 'flags' dimension is specified, this fixture is overridden by the parametrization performed in
+    conftest_tests_config.parametrize_from_config.
+    """
+    return []
+
+
 @pytest.fixture(scope="class")
 def fsx_factory(vpc_stack: CfnVpcStack, cfn_stacks_factory, request, region, key_name):
     """
