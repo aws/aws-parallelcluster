@@ -326,3 +326,20 @@ class TestCloudWatchLogsExporter:
         else:
             task_id = cw_logs_exporter._export_logs_to_s3("log_group_name", "bucket")
             wait_for_completion_mock.assert_called_with(task_id)
+
+    @pytest.mark.parametrize(
+        "path_relative_to_parent, expected",
+        [
+            ("child", True),
+            (os.path.join("nested", "child"), True),
+            (".", True),
+            ("foo..bar", True),  # embedded dots are a legitimate single component, not a traversal
+            (os.path.join("..", "escape"), False),
+            (os.path.join("a", "..", "..", "escape"), False),
+            (os.path.join("..", "..", "..", "etc", "cron.d", "evil"), False),
+        ],
+    )
+    def test_is_path_contained(self, tmp_path, path_relative_to_parent, expected):
+        parent_dir = str(tmp_path)
+        candidate = os.path.join(parent_dir, path_relative_to_parent)
+        assert_that(CloudWatchLogsExporter._is_path_contained(candidate, parent_dir)).is_equal_to(expected)

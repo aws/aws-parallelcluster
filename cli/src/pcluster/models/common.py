@@ -230,6 +230,17 @@ class CloudWatchLogsExporter:
             decompressed_path = decompressed_path.replace(
                 r"{unwanted_path_segment}{sep}".format(unwanted_path_segment=prefix, sep=os.path.sep), ""
             )
+            # Defend against path traversal: an S3 object key (derived from a CloudWatch log stream name) may
+            # contain '..' path segments that would escape destdir and overwrite arbitrary local files. Verify
+            # the resolved destination is still contained within destdir before writing anything to disk.
+            if not self._is_path_contained(decompressed_path, destdir):
+                LOGGER.warning(
+                    "Skipping S3 object with key=%s: resolved path %s escapes the export directory %s",
+                    archive_object.key,
+                    decompressed_path,
+                    destdir,
+                )
+                continue
             compressed_path = f"{decompressed_path}.gz"
 
             LOGGER.debug("Downloading object with key=%s to %s", archive_object.key, compressed_path)
@@ -243,6 +254,17 @@ class CloudWatchLogsExporter:
             with gzip.open(compressed_path) as gfile, open(decompressed_path, "wb") as outfile:
                 outfile.write(gfile.read())
             os.remove(compressed_path)
+
+    @staticmethod
+    def _is_path_contained(path, parent_dir):
+        """Return True if path, once resolved, is located inside parent_dir (defends against '..' traversal)."""
+        resolved_parent = os.path.realpath(parent_dir)
+        resolved_path = os.path.realpath(path)
+        # commonpath raises ValueError when the paths are on different drives (Windows); treat that as not contained.
+        try:
+            return os.path.commonpath([resolved_parent, resolved_path]) == resolved_parent
+        except ValueError:
+            return False
 
 
 def get_all_stack_events(stack_name: str):
