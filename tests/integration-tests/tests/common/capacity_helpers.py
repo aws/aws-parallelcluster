@@ -16,7 +16,7 @@ import boto3
 from utils import get_similar_instance_types
 
 # Default instance types that are subject to capacity fallback.
-DEFAULT_INSTANCE_TYPES = {"c5.xlarge", "m6g.xlarge"}
+DEFAULT_INSTANCE_TYPES = {"c5.xlarge", "m6g.xlarge", "m6i.xlarge"}
 
 
 def resolve_instance_with_capacity(region, az_id, instance_type, os, minutes=50, count=2):
