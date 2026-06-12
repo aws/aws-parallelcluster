@@ -19,6 +19,29 @@ ATTR_CLUSTER_READINESS_CHECK_ENABLED = "cluster.cluster_readiness_check_enabled"
 ATTR_CLUSTER_READINESS_CHECK_IGNORE_FAILURE = "cluster.cluster_readiness_check_ignore_failure"
 MIN_SLURM_RECONFIGURE_TIMEOUT = 300
 
+CLI_ATTRIBUTE_OVERRIDES_PATH = "DevSettings/CliAttributeOverrides"
+
+
+class CliAttributeOverridesValidator(Validator):
+    """Validate DevSettings/CliAttributeOverrides is a well-formed JSON object."""
+
+    def _validate(self, cli_attribute_overrides: str = None):
+        if not cli_attribute_overrides:
+            return
+        try:
+            attrs = json.loads(cli_attribute_overrides)
+        except ValueError:
+            self._add_failure(
+                f"Invalid value in {CLI_ATTRIBUTE_OVERRIDES_PATH}: must be a valid JSON string.",
+                FailureLevel.ERROR,
+            )
+            return
+        if not isinstance(attrs, dict):
+            self._add_failure(
+                f"Invalid value in {CLI_ATTRIBUTE_OVERRIDES_PATH}: must be a JSON object.",
+                FailureLevel.ERROR,
+            )
+
 
 class ExtraChefAttributesValidator(Validator):
     """Validate DevSettings/Cookbook/ExtraChefAttributes."""
