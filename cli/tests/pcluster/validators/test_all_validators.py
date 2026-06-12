@@ -166,6 +166,9 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
         if m["name"] in ["TagKeyValidator", "ClusterNameValidator", "InstanceProfileValidator", "RoleValidator"]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
+        if m["name"] in ["CliAttributeOverridesValidator"]:
+            # Image-builder-only validator (DevSettings/CliAttributeOverrides); not run on cluster config.
+            continue
         print(f"Checking validator of class \"{m['name']}\" is called")
         m["mocker"].assert_called()
 
