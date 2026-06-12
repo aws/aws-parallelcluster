@@ -1054,6 +1054,7 @@ def _get_gpu_spec(instance_type_data):
     return frozenset((gpu.get("Manufacturer", ""), gpu.get("Count", 0)) for gpu in gpu_info.get("Gpus", []))
 
 
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(1))
 def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
     ec2 = boto3.client("ec2", region_name=region)
 
@@ -1074,7 +1075,6 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     # Now query for similar instances using filters
     paginator = ec2.get_paginator("describe_instance_types")
     similar_instances = []
-    reached_max_items = False
 
     for page in paginator.paginate(
         Filters=[
@@ -1097,11 +1097,12 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
                 and instance_inference_accelerators == target_inference_accelerators
             ):
                 similar_instances.append(instance["InstanceType"])
-                if max_items and len(similar_instances) >= max_items:
-                    reached_max_items = True
-                    break
-        if reached_max_items:
-            break
+
+    # Sort before truncating so that multiple calls always return the same instance types in the same order,
+    # regardless of the order in which the API returns them.
+    similar_instances = sorted(similar_instances)
+    if max_items:
+        similar_instances = similar_instances[:max_items]
 
     logging.info(f"Retrieved instance types equivalent to {instance_type} in {region}: {similar_instances}")
 
