@@ -1074,6 +1074,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     # Now query for similar instances using filters
     paginator = ec2.get_paginator("describe_instance_types")
     similar_instances = []
+    reached_max_items = False
 
     for page in paginator.paginate(
         Filters=[
@@ -1097,7 +1098,12 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             ):
                 similar_instances.append(instance["InstanceType"])
                 if max_items and len(similar_instances) >= max_items:
-                    return similar_instances
+                    reached_max_items = True
+                    break
+        if reached_max_items:
+            break
+
+    logging.info(f"Retrieved instance types equivalent to {instance_type} in {region}: {similar_instances}")
 
     return similar_instances
 
