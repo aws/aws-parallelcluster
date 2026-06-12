@@ -35,7 +35,7 @@ def resolve_instance_with_capacity(region, az_id, instance_type, os, minutes=50,
     if instance_type not in DEFAULT_INSTANCE_TYPES:
         return instance_type
 
-    candidates = [instance_type] + get_similar_instance_types(instance_type)
+    candidates = [instance_type] + get_similar_instance_types(instance_type, region)
 
     ec2_client = boto3.client("ec2", region_name=region)
     instance_platform = "Red Hat Enterprise Linux" if "rhel" in os else "Linux/UNIX"
