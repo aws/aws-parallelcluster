@@ -124,7 +124,8 @@ phases:
             - |
               set -v
               PATTERN=$(jq '.default.cluster.nvidia.cuda.version' {{ CookbookDefaultFile }})
-              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              # Normalize cuda.version to major.minor (e.g. 13.0.2 -> 13.0) to match nvcc and the /usr/local/cuda-<ver> install dir.
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs | cut -d. -f1,2)
               echo ${VERSION}
 
       - name: CudaSamplesDir
