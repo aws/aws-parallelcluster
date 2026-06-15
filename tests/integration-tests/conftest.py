@@ -698,7 +698,18 @@ def inject_placement_group_settings(vpc_stack, instance, region, kwargs):
 
 
 def inject_flexible_instance_types_settings(instance, region, kwargs):
-    kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
+    flexible_instance_types = [instance]
+    try:
+        flexible_instance_types.extend(it for it in get_similar_instance_types(instance, region, 5) if it != instance)
+    except Exception:
+        logging.warning(
+            "Failed to retrieve instance types equivalent to %s in region %s. "
+            "Falling back to using only the original instance type %s.",
+            instance,
+            region,
+            instance,
+        )
+    kwargs["flexible_instance_types"] = flexible_instance_types
 
 
 def inject_additional_image_configs_settings(image_config, request):
@@ -1742,6 +1753,18 @@ def test_custom_config(request):
 @pytest.fixture()
 def scheduler_commands_factory(scheduler):
     return partial(get_scheduler_commands, scheduler=scheduler)
+
+
+@pytest.fixture()
+def flags():
+    """
+    Return the list of flags enabled for the test.
+
+    This is the default value used when the 'flags' dimension is not specified in the tests config file.
+    When the 'flags' dimension is specified, this fixture is overridden by the parametrization performed in
+    conftest_tests_config.parametrize_from_config.
+    """
+    return []
 
 
 @pytest.fixture(scope="class")
