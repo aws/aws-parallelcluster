@@ -25,6 +25,7 @@ CHANGELOG
 - Fail `pcluster build-image` early when the downloaded cookbook version does not match the ParallelCluster CLI version.
 - Fix login nodes not mounting `/opt/parallelcluster/shared` when EFS is used as the internal shared storage type.
 - Fix an issue where compute nodes are incorrectly replaced when launching a large number of nodes due to eventual consistency.
+- Fix an issue where starting the compute fleet may not reliably recover the cluster from protected mode.
 
 **DEPRECATIONS**
 - Amazon Linux 2 is no longer supported.
