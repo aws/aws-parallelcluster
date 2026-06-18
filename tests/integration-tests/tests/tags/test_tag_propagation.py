@@ -26,6 +26,7 @@ from tags_utils import (
     get_shared_volume_tags,
 )
 from time_utils import minutes, seconds
+from utils import wait_for_computefleet_changed
 
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_installed_parallelcluster_version
@@ -53,18 +54,31 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     _check_tag_propagation(cluster, scheduler, os, volume_name)
 
     cluster.stop()
-
+    if scheduler == "slurm":
+        wait_for_computefleet_changed(cluster, "STOPPED")
     # Updates cluster with new configuration
     updated_cluster_config = pcluster_config_reader(config_file="pcluster.config.update.yaml", volume_name=volume_name)
-    cluster.update(str(updated_cluster_config), force_update="true")
+    force_update = None
+    if scheduler != "slurm":
+        force_update = "true"
+    cluster.update(str(updated_cluster_config), force_update=force_update)
 
     cluster.start()
 
     # Makes sure that the compute nodes have started before checking tags
     _wait_for_compute_fleet_start(cluster)
 
-    # Checks for tag propagation
-    _check_tag_propagation(cluster, scheduler, os, volume_name, add_additional_config_tags=True)
+    # Checks for tag propagation.
+    # In ADC regions, CloudFormation doesn't properly update stack tags during a cluster update (see the
+    # SUPPORTED_UNLESS_ADC update policy), so AdditionalConfigTag is intentionally
+    # not added to the updated configuration and we skip asserting it here.
+    _check_tag_propagation(
+        cluster,
+        scheduler,
+        os,
+        volume_name,
+        add_additional_config_tags="us-iso" not in cluster.region,
+    )
 
     _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
 
@@ -127,6 +141,7 @@ def _check_tag_propagation(
                 {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
+            "skip": "us-iso" in cluster.region,  # TODO: remove this line once ADC supports tag propagation
         },
         {
             "resource": "Compute Node",

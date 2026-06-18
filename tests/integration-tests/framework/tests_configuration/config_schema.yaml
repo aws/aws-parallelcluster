@@ -63,3 +63,8 @@ mapping:
                         sequence:
                           - type: any
                             required: true
+                      flags:
+                        type: seq
+                        required: false
+                        sequence:
+                          - type: str

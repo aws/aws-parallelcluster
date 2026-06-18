@@ -14,7 +14,6 @@ from pcluster.validators.common import FailureLevel, Validator
 from pcluster.validators.utils import dig, is_boolean_string, str_to_bool
 
 EXTRA_CHEF_ATTRIBUTES_PATH = "DevSettings/Cookbook/ExtraChefAttributes"
-ATTR_IN_PLACE_UPDATE_ON_FLEET_ENABLED = "in_place_update_on_fleet_enabled"
 ATTR_RECONFIGURE_TIMEOUT = "cluster.slurm.reconfigure_timeout"
 ATTR_CLUSTER_READINESS_CHECK_ENABLED = "cluster.cluster_readiness_check_enabled"
 ATTR_CLUSTER_READINESS_CHECK_IGNORE_FAILURE = "cluster.cluster_readiness_check_ignore_failure"
@@ -35,39 +34,9 @@ class ExtraChefAttributesValidator(Validator):
             return
 
         attrs = json.loads(extra_chef_attributes)
-        self._validate_in_place_update_on_fleet_enabled(attrs)
         self._validate_slurm_reconfigure_timeout(attrs)
         self._validate_cluster_readiness_check_enabled(attrs)
         self._validate_cluster_readiness_check_ignore_failure(attrs)
-
-    def _validate_in_place_update_on_fleet_enabled(self, extra_chef_attributes: dict = None):
-        """Validate attribute cluster.in_place_update_on_fleet_enabled.
-
-        It returns an error if the attribute is set to a non-boolean value.
-        It returns a warning if the in-place update is disabled.
-
-        Args:
-            extra_chef_attributes: Dictionary of Chef attributes to validate.
-        """
-        in_place_update_on_fleet_enabled = dig(extra_chef_attributes, "cluster", ATTR_IN_PLACE_UPDATE_ON_FLEET_ENABLED)
-
-        if in_place_update_on_fleet_enabled is None:
-            return
-
-        if not is_boolean_string(str(in_place_update_on_fleet_enabled)):
-            self._add_failure(
-                f"Invalid value in {EXTRA_CHEF_ATTRIBUTES_PATH}: "
-                f"attribute '{ATTR_IN_PLACE_UPDATE_ON_FLEET_ENABLED}' must be a boolean value.",
-                FailureLevel.ERROR,
-            )
-            return
-
-        if str_to_bool(str(in_place_update_on_fleet_enabled)) is False:
-            self._add_failure(
-                "When in-place updates are disabled, cluster updates are applied "
-                "by replacing compute and login nodes according to the selected QueueUpdateStrategy.",
-                FailureLevel.WARNING,
-            )
 
     def _validate_cluster_readiness_check_enabled(self, extra_chef_attributes: dict = None):
         """Validate attribute cluster.cluster_readiness_check_enabled.

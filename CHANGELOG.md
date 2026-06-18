@@ -4,6 +4,10 @@ CHANGELOG
 3.16.0
 ------
 
+**ENHANCEMENTS**
+- Improve cluster update resiliency on login nodes by reusing the head-node-driven orchestration already in place on compute nodes,
+  removing the dependency on cfn-hup and cfn-init.
+
 **CHANGES**
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
@@ -18,10 +22,24 @@ CHANGELOG
 - Fix clustermgtd failing to detect compute node bootstrap timeouts, which prevented the cluster from entering protected mode.
 - Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags, 
   which used to cause cluster update failure on clusters with login nodes.
+- Fail `pcluster build-image` early when the downloaded cookbook version does not match the ParallelCluster CLI version.
+- Fix login nodes not mounting `/opt/parallelcluster/shared` when EFS is used as the internal shared storage type.
+- Fix an issue where compute nodes are incorrectly replaced when launching a large number of nodes due to eventual consistency.
+- Fix an issue where starting the compute fleet may not reliably recover the cluster from protected mode.
 
 **DEPRECATIONS**
 - Amazon Linux 2 is no longer supported.
 - AWS Batch as a scheduler is no longer supported.
+
+3.15.1
+------
+
+**CHANGES**
+- Patch official ParallelCluster AMIs to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+- Disable `algif_aead` kernel module on Ubuntu to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+- Upgrade NVIDIA driver to version 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2 to address CVE-2025-33219.
+- Upgrade NVIDIA Fabric manager to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
+- Upgrade NVIDIA IMEX to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
 
 3.15.0
 ------
@@ -31,7 +49,7 @@ CHANGELOG
 - Replace cfn-hup in compute nodes with systemd timer to support in place updates in order to improve performance for tightly coupled worloads at scale.
   This new mechanism relies on shared storage to sync updates between the head node and compute nodes.
 - Disable `dnf-makecache.timer` to improve performance for tightly coupled worloads on RHEL/Rocky at scale.
-- Support updates of `Tags` during cluster-updates.
+- Support updates of `Tags` during cluster-updates except in AWS Top Secret and AWS Secret Regions.
 - Add `LaunchTemplateOverrides` to cluster config to allow network interfaces to be customized by overriding the launch template of a compute resource.
   - This overrides the parallelcluster default using a shallow merge.
 - Add alarm on missing clustermgtd heartbeat.

@@ -15,11 +15,14 @@ import pathlib
 import random
 import string
 import time
+import uuid
 from importlib.metadata import version as get_package_version
 
 import boto3
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from framework.framework_constants import METADATA_DEFAULT_REGION, PERFORMANCE_METADATA_TABLE
+from framework.metadata_table_manager import MetadataTableManager
 from packaging import version as packaging_version
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
@@ -49,7 +52,12 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
     "rhel8": {"name": "RHEL-8.10*", "owners": RHEL_OWNERS},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rocky8": {
+        "name": "Rocky-8-EC2-Base-8.10*",
+        "owners": ["792107900819"],
+        "includeDeprecated": True,  # Latest official Rocky8 AMI is deprecated:
+        # https://forums.rockylinux.org/t/rocky-8-10-amis-missing-from-aws-eu-west-1-region/20558
+    },  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
@@ -78,7 +86,12 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     },
     # Simple redhat8 to be able to build in remarkable test
     "rhel8": {"name": "RHEL-8.8*_HVM-*", "owners": RHEL_OWNERS},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rocky8": {
+        "name": "Rocky-8-EC2-Base-8.10*",
+        "owners": ["792107900819"],
+        "includeDeprecated": True,  # Latest official Rocky8 AMI is deprecated:
+        # https://forums.rockylinux.org/t/rocky-8-10-amis-missing-from-aws-eu-west-1-region/20558
+    },  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
@@ -642,6 +655,38 @@ def get_capacity_reservation_id(request, instance_type, region, count, os):
                         }
                     )
     return reservations_ids
+
+
+def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None, num_instances=None):
+    reporting_region = METADATA_DEFAULT_REGION
+    logging.info(f"Metadata reporting region {reporting_region}")
+    # Create the metadata table in case it doesn't exist
+    MetadataTableManager(reporting_region, PERFORMANCE_METADATA_TABLE).create_metadata_table()
+    try:
+        # Create DynamoDB resource
+        dynamodb = boto3.resource("dynamodb", region_name=reporting_region)
+        table = dynamodb.Table(PERFORMANCE_METADATA_TABLE)
+
+        # Prepare item to be inserted
+        item = {
+            "id": str(uuid.uuid4().hex),
+            "name": name,
+            "instance": instance,
+            "os": os,
+            "timestamp": int(time.time()),
+            "result": str(result),
+            "pcluster_version": f"v{get_installed_parallelcluster_version()}",
+            "mpi_variation": str(mpi_variation),
+            "num_instances": num_instances,
+        }
+
+        # Put item in the table
+        table.put_item(Item=item)
+        logging.info(f"Successfully pushed result to DynamoDB with id: {item['id']}")
+
+    except Exception as e:
+        logging.error(f"Failed to push result to DynamoDB: {str(e)}")
+        raise
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=seconds(10))

@@ -15,7 +15,7 @@ import boto3
 from assertpy import assert_that, soft_assertions
 from constants import UNSUPPORTED_OSES_FOR_DCV
 from remote_command_executor import RemoteCommandExecutor
-from utils import check_status, is_dcv_supported, test_cluster_health_metric
+from utils import check_status, get_flexible_gpu_instance_types, is_dcv_supported, test_cluster_health_metric
 
 from tests.basic.disable_hyperthreading_utils import _test_disable_hyperthreading_settings
 from tests.basic.log_rotation_utils import _test_compute_log_rotation, _test_headnode_log_rotation
@@ -65,6 +65,7 @@ def test_essential_features(
         dcv_enabled=dcv_enabled,
         max_queue_size=max_queue_size,
         scaledown_idletime=scaledown_idletime,
+        flexible_gpu_instance_types=get_flexible_gpu_instance_types(instance, region),
     )
     cluster = clusters_factory(cluster_config)
 
@@ -90,6 +91,8 @@ def test_essential_features(
     _test_disable_hyperthreading(
         cluster, region, instance, scheduler, default_threads_per_core, request, scheduler_commands_factory
     )
+
+    _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir)
 
 
 def _test_mpi_job(
@@ -329,6 +332,29 @@ def _test_custom_bootstrap_scripts_args_quotes(cluster):
         compute_fleet_status="RUNNING",
         login_nodes_status="active",
     )
+
+
+def _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir):
+    """Submit a Slurm job that builds and runs CUDA samples on a GPU compute node."""
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    samples = ["1_Utilities/deviceQuery", "4_CUDA_Libraries/matrixMulCUBLAS"]
+    job_ids = []
+    for sample in samples:
+        logging.info("Submitting CUDA sample job for %s", sample)
+        result = scheduler_commands.submit_script(
+            str(test_datadir / "gpu_job.sh"),
+            script_args=[sample],
+            partition="gpu",
+            nodes=1,
+            slots=1,
+        )
+        job_ids.append(scheduler_commands.assert_job_submitted(result.stdout))
+
+    for job_id in job_ids:
+        scheduler_commands.wait_job_completed(job_id, timeout=20)
+        scheduler_commands.assert_job_succeeded(job_id)
 
 
 def _test_disable_hyperthreading(

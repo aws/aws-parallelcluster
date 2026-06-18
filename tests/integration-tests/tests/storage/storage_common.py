@@ -32,6 +32,7 @@ from troposphere.fsx import (
 from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
+from tests.common.login_nodes_utils import get_login_node_executors_by_pool
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import CLASSIC_AWS_DOMAIN, get_aws_domain, retrieve_latest_ami
 
@@ -102,7 +103,13 @@ def test_directory_correctly_shared_between_ln_and_hn(
 
 
 def verify_directory_correctly_shared(
-    remote_command_executor, mount_dir, scheduler_commands, partitions=None, run_sudo=False
+    remote_command_executor,
+    mount_dir,
+    scheduler_commands,
+    partitions=None,
+    run_sudo=False,
+    cluster=None,
+    login_node_pools=None,
 ):
     """
     Confirm nodes can read and write to the FileSystem
@@ -114,6 +121,10 @@ def verify_directory_correctly_shared(
     While Reading:
         "A" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
         "B" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
+
+    When `login_node_pools` is provided, the login nodes belonging to those pools are verified the same way
+    as the head node: each writes its own file (shared with the other nodes) and reads back all the files.
+    `cluster` is required to resolve the login nodes of the given pools.
     """
     executor_node_file = random_alphanumeric()
     logging.info(f"{remote_command_executor.get_target_host_type()}: Writing File: {executor_node_file}")
@@ -142,6 +153,19 @@ def verify_directory_correctly_shared(
         scheduler_commands.assert_job_succeeded(job_id)
         files_to_read.append(compute_file)
 
+    # For each login pool, a login node writes a new file to the shared folder
+    login_node_executors = get_login_node_executors_by_pool(cluster, login_node_pools)
+    for login_node_executor in login_node_executors:
+        login_node_file = random_alphanumeric()
+        logging.info(f"{login_node_executor.get_target_host_type()}: Writing File: {login_node_file}")
+        login_node_executor.run_remote_command(
+            ("sudo " if run_sudo else "")
+            + "touch {mount_dir}/{login_node_file} && cat {mount_dir}/{login_node_file}".format(
+                mount_dir=mount_dir, login_node_file=login_node_file
+            )
+        )
+        files_to_read.append(login_node_file)
+
     read_all_files_command = "cat {files_to_read}".format(
         files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
     )
@@ -156,6 +180,11 @@ def verify_directory_correctly_shared(
         job_id = scheduler_commands.assert_job_submitted(result.stdout)
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)
+
+    # For each login pool, a login node reads all the shared files
+    for login_node_executor in login_node_executors:
+        logging.info(f"{login_node_executor.get_target_host_type()}: Reading Files: {files_to_read}")
+        login_node_executor.run_remote_command(read_all_files_command)
 
 
 # for EBS

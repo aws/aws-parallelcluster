@@ -6,6 +6,11 @@ Parameters:
     Description: EC2 Keypair to access management instance.
     Type: AWS::EC2::KeyPair::KeyName
 
+  InstanceType:
+    Description: Instance type of the proxy and client instances.
+    Type: String
+    Default: t3.medium
+
   VpcCidr:
     Description: CIDR for the VPC
     Type: String
@@ -318,7 +323,7 @@ Resources:
     Properties:
       IamInstanceProfile: !Ref ProxyInstanceProfile
       ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-      InstanceType: t3.medium
+      InstanceType: !Ref InstanceType
       KeyName: !Ref Keypair
       NetworkInterfaces:
         - DeviceIndex: 0
@@ -483,7 +488,7 @@ Resources:
     Properties:
       IamInstanceProfile: !Ref ProxyClientNodeInstanceProfile
       ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-      InstanceType: t3.medium
+      InstanceType: !Ref InstanceType
       KeyName: !Ref Keypair
       SecurityGroupIds:
         - !If [IsClusterProxy, !Ref ProxyClientSecurityGroup, !GetAtt Vpc.DefaultSecurityGroup]

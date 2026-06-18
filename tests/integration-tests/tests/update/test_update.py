@@ -14,7 +14,6 @@ import os
 import os.path as os_path
 import re
 import time
-from collections import defaultdict
 from datetime import datetime
 
 import boto3
@@ -1004,14 +1003,11 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
         if request.config.getoption(option):
             stack = CfnStack(name=request.config.getoption(option), region=region, template=None)
         else:
-            # Choose subnets from different availability zones
-            subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
-            subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
-            subnets_by_az = defaultdict(list)
-            for subnet in subnets:
-                subnets_by_az[subnet["AvailabilityZone"]].append(subnet["SubnetId"])
-            azs = [az for az in subnets_by_az.keys()]
-            one_subnet_per_az = [subnets_by_az[az][0] for az in azs]
+            # Deploy the storage in the private subnet used by the cluster compute nodes.
+            # The head node, login nodes and compute nodes all live in the same Availability Zone,
+            # so a single EFS mount target in the compute node subnet covers every node in the cluster.
+            # The other single-AZ storage resources (FSx, File Cache, EBS) are co-located there as well.
+            compute_subnet_id = vpc_stack.get_private_subnet()
 
             # The EBS volume must be placed in the same AZ where the head node is.
             # The head node is deployed in the public subnet.
@@ -1029,12 +1025,9 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             params = [
                 # Networking
                 {"ParameterKey": "Vpc", "ParameterValue": vpc},
-                {"ParameterKey": "SubnetOne", "ParameterValue": one_subnet_per_az[0]},
-                {"ParameterKey": "SubnetTwo", "ParameterValue": one_subnet_per_az[1]},
-                {
-                    "ParameterKey": "SubnetThree",
-                    "ParameterValue": "" if len(one_subnet_per_az) == 2 else one_subnet_per_az[2],
-                },
+                {"ParameterKey": "SubnetOne", "ParameterValue": compute_subnet_id},
+                {"ParameterKey": "SubnetTwo", "ParameterValue": ""},
+                {"ParameterKey": "SubnetThree", "ParameterValue": ""},
                 # EBS
                 {"ParameterKey": "CreateEbs", "ParameterValue": "true"},
                 {"ParameterKey": "EbsVolumeAz", "ParameterValue": ebs_volume_az},
@@ -1075,9 +1068,10 @@ def remove_none_items(items: list):
 
 
 @pytest.mark.usefixtures("instance")
-def test_dynamic_file_systems_update(
+def test_dynamic_file_systems_update(  # noqa: C901
     region,
     os,
+    instance,
     pcluster_config_reader,
     ami_copy,
     clusters_factory,
@@ -1089,12 +1083,32 @@ def test_dynamic_file_systems_update(
     test_datadir,
     delete_storage_on_teardown,
     external_shared_storage_stack,
+    flags,
 ):
     """Test update shared storages."""
 
+    # When the "at_scale" flag is enabled, the test runs against a large cluster, i.e. 50 queues with 10 static
+    # compute nodes each and 10 login node pools with 100 login nodes per pool.
+    # Otherwise, it runs against a minimal cluster.
+    at_scale = "at_scale" in flags
+    login_nodes_pools_count = 10 if at_scale else 1
+    running_login_nodes_count = 10 if at_scale else 1
+    static_compute_min_count = 10 if at_scale else 1
+    static_compute_max_count = static_compute_min_count + 1
+    queue_count = 50 if at_scale else 2
+    head_node_instance_type = "c5.4xlarge" if at_scale else instance
+    login_node_pools = [f"login-{i + 1}" for i in range(login_nodes_pools_count)]
+
     # Create cluster without any shared storage.
     init_config_file = pcluster_config_reader(
-        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
+        config_file="pcluster.config.yaml",
+        output_file="pcluster.config.no-shared-storage.yaml",
+        login_nodes_count=running_login_nodes_count,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
     cluster = clusters_factory(init_config_file, wait=False)
 
@@ -1173,7 +1187,12 @@ def test_dynamic_file_systems_update(
         existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
         queue_update_strategy="DRAIN",
-        login_nodes_count=1,
+        login_nodes_count=running_login_nodes_count,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
 
     cluster.update(update_cluster_config)
@@ -1212,7 +1231,12 @@ def test_dynamic_file_systems_update(
     )
     for mount_dir in all_mount_dirs_update_1:
         verify_directory_correctly_shared(
-            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1", "queue2"],
+            cluster=cluster,
+            login_node_pools=login_node_pools,
         )
 
     # # Update cluster to stop login nodes
@@ -1233,6 +1257,11 @@ def test_dynamic_file_systems_update(
         bucket_name=bucket_name,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
 
     cluster.update(update_cluster_config)
@@ -1275,6 +1304,11 @@ def test_dynamic_file_systems_update(
         new_efs_deletion_policy="Retain",
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
 
     cluster.update(update_cluster_config)
@@ -1325,10 +1359,14 @@ def test_dynamic_file_systems_update(
     logging.info("Checking the status of compute nodes in queue1")
     # Compute nodes in queue1 are expected to be in drain
     # because the static compute node has a job running.
+    queue1_expected_states = ["draining", "draining!", "drained*", "drained"]
+    if at_scale:
+        # At scale only one static node in queue1 has a running job (hence draining), while all the other
+        # static nodes have no jobs running and are therefore replaced (idle) or under replacement
+        # (drained, draining).
+        queue1_expected_states += ["idle", "idle%", "idle~"]
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
-    assert_compute_node_states(
-        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
-    )
+    assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=queue1_expected_states)
 
     logging.info("Checking the status of compute nodes in queue2")
     # All compute nodes in queue2 are expected to be in idle or drained
@@ -1385,7 +1423,12 @@ def test_dynamic_file_systems_update(
         )
 
     logging.info("Checking that newly mounted storage is not visible on compute nodes with jobs running (queue1)")
-    for node_name in queue1_nodes:
+    # At scale only one static node in queue1 actually runs a job and is therefore retained (without the new
+    # storage). All the other static nodes have no jobs running and get replaced, hence they mount the new storage.
+    nodes_with_running_jobs = (
+        [scheduler_commands.get_job_info(queue1_job_id, field="NodeList")] if at_scale else queue1_nodes
+    )
+    for node_name in nodes_with_running_jobs:
         _test_directory_not_mounted(
             remote_command_executor, mount_dirs_requiring_replacement, node_type="compute", node_name=node_name
         )

@@ -2,40 +2,36 @@ Image:
   Os: {{ os }}
 HeadNode:
   SharedStorageType: {{ shared_headnode_storage_type }}
-  InstanceType: {{ instance }}
+  InstanceType: {{ head_node_instance_type }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
 LoginNodes:
   Pools:
-    - Name: login
+{% for i in range(login_nodes_pools_count) %}
+    - Name: login-{{ i + 1 }}
       InstanceType: {{ instance }}
       Count: {{ login_nodes_count }}
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
       GracetimePeriod: 3
+{% endfor %}
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
-    - Name: queue1
+{% for i in range(queue_count) %}
+    - Name: queue{{ i + 1 }}
       ComputeResources:
-        - Name: queue1-i1
+        - Name: queue{{ i + 1 }}-i1
           Instances:
-            - InstanceType: {{ instance }}
-          MinCount: 1
-          MaxCount: 2
+            {% for instance_type in flexible_instance_types %}
+            - InstanceType: {{ instance_type }}
+            {% endfor %}
+          MinCount: {{ static_compute_min_count }}
+          MaxCount: {{ static_compute_max_count }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-    - Name: queue2
-      ComputeResources:
-        - Name: queue2-i1
-          Instances:
-            - InstanceType: {{ instance }}
-          MinCount: 1
-          MaxCount: 2
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_id }}
+{% endfor %}

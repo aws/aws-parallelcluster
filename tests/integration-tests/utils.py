@@ -19,6 +19,7 @@ import socket
 import string
 import subprocess
 from datetime import datetime, timedelta
+from functools import cache
 from hashlib import sha1
 
 import boto3
@@ -781,10 +782,38 @@ def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=No
 
     stream_names = cluster.get_all_log_stream_names()
     if not expected_log_streams:
+        syslog = "syslog" if os.startswith("ubuntu") else "system-messages"
         expected_log_streams = {
-            "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
-            "ComputeNode": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
-            "LoginNode": {"cfn-init", "cloud-init", "chef-client", "supervisord"},
+            "HeadNode": {
+                "cfn-hup",
+                "cfn-init",
+                "chef-client",
+                "cloud-init",
+                "clustermgtd",
+                "clustermgtd_events",
+                "clusterstatusmgtd",
+                "slurmctld",
+                "supervisord",
+                syslog,
+            },
+            "ComputeNode": {
+                "chef-client",
+                "cloud-init",
+                "cloud-init-output",
+                "computemgtd",
+                "pcluster-check-update",
+                "slurmd",
+                "supervisord",
+                syslog,
+            },
+            "LoginNode": {
+                "chef-client",
+                "cloud-init",
+                "cloud-init-output",
+                "pcluster-check-update",
+                "supervisord",
+                syslog,
+            },
         }
 
     # check there are the logs of all the instances
@@ -1025,6 +1054,7 @@ def _get_gpu_spec(instance_type_data):
     return frozenset((gpu.get("Manufacturer", ""), gpu.get("Count", 0)) for gpu in gpu_info.get("Gpus", []))
 
 
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(1))
 def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
     ec2 = boto3.client("ec2", region_name=region)
 
@@ -1067,10 +1097,24 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
                 and instance_inference_accelerators == target_inference_accelerators
             ):
                 similar_instances.append(instance["InstanceType"])
-                if max_items and len(similar_instances) >= max_items:
-                    return similar_instances
+
+    # Sort before truncating so that multiple calls always return the same instance types in the same order,
+    # regardless of the order in which the API returns them.
+    similar_instances = sorted(similar_instances)
+    if max_items:
+        similar_instances = similar_instances[:max_items]
+
+    logging.info(f"Retrieved instance types equivalent to {instance_type} in {region}: {similar_instances}")
 
     return similar_instances
+
+
+@cache
+def get_flexible_gpu_instance_types(instance, region):
+    """Return a list of NVIDIA GPU instance types compatible with ``instance``'s architecture."""
+    architecture = get_architecture_supported_by_instance_type(instance, region)
+    gpu_instance_type = "g4dn.2xlarge" if architecture == "x86_64" else "g5g.2xlarge"
+    return list({gpu_instance_type, *get_similar_instance_types(gpu_instance_type, region, 5)})
 
 
 def verify_cluster_node_config_version_in_ddb(region, cluster_name, instance_id, expected_version):

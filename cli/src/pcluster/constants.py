@@ -236,6 +236,10 @@ NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
 
 NODE_BOOTSTRAP_TIMEOUT = 2100
 
+# Default time budget (seconds) for retrieving EC2 instance info after a CreateFleet launch,
+# to tolerate EC2 API eventual consistency.
+COMPUTE_INSTANCE_INFO_TIMEOUT = 90
+
 # DirectoryService
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 

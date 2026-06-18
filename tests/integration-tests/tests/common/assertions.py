@@ -54,6 +54,26 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         "Our system will be working on provisioning additional capacity",
     ]
 
+    # EC2 error codes that the node daemons treat as Insufficient Capacity Errors (ICE).
+    # Mirrors SlurmNode.EC2_ICE_ERROR_CODES from aws-parallelcluster-node, plus the
+    # "LimitedInstanceCapacity" code used for partial all-or-nothing/best-effort launches.
+    ice_error_codes = {
+        "InsufficientInstanceCapacity",
+        "InsufficientHostCapacity",
+        "InsufficientReservedInstanceCapacity",
+        "MaxSpotInstanceCountExceeded",
+        "Unsupported",
+        "SpotMaxPriceTooLow",
+        "UnfulfillableCapacity",
+        "InsufficientCapacity",
+        "LimitedInstanceCapacity",
+    }
+    # Emitted by the resume program (resume.py) when one or more nodes fail to launch. The line
+    # itself carries no EC2 error code, so the line-level ice_patterns filter cannot match it.
+    # The code only appears on the companion "(Code:<error_code>)Failure when resuming nodes"
+    # line written by _handle_failed_nodes.
+    setting_nodes_down_pattern = "Failed to launch following nodes, setting nodes to DOWN"
+
     patterns_to_ignore = []
     if skip_ice:
         patterns_to_ignore += ice_patterns
@@ -70,9 +90,17 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
     for log_file in log_files:
         log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
         log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
-        log = "\n".join(
-            [line for line in log.splitlines() if not any(pattern in line for pattern in patterns_to_ignore)]
-        )
+        lines = log.splitlines()
+
+        if skip_ice:
+            # Pair the untagged "setting nodes to DOWN" ERROR line with the "(Code:<error_code>)"
+            # reasons in the same log file. Ignore the line only when every error code found in
+            # this file is an ICE code, otherwise keep it so genuine non-ICE failures still fail.
+            error_codes = set(re.findall(r"\(Code:(\w+)\)", log))
+            if error_codes and error_codes.issubset(ice_error_codes):
+                lines = [line for line in lines if setting_nodes_down_pattern not in line]
+
+        log = "\n".join(line for line in lines if not any(pattern in line for pattern in patterns_to_ignore))
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
 
@@ -338,6 +366,8 @@ def assert_default_user_has_desired_sudo_access(
     node_type,
     region,
     disable_sudo_access_default_user,
+    retries=6,
+    retry_delay=15,
 ):
     remote_command_executors = []
     logging.info(
@@ -354,12 +384,28 @@ def assert_default_user_has_desired_sudo_access(
 
     command = "sudo -n cat /etc/sudoers.d/90-cloud-init-users"
     for node_index, remote_command_executor in enumerate(remote_command_executors):
-        result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
-        logging.info(f"Default user in {node_type} number {node_index} and result.failed={result.failed}")
-        logging.info(f"Default user in {node_type}  number {node_index} and result.stdout={result.stdout}")
-        if disable_sudo_access_default_user:
-            assert_that(result.stdout).contains("a password is required")
-        assert_that(result.failed).is_equal_to(disable_sudo_access_default_user)
+        for attempt in range(retries):
+            result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
+            logging.info(
+                f"Default user in {node_type} number {node_index} attempt {attempt} "
+                f"result.failed={result.failed} result.stdout={result.stdout}"
+            )
+            if disable_sudo_access_default_user:
+                if "a password is required" in result.stdout and result.failed:
+                    logging.info(f"Sudo access correctly disabled on {node_type} number {node_index}")
+                    break
+                if attempt < retries - 1:
+                    logging.info(
+                        f"Sudo not yet disabled on {node_type} number {node_index}, "
+                        f"retrying in {retry_delay}s (attempt {attempt + 1}/{retries})..."
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    assert_that(result.stdout).contains("a password is required")
+                    assert_that(result.failed).is_equal_to(True)
+            else:
+                assert_that(result.failed).is_equal_to(False)
+                break
 
 
 def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):

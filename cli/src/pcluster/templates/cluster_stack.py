@@ -1592,6 +1592,22 @@ class ClusterCdkStack:
                     }
                 }
 
+        # LoginPools record Name (for DescribeLaunchTemplateVersions lookup) and LogicalId
+        # (filename suffix for the shared dna.json, must match the login node's own
+        # launch_template_id). Id/Version are omitted to avoid a CloudFormation circular dependency:
+        # head node LT metadata -> LoginNodes nested stack -> head node.
+        if self.config.login_nodes and self.config.login_nodes.pools:
+            lt_config["LoginPools"] = {
+                pool.name: {
+                    "LaunchTemplate": {
+                        "Name": f"{self._stack_name}-{pool.name}",
+                        "Version": "$Latest",
+                        "LogicalId": f"LoginNodeLaunchTemplate{create_hash_suffix(pool.name)}",
+                    }
+                }
+                for pool in self.config.login_nodes.pools
+            }
+
         return lt_config
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #

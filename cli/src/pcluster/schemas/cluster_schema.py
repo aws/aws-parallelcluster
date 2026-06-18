@@ -1103,6 +1103,9 @@ class TimeoutsSchema(BaseSchema):
     compute_node_bootstrap_timeout = fields.Int(
         validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
+    compute_instance_info_timeout = fields.Int(
+        validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -1866,7 +1869,11 @@ class ClusterSchema(BaseSchema):
 
     monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
+    tags = fields.Nested(
+        TagSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED_UNLESS_ADC, "update_key": "Key"},
+    )  # TODO: Support tags update once ADC region supports it
     iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     directory_service = fields.Nested(
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP}

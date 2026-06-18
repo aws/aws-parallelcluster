@@ -207,6 +207,7 @@ phases:
               
               OS="{{ build.OperatingSystemName.outputs.stdout }}"
               ChefVersion={{ ChefVersion }}
+              [ -n "${CfnParamCincVersion}" ] && ChefVersion="${CfnParamCincVersion}"
               
               curl --retry 3 -L $CINC_URL | bash -s -- -v $ChefVersion
               
@@ -251,6 +252,11 @@ phases:
             - |
               set -ex
               . /opt/parallelcluster/system_info
+
+              # Validate cookbook version matches expected ParallelCluster version
+              ACTUAL_COOKBOOK_VER=$(awk -F\' '/^version/{print $2}' /etc/chef/cookbooks/aws-parallelcluster-entrypoints/metadata.rb)
+              [ "${!ACTUAL_COOKBOOK_VER}" = "${CfnParamCookbookVersion}" ] || { echo "Cookbook version mismatch: expected ${CfnParamCookbookVersion}, found ${!ACTUAL_COOKBOOK_VER}"; exit 1; }
+
               echo "Calling chef-client with /etc/parallelcluster/image_dna.json"
               cat /etc/parallelcluster/image_dna.json
               cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster-entrypoints::install

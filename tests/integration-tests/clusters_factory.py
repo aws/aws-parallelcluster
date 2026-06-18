@@ -104,6 +104,8 @@ class Cluster:
         if wait:
             command.append("--wait")
         for k, val in kwargs.items():
+            if val is None:
+                continue
             if isinstance(val, (list, tuple)):
                 command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
             else:
