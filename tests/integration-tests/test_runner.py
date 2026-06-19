@@ -64,6 +64,7 @@ TEST_DEFAULTS = {
     "output_dir": "tests_outputs",
     "custom_node_url": None,
     "custom_cookbook_url": None,
+    "extra_chef_attributes": None,
     "createami_custom_cookbook_url": None,
     "cookbook_git_ref": None,
     "node_git_ref": None,
@@ -264,6 +265,12 @@ def _init_argparser():
         help="URL to a custom cookbook package.",
         default=TEST_DEFAULTS.get("custom_cookbook_url"),
         type=_is_url,
+    )
+    custom_group.add_argument(
+        "--extra-chef-attributes",
+        help="Base64-encoded ExtraChefAttributes JSON to inject into "
+        "DevSettings.Cookbook.ExtraChefAttributes of test clusters.",
+        default=TEST_DEFAULTS.get("extra_chef_attributes"),
     )
     custom_group.add_argument(
         "--createami-custom-cookbook-url",
@@ -679,6 +686,9 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 
     if args.custom_cookbook_url:
         pytest_args.extend(["--custom-chef-cookbook", args.custom_cookbook_url])
+
+    if args.extra_chef_attributes:
+        pytest_args.extend(["--extra-chef-attributes", args.extra_chef_attributes])
 
     if args.createami_custom_cookbook_url:
         pytest_args.extend(["--createami-custom-chef-cookbook", args.createami_custom_cookbook_url])
