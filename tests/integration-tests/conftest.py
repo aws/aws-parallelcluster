@@ -13,6 +13,7 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
+import base64
 import copy
 import json
 import logging
@@ -123,6 +124,9 @@ def pytest_addoption(parser):
     parser.addoption("--key-name", help="key to use for EC2 instances", type=str)
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
+    parser.addoption(
+        "--extra-chef-attributes", help="Base64-encoded ExtraChefAttributes JSON to inject into the cluster config"
+    )
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the build-image command"
     )
@@ -795,6 +799,12 @@ def inject_additional_config_settings(  # noqa C901
             request.config.getoption("custom_chef_cookbook"),
             ("DevSettings", "Cookbook", "ChefCookbook"),
         )
+
+    if request.config.getoption("extra_chef_attributes") and not dict_has_nested_key(
+        config_content, ("DevSettings", "Cookbook", "ExtraChefAttributes")
+    ):
+        extra_chef = base64.b64decode(request.config.getoption("extra_chef_attributes")).decode("utf-8")
+        dict_add_nested_key(config_content, extra_chef, ("DevSettings", "Cookbook", "ExtraChefAttributes"))
 
     if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
