@@ -19,12 +19,15 @@ class ClusterUser:
         default_user_remote_command_executor,
         password,
         scheduler_commands_factory,
+        alias=None,
     ):
         self._default_user_remote_command_executor = default_user_remote_command_executor
         self.cluster = cluster
         self.scheduler = scheduler
         self.user_num = user_num  # TODO: don't need to keep this?
-        self.alias = f"PclusterUser{user_num}"
+        # Allow an explicit alias (e.g. AD names containing dots or longer than 8 chars). Fall
+        # back to the conventional PclusterUser<n> alias when not provided.
+        self.alias = alias or f"PclusterUser{user_num}"
         self.home_dir = f"/home/{self.alias}"
         self.ssh_keypair_path_prefix = str(test_datadir / self.alias)
         self.ssh_private_key_path = self.ssh_keypair_path_prefix
