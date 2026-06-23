@@ -245,6 +245,11 @@ def pytest_addoption(parser):
         help="Name of CFN stack providing a Proxy environment.",
     )
     parser.addoption(
+        "--patch-ami-stack",
+        help="Name of an existing CFN stack that builds the patched AMI (cloudformation/patching/ami-patching.yaml). "
+        "When provided, the patching tests reuse this stack instead of creating and deleting a new one.",
+    )
+    parser.addoption(
         "--build-image-roles-stack",
         help="Name of CFN stack providing the build image permissions.",
     )
@@ -1719,6 +1724,78 @@ def ami_copy(region):
                     client.delete_snapshot(SnapshotId=block_device_mapping.get("Ebs").get("SnapshotId"))
         except IndexError as e:
             logging.error("Delete copied AMI snapshot failed due to %s", e)
+
+
+@pytest.fixture()
+def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_factory, s3_bucket_factory):
+    """
+    Factory fixture that builds a security-patched AMI from a given base AMI.
+
+    The whole AMI-build infrastructure lives in a CloudFormation stack
+    (cloudformation/patching/ami-patching.yaml) that uses EC2 Image Builder: the
+    build instance downloads and runs the patch script, reboots, runs the AMI
+    cleanup, and Image Builder captures the patched AMI. The patched AMI is named
+    after the source AMI (with a -patched-<buildDate> suffix) and tagged with
+    parallelcluster:source-ami and parallelcluster:ami-patching-stack. The stack's
+    AmiId output is returned.
+
+    The returned callable takes the base AMI id and the builder instance type.
+    On teardown the stack is deleted, which deregisters the produced AMI and its
+    snapshots (deleting an Image Builder image does not remove the produced AMI).
+    """
+    # Path is relative to the integration-tests working directory, matching the
+    # convention used by other tests that load templates from cloudformation/.
+    with open("../../cloudformation/patching/ami-patching.yaml", encoding="utf-8") as template_file:
+        template_body = template_file.read()
+    reuse_stack_name = request.config.getoption("patch_ami_stack")
+    built = []  # list of (ami_id, stack_name) for stacks created (and to be deleted) by this fixture
+
+    def _build(base_ami, builder_instance):
+        # Reuse an already-deployed patch-infra stack when requested: just read its
+        # AmiId output and skip creation/deletion.
+        if reuse_stack_name:
+            logging.info("Reusing existing patch-infra stack %s", reuse_stack_name)
+            stack = CfnStack(name=reuse_stack_name, region=region, template=template_body)
+            return stack.cfn_outputs["AmiId"]
+
+        logging.info("Starting patching of AMI %s using a %s builder instance", base_ami, builder_instance)
+        bucket_name = s3_bucket_factory()
+        boto3.resource("s3", region_name=region).Bucket(bucket_name).upload_file(
+            str(test_datadir / "patch_node.sh"), "scripts/patch_node.sh"
+        )
+        stack_name = generate_stack_name("integ-tests-patching-builder", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(
+            name=stack_name,
+            region=region,
+            template=template_body,
+            parameters=[
+                {"ParameterKey": "ParentImage", "ParameterValue": base_ami},
+                {"ParameterKey": "InstanceType", "ParameterValue": builder_instance},
+                {"ParameterKey": "SubnetId", "ParameterValue": vpc_stack.get_public_subnet()},
+                {"ParameterKey": "VpcId", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+                {"ParameterKey": "PatchScriptS3Uri", "ParameterValue": f"s3://{bucket_name}/scripts/patch_node.sh"},
+            ],
+            capabilities=["CAPABILITY_IAM"],
+        )
+        # create_stack blocks until CREATE_COMPLETE, i.e. until Image Builder has
+        # finished building the patched AMI.
+        cfn_stacks_factory.create_stack(stack)
+        ami_id = stack.cfn_outputs["AmiId"]
+        built.append((ami_id, stack_name))
+        logging.info("Patched AMI %s is available", ami_id)
+        return ami_id
+
+    yield _build
+
+    # Leave everything in place when --no-delete is set, and never tear down a
+    # reused stack. Otherwise just delete the stack: it owns the cleanup of the
+    # patched AMI and its snapshots (via the AmiHelper custom resource on delete).
+    if request.config.getoption("no_delete"):
+        logging.info("--no-delete specified: retaining patched AMI(s) and stack(s): %s", built)
+        return
+    for ami_id, stack_name in built:
+        logging.info("Deleting patch-infra stack %s (removes patched AMI %s)", stack_name, ami_id)
+        cfn_stacks_factory.delete_stack(stack_name, region)
 
 
 @pytest.fixture()

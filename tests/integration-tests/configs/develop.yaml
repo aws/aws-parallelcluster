@@ -173,6 +173,17 @@ test-suites:
         - regions: ["us-east-1"]
           instances: ["g4dn.2xlarge"]
           oss: [{{ OS_X86_1 }}]
+  patching:
+    test_patching.py::test_patching_cluster:
+      dimensions:
+        - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_rhel9 }}]
+          instances: ["g4dn.8xlarge"]
+          oss: {{ RHEL_OS_X86 }}
+          schedulers: ["slurm"]
+        - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+          instances: ["g4dn.8xlarge"]
+          oss: {{ NO_RHEL_OS_X86 }}
+          schedulers: ["slurm"]
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_create:
       dimensions:
