@@ -27,7 +27,7 @@ from tests.common.assertions import (
     wait_instance_replaced_or_terminating,
 )
 from tests.common.mpi_common import _test_mpi
-from tests.common.utils import fetch_instance_slots, run_system_analyzer
+from tests.common.utils import GPU_JOB_SCRIPT, fetch_instance_slots, run_system_analyzer
 
 
 def test_essential_features(
@@ -344,7 +344,7 @@ def _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir):
     for sample in samples:
         logging.info("Submitting CUDA sample job for %s", sample)
         result = scheduler_commands.submit_script(
-            str(test_datadir / "gpu_job.sh"),
+            str(GPU_JOB_SCRIPT),
             script_args=[sample],
             partition="gpu",
             nodes=1,
