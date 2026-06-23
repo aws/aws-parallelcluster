@@ -15,6 +15,8 @@ It automatically sets up the required compute resources and a shared filesystem 
 AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments.
 You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing workflow, on top of AWS ParallelCluster.
 
+> **Looking for managed Slurm?** [AWS Parallel Computing Service (PCS)](https://aws.amazon.com/pcs/) is a managed service that makes it easier to run and scale HPC workloads on AWS using Slurm.
+
 Quick Start
 -----------
 **IMPORTANT**: you will need an **Amazon EC2 Key Pair** to be able to complete the following steps.
