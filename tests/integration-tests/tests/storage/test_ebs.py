@@ -20,6 +20,7 @@ from remote_command_executor import RemoteCommandExecutor
 
 from tests.storage.kms_key_factory import KMSKeyFactory
 from tests.storage.storage_common import (
+    assert_head_node_nfs_serves_v4_only,
     assert_subnet_az_relations_from_config,
     test_directory_correctly_shared_between_ln_and_hn,
     test_ebs_correctly_mounted,
@@ -57,6 +58,8 @@ def test_ebs_single(
     test_ebs_correctly_mounted(remote_command_executor_head_node, mount_dir, volume_size=40)
     # Test ebs correctly shared between HeadNode and ComputeNodes
     _test_ebs_correctly_shared(remote_command_executor_head_node, mount_dir, scheduler_commands)
+
+    assert_head_node_nfs_serves_v4_only(remote_command_executor_head_node)
 
     remote_command_executor_login_node = RemoteCommandExecutor(cluster, use_login_node=True)
     # Test ebs correctly shared between LoginNode and ComputeNodes

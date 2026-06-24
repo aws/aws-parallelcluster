@@ -201,6 +201,27 @@ def test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
     assert_that(result.stdout).matches(r"UUID=.* {mount_dir} ext4 _netdev 0 0".format(mount_dir=mount_dir))
 
 
+def assert_head_node_nfs_serves_v4_only(remote_command_executor):
+    """
+    Verify the head node NFS server is configured for NFSv4-only.
+
+    nfsd reports the versions it serves in /proc/fs/nfsd/versions, e.g. "-2 -3 +4 +4.1 +4.2"
+    ('+' enabled, '-' disabled).
+
+    Also assert the lock manager (nlockmgr/lockd) is not registered with rpcbind. Lock manager is used by v3, not v4.
+    """
+    logging.info("Checking the head node NFS server serves NFSv4 only")
+    versions = remote_command_executor.run_remote_command("sudo cat /proc/fs/nfsd/versions").stdout
+    # NFSv4 must be enabled and NFSv2/NFSv3 must be disabled.
+    assert_that(versions).contains("+4")
+    assert_that(versions).does_not_match(r"\+2(\s|$)")
+    assert_that(versions).does_not_match(r"\+3(\s|$)")
+
+    # lockd must not be brought up: no nlockmgr registered with rpcbind on the head node.
+    rpcinfo = remote_command_executor.run_remote_command("rpcinfo -p localhost").stdout
+    assert_that(rpcinfo).does_not_contain("nlockmgr")
+
+
 # for RAID
 
 
