@@ -13,7 +13,8 @@ CHANGELOG
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
 - The validator `MultiNetworkInterfacesInstancesValidator` now also covers single-network-card instances with EFA enabled, which are launched with multiple network interfaces and therefore cannot be auto-assigned a public IP.
 - The CLI now requires the additional permission `tag:GetResources`.
-- Add support for Python 3.11, 3.12 in pcluster CLI
+- Add support for Python 3.13 in pcluster CLI
+- Enforce NFSv4-only on the ParallelCluster-managed NFS server (head node). The NFSv3 client stack (rpcbind, rpc-statd, lockd) are unchanged, so cluster nodes can still mount external NFSv3 servers.
 
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
