@@ -739,6 +739,22 @@ def inject_additional_image_configs_settings(image_config, request):
         yaml.dump(config_content, conf_file)
 
 
+def _deep_merge_dicts(base, override):
+    """Recursively merge override into base.
+
+    Branch keys present in both are merged (so disjoint children on a shared
+    parent are preserved); on a leaf-value conflict the value from `override`
+    wins. Callers choose the winner by argument order.
+    """
+    result = copy.deepcopy(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge_dicts(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
 def _inject_additional_iam_policies(node_config, additional_iam_policies):
     if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
         for policy in additional_iam_policies:
@@ -800,11 +816,22 @@ def inject_additional_config_settings(  # noqa C901
             ("DevSettings", "Cookbook", "ChefCookbook"),
         )
 
-    if request.config.getoption("extra_chef_attributes") and not dict_has_nested_key(
-        config_content, ("DevSettings", "Cookbook", "ExtraChefAttributes")
-    ):
-        extra_chef = base64.b64decode(request.config.getoption("extra_chef_attributes")).decode("utf-8")
-        dict_add_nested_key(config_content, extra_chef, ("DevSettings", "Cookbook", "ExtraChefAttributes"))
+    if request.config.getoption("extra_chef_attributes"):
+        # Deep-merge our ExtraChefAttributes into any already set on the cluster
+        # config (e.g. a test feature like gb200 sets its own). Without merging,
+        # the existing value would shadow the dependency-upgrade attributes
+        # (python-version, etc.) and cluster init would use the cookbook default
+        # python, failing with ENOENT on the venv path baked into the AMI.
+        injected = json.loads(base64.b64decode(request.config.getoption("extra_chef_attributes")).decode("utf-8"))
+        if dict_has_nested_key(config_content, ("DevSettings", "Cookbook", "ExtraChefAttributes")):
+            existing = config_content["DevSettings"]["Cookbook"]["ExtraChefAttributes"]
+            existing = json.loads(existing) if isinstance(existing, str) else existing
+            # Test-specific attributes win on conflict; the injected dependency
+            # attributes (e.g. python-version) fill in the rest.
+            merged = _deep_merge_dicts(injected, existing)
+        else:
+            merged = injected
+        dict_add_nested_key(config_content, json.dumps(merged), ("DevSettings", "Cookbook", "ExtraChefAttributes"))
 
     if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
