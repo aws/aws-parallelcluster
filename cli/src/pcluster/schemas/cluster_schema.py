@@ -413,7 +413,7 @@ class FsxLustreSettingsSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     automatic_backup_retention_days = fields.Int(
-        validate=validate.Range(min=0, max=35), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+        validate=validate.Range(min=0, max=90), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
     copy_tags_to_backups = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     daily_automatic_backup_start_time = fields.Str(

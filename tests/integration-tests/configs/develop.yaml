@@ -13,7 +13,7 @@ test-suites:
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
-        - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_OS_X86_1 }}]
+        - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_DCV_OS_X86_1__g5g_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_1 }}]
           instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
           oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]

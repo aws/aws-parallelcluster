@@ -22,7 +22,7 @@ from tests.common.schedulers_common import SlurmCommands
 
 
 @pytest.fixture(scope="class")
-def proxy_stack_factory(region, request, cfn_stacks_factory):
+def proxy_stack_factory(region, request, cfn_stacks_factory, instance):
     """
     Set up and tear down a CloudFormation stack to deploy a proxy environment.
 
@@ -62,6 +62,7 @@ def proxy_stack_factory(region, request, cfn_stacks_factory):
                         "ParameterKey": "EnableBuildImageProxy",
                         "ParameterValue": "true" if enable_build_image_proxy else "false",
                     },
+                    {"ParameterKey": "InstanceType", "ParameterValue": instance},
                 ]
                 capabilities = ["CAPABILITY_IAM"]
                 tags = [{"Key": "parallelcluster:integ-tests-proxy-stack", "Value": "proxy"}]

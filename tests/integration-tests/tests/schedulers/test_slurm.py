@@ -379,13 +379,6 @@ def test_slurm_custom_partitions(
         assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(expected_state)
 
     logging.info("Checking pcluster start...")
-    # Restore the protected failure count to its default before starting the fleet. The failing job left dynamic nodes
-    # still powering up when the fleet was stopped; with a short clustermgtd cleanup window they can survive stop/start
-    # with a stale nodeaddr. On the first poll after start, clustermgtd re-counts them as bootstrap failures and, with
-    # the lowered count of 2, re-enters protected mode, flipping the pcluster-managed partitions back to INACTIVE and
-    # making this test intermittently fail. The default count is high enough that the few leftover nodes cannot reach
-    # the threshold in a single poll.
-    set_protected_failure_count(remote_command_executor, 10)
     for partition in custom_partitions:
         scheduler_commands.set_partition_state(partition, "INACTIVE")
     cluster.start()

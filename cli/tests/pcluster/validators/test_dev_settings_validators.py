@@ -11,7 +11,10 @@
 import pytest
 
 from pcluster.validators.common import FailureLevel
-from pcluster.validators.dev_settings_validators import ExtraChefAttributesValidator
+from pcluster.validators.dev_settings_validators import (
+    CliAttributeOverridesValidator,
+    ExtraChefAttributesValidator,
+)
 from tests.pcluster.validators.utils import assert_failure_level, assert_failure_messages
 
 
@@ -216,6 +219,45 @@ def test_extra_chef_attributes_validator_cluster_readiness_check_ignore_failure(
     extra_chef_attributes, expected_message, expected_failure_level
 ):
     actual_failures = ExtraChefAttributesValidator().execute(extra_chef_attributes=extra_chef_attributes)
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_failure_level:
+        assert_failure_level(actual_failures, expected_failure_level)
+
+
+@pytest.mark.parametrize(
+    "cli_attribute_overrides, expected_message, expected_failure_level",
+    [
+        pytest.param("", None, None, id="empty string is valid"),
+        pytest.param(None, None, None, id="None is valid"),
+        pytest.param(
+            '{"cinc_version": "18.8.54", "cinc_installer_url": "https://omnitruck.cinc.sh/install.sh"}',
+            None,
+            None,
+            id="valid JSON object",
+        ),
+        pytest.param("{}", None, None, id="empty JSON object is valid"),
+        pytest.param(
+            "{not valid json",
+            "Invalid value in DevSettings/CliAttributeOverrides: must be a valid JSON string.",
+            FailureLevel.ERROR,
+            id="malformed JSON throws error",
+        ),
+        pytest.param(
+            '["cinc_version"]',
+            "Invalid value in DevSettings/CliAttributeOverrides: must be a JSON object.",
+            FailureLevel.ERROR,
+            id="JSON array (not object) throws error",
+        ),
+        pytest.param(
+            '"just a string"',
+            "Invalid value in DevSettings/CliAttributeOverrides: must be a JSON object.",
+            FailureLevel.ERROR,
+            id="JSON scalar (not object) throws error",
+        ),
+    ],
+)
+def test_cli_attribute_overrides_validator(cli_attribute_overrides, expected_message, expected_failure_level):
+    actual_failures = CliAttributeOverridesValidator().execute(cli_attribute_overrides=cli_attribute_overrides)
     assert_failure_messages(actual_failures, expected_message)
     if expected_failure_level:
         assert_failure_level(actual_failures, expected_failure_level)

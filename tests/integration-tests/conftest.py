@@ -13,6 +13,7 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
+import base64
 import copy
 import json
 import logging
@@ -123,6 +124,9 @@ def pytest_addoption(parser):
     parser.addoption("--key-name", help="key to use for EC2 instances", type=str)
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
+    parser.addoption(
+        "--extra-chef-attributes", help="Base64-encoded ExtraChefAttributes JSON to inject into the cluster config"
+    )
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the build-image command"
     )
@@ -698,7 +702,18 @@ def inject_placement_group_settings(vpc_stack, instance, region, kwargs):
 
 
 def inject_flexible_instance_types_settings(instance, region, kwargs):
-    kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
+    flexible_instance_types = [instance]
+    try:
+        flexible_instance_types.extend(it for it in get_similar_instance_types(instance, region, 5) if it != instance)
+    except Exception:
+        logging.warning(
+            "Failed to retrieve instance types equivalent to %s in region %s. "
+            "Falling back to using only the original instance type %s.",
+            instance,
+            region,
+            instance,
+        )
+    kwargs["flexible_instance_types"] = flexible_instance_types
 
 
 def inject_additional_image_configs_settings(image_config, request):
@@ -784,6 +799,12 @@ def inject_additional_config_settings(  # noqa C901
             request.config.getoption("custom_chef_cookbook"),
             ("DevSettings", "Cookbook", "ChefCookbook"),
         )
+
+    if request.config.getoption("extra_chef_attributes") and not dict_has_nested_key(
+        config_content, ("DevSettings", "Cookbook", "ExtraChefAttributes")
+    ):
+        extra_chef = base64.b64decode(request.config.getoption("extra_chef_attributes")).decode("utf-8")
+        dict_add_nested_key(config_content, extra_chef, ("DevSettings", "Cookbook", "ExtraChefAttributes"))
 
     if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
@@ -1742,6 +1763,18 @@ def test_custom_config(request):
 @pytest.fixture()
 def scheduler_commands_factory(scheduler):
     return partial(get_scheduler_commands, scheduler=scheduler)
+
+
+@pytest.fixture()
+def flags():
+    """
+    Return the list of flags enabled for the test.
+
+    This is the default value used when the 'flags' dimension is not specified in the tests config file.
+    When the 'flags' dimension is specified, this fixture is overridden by the parametrization performed in
+    conftest_tests_config.parametrize_from_config.
+    """
+    return []
 
 
 @pytest.fixture(scope="class")
