@@ -20,6 +20,7 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     CapacityReservationTarget,
     Database,
+    Efa,
     ExternalSlurmdbd,
     RootVolume,
     SharedEbs,
@@ -3487,113 +3488,287 @@ def test_root_volume_encryption_consistency_validator(
         assert_that(actual_failures).is_empty()
 
 
+PUBLIC_IP_LIMITATION = "AWS can't auto-assign a public IP to instances launched with more than one network interface."
+NAT_FIX = "Use a private subnet with a NAT gateway to provide internet access to the compute nodes."
+ASSIGN_PUBLIC_IP_FIX = (
+    "Set AssignPublicIp to false and use a private subnet with a NAT gateway to provide internet access to the "
+    "compute nodes."
+)
+MULTI_CARD_REASON = "The queue queue_1 contains the instance types instance_type with multiple network interfaces"
+EFA_REASON = (
+    "The queue queue_1 has EFA enabled on the single-network-card instance types instance_type, so its compute "
+    "nodes are launched with multiple network interfaces (a primary interface plus a dedicated efa-only interface)"
+)
+# Multi-network-card instances (e.g. p4d, hpc6id).
+MULTI_CARD_ASSIGN_PUBLIC_IP_FAILURE = (
+    f"{MULTI_CARD_REASON}, but AssignPublicIp is set to true. {PUBLIC_IP_LIMITATION} {ASSIGN_PUBLIC_IP_FIX}"
+)
+MULTI_CARD_PUBLIC_IP_SUBNET_FAILURE = (
+    f"{MULTI_CARD_REASON}, but the subnets ['subnet_1'] auto-assign public IPs. {PUBLIC_IP_LIMITATION} {NAT_FIX}"
+)
+# Single-network-card instances with EFA enabled (e.g. hpc6a, c5n).
+EFA_ASSIGN_PUBLIC_IP_FAILURE = (
+    f"{EFA_REASON}, but AssignPublicIp is set to true. {PUBLIC_IP_LIMITATION} {ASSIGN_PUBLIC_IP_FIX}"
+)
+EFA_PUBLIC_IP_SUBNET_FAILURE = (
+    f"{EFA_REASON}, but the subnets ['subnet_1'] auto-assign public IPs. {PUBLIC_IP_LIMITATION} {NAT_FIX}"
+)
+
+
 @pytest.mark.parametrize(
-    "num_cards, assign_public_ip, public_ip_subnets, expected_error_messages",
+    "num_cards, max_efa_interfaces, card0_max_enis, efa_enabled, efa_interface_type, "
+    "assign_public_ip, public_ip_subnets, expected_error_messages",
     [
         pytest.param(
             1,
+            1,
+            2,
+            False,
+            None,
             True,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             None,
-            id="Test with single nic queue with assigned public ip and subnet with public ip",
+            id="Single-card, EFA disabled, public ip -> single ENI, no failure",
         ),
         pytest.param(
             1,
+            1,
+            2,
+            False,
+            None,
             False,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             None,
-            id="Test with single nic queue with not assigned public ip and subnet with public ip",
+            id="Single-card, EFA disabled, no assigned public ip -> single ENI, no failure",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             False,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             None,
-            id="Test with multi nic queue with neither assigned public ip nor subnet with public ip",
+            id="Multi-card, neither assigned public ip nor subnet with public ip, no failure",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             True,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
-            [
-                "The queue queue_1 contains an instance type with multiple network interfaces however the "
-                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
-                "launched with a single network interface."
-            ],
-            id="Test with multi nic queue with assigned public ip and no subnet with public ip",
+            [MULTI_CARD_ASSIGN_PUBLIC_IP_FAILURE],
+            id="Multi-card, assigned public ip and no subnet with public ip",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             False,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
-            [
-                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
-                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
-                "to instances launched with a single network interface."
-            ],
-            id="Test with multi nic queue with no assigned public ip and subnet with public ip",
+            [MULTI_CARD_PUBLIC_IP_SUBNET_FAILURE],
+            id="Multi-card, no assigned public ip and subnet with public ip",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             True,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
+            [MULTI_CARD_ASSIGN_PUBLIC_IP_FAILURE, MULTI_CARD_PUBLIC_IP_SUBNET_FAILURE],
+            id="Multi-card, assigned public ip and subnet with public ip",
+        ),
+        # Single-network-card EFA instances (e.g. hpc6a, c5n) launch a 2nd efa-only ENI in PC 3.15+.
+        pytest.param(
+            1,
+            1,
+            2,
+            True,
+            None,
+            True,
             [
-                "The queue queue_1 contains an instance type with multiple network interfaces however the "
-                + "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
-                + "launched with a single network interface.",
-                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
-                + "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
-                + "to instances launched with a single network interface.",
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
-            id="Test with multi nic queue with assigned public ip and subnet with public ip",
+            [EFA_ASSIGN_PUBLIC_IP_FAILURE],
+            id="Single-card EFA, 2nd efa-only ENI, assigned public ip -> failure",
+        ),
+        pytest.param(
+            1,
+            1,
+            2,
+            True,
+            None,
+            False,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            [EFA_PUBLIC_IP_SUBNET_FAILURE],
+            id="Single-card EFA, 2nd efa-only ENI, subnet with public ip -> failure",
+        ),
+        pytest.param(
+            1,
+            1,
+            2,
+            True,
+            "efa",
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Single-card EFA with EfaInterfaceType=efa opt-out -> single ENI, no failure",
+        ),
+        pytest.param(
+            1,
+            1,
+            1,
+            True,
+            None,
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Single-card EFA where card0 cannot hold 2 ENIs -> single combined efa ENI, no failure",
         ),
     ],
 )
 @pytest.mark.usefixtures("get_region")
 def test_multi_network_interfaces_instances_validator(
-    aws_api_mock, num_cards, assign_public_ip, public_ip_subnets, expected_error_messages
+    aws_api_mock,
+    num_cards,
+    max_efa_interfaces,
+    card0_max_enis,
+    efa_enabled,
+    efa_interface_type,
+    assign_public_ip,
+    public_ip_subnets,
+    expected_error_messages,
 ):
     network_cards_list = []
     for card in range(num_cards):
-        network_cards_list.append({"NetworkCardIndex": card})
+        network_cards_list.append(
+            {"NetworkCardIndex": card, "MaximumNetworkInterfaces": card0_max_enis if card == 0 else 1}
+        )
     aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
-        {"NetworkInfo": {"MaximumNetworkCards": num_cards, "NetworkCards": network_cards_list}}
+        {
+            "NetworkInfo": {
+                "MaximumNetworkCards": num_cards,
+                "NetworkCards": network_cards_list,
+                "EfaSupported": efa_enabled,
+                "EfaInfo": {"MaximumEfaInterfaces": max_efa_interfaces},
+            }
+        }
     )
     aws_api_mock.ec2.describe_subnets.return_value = public_ip_subnets
 
     queues = [
         SlurmQueue(
             name="queue_1",
-            compute_resources=[SlurmComputeResource(name="compute_resource_1", instance_type="instance_type")],
+            compute_resources=[
+                SlurmComputeResource(
+                    name="compute_resource_1",
+                    instance_type="instance_type",
+                    efa=Efa(enabled=efa_enabled),
+                )
+            ],
             networking=SlurmQueueNetworking(subnet_ids=["subnet_1", "subnet_2"], assign_public_ip=assign_public_ip),
         ),
     ]
 
-    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues)
+    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues, efa_interface_type=efa_interface_type)
 
     if expected_error_messages:
         assert_failure_messages(actual_failures, expected_error_messages)
         assert_failure_level(actual_failures, FailureLevel.ERROR)
     else:
         assert_that(actual_failures).is_empty()
+
+
+@pytest.mark.usefixtures("get_region")
+def test_multi_network_interfaces_instances_validator_mixed_queue(aws_api_mock):
+    """A queue with both a multi-network-card and a single-card EFA compute resource reports both reasons."""
+    instance_type_info = {
+        # Multi-network-card instance (e.g. p4d): launched with one interface per card.
+        "multi_card.instance": InstanceTypeInfo(
+            {
+                "NetworkInfo": {
+                    "MaximumNetworkCards": 2,
+                    "NetworkCards": [
+                        {"NetworkCardIndex": 0, "MaximumNetworkInterfaces": 1},
+                        {"NetworkCardIndex": 1, "MaximumNetworkInterfaces": 1},
+                    ],
+                    "EfaSupported": True,
+                    "EfaInfo": {"MaximumEfaInterfaces": 2},
+                }
+            }
+        ),
+        # Single-network-card EFA instance (e.g. c5n): launched with a primary + an efa-only interface.
+        "efa.instance": InstanceTypeInfo(
+            {
+                "NetworkInfo": {
+                    "MaximumNetworkCards": 1,
+                    "NetworkCards": [{"NetworkCardIndex": 0, "MaximumNetworkInterfaces": 2}],
+                    "EfaSupported": True,
+                    "EfaInfo": {"MaximumEfaInterfaces": 1},
+                }
+            }
+        ),
+    }
+    aws_api_mock.ec2.get_instance_type_info.side_effect = lambda instance_type: instance_type_info[instance_type]
+    aws_api_mock.ec2.describe_subnets.return_value = [{"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False}]
+
+    queues = [
+        SlurmQueue(
+            name="queue_1",
+            compute_resources=[
+                SlurmComputeResource(name="multi_card_cr", instance_type="multi_card.instance"),
+                SlurmComputeResource(name="efa_cr", instance_type="efa.instance", efa=Efa(enabled=True)),
+            ],
+            networking=SlurmQueueNetworking(subnet_ids=["subnet_1"], assign_public_ip=True),
+        ),
+    ]
+
+    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues)
+
+    # Exactly one failure (queue is reported once, not once per compute resource) that names both reasons.
+    assert_that(actual_failures).is_length(1)
+    assert_that(actual_failures[0].message).is_equal_to(
+        "The queue queue_1 contains the instance types multi_card.instance with multiple network interfaces and "
+        "has EFA enabled on the single-network-card instance types efa.instance, so its compute nodes are launched "
+        "with multiple network interfaces (a primary interface plus a dedicated efa-only interface), but "
+        f"AssignPublicIp is set to true. {PUBLIC_IP_LIMITATION} {ASSIGN_PUBLIC_IP_FIX}"
+    )
+    assert_failure_level(actual_failures, FailureLevel.ERROR)
 
 
 @pytest.mark.parametrize(

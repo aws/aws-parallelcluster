@@ -11,6 +11,7 @@ CHANGELOG
 **CHANGES**
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 
   consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
+- The validator `MultiNetworkInterfacesInstancesValidator` now also covers single-network-card instances with EFA enabled, which are launched with multiple network interfaces and therefore cannot be auto-assigned a public IP.
 - The CLI now requires the additional permission `tag:GetResources`.
 - Add support for Python 3.11, 3.12 in pcluster CLI
 

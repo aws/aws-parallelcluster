@@ -67,6 +67,7 @@ from pcluster.constants import (
     Feature,
 )
 from pcluster.utils import (
+    get_attr,
     get_partition,
     get_resource_name_from_resource_arn,
     to_snake_case,
@@ -3015,7 +3016,11 @@ class SlurmClusterConfig(BaseClusterConfig):
             )
 
         instance_types_data = self.get_instance_types_data()
-        self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
+        self._register_validator(
+            MultiNetworkInterfacesInstancesValidator,
+            queues=self.scheduling.queues,
+            efa_interface_type=get_attr(self, "dev_settings.efa_interface_type"),
+        )
         checked_images = []
         capacity_reservation_id_max_count_map = {}
         total_max_compute_nodes = 0
