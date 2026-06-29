@@ -17,7 +17,7 @@ import pytest
 import xmltodict
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_compute_nodes_instance_ids
+from utils import get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
@@ -88,6 +88,7 @@ def _try_reserve_head_node_instance(region, az_id, architecture, os):
     return None
 
 
+@pytest.mark.usefixtures("flags")
 def test_efa(
     os,
     region,
@@ -107,7 +108,7 @@ def test_efa(
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     head_node_instance = instance
-    if instance.startswith("p") or instance.startswith("hpc"):
+    if len(get_instance_info(instance, region)["NetworkInfo"]["NetworkCards"]) > 1:
         az_id = vpc_stack.az_override or vpc_stack.default_az_id
         head_node_instance = _try_reserve_head_node_instance(region, az_id, architecture, os)
     max_queue_size = 2
