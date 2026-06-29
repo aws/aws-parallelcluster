@@ -34,9 +34,9 @@ from utils import (
 )
 
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
+from tests.common.dcv_common import check_dcv_session_authentication
 
 SERVER_URL = "https://localhost"
-DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 # Crashes matching any of these patterns are never tolerated, regardless of TOLERATED_CRASH_PATTERNS.
 UNTOLERATED_CRASH_PATTERNS = [
@@ -138,11 +138,15 @@ def _test_dcv_configuration(
         ),
         (
             "error cases (head node)",
-            lambda: _check_error_cases(head_node_remote_command_executor, dcv_authenticator_port),
+            lambda: _check_error_cases(
+                head_node_remote_command_executor, dcv_authenticator_port, get_username_for_os(os)
+            ),
         ),
         (
             "error cases (login node)",
-            lambda: _check_error_cases(login_node_remote_command_executor, dcv_authenticator_port),
+            lambda: _check_error_cases(
+                login_node_remote_command_executor, dcv_authenticator_port, get_username_for_os(os)
+            ),
         ),
         ("shared dir (head node)", lambda: _check_shared_dir(head_node_remote_command_executor, shared_dir)),
         ("shared dir (login node)", lambda: _check_shared_dir(login_node_remote_command_executor, shared_dir)),
@@ -189,16 +193,6 @@ def _check_shared_dir(remote_command_executor, shared_dir):
     assert_that(
         int(remote_command_executor.run_remote_command(f"cat /var/log/dcv/server.log | grep -c {shared_dir}").stdout)
     ).is_greater_than(0)
-
-
-def _check_auth_ok(remote_command_executor, external_authenticator_port, session_id, session_token, os):
-    username = get_username_for_os(os)
-    assert_that(
-        remote_command_executor.run_remote_command(
-            f"curl -s -k {SERVER_URL}:{external_authenticator_port} "
-            f"-d sessionId={session_id} -d authenticationToken={session_token} -d clientAddr=someIp"
-        ).stdout
-    ).is_equal_to('<auth result="yes"><username>{0}</username></auth>'.format(username))
 
 
 def _get_crash_report(remote_command_executor):
@@ -268,13 +262,19 @@ def _get_known_hosts_content(host_keys_file):
         return b""
 
 
-def _check_error_cases(remote_command_executor, dcv_authenticator_port):
+def _check_error_cases(remote_command_executor, dcv_authenticator_port, username):
     """Check DCV errors for both head and login nodes."""
     logging.info("Checking expected authentication failure on %s", remote_command_executor.target)
     _check_auth_ko(
         remote_command_executor,
         dcv_authenticator_port,
         "-d action=requestToken -d authUser=centos -d sessionID=invalidSessionId",
+        "The given user does not exist",
+    )
+    _check_auth_ko(
+        remote_command_executor,
+        dcv_authenticator_port,
+        f"-d action=requestToken -d authUser={username} -d sessionID=invalidSessionId",
         "The given session does not exists",
     )
     _check_auth_ko(
@@ -350,18 +350,6 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
 
 def _test_authenticator(remote_command_executor, dcv_authenticator_port, shared_dir, os):
     """Launch a DCV session and verify authenticator."""
-    command_execution = remote_command_executor.run_remote_command(f"{DCV_CONNECT_SCRIPT} {shared_dir}")
-    dcv_parameters = re.search(
-        r"PclusterDcvServerPort=([\d]+) PclusterDcvSessionId=([\w]+) PclusterDcvSessionToken=([\w-]+)",
-        command_execution.stdout,
+    check_dcv_session_authentication(
+        remote_command_executor, dcv_authenticator_port, shared_dir, get_username_for_os(os)
     )
-    if dcv_parameters:
-        dcv_session_id = dcv_parameters.group(2)
-        dcv_session_token = dcv_parameters.group(3)
-        _check_auth_ok(remote_command_executor, dcv_authenticator_port, dcv_session_id, dcv_session_token, os)
-    else:
-        assert_that(dcv_parameters).described_as(
-            "Command '{0} {1}' fails, output: {2}, error: {3}".format(
-                DCV_CONNECT_SCRIPT, shared_dir, command_execution.stdout, command_execution.stderr
-            )
-        ).is_not_none()

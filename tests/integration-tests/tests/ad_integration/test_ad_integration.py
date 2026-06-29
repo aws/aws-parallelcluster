@@ -29,14 +29,32 @@ from paramiko import Ed25519Key
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import find_stack_by_tag, generate_stack_name, is_directory_supported, random_alphanumeric
+from utils import (
+    find_stack_by_tag,
+    generate_stack_name,
+    get_cidr_from_ip,
+    get_local_ip,
+    is_directory_supported,
+    random_alphanumeric,
+)
 from xdist import get_xdist_worker_id
 
 from tests.ad_integration.cluster_user import ClusterUser
+from tests.common.dcv_common import check_dcv_session_authentication
 from tests.common.utils import run_system_analyzer
 
 NUM_USERS_TO_CREATE = 5
 NUM_USERS_TO_TEST = 3
+
+# DCV authenticator validates session ownership by matching the process UID. These AD users
+# specifically exercise usernames that contain a dot and that exceed 8 characters (which a
+# `ps aux` based lookup would truncate). They must be lowercase to satisfy the authenticator's
+# USER_REGEX and stay within the 20-character sAMAccountName limit.
+DCV_AD_USERS = ["pcluster.user", "pcluster.long.user"]
+
+# DCV defaults to port 8443 and the external authenticator listens on the next port.
+DCV_AUTHENTICATOR_PORT = 8444
+DCV_SHARED_DIR = "/shared"
 
 
 def get_infra_stack_outputs(stack_name):
@@ -162,6 +180,9 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
     users = ""
     for i in range(NUM_USERS_TO_CREATE):
         users += f"PclusterUser{i},"
+    # Also provision the AD users used to validate DCV authentication with dotted/long names.
+    for dcv_user in DCV_AD_USERS:
+        users += f"{dcv_user},"
 
     stack_parameters = [
         {
@@ -603,6 +624,8 @@ def test_ad_integration(  # noqa: C901
 
     vpc = directory_stack_outputs.get("VpcId")
     config_params.update(get_vpc_public_subnet(vpc))
+    local_ip = get_local_ip()
+    config_params.update({"dcv_access_from": get_cidr_from_ip(local_ip) if local_ip else "0.0.0.0/0"})
 
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
@@ -640,6 +663,12 @@ def test_ad_integration(  # noqa: C901
         )
     shared_storage_mount_dirs = ["/shared"]
     _run_user_workloads(users, test_datadir, shared_storage_mount_dirs)
+
+    # Validate DCV authentication for AD users whose names contain a dot and exceed 8 characters.
+    _check_dcv_authentication_for_ad_users(
+        cluster, scheduler, test_datadir, remote_command_executor, ad_user_password, scheduler_commands_factory
+    )
+
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], remote_command_executor, scheduler_commands, False)
 
@@ -671,6 +700,30 @@ def test_ad_integration(  # noqa: C901
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser0")
 
     run_system_analyzer(cluster, scheduler_commands_factory, request)
+
+
+def _check_dcv_authentication_for_ad_users(
+    cluster, scheduler, test_datadir, remote_command_executor, ad_user_password, scheduler_commands_factory
+):
+    """Start a DCV session as each dotted/long AD user and verify the authenticator accepts it.
+
+    This exercises the DCV authenticator's session-ownership check (which resolves the username
+    to a numeric UID) against usernames that contain a dot and that are longer than 8 characters.
+    """
+    for username in DCV_AD_USERS:
+        dcv_user = ClusterUser(
+            None,
+            test_datadir,
+            cluster,
+            scheduler,
+            remote_command_executor,
+            ad_user_password,
+            scheduler_commands_factory,
+            alias=username,
+        )
+        check_dcv_session_authentication(
+            dcv_user.remote_command_executor(), DCV_AUTHENTICATOR_PORT, DCV_SHARED_DIR, dcv_user.alias
+        )
 
 
 def _check_ssh_auth(user, expect_success=True):
