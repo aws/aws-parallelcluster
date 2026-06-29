@@ -93,7 +93,7 @@ from utils import (
 )
 from xdist import get_xdist_worker_id
 
-from tests.common.capacity_helpers import resolve_instance_with_capacity
+from tests.common.capacity_helpers import get_efa_instance_types, resolve_instance_with_capacity
 from tests.common.osu_common import PRIVATE_OSES, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.storage.constants import StorageType
@@ -693,8 +693,9 @@ def inject_internal_storage_settings(kwargs):
 
 
 def inject_placement_group_settings(vpc_stack, instance, region, kwargs):
-    if vpc_stack.az_override:
-        placement_group_name = f"{instance}_placement_group_{vpc_stack.az_override}"
+    az = vpc_stack.az_override or vpc_stack.default_az_id
+    if az:
+        placement_group_name = f"{instance}_placement_group_{az}"
         try:
             ec2_client = boto3.client("ec2", region_name=region)
             ec2_client.describe_placement_groups(GroupNames=[placement_group_name])
@@ -1307,11 +1308,11 @@ def serial_execution_by_instance(request, instance, region, os_platform):
 
 
 @pytest.fixture(autouse=True)
-def resolve_default_instance(request):
-    """Resolve default instance types (c5.xlarge / m6g.xlarge) to an alternative with available capacity.
+def resolve_default_instance(request, architecture):
+    """Reserve capacity for the test instance, substituting a same-spec alternative on ICE.
 
-    Uses create_capacity_reservation as a probe — same pattern as _try_reserve_head_node_instance
-    in test_efa.py.  Only activates for the known default instance types; all others pass through.
+    Dedups against existing reservations for instances larger than ``.xlarge`` and reserves
+    EFA-capable instances with a placement group.
     When a substitute is found, ``request.node.funcargs["instance"]`` is updated so that downstream
     fixtures (architecture, pcluster_config_reader, etc.) and the test itself see the resolved value.
 
@@ -1325,9 +1326,15 @@ def resolve_default_instance(request):
     region = request.getfixturevalue("region")
     os_name = request.getfixturevalue("os")
     vpc_stack = request.getfixturevalue("vpc_stack")
+    flags = request.getfixturevalue("flags")
+    alternative_instance_types = []
+    if flags and "any-efa-instances" in flags:
+        alternative_instance_types = get_efa_instance_types(region, architecture)
 
     az_id = vpc_stack.az_override or vpc_stack.default_az_id
-    resolved = resolve_instance_with_capacity(region, az_id, instance, os_name)
+    resolved = resolve_instance_with_capacity(
+        region, az_id, instance, os_name, alternative_instance_types=alternative_instance_types
+    )
     if resolved != instance:
         logging.info("Substituted default instance %s -> %s (capacity fallback)", instance, resolved)
         request.node.funcargs["instance"] = resolved
