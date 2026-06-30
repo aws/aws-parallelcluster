@@ -1,0 +1,66 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+    ElasticIp: true
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+LoginNodes:
+  Pools:
+    - Name: login1
+      InstanceType: {{ instance }}
+      Count: {{ login_nodes_count }}
+      GracetimePeriod: 3
+      {% if patched_ami %}
+      Image:
+        CustomAmi: {{ patched_ami }}
+      {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    QueueUpdateStrategy: DRAIN
+  SlurmQueues:
+    - Name: q1
+      {% if patched_ami %}
+      Image:
+        CustomAmi: {{ patched_ami }}
+      {% endif %}
+      HealthChecks:
+        Gpu:
+          Enabled: true
+      Networking:
+        PlacementGroup:
+          {% if capacity_reservation_framework_placement_group %}
+          Enabled: true
+          Name: {{ capacity_reservation_framework_placement_group }}
+          {% else %}
+          Enabled: false
+          {% endif %}
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: cr1
+          InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: 1
+          Efa:
+            Enabled: true
+SharedStorage:
+  - MountDir: /shared-ebs
+    Name: shared-ebs
+    StorageType: Ebs
+  - MountDir: /shared-efs
+    Name: shared-efs
+    StorageType: Efs
+  - MountDir: /shared-fsxlustre
+    Name: shared-fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200

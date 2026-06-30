@@ -1,0 +1,302 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS ParallelCluster AMI patching used for tests
+
+Parameters:
+  ParentImage:
+    Description: The ParallelCluster AMI to patch.
+    Type: String
+  InstanceType:
+    Description: Instance type used by Image Builder to build the patched AMI.
+    Type: String
+  SubnetId:
+    Description: Subnet (with outbound internet access) where the build instance runs.
+    Type: AWS::EC2::Subnet::Id
+  VpcId:
+    Description: VPC of the build subnet (used for the build instance security group).
+    Type: AWS::EC2::VPC::Id
+  PatchScriptS3Uri:
+    Description: S3 URI (s3://bucket/key) of the patching script to run on the build instance.
+    Type: String
+
+Resources:
+
+  # ===========================================================================
+  # AMI helper
+  #
+  # On create it looks up the source AMI and returns its name
+  # (used as the prefix of the patched AMI name).
+  # On stack delete it deregisters the patched AMI built by this stack
+  # and deletes its backing snapshots.
+  # ===========================================================================
+
+  AmiHelper:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt AmiHelperFunction.Arn
+      SourceAmi: !Ref ParentImage
+      StackName: !Ref AWS::StackName
+
+  AmiHelperFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: python3.12
+      Timeout: 60
+      Role: !GetAtt AmiHelperRole.Arn
+      Code:
+        ZipFile: |
+          import json, urllib.request, boto3
+          ec2 = boto3.client("ec2")
+
+          def respond(event, status, data=None):
+              # CloudFormation correlates the response to the request via StackId,
+              # RequestId and LogicalResourceId, and tracks the resource via
+              # PhysicalResourceId, so all four are mandatory. Reason is only required
+              # on failure and Data only when there is something to return.
+              body = {
+                  "Status": status,
+                  "PhysicalResourceId": event.get("PhysicalResourceId", "ami-patching-helper"),
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+              }
+              if status == "FAILED":
+                  body["Reason"] = "See CloudWatch Logs"
+              if data:
+                  body["Data"] = data
+              payload = json.dumps(body).encode()
+              req = urllib.request.Request(
+                  event["ResponseURL"], data=payload, method="PUT",
+                  headers={"content-type": "", "content-length": str(len(payload))})
+              urllib.request.urlopen(req)
+
+          def cleanup(stack_name):
+              # Deregister the patched AMI(s) built by this stack and delete their
+              # snapshots. The snapshots are tagged first so DeleteSnapshot is allowed
+              # by the (tag-scoped) IAM policy.
+              if not stack_name:
+                  return
+              images = ec2.describe_images(Owners=["self"], Filters=[
+                  {"Name": "tag:parallelcluster:ami-patching-stack", "Values": [stack_name]}]).get("Images", [])
+              for img in images:
+                  snaps = [m["Ebs"]["SnapshotId"] for m in img.get("BlockDeviceMappings", [])
+                           if m.get("Ebs", {}).get("SnapshotId")]
+                  if snaps:
+                      ec2.create_tags(Resources=snaps, Tags=[
+                          {"Key": "parallelcluster:ami-patching-stack", "Value": stack_name}])
+                  ec2.deregister_image(ImageId=img["ImageId"])
+                  for snap in snaps:
+                      ec2.delete_snapshot(SnapshotId=snap)
+
+          def handler(event, context):
+              try:
+                  p = event.get("ResourceProperties", {})
+                  if event["RequestType"] == "Delete":
+                      cleanup(p.get("StackName"))
+                      return respond(event, "SUCCESS")
+                  src = p["SourceAmi"]
+                  image = ec2.describe_images(ImageIds=[src])["Images"][0]
+                  # The distributed AMI name is "<SourceName>-patched-<buildDate>" and AMI
+                  # names are capped at 128 chars. Image Builder renders buildDate as
+                  # "YYYY-MM-DD'T'HH-MM-SS'Z'" (20 chars); with the "-patched-" separator
+                  # (9 chars) the suffix is up to 29 chars, so truncate the source name to
+                  # 88 (128 - 40) to stay safely within the limit.
+                  name = image.get("Name", src)[:88]
+                  return respond(event, "SUCCESS", {"SourceName": name})
+              except Exception as e:
+                  print("Error: %s" % e)
+                  return respond(event, "FAILED")
+
+  AmiHelperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub lambda.${AWS::URLSuffix}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ami-helper
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              # ec2 Describe* actions do not support resource-level permissions.
+              - Effect: Allow
+                Action: ec2:DescribeImages
+                Resource: "*"
+              - Effect: Allow
+                Action: ec2:CreateTags
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*
+                Condition:
+                  StringEquals:
+                    aws:RequestTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
+              - Effect: Allow
+                Action: ec2:DeregisterImage
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::image/*
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
+              - Effect: Allow
+                Action: ec2:DeleteSnapshot
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
+
+  # ===========================================================================
+  # Image Builder
+  #
+  # Builds the patched AMI: the build instance downloads and runs the patching
+  # script, reboots, executes the AMI cleanup and create the new AMI.
+  # ===========================================================================
+
+  PatchedImage:
+    Type: AWS::ImageBuilder::Image
+    DependsOn: RecipeLogGroup
+    Properties:
+      ImageRecipeArn: !Ref PatchImageRecipe
+      InfrastructureConfigurationArn: !Ref PatchInfrastructureConfiguration
+      DistributionConfigurationArn: !Ref PatchDistributionConfiguration
+      ImageTestsConfiguration:
+        ImageTestsEnabled: false
+
+  PatchImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Name: !Sub pcluster-ami-patching-recipe-${AWS::StackName}
+      Version: 1.0.0
+      ParentImage: !Ref ParentImage
+      Components:
+        - ComponentArn: !Ref PatchComponent
+
+  PatchComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Name: !Sub pcluster-ami-patching-${AWS::StackName}
+      Platform: Linux
+      Version: 1.0.0
+      Description: Apply OS security patches (kernel bump allowed) to the parent image.
+      Data: !Sub |
+        name: PatchNodeSecurityUpdates
+        description: Apply OS security patches to the parent image, allowing kernel bumps.
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: PrePatchingChecks
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo "Active kernel:"
+                    - uname -r
+                    - echo "Active kernel modules:"
+                    - lsmod
+              - name: ApplyPatches
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - aws s3 cp ${PatchScriptS3Uri} /usr/local/sbin/patch_node.sh
+                    - sudo chown root:root /usr/local/sbin/patch_node.sh
+                    - sudo chmod 0744 /usr/local/sbin/patch_node.sh
+                    - sudo /usr/local/sbin/patch_node.sh
+              - name: Reboot
+                action: Reboot
+              - name: PostRebootChecks
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo "Active kernel:"
+                    - uname -r
+                    - echo "Active kernel modules:"
+                    - lsmod
+              - name: Cleanup
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - /usr/local/sbin/ami_cleanup.sh
+
+  RecipeLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/imagebuilder/pcluster-ami-patching-recipe-${AWS::StackName}
+      RetentionInDays: 7
+
+  PatchInfrastructureConfiguration:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Name: !Sub pcluster-ami-patching-config-${AWS::StackName}
+      InstanceProfileName: !Ref BuildInstanceProfile
+      InstanceTypes:
+        - !Ref InstanceType
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref BuildSecurityGroup
+      TerminateInstanceOnFailure: true
+      InstanceMetadataOptions:
+        HttpTokens: required
+
+  PatchDistributionConfiguration:
+    Type: AWS::ImageBuilder::DistributionConfiguration
+    Properties:
+      Name: !Sub pcluster-ami-patching-distribution-${AWS::StackName}
+      Distributions:
+        - Region: !Ref AWS::Region
+          AmiDistributionConfiguration:
+            Name: !Sub
+              - "${SourceName}-patched-{{ imagebuilder:buildDate }}"
+              - SourceName: !GetAtt AmiHelper.SourceName
+            AmiTags:
+              parallelcluster:ami-patching-stack: !Ref AWS::StackName
+              parallelcluster:source-ami: !Ref ParentImage
+
+  BuildInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref BuildInstanceRole
+
+  BuildInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub ec2.${AWS::URLSuffix}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: read-patch-script
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub
+                  - arn:${AWS::Partition}:s3:::${BucketAndKey}
+                  - BucketAndKey: !Select [1, !Split ["s3://", !Ref PatchScriptS3Uri]]
+
+  BuildSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the patched-AMI Image Builder build instance
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+          IpProtocol: "-1"
+
+Outputs:
+  AmiId:
+    Description: The id of the patched AMI produced by Image Builder.
+    Value: !GetAtt PatchedImage.ImageId
