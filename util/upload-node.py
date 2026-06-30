@@ -137,7 +137,8 @@ def _get_bucket_name(args, region):
 
 def _md5sum(node_archive_file, md5sum_file):
     blocksize = 65536
-    hasher = hashlib.md5()  # nosec
+    # MD5 used for a checksum/integrity manifest, not for security.
+    hasher = hashlib.md5(usedforsecurity=False)
     with open(node_archive_file, "rb") as arch:
         buf = arch.read(blocksize)
         while len(buf) > 0:
