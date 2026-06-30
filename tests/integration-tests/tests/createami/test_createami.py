@@ -166,10 +166,12 @@ def test_build_image(
     if os in ["alinux2", "alinux2023"]:
         update_os_packages = True
 
-    if os in ["rhel9", "rocky9"]:
+    if os in ["rhel9"]:
         update_os_packages = False
 
-    enable_dcv = True
+    use_newer_efa = False
+    if os in ["rocky9"]:
+        use_newer_efa = True
 
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
@@ -179,7 +181,7 @@ def test_build_image(
         enable_nvidia=str(enable_nvidia and get_gpu_count(instance) > 0).lower(),
         update_os_packages=str(update_os_packages).lower(),
         enable_lustre_client=str(enable_lustre_client).lower(),
-        enable_dcv=str(enable_dcv).lower(),
+        use_newer_efa=str(use_newer_efa).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
