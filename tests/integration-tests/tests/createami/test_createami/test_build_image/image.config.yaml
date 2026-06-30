@@ -36,8 +36,8 @@ DeploymentSettings:
         - {{ default_vpc_security_group_id }}
 DevSettings:
     TerminateInstanceOnFailure: True
-{% if enable_dcv == "false" %}
+{% if use_newer_efa == "true" %}
     Cookbook:
         ExtraChefAttributes: |
-            {"cluster": {"dcv": {"install_enabled": false}}}
+            {"cluster": {"efa": {"version": "1.49.0", "sha256": "cf2e9281a2328a243c76f911a490faed43ca0fecfe4733c25e34b2e92a32c309"}}}
 {% endif %}
