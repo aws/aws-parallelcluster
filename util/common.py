@@ -27,6 +27,17 @@ def get_aws_regions(partition):
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
 
+def assume_sts_role(endpoint, arn, external_id, client_region, session_name):
+    """Assume an IAM role via STS and return boto3-style credential kwargs."""
+    sts = boto3.client("sts", region_name=client_region, endpoint_url=endpoint)
+    credentials = sts.assume_role(RoleArn=arn, ExternalId=external_id, RoleSessionName=session_name)["Credentials"]
+    return {
+        "aws_access_key_id": credentials.get("AccessKeyId"),
+        "aws_secret_access_key": credentials.get("SecretAccessKey"),
+        "aws_session_token": credentials.get("SessionToken"),
+    }
+
+
 def retrieve_sts_credentials(credentials, client_region, regions):
     """
     Given credentials from cli, returns a json credentials object.
@@ -48,15 +59,9 @@ def retrieve_sts_credentials(credentials, client_region, regions):
     sts_credentials = {}
     for credential in credentials:
         region, endpoint, arn, external_id = credential
-        sts = boto3.client("sts", region_name=client_region, endpoint_url=endpoint)
-        assumed_role_object = sts.assume_role(
-            RoleArn=arn, ExternalId=external_id, RoleSessionName=region + "-upload_instance_slot_map_sts_session"
+        sts_credentials[region] = assume_sts_role(
+            endpoint, arn, external_id, client_region, region + "-upload_instance_slot_map_sts_session"
         )
-        sts_credentials[region] = {
-            "aws_access_key_id": assumed_role_object["Credentials"].get("AccessKeyId"),
-            "aws_secret_access_key": assumed_role_object["Credentials"].get("SecretAccessKey"),
-            "aws_session_token": assumed_role_object["Credentials"].get("SessionToken"),
-        }
 
     if sts_credentials.get("default"):
         for region in regions:

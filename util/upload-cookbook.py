@@ -38,7 +38,7 @@ def _parse_args(uploader):
 
 
 def main():
-    uploader = S3Uploader(artifact_dir=_COOKBOOKS_DIR, sts_session_name="upload_cfn_templates_sts_session")
+    uploader = S3Uploader(artifact_dir=_COOKBOOKS_DIR, sts_session_name="upload_cookbook_sts_session")
     args = _parse_args(uploader)
 
     # Check if archive exists
