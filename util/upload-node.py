@@ -26,6 +26,7 @@
 # [--credential <region>,<endpoint>,<arn>,<role>]*
 import hashlib
 import os
+import sys
 from datetime import datetime
 from importlib.metadata import version
 
@@ -195,7 +196,7 @@ def _parse_args():
         _main_region = "cn-north-1"
     else:
         print("Unsupported partition {0}".format(args.partition))
-        exit(1)
+        sys.exit(1)
 
     if args.credential:
         _credentials = [
@@ -227,7 +228,7 @@ def main():
     # Check if archive exists
     if not os.path.exists(args.node_archive_path):
         print("Node archive {0} not found".format(args.node_archive_path))
-        exit(1)
+        sys.exit(1)
 
     base_name = os.path.splitext(os.path.basename(args.node_archive_path))[0]
     _md5sum(args.node_archive_path, "{0}.md5".format(base_name))
@@ -243,7 +244,7 @@ def main():
     if len(_ls_error_array) > 0 and not args.override:
         print("We know the node archives are already there, in this round we need to upload the .date files!")
         print("Failed to push node, already present for regions: {0} ".format(" ".join(_ls_error_array)))
-        exit(1)
+        sys.exit(1)
     elif len(_ls_error_array) > 0 and args.override:
         print("Some or all of the node archives are already there but OVERRIDE=true")
 
@@ -276,7 +277,7 @@ def main():
 
     if len(_cp_error_array) > 0:
         print("Failed to push node for region ({0})".format(" ".join(_cp_error_array)))
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
