@@ -24,7 +24,7 @@ FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist":
 
 def get_aws_regions(partition):
     ec2 = boto3.client("ec2", region_name=PARTITION_TO_MAIN_REGION[partition])
-    return set(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
+    return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
 
 def retrieve_sts_credentials(credentials, client_region, regions):

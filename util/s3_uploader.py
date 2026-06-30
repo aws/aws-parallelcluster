@@ -25,12 +25,7 @@ from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
-
-PARTITION_MAIN_REGION = {
-    "commercial": "us-east-1",
-    "govcloud": "us-gov-west-1",
-    "china": "cn-north-1",
-}
+from common import PARTITION_TO_MAIN_REGION, get_aws_regions
 
 
 def add_common_arguments(parser):
@@ -88,7 +83,7 @@ class S3Uploader:
     def resolve_args(self, args):
         """Resolve partition -> main region, parse opt-in credentials, and expand
         the region list (handling "all" and purging unsupported regions)."""
-        self.main_region = PARTITION_MAIN_REGION.get(args.partition)
+        self.main_region = PARTITION_TO_MAIN_REGION.get(args.partition)
         if self.main_region is None:
             print("Unsupported partition {0}".format(args.partition))
             sys.exit(1)
@@ -101,7 +96,7 @@ class S3Uploader:
             ]
 
         if args.regions == "all":
-            args.regions = self.get_all_aws_regions(self.main_region)
+            args.regions = get_aws_regions(args.partition)
         else:
             args.regions = [x.strip() for x in args.regions.split(",")]
 
@@ -115,11 +110,6 @@ class S3Uploader:
             args.regions.add(credential[0])
 
         return args
-
-    @staticmethod
-    def get_all_aws_regions(region):
-        ec2 = boto3.client("ec2", region_name=region)
-        return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
     @staticmethod
     def get_bucket_name(args, region):
