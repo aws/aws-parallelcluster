@@ -111,6 +111,7 @@ TEST_DEFAULTS = {
     "retain_ad_stack": False,
     "global_build_number": 0,
     "proxy_stack": None,
+    "patch_ami_stack": None,
     "build_image_roles_stack": None,
     "capacity_reservation_id": None,
     "skip_ddb_metadata": False,
@@ -514,6 +515,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("proxy_stack"),
     )
     debug_group.add_argument(
+        "--patch-ami-stack",
+        help="Name of an existing CFN stack that builds the patched AMI. "
+        "When provided, the patching tests reuse this stack instead of creating and deleting a new one.",
+        default=TEST_DEFAULTS.get("patch_ami_stack"),
+    )
+    debug_group.add_argument(
         "--build-image-roles-stack",
         help="Name of CFN stack providing build image permissions.",
         default=TEST_DEFAULTS.get("build_image_roles_stack"),
@@ -771,6 +778,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.proxy_stack:
         pytest_args.extend(["--proxy-stack", args.proxy_stack])
+
+    if args.patch_ami_stack:
+        pytest_args.extend(["--patch-ami-stack", args.patch_ami_stack])
 
     if args.build_image_roles_stack:
         pytest_args.extend(["--build-image-roles-stack", args.build_image_roles_stack])

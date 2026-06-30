@@ -19,6 +19,7 @@ import uuid
 from importlib.metadata import version as get_package_version
 
 import boto3
+import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
 from framework.framework_constants import METADATA_DEFAULT_REGION, PERFORMANCE_METADATA_TABLE
@@ -26,14 +27,24 @@ from framework.metadata_table_manager import MetadataTableManager
 from packaging import version as packaging_version
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
-from time_utils import seconds
-from utils import get_instance_info, run_command
+from time_utils import minutes, seconds
+from utils import get_instance_info, get_username_for_os, run_command
 
 from tests.common.osu_common import PRIVATE_OSES
 
 LOGGER = logging.getLogger(__name__)
 
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
+
+# Cluster node types exercised by the integration tests.
+HEAD_NODE = "HeadNode"
+COMPUTE_NODE = "ComputeNode"
+LOGIN_NODE = "LoginNode"
+NODE_TYPES = (HEAD_NODE, COMPUTE_NODE, LOGIN_NODE)
+
+# Shared Slurm job script that builds and runs a single CUDA sample on a GPU
+# compute node. Used by multiple tests to validate GPU workloads.
+GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
@@ -381,6 +392,38 @@ def wait_login_node_status_ok(cluster):
         InstanceIds=cluster.get_cluster_instance_ids(node_type="LoginNode"),
         WaiterConfig={"Delay": 60, "MaxAttempts": 5},
     )
+
+
+@retry(stop_max_delay=minutes(3), wait_fixed=seconds(15))
+def wait_node_reachable(cluster, node_ip):
+    """Wait until the node at the given IP is reachable over SSH.
+
+    Retried every 15 seconds for up to 3 minutes to absorb a reboot window, and
+    confirms the node is healthy by reading its running kernel.
+    """
+    username = get_username_for_os(cluster.os)
+    ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10"
+    command = f"ssh {ssh_opts} -i {cluster.ssh_key} {username}@{node_ip} uname -r"
+    kernel = run_command(command, timeout=30, shell=True).stdout.strip()
+    logging.info("Node %s reachable over SSH; running kernel: %s", node_ip, kernel)
+
+
+@retry(stop_max_delay=minutes(5), wait_fixed=seconds(10), retry_on_result=lambda ami: ami is None)
+def retrieve_cluster_head_node_ami(cluster, region):
+    """Return the AMI id the cluster uses, read from the cluster stack template.
+
+    The AMI is read from the head node launch template (HeadNodeLaunchTemplate) in the
+    cluster CloudFormation stack template, which is available as soon as the stack is
+    created and avoids waiting for the head node instance to come up.
+    """
+    template = (
+        boto3.client("cloudformation", region_name=region).get_template(StackName=cluster.cfn_name).get("TemplateBody")
+    )
+    if isinstance(template, str):
+        template = yaml.safe_load(template)
+    if not template:
+        return None
+    return template["Resources"]["HeadNodeLaunchTemplate"]["Properties"]["LaunchTemplateData"]["ImageId"]
 
 
 def get_default_vpc_security_group(vpc_id, region):
