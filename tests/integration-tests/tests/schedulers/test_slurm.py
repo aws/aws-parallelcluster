@@ -442,6 +442,102 @@ def test_error_handling(
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.clustermgtd_instance_id_matching
+def test_clustermgtd_instance_id_matching(
+    region, os, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
+    """
+    Test that clustermgtd matches EC2 instances to Slurm nodes by InstanceId, not by private IP.
+
+    When DescribeInstances returns an instance with a missing PrivateIpAddress (EC2 eventual consistency),
+    clustermgtd must keep the instance, match it by InstanceId and leave the healthy node in place,
+    instead of replacing the node by IP matching.
+    """
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    # Trigger file consumed by setup_missing_private_ip_override.sh to toggle the simulated fault.
+    trigger_file = "/tmp/ec2_eventual_consistency_instances"
+
+    partition = "queue1"
+    num_static_nodes = 2
+    static_nodes, _ = assert_initial_conditions(scheduler_commands, num_static_nodes, 0, partition)
+
+    instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
+    node_to_instance_id = _assert_slurm_nodes_have_instance_id(scheduler_commands, static_nodes, instance_ids)
+
+    target_node = static_nodes[0]
+    target_instance_id = node_to_instance_id[target_node]
+    logging.info("Simulating missing PrivateIpAddress for node %s (instance %s)", target_node, target_instance_id)
+
+    # Shorten the clustermgtd loop so a regression (the node being replaced) surfaces within the test window.
+    loop_time = 30
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/^loop_time /d' {clustermgtd_conf_path}; "
+        f"echo 'loop_time = {loop_time}' | sudo tee -a {clustermgtd_conf_path}"
+    )
+
+    remote_command_executor.clear_clustermgtd_log()
+
+    # Restart is required because clustermgtd does not hot-reload python code.
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "setup_missing_private_ip_override.sh"), run_as_root=True
+    )
+    remote_command_executor.run_remote_command(f"echo '{target_instance_id}' | sudo tee {trigger_file}")
+    remote_command_executor.run_remote_command("sudo systemctl restart supervisord")
+
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
+        remote_command_executor, ["/var/log/parallelcluster/clustermgtd"], ["ClusterManager Startup"]
+    )
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [f"Incomplete EC2 info for instance {target_instance_id}, keeping it for instance-ID matching"],
+    )
+
+    # Let clustermgtd run several more iterations; a regression would have replaced the node by now.
+    time.sleep(4 * loop_time)
+
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        log_files=["/var/log/parallelcluster/clustermgtd"],
+        log_msg=[
+            f"no corresponding instance in EC2 for node {target_node}",
+            "because not all EC2 info are available",
+            "Updating compute fleet status from RUNNING to PROTECTED",
+        ],
+    )
+    assert_compute_node_states(scheduler_commands, [target_node], expected_states=["idle", "mixed", "allocated"])
+    # A replacement would have terminated the instance and launched a new id; assert the original survives.
+    current_instance_ids = assert_num_instances_in_cluster(cluster.cfn_name, region, num_static_nodes)
+    assert_that(current_instance_ids).contains(target_instance_id)
+
+    # Once eventual consistency resolves, the node stays healthy with no replacement.
+    logging.info("Resolving simulated eventual consistency for node %s", target_node)
+    remote_command_executor.run_remote_command(f"sudo rm -f {trigger_file}")
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_compute_node_states)(
+        scheduler_commands, [target_node], expected_states=["idle", "mixed", "allocated"]
+    )
+    assert_that(get_compute_nodes_instance_ids(cluster.cfn_name, region)).contains(target_instance_id)
+
+
+def _assert_slurm_nodes_have_instance_id(scheduler_commands, nodes, expected_instance_ids):
+    """Assert each Slurm node reports a real EC2 InstanceId; return the {node: instance_id} mapping."""
+    node_to_instance_id = {}
+    for node in nodes:
+        node_info = scheduler_commands.get_node_info(node)
+        match = re.search(r"InstanceId=(\S+)", node_info)
+        assert_that(match, f"InstanceId not set on Slurm node {node}").is_not_none()
+        instance_id = match.group(1)
+        assert_that(instance_id).is_not_equal_to("(null)")
+        assert_that(expected_instance_ids).contains(instance_id)
+        node_to_instance_id[node] = instance_id
+    return node_to_instance_id
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_protected_mode
 @pytest.mark.parametrize("scaling_strategy", ["all-or-nothing", "greedy-all-or-nothing", "best-effort"])
 def test_slurm_protected_mode(
