@@ -25,7 +25,7 @@ from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
-from common import PARTITION_TO_MAIN_REGION, get_aws_regions
+from common import PARTITION_TO_MAIN_REGION, assume_sts_role, get_aws_regions
 
 
 def add_common_arguments(parser):
@@ -133,28 +133,17 @@ class S3Uploader:
         reg_credentials = [c for c in self.credentials if c[0] == region]
 
         if reg_credentials:
-            credential = reg_credentials[0]
-            credential_region = credential[0]
-            credential_endpoint = credential[1]
-            credential_arn = credential[2]
-            credential_external_id = credential[3]
+            credential_region, credential_endpoint, credential_arn, credential_external_id = reg_credentials[0]
 
             try:
-                sts = boto3.client("sts", region_name=self.main_region, endpoint_url=credential_endpoint)
-
-                assumed_role_object = sts.assume_role(
-                    RoleArn=credential_arn,
-                    ExternalId=credential_external_id,
-                    RoleSessionName=credential_region + self.sts_session_name,
+                aws_credentials = assume_sts_role(
+                    credential_endpoint,
+                    credential_arn,
+                    credential_external_id,
+                    self.main_region,
+                    credential_region + self.sts_session_name,
                 )
-                aws_credentials = assumed_role_object["Credentials"]
-                s3 = boto3.client(
-                    "s3",
-                    region_name=credential_region,
-                    aws_access_key_id=aws_credentials.get("AccessKeyId"),
-                    aws_secret_access_key=aws_credentials.get("SecretAccessKey"),
-                    aws_session_token=aws_credentials.get("SessionToken"),
-                )
+                s3 = boto3.client("s3", region_name=credential_region, **aws_credentials)
 
             except ClientError as e:
                 print("Warning: non authorized in region '{0}', skipping".format(credential_region))
