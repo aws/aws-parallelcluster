@@ -97,11 +97,11 @@ Resources:
                       return respond(event, "SUCCESS")
                   src = p["SourceAmi"]
                   image = ec2.describe_images(ImageIds=[src])["Images"][0]
-                  # The distributed AMI name is "<SourceName>-patched-<buildDate>" and AMI
-                  # names are capped at 128 chars. Image Builder renders buildDate as
-                  # "YYYY-MM-DD'T'HH-MM-SS'Z'" (20 chars); with the "-patched-" separator
-                  # (9 chars) the suffix is up to 29 chars, so truncate the source name to
-                  # 88 (128 - 40) to stay safely within the limit.
+                  # The patched AMI name is derived from the source AMI name.
+                  # Truncate it to 88 chars to stay within the 128-char AMI name limit:
+                  # the added "patched-" prefix (8) plus the
+                  # "-<buildDate>" suffix ("-YYYY-MM-DDThh-mm-ssZ", ~21) plus margin
+                  # account for the remaining 40 chars (128 - 88).
                   name = image.get("Name", src)[:88]
                   return respond(event, "SUCCESS", {"SourceName": name})
               except Exception as e:
@@ -249,8 +249,12 @@ Resources:
       Distributions:
         - Region: !Ref AWS::Region
           AmiDistributionConfiguration:
+            # The distributed AMI name is "patched-<SourceName>-<buildDate>". The
+            # "patched-" prefix keeps the name from matching the pcluster AMI name
+            # filter used to discover base AMIs, so the patched AMI is only consumed
+            # explicitly by id and never picked up as the "latest" AMI on updates.
             Name: !Sub
-              - "${SourceName}-patched-{{ imagebuilder:buildDate }}"
+              - "patched-${SourceName}-{{ imagebuilder:buildDate }}"
               - SourceName: !GetAtt AmiHelper.SourceName
             AmiTags:
               parallelcluster:ami-patching-stack: !Ref AWS::StackName
