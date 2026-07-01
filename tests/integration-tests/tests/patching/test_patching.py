@@ -18,9 +18,11 @@ from retrying import retry
 from time_utils import minutes, seconds
 
 from tests.common.login_nodes_utils import wait_for_login_fleet_stop
+from tests.common.osu_common import PRIVATE_OSES
 from tests.common.utils import (
     COMPUTE_NODE,
     GPU_JOB_SCRIPT,
+    HEAD_NODE,
     LOGIN_NODE,
     NODE_TYPES,
     reboot_head_node,
@@ -30,6 +32,9 @@ from tests.common.utils import (
 
 # Time budget (seconds) for the OS security patching to complete on the head node.
 PATCHING_TIMEOUT = 1800
+
+# Snhared storage mount dir
+FSX_LUSTRE_MOUNT_DIR = "/shared-fsxlustre"
 
 
 def test_patching_cluster(
@@ -65,17 +70,25 @@ def test_patching_cluster(
 
     # Start the cluster creation but do not block on it: the AMI patching below
     # runs concurrently while the cluster comes up.
-    create_config = pcluster_config_reader(output_file="pcluster.config.create.yaml", login_nodes_count=1)
+    create_config = pcluster_config_reader(
+        output_file="pcluster.config.create.yaml", login_nodes_count=1, fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR
+    )
     cluster = clusters_factory(create_config, wait=False)
 
     # Use the exact AMI the cluster uses as the source for patching, read from the
     # cluster stack template instead of resolving it with a separate AMI lookup.
     base_ami = retrieve_cluster_head_node_ami(cluster, region)
-    logging.info("Cluster is running on AMI %s", base_ami)
+    logging.info("Cluster is created with AMI %s", base_ami)
+
+    # Pin the AMI on updates only for private OSes (rocky8/rocky9), where the framework
+    # re-injects the latest private AMI on every render and an update would otherwise
+    # drift to a newer, possibly not-yet-available, AMI. None means no pin.
+    base_ami_pin = base_ami if os in PRIVATE_OSES else None
 
     # Bake the patched AMI while the cluster is still being created. The builder
     # instance uses the same GPU instance type as the cluster nodes.
     patched_ami = patched_ami_factory(base_ami, instance)
+    logging.info("Patched AMI is %s", patched_ami)
 
     # Wait for the cluster creation to complete before using it.
     logging.info("Waiting for cluster %s to reach CREATE_COMPLETE", cluster.name)
@@ -90,15 +103,28 @@ def test_patching_cluster(
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=False)
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=True)
 
-    # Stop the login nodes (required before changing the login pool image).
-    stop_login_config = pcluster_config_reader(output_file="pcluster.config.stop-login.yaml", login_nodes_count=0)
+    # Stop the login nodes (required before changing the login pool image). For private
+    # OSes the cluster is pinned (via base_ami_pin) to the AMI it was created with so
+    # this update does not drift to a newer AMI.
+    stop_login_config = pcluster_config_reader(
+        output_file="pcluster.config.stop-login.yaml",
+        login_nodes_count=0,
+        base_ami=base_ami_pin,
+        fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR,
+    )
     cluster.update(str(stop_login_config))
     wait_for_login_fleet_stop(cluster)
     logging.info("Login nodes stopped")
 
-    # Update the cluster so login and compute nodes use the patched AMI.
+    # Update the cluster so login and compute nodes use the patched AMI. For private
+    # OSes the head node stays pinned (via base_ami_pin) to the AMI the cluster was
+    # created with, so only compute and login move to the patched AMI.
     update_config = pcluster_config_reader(
-        output_file="pcluster.config.update-ami.yaml", login_nodes_count=1, patched_ami=patched_ami
+        output_file="pcluster.config.update-ami.yaml",
+        login_nodes_count=1,
+        base_ami=base_ami_pin,
+        patched_ami=patched_ami,
+        fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR,
     )
     cluster.update(str(update_config))
 
@@ -129,7 +155,9 @@ def test_patching_cluster(
     # Snapshot and log the kernel modules loaded after patching, then assert (softly,
     # so every node type is reported even if one fails) that every module loaded
     # before patching is still loaded on the head, compute and login nodes.
-    kernel_modules_after = _collect_loaded_kernel_modules(cluster, scheduler_commands_factory)
+    kernel_modules_after = _collect_loaded_kernel_modules(
+        cluster, scheduler_commands_factory, trigger_head_node_mount=True
+    )
     logging.info("Kernel modules loaded after patching: %s", kernel_modules_after)
     with soft_assertions():
         for node_type in NODE_TYPES:
@@ -187,16 +215,25 @@ def _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node):
     logging.info("GPU validation job %s submitted from the %s succeeded", job_id, source)
 
 
-def _collect_loaded_kernel_modules(cluster, scheduler_commands_factory):
-    """Snapshot the loaded kernel modules on the head, compute and login nodes.
+def _collect_loaded_kernel_modules(cluster, scheduler_commands_factory, trigger_head_node_mount=False):
+    """Snapshot the loaded kernel modules per node type.
 
-    Returns a mapping of node type to the set of loaded kernel modules, so the same
-    modules can later be asserted as still loaded after patching.
+    After patching, the head node is rebooted in place, so we need to perform a read
+    operation on the FSx storage to trigger the loading of the Lustre kernel modules
+    before sampling. This is gated by trigger_head_node_mount, since it is only needed
+    for the post-reboot snapshot: before patching the mount has already been triggered,
+    and compute and login nodes perform the mount as part of their bootstrap and so
+    trigger it implicitly.
     """
-    return {
-        node_type: _loaded_kernel_modules(_node_executor(cluster, scheduler_commands_factory, node_type))
-        for node_type in NODE_TYPES
-    }
+    modules = {}
+    for node_type in NODE_TYPES:
+        executor = _node_executor(cluster, scheduler_commands_factory, node_type)
+        if node_type == HEAD_NODE and trigger_head_node_mount:
+            # Access the FSx for Lustre mountpoint to trigger its on-demand automount,
+            # so its client kernel modules get loaded before sampling.
+            executor.run_remote_command(f"ls {FSX_LUSTRE_MOUNT_DIR}")
+        modules[node_type] = _loaded_kernel_modules(executor)
+    return modules
 
 
 def _node_executor(cluster, scheduler_commands_factory, node_type):

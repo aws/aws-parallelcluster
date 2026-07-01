@@ -1,5 +1,8 @@
 Image:
   Os: {{ os }}
+  {% if base_ami %}
+  CustomAmi: {{ base_ami }}
+  {% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -59,7 +62,7 @@ SharedStorage:
   - MountDir: /shared-efs
     Name: shared-efs
     StorageType: Efs
-  - MountDir: /shared-fsxlustre
+  - MountDir: {{ fsx_lustre_mount_dir }}
     Name: shared-fsx
     StorageType: FsxLustre
     FsxLustreSettings:
