@@ -2,15 +2,32 @@
 #
 # Patching script.
 #
-# Applies all available *security* patches to the system using the native
-# package manager. Kernel packages are intentionally NOT excluded: if a
-# security fix requires a newer kernel, the bump is accepted. A reboot after
-# this script runs is required to activate a new kernel.
+# Applies OS package updates using the native package manager, in one of two
+# flavours (mandatory first argument):
+#
+#   minimal: apply only the available *security* patches (smallest set).
+#   full:    apply all available package updates (comprehensive upgrade).
+#
+# Kernel packages are intentionally NOT excluded in either flavour: if an update
+# requires a newer kernel, the bump is accepted. A reboot after this script runs
+# is required to activate a new kernel.
+#
+# Usage: patch_node.sh <minimal|full>
 #
 # Supports dnf (AL2023/RHEL9/Rocky9), yum (AL2/RHEL8) and apt (Ubuntu).
 set -euo pipefail
 
-echo "===== Starting system security patching on $(hostname) ====="
+if [[ $# -lt 1 ]]; then
+    echo "ERROR: missing mandatory patching flavour argument (minimal|full)" >&2
+    exit 1
+fi
+FLAVOUR="$1"
+if [[ "${FLAVOUR}" != "minimal" && "${FLAVOUR}" != "full" ]]; then
+    echo "ERROR: invalid patching flavour '${FLAVOUR}', expected 'minimal' or 'full'" >&2
+    exit 1
+fi
+
+echo "===== Starting system ${FLAVOUR} patching on $(hostname) ====="
 # Report the running kernel before patching. The kernel after the reboot is
 # reported separately once the node has rebooted (the reboot is mandatory to
 # activate any new kernel).
@@ -20,26 +37,41 @@ if command -v dnf >/dev/null 2>&1; then
     echo "Detected dnf package manager"
     sudo dnf clean all
     sudo dnf makecache --refresh || true
-    # Apply only security errata. Kernel packages are allowed to be upgraded.
-    sudo dnf upgrade --security -y
+    if [[ "${FLAVOUR}" == "minimal" ]]; then
+        # Apply only security errata. Kernel packages are allowed to be upgraded.
+        sudo dnf upgrade --security -y
+    else
+        # Apply all available package updates.
+        sudo dnf upgrade -y
+    fi
 elif command -v yum >/dev/null 2>&1; then
     echo "Detected yum package manager"
     sudo yum clean all
     sudo yum makecache || true
-    # update-minimal --security applies the smallest set of security errata.
-    # Kernel bumps are allowed (no --exclude=kernel*).
-    sudo yum update-minimal --security -y
+    if [[ "${FLAVOUR}" == "minimal" ]]; then
+        # update-minimal --security applies the smallest set of security errata.
+        # Kernel bumps are allowed (no --exclude=kernel*).
+        sudo yum update-minimal --security -y
+    else
+        # Apply all available package updates.
+        sudo yum update -y
+    fi
 elif command -v apt-get >/dev/null 2>&1; then
     echo "Detected apt package manager"
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update -y
-    # unattended-upgrades applies only the security pocket by default and will
-    # upgrade linux-image-* (kernel) packages when needed.
-    sudo apt-get install -y unattended-upgrades
-    sudo unattended-upgrade -v
+    if [[ "${FLAVOUR}" == "minimal" ]]; then
+        # unattended-upgrades applies only the security pocket by default and will
+        # upgrade linux-image-* (kernel) packages when needed.
+        sudo apt-get install -y unattended-upgrades
+        sudo unattended-upgrade -v
+    else
+        # Apply all available package updates, including kernel packages.
+        sudo apt-get upgrade -y
+    fi
 else
     echo "ERROR: no supported package manager found (dnf/yum/apt-get)" >&2
     exit 1
 fi
 
-echo "===== System security patching completed on $(hostname) ====="
+echo "===== System ${FLAVOUR} patching completed on $(hostname) ====="

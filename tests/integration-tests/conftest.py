@@ -1751,7 +1751,9 @@ def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_fac
     parallelcluster:source-ami and parallelcluster:ami-patching-stack. The stack's
     AmiId output is returned.
 
-    The returned callable takes the base AMI id and the builder instance type.
+    The returned callable takes the base AMI id, the builder instance type and an
+    optional patching flavour ('minimal' for security-only errata, 'full' for all
+    available package updates; defaults to 'minimal').
     On teardown the stack is deleted, which deregisters the produced AMI and its
     snapshots (deleting an Image Builder image does not remove the produced AMI).
     """
@@ -1762,7 +1764,7 @@ def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_fac
     reuse_stack_name = request.config.getoption("patch_ami_stack")
     built = []  # list of (ami_id, stack_name) for stacks created (and to be deleted) by this fixture
 
-    def _build(base_ami, builder_instance):
+    def _build(base_ami, builder_instance, flavour="minimal"):
         # Reuse an already-deployed patch-infra stack when requested: just read its
         # AmiId output and skip creation/deletion.
         if reuse_stack_name:
@@ -1770,7 +1772,12 @@ def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_fac
             stack = CfnStack(name=reuse_stack_name, region=region, template=template_body)
             return stack.cfn_outputs["AmiId"]
 
-        logging.info("Starting patching of AMI %s using a %s builder instance", base_ami, builder_instance)
+        logging.info(
+            'Starting patching of AMI %s using a %s builder instance with patching flavour "%s"',
+            base_ami,
+            builder_instance,
+            flavour,
+        )
         bucket_name = s3_bucket_factory()
         boto3.resource("s3", region_name=region).Bucket(bucket_name).upload_file(
             str(test_datadir / "patch_node.sh"), "scripts/patch_node.sh"
@@ -1786,6 +1793,7 @@ def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_fac
                 {"ParameterKey": "SubnetId", "ParameterValue": vpc_stack.get_public_subnet()},
                 {"ParameterKey": "VpcId", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
                 {"ParameterKey": "PatchScriptS3Uri", "ParameterValue": f"s3://{bucket_name}/scripts/patch_node.sh"},
+                {"ParameterKey": "PatchFlavour", "ParameterValue": flavour},
             ],
             capabilities=["CAPABILITY_IAM"],
         )

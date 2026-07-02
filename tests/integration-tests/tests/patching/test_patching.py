@@ -30,10 +30,17 @@ from tests.common.utils import (
     wait_node_reachable,
 )
 
-# Time budget (seconds) for the OS security patching to complete on the head node.
+# Time budget (seconds) for the patching to complete on the head node.
 PATCHING_TIMEOUT = 1800
 
-# Snhared storage mount dir
+# Patching flavour passed to patch_node.sh: "minimal" applies only security patches,
+# "full" applies all available OS package updates. It is selected via the test's
+# "flags" dimension: a flag "patching:<flavour>" overrides the default below.
+PATCHING_FLAG_PREFIX = "patching:"
+DEFAULT_PATCHING_FLAVOUR = "minimal"
+
+# Shared storage mount dir, injected into the cluster config as fsx_lustre_mount_dir
+# so it is defined in a single place.
 FSX_LUSTRE_MOUNT_DIR = "/shared-fsxlustre"
 
 
@@ -48,10 +55,16 @@ def test_patching_cluster(
     test_datadir,
     scheduler_commands_factory,
     patched_ami_factory,
+    flags,
     request,
 ):
     """
     Validate that users can self-patch their clusters.
+
+    The patching flavour is selected via the "flags" dimension. Supported flags:
+      - "patching:minimal": apply only security patches (smallest set).
+      - "patching:full": apply all available OS package updates (comprehensive).
+    When no patching flag is set, the flavour defaults to minimal.
 
     Flow:
       1.  Create a cluster.
@@ -87,8 +100,9 @@ def test_patching_cluster(
 
     # Bake the patched AMI while the cluster is still being created. The builder
     # instance uses the same GPU instance type as the cluster nodes.
-    patched_ami = patched_ami_factory(base_ami, instance)
-    logging.info("Patched AMI is %s", patched_ami)
+    patching_flavour = _patching_flavour(flags)
+    patched_ami = patched_ami_factory(base_ami, instance, flavour=patching_flavour)
+    logging.info("Patched AMI is %s (patching flavour: %s)", patched_ami, patching_flavour)
 
     # Wait for the cluster creation to complete before using it.
     logging.info("Waiting for cluster %s to reach CREATE_COMPLETE", cluster.name)
@@ -135,11 +149,14 @@ def test_patching_cluster(
     _wait_instances_using_ami(ec2, cluster, "Compute", patched_ami)
     _wait_instances_using_ami(ec2, cluster, "LoginNode", patched_ami)
 
-    # Patch the head node in place and reboot it.
+    # Patch the head node in place and reboot it, using the same flavour as the patched AMI.
     remote_command_executor = RemoteCommandExecutor(cluster)
-    logging.info("Patching the head node")
+    logging.info("Patching the head node with the patching flavour %s", patching_flavour)
     patch_result = remote_command_executor.run_remote_script(
-        str(test_datadir / "patch_node.sh"), run_as_root=True, timeout=PATCHING_TIMEOUT
+        str(test_datadir / "patch_node.sh"),
+        args=[patching_flavour],
+        run_as_root=True,
+        timeout=PATCHING_TIMEOUT,
     )
     logging.info("Head node patching script output:\n%s", patch_result.stdout)
     reboot_head_node(cluster)
@@ -194,6 +211,18 @@ def _wait_instances_using_ami(ec2, cluster, node_type, expected_ami):
             expected_ami,
         )
     return using_patched_ami
+
+
+def _patching_flavour(flags=()):
+    """Return the patching flavour (minimal|full) selected via the flags dimension.
+
+    Look for a flag "patching:<flavour>" and return <flavour>, falling back to the
+    default flavour when no such flag is present.
+    """
+    for flag in flags:
+        if flag.startswith(PATCHING_FLAG_PREFIX):
+            return flag.removeprefix(PATCHING_FLAG_PREFIX)
+    return DEFAULT_PATCHING_FLAVOUR
 
 
 def _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node):
