@@ -122,10 +122,12 @@ test-suites:
   #         instances: ["g4dn.8xlarge"]
   #         oss: {{ RHEL_OS_X86 }}
   #         schedulers: ["slurm"]
+  #         flags: ["patching:minimal"]
   #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
   #         instances: ["g4dn.8xlarge"]
   #         oss: {{ NO_RHEL_OS_X86 }}
   #         schedulers: ["slurm"]
+  #         flags: ["patching:minimal"]
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_1_click:
       dimensions:

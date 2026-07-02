@@ -18,6 +18,15 @@ Parameters:
   PatchScriptS3Uri:
     Description: S3 URI (s3://bucket/key) of the patching script to run on the build instance.
     Type: String
+  PatchFlavour:
+    Description: >-
+      Patching flavour passed to the patch script. 'minimal' applies only security
+      errata (smallest set); 'full' applies all available package updates.
+    Type: String
+    Default: minimal
+    AllowedValues:
+      - minimal
+      - full
 
 Resources:
 
@@ -203,7 +212,7 @@ Resources:
                     - aws s3 cp ${PatchScriptS3Uri} /usr/local/sbin/patch_node.sh
                     - sudo chown root:root /usr/local/sbin/patch_node.sh
                     - sudo chmod 0744 /usr/local/sbin/patch_node.sh
-                    - sudo /usr/local/sbin/patch_node.sh
+                    - sudo /usr/local/sbin/patch_node.sh ${PatchFlavour}
               - name: Reboot
                 action: Reboot
               - name: PostRebootChecks
