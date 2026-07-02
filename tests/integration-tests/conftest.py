@@ -1329,6 +1329,10 @@ def resolve_default_instance(request):
     flags = request.getfixturevalue("flags")
     architecture = request.getfixturevalue("architecture")
     alternative_instance_types = []
+    if instance.startswith("p"):
+        # Don't change p-series instance types, because the test is usually intended for a specific p instance type.
+        return
+
     if flags and "any-efa-instances" in flags:
         alternative_instance_types = get_efa_instance_types(region, architecture)
 
