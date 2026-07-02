@@ -796,6 +796,27 @@ def _inject_additional_iam_policies_for_nodes(
             _inject_additional_iam_policies(pool, policies)
 
 
+def _build_private_os_ami_filters(request):
+    """Build DescribeImages tag filters that pin a PRIVATE_OSES AMI to the git refs under test.
+
+    PRIVATE_OSES bypass AmiSearchFilters (CustomAmi wins), so without these filters
+    retrieve_latest_ami returns the newest pcluster AMI regardless of the refs under test.
+    Returns an empty list when no git refs are provided (released-version runs).
+    """
+    filters = []
+    for git_ref_option, tag_key in (
+        ("pcluster_git_ref", "build:parallelcluster:cli_ref"),
+        ("cookbook_git_ref", "build:parallelcluster:cookbook_ref"),
+        ("node_git_ref", "build:parallelcluster:node_ref"),
+    ):
+        git_ref = request.config.getoption(git_ref_option)
+        if git_ref:
+            filters.append({"Name": f"tag:{tag_key}", "Values": [git_ref]})
+    if filters:
+        filters.append({"Name": "tag:parallelcluster:build_status", "Values": ["available"]})
+    return filters
+
+
 def inject_additional_config_settings(  # noqa C901
     cluster_config, request, region, architecture, ami_type, benchmarks=None
 ):
@@ -845,24 +866,6 @@ def inject_additional_config_settings(  # noqa C901
     if config_content["Image"]["Os"] in PRIVATE_OSES and not dict_has_nested_key(
         config_content, ("Image", "CustomAmi")
     ):
-        # When a Git ref is provided, the test runs against AMIs built for that specific ref.
-        # Filter by the corresponding build tags instead of blindly retrieving the latest AMI.
-        additional_filters = []
-        if request.config.getoption("pcluster_git_ref"):
-            additional_filters.append(
-                {"Name": "tag:build:parallelcluster:cli_ref", "Values": [request.config.getoption("pcluster_git_ref")]}
-            )
-        if request.config.getoption("cookbook_git_ref"):
-            additional_filters.append(
-                {
-                    "Name": "tag:build:parallelcluster:cookbook_ref",
-                    "Values": [request.config.getoption("cookbook_git_ref")],
-                }
-            )
-        if request.config.getoption("node_git_ref"):
-            additional_filters.append(
-                {"Name": "tag:build:parallelcluster:node_ref", "Values": [request.config.getoption("node_git_ref")]}
-            )
         dict_add_nested_key(
             config_content,
             retrieve_latest_ami(
@@ -870,9 +873,7 @@ def inject_additional_config_settings(  # noqa C901
                 config_content["Image"]["Os"],
                 ami_type="pcluster",
                 architecture=architecture,
-                additional_filters=additional_filters,
-                request=request,
-                allow_private_ami=True,
+                additional_filters=_build_private_os_ami_filters(request),
             ),
             ("Image", "CustomAmi"),
         )
