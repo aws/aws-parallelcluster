@@ -1308,7 +1308,7 @@ def serial_execution_by_instance(request, instance, region, os_platform):
 
 
 @pytest.fixture(autouse=True)
-def resolve_default_instance(request, architecture):
+def resolve_default_instance(request):
     """Reserve capacity for the test instance, substituting a same-spec alternative on ICE.
 
     Dedups against existing reservations for instances larger than ``.xlarge`` and reserves
@@ -1318,7 +1318,7 @@ def resolve_default_instance(request, architecture):
 
     Skips silently for tests that do not use instance, region, os, or vpc_stack fixtures.
     """
-    required = ("instance", "region", "os", "vpc_stack")
+    required = ("instance", "region", "os", "vpc_stack", "architecture")
     if not all(name in request.fixturenames for name in required):
         return
 
@@ -1327,6 +1327,7 @@ def resolve_default_instance(request, architecture):
     os_name = request.getfixturevalue("os")
     vpc_stack = request.getfixturevalue("vpc_stack")
     flags = request.getfixturevalue("flags")
+    architecture = request.getfixturevalue("architecture")
     alternative_instance_types = []
     if flags and "any-efa-instances" in flags:
         alternative_instance_types = get_efa_instance_types(region, architecture)
