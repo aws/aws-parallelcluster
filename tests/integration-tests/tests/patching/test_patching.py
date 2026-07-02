@@ -148,6 +148,10 @@ def test_patching_cluster(
     # the patch left it healthy) before exercising the cluster further.
     wait_node_reachable(cluster, cluster.head_node_ip)
 
+    # Report the running kernel after the reboot.
+    kernel_after = remote_command_executor.run_remote_command("uname -r").stdout.strip()
+    logging.info("Kernel after patching: %s", kernel_after)
+
     # GPU workload AFTER patching, from the head node and login node.
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=False)
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=True)
