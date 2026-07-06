@@ -24,6 +24,7 @@ from utils import (
     get_compute_nodes_instance_ids,
     get_file_mtime_age_seconds,
     match_regex_in_log,
+    retrieve_supervisorctl_path,
     wait_for_computefleet_changed,
 )
 
@@ -203,17 +204,6 @@ def test_update_rollback_failure(
     wait_for_computefleet_changed(cluster, "RUNNING")
     _wait_for_static_nodes_ready(slurm_commands, expected_count=N_STATIC_NODES)
     logger.info("All verifications passed!")
-
-
-def _get_supervisorctl_path(remote_command_executor):
-    """Get the path to supervisorctl on the cluster."""
-    result = remote_command_executor.run_remote_command(
-        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
-    )
-    path = result.stdout.strip()
-    if not path:
-        path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
-    return path
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(10))
@@ -423,7 +413,7 @@ def _wait_for_slurm_fleet_status_manager_failure(rce: RemoteCommandExecutor):
 def _verify_clustermgtd_running(remote_command_executor):
     """Verify that clustermgtd is running."""
     logger.info("Verifying clustermgtd is running...")
-    supervisorctl_path = _get_supervisorctl_path(remote_command_executor)
+    supervisorctl_path = retrieve_supervisorctl_path(remote_command_executor)
     result = remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} status clustermgtd")
     assert_that(result.stdout).contains("RUNNING")
     logger.info("clustermgtd is running ✓")

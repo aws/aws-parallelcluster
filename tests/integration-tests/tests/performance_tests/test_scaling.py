@@ -316,6 +316,14 @@ def _scale_up_and_down(
 
     get_bootstrap_errors(remote_command_executor, cluster.name, request.config.getoption("output_dir"), region)
 
+    # Guard against the EC2 eventual-consistency regression: instances must be matched by InstanceId, not
+    # discarded for missing PrivateIpAddress.
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        log_files=["/var/log/parallelcluster/clustermgtd"],
+        log_msg=["because not all EC2 info are available"],
+    )
+
     # Extract scale up duration and timestamp from the monitoring metrics collected above
     _, scale_up_time_ec2, _ = _get_scaling_time(ec2_capacity_time_series_up, timestamps, scaling_target, start_time)
     scaling_target_time, scale_up_time_scheduler, max_compute_nodes_up = _get_scaling_time(
