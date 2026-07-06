@@ -163,7 +163,7 @@ class CfnStacksFactory:
         if id in self.__created_stacks:
             raise ValueError("Stack {0} already exists in region {1}".format(name, region))
 
-        logging.info("Creating stack {0} in region {1}".format(name, region))
+        logging.info("Creating stack {0} in region {1} with parameters: {2}".format(name, region, stack.parameters))
         is_template_url = stack.template.startswith("https://")
         with aws_credential_provider(region, self.__credentials):
             try:
