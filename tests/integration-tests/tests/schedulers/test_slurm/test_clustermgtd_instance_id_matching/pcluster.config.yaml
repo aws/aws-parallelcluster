@@ -17,5 +17,5 @@ Scheduling:
         - Name: cr1
           Instances:
             - InstanceType: {{ instance }}
-          MinCount: 2
-          MaxCount: 2
+          MinCount: {{ num_static_nodes }}
+          MaxCount: {{ num_static_nodes }}

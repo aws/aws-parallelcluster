@@ -27,6 +27,7 @@ from utils import (
     get_compute_nodes_instance_ids,
     get_instance_info,
     retrieve_clustermgtd_conf_path,
+    retrieve_supervisorctl_path,
     set_protected_failure_count,
     test_cluster_health_metric,
     wait_for_computefleet_changed,
@@ -36,6 +37,7 @@ from tests.basic import structured_log_event_utils
 from tests.common.assertions import (
     assert_lines_in_logs,
     assert_msg_in_log,
+    assert_msg_in_log_at_least,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     assert_no_node_in_ec2,
@@ -453,7 +455,8 @@ def test_clustermgtd_instance_id_matching(
     clustermgtd must keep the instance, match it by InstanceId and leave the healthy node in place,
     instead of replacing the node by IP matching.
     """
-    cluster_config = pcluster_config_reader()
+    num_static_nodes = 2
+    cluster_config = pcluster_config_reader(num_static_nodes=num_static_nodes)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -461,7 +464,6 @@ def test_clustermgtd_instance_id_matching(
     trigger_file = "/tmp/ec2_eventual_consistency_instances"
 
     partition = "queue1"
-    num_static_nodes = 2
     static_nodes, _ = assert_initial_conditions(scheduler_commands, num_static_nodes, 0, partition)
 
     instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
@@ -481,24 +483,25 @@ def test_clustermgtd_instance_id_matching(
 
     remote_command_executor.clear_clustermgtd_log()
 
-    # Restart is required because clustermgtd does not hot-reload python code.
+    # Restart clustermgtd because it does not hot-reload python code.
     remote_command_executor.run_remote_script(
         str(test_datadir / "setup_missing_private_ip_override.sh"), run_as_root=True
     )
     remote_command_executor.run_remote_command(f"echo '{target_instance_id}' | sudo tee {trigger_file}")
-    remote_command_executor.run_remote_command("sudo systemctl restart supervisord")
+    supervisorctl_path = retrieve_supervisorctl_path(remote_command_executor)
+    remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} restart clustermgtd")
 
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(1))(assert_lines_in_logs)(
         remote_command_executor, ["/var/log/parallelcluster/clustermgtd"], ["ClusterManager Startup"]
     )
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_lines_in_logs)(
-        remote_command_executor,
-        ["/var/log/parallelcluster/clustermgtd"],
-        [f"Incomplete EC2 info for instance {target_instance_id}, keeping it for instance-ID matching"],
+    # clustermgtd logs this once per iteration for the faulty instance. Waiting until it appears several
+    # times is direct evidence that multiple matching iterations processed the instance with a missing IP.
+    incomplete_ec2_info_msg = (
+        f"Incomplete EC2 info for instance {target_instance_id}, keeping it for instance-ID matching"
     )
-
-    # Let clustermgtd run several more iterations; a regression would have replaced the node by now.
-    time.sleep(4 * loop_time)
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_msg_in_log_at_least)(
+        remote_command_executor, "/var/log/parallelcluster/clustermgtd", incomplete_ec2_info_msg, count=4
+    )
 
     assert_no_msg_in_logs(
         remote_command_executor,

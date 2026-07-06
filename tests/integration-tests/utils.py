@@ -957,6 +957,16 @@ def retrieve_clustermgtd_conf_path(remote_command_executor):
     return clustermgtd_conf_path
 
 
+def retrieve_supervisorctl_path(remote_command_executor):
+    """Return the path to supervisorctl on the head node."""
+    supervisorctl_path = remote_command_executor.run_remote_command(
+        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
+    ).stdout.strip()
+    if not supervisorctl_path:
+        supervisorctl_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
+    return supervisorctl_path
+
+
 def disable_protected_mode(remote_command_executor):
     """Disable protected mode by setting protected_failure_count to -1."""
     set_protected_failure_count(remote_command_executor, -1)

@@ -18,12 +18,13 @@
 #
 # The wrapper is module-global (also used by fleet_manager) and toggled via the trigger file, which only
 # ever lists already-running instance ids. clustermgtd does not hot-reload python, so the caller must
-# restart supervisord once after this script; toggling the trigger file afterwards needs no restart.
+# restart clustermgtd once after this script; toggling the trigger file afterwards needs no restart.
 set -ex
 
 TRIGGER_FILE="/tmp/ec2_eventual_consistency_instances"
 MARKER="# pcluster-integ-test: simulate missing PrivateIpAddress"
 
+echo "Locating common/ec2_utils.py in the node virtualenv"
 mapfile -t ec2_utils_paths < <(sudo find / -path "*/node_virtualenv/*/common/ec2_utils.py")
 if [ "${#ec2_utils_paths[@]}" -eq 0 ]; then
     echo "Could not locate common/ec2_utils.py in the node virtualenv" >&2
@@ -50,22 +51,24 @@ sudo cat "${ec2_utils_path}" > "${tmp_file}"
 cat << EOF >> "${tmp_file}"
 
 ${MARKER}
-import os as _ec_os  # noqa: E402
+import os  # noqa: E402
 
-_ec_original_get_private_ip_address_and_dns_name = get_private_ip_address_and_dns_name
-_EC_TRIGGER_FILE = "${TRIGGER_FILE}"
+_original_get_private_ip_address_and_dns_name = get_private_ip_address_and_dns_name
+_MISSING_IP_TRIGGER_FILE = "${TRIGGER_FILE}"
 
 
 def get_private_ip_address_and_dns_name(instance_info):  # noqa: F811
     # Read the target instance ids from a file so the fault can be toggled without reloading the module.
-    if _ec_os.path.exists(_EC_TRIGGER_FILE):
-        with open(_EC_TRIGGER_FILE) as _trigger:
-            _targets = _trigger.read().split()
-        if instance_info.get("InstanceId") in _targets:
+    if os.path.exists(_MISSING_IP_TRIGGER_FILE):
+        with open(_MISSING_IP_TRIGGER_FILE) as trigger:
+            targets = trigger.read().split()
+        if instance_info.get("InstanceId") in targets:
             raise KeyError("PrivateIpAddress")
-    return _ec_original_get_private_ip_address_and_dns_name(instance_info)
+    return _original_get_private_ip_address_and_dns_name(instance_info)
 EOF
 
+echo "Validating that the patched ${ec2_utils_path} is syntactically valid before installing it"
 python3 -c "import ast, sys; ast.parse(open(sys.argv[1]).read())" "${tmp_file}"
 sudo cp "${tmp_file}" "${ec2_utils_path}"
 rm -f "${tmp_file}"
+echo "Wrapper installed successfully at ${ec2_utils_path}"
