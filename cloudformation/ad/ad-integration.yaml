@@ -461,8 +461,35 @@ Resources:
               aws ds describe-domain-controllers --directory-id "${DirectoryId}" --region "${AWS::Region}"
               
               ADMIN_PW="${AdminPassword}"
-              
-              USERNAMES="ReadOnlyUser,${UserNames}"
+
+              # UserNames is a comma-separated list of literal names and/or generators
+              # "prefix:<P>;num:<N>;active:<M>": create N users <P>0..<P>(N-1), of which the first M
+              # are active (only active users get a password, see PostLambda). "active" is required.
+              USER_SPEC="${UserNames}"
+              EXPANDED_USERS=$(USER_SPEC="$USER_SPEC" python3 <<'PYEOF'
+              import os
+              import re
+              GENERATOR_RE = re.compile(r"^prefix:(?P<prefix>[^;]+);num:(?P<num>\d+);active:(?P<active>\d+)$")
+              def expand_user_names(spec_string):
+                  # All users to create (every generator yields N users; "active" is ignored here).
+                  names = []
+                  for spec in spec_string.split(","):
+                      spec = spec.strip()
+                      if not spec:
+                          continue
+                      if spec.startswith("prefix:"):
+                          m = GENERATOR_RE.match(spec)
+                          if not m:
+                              raise ValueError("Invalid user spec (expected 'prefix:<P>;num:<N>;active:<M>'): " + spec)
+                          for i in range(int(m.group("num"))):
+                              names.append("{}{}".format(m.group("prefix"), i))
+                      else:
+                          names.append(spec)
+                  return names
+              print(",".join(expand_user_names(os.environ["USER_SPEC"])))
+              PYEOF
+              )
+              USERNAMES="ReadOnlyUser,$EXPANDED_USERS"
               echo "Registering Users: $USERNAMES ..."
               for username in $(echo $USERNAMES | sed "s/,/ /g")
               do
@@ -572,14 +599,35 @@ Resources:
           import logging
           import random
           import string
+          import re
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
           ds = boto3.client("ds")
           ec2 = boto3.client("ec2")
+          GENERATOR_RE = re.compile(r"^prefix:(?P<prefix>[^;]+);num:(?P<num>\d+);active:(?P<active>\d+)$")
 
           def create_physical_resource_id():
               alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
               return ''.join(random.choice(alnum) for _ in range(16))
+
+          def active_user_names(spec_string):
+              # Only the active users (first M of each generator); these get a password.
+              names = []
+              for spec in spec_string.split(","):
+                  spec = spec.strip()
+                  if not spec:
+                      continue
+                  if spec.startswith("prefix:"):
+                      m = GENERATOR_RE.match(spec)
+                      if not m:
+                          raise ValueError("Invalid user spec (expected 'prefix:<P>;num:<N>;active:<M>'): " + spec)
+                      num = int(m.group("num"))
+                      active = int(m.group("active"))
+                      for i in range(min(active, num)):
+                          names.append("{}{}".format(m.group("prefix"), i))
+                  else:
+                      names.append(spec)
+              return names
 
           def redact_keys(event: dict, redactions: set):
               ret = {}
@@ -610,8 +658,7 @@ Resources:
                   response_data['Message'] = 'Resource creation successful!'
                   physical_resource_id = create_physical_resource_id()
                   ds.reset_user_password(DirectoryId=directory_id, UserName='ReadOnlyUser', NewPassword=read_only_password)
-                  for name in user_names.split(","):
-                    name = name.strip()
+                  for name in active_user_names(user_names):
                     ds.reset_user_password(DirectoryId=directory_id, UserName=name, NewPassword=user_password)
                   ds.reset_user_password(DirectoryId=directory_id, UserName=admin, NewPassword=admin_password)
                   ec2.stop_instances(InstanceIds=[instance_id])
