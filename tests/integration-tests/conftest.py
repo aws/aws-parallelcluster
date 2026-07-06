@@ -845,6 +845,24 @@ def inject_additional_config_settings(  # noqa C901
     if config_content["Image"]["Os"] in PRIVATE_OSES and not dict_has_nested_key(
         config_content, ("Image", "CustomAmi")
     ):
+        # When a Git ref is provided, the test runs against AMIs built for that specific ref.
+        # Filter by the corresponding build tags instead of blindly retrieving the latest AMI.
+        additional_filters = []
+        if request.config.getoption("pcluster_git_ref"):
+            additional_filters.append(
+                {"Name": "tag:build:parallelcluster:cli_ref", "Values": [request.config.getoption("pcluster_git_ref")]}
+            )
+        if request.config.getoption("cookbook_git_ref"):
+            additional_filters.append(
+                {
+                    "Name": "tag:build:parallelcluster:cookbook_ref",
+                    "Values": [request.config.getoption("cookbook_git_ref")],
+                }
+            )
+        if request.config.getoption("node_git_ref"):
+            additional_filters.append(
+                {"Name": "tag:build:parallelcluster:node_ref", "Values": [request.config.getoption("node_git_ref")]}
+            )
         dict_add_nested_key(
             config_content,
             retrieve_latest_ami(
@@ -852,6 +870,9 @@ def inject_additional_config_settings(  # noqa C901
                 config_content["Image"]["Os"],
                 ami_type="pcluster",
                 architecture=architecture,
+                additional_filters=additional_filters,
+                request=request,
+                allow_private_ami=True,
             ),
             ("Image", "CustomAmi"),
         )
