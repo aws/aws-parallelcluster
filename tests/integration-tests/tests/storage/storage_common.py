@@ -584,6 +584,57 @@ def check_fstab_file(remote_command_executor, expected_entry):
     assert_that(result.stdout).matches(expected_entry)
 
 
+def assert_client_lockd_uses_port(remote_command_executor, ontap_volume_id, expected_port=4045):
+    """
+    Verify the client-side NFS lock manager (lockd/NLM) uses the pinned, non-ephemeral port.
+
+    ParallelCluster mounts everything it manages over NFSv4, so lockd is only exercised when a
+    customer mounts an external NFSv3 server. We reproduce that here by explicitly mounting an
+    FSx ONTAP volume with `vers=3` (ParallelCluster itself would mount ONTAP as v4 by default).
+
+    We then assert lockd bound the pinned port 4045 rather than the historical port 32768.
+    """
+    logging.info("Checking client-side lockd binds port %s on an NFSv3 mount", expected_port)
+    mount_dir = "/mnt/nfsv3_lockd_check"
+    fsx_client = boto3.client("fsx")
+    volume = fsx_client.describe_volumes(VolumeIds=[ontap_volume_id]).get("Volumes")[0]
+    junction_path = volume["OntapConfiguration"]["JunctionPath"]
+    svm_id = volume["OntapConfiguration"]["StorageVirtualMachineId"]
+    dns_name = fsx_client.describe_storage_virtual_machines(StorageVirtualMachineIds=[svm_id])[
+        "StorageVirtualMachines"
+    ][0]["Endpoints"]["Nfs"]["DNSName"]
+
+    remote_command_executor.run_remote_command(f"sudo mkdir -p {mount_dir}")
+    # Retry the v3 mount a few times to make the test robust.
+    remote_command_executor.run_remote_command(
+        f"for i in $(seq 1 6); do sudo mount -t nfs -o vers=3 {dns_name}:{junction_path} {mount_dir} "
+        f"&& break || {{ echo 'mount attempt '$i' failed, retrying'; sleep 10; }}; done"
+    )
+    try:
+        # Confirm the mount is actually NFSv3.
+        mounts = remote_command_executor.run_remote_command(f"mount | grep ' {mount_dir} '").stdout
+        assert_that(mounts).matches(r"vers=3|nfsvers=3")
+
+        # A POSIX (fcntl) lock over NFSv3 triggers NLM, bringing lockd up so it binds its port.
+        remote_command_executor.run_remote_command(
+            f"sudo timeout 30 python3 -c \"import fcntl; f=open('{mount_dir}/.lockd_probe','w'); "
+            'fcntl.lockf(f, fcntl.LOCK_EX); fcntl.lockf(f, fcntl.LOCK_UN)" || true'
+        )
+
+        # nlockmgr must be registered on the pinned port, and never on 32768.
+        rpcinfo = remote_command_executor.run_remote_command("rpcinfo -p localhost").stdout
+        assert_that(rpcinfo).matches(rf"\b{expected_port}\s+nlockmgr")
+        assert_that(rpcinfo).does_not_match(r"\b32768\s+nlockmgr")
+
+        # lockd should be listening on the pinned port and nothing should be on 32768.
+        listening = remote_command_executor.run_remote_command(
+            f"sudo ss -tuln | grep -E ':{expected_port}(\\s|$)' || true"
+        ).stdout
+        assert_that(listening).is_not_empty()
+    finally:
+        remote_command_executor.run_remote_command(f"sudo umount {mount_dir} || true")
+
+
 def assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, volume_id):
     logging.info("Testing fsx OpenZFS is correctly mounted on the head node")
     result = remote_command_executor.run_remote_command("df -h -t nfs4")
@@ -793,7 +844,7 @@ def get_mount_name(fsx_fs_id, region):
 
 def create_fsx_ontap(fsx_factory, num, vpc=None, subnet=None):
     return fsx_factory(
-        ports=[111, 635, 2049, 4046],
+        ports=[111, 635, 2049, 4045, 4046],
         ip_protocols=["tcp", "udp"],
         num=num,
         vpc=vpc,
