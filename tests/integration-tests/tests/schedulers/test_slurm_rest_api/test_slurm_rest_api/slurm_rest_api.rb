@@ -179,7 +179,7 @@ end
 ruby_block 'Wait for slurmrestd' do
   block do
     iter=0
-    until ::File.exists?("#{socket_location}/slurmrestd.sock") || iter > 20 do
+    until ::File.exist?("#{socket_location}/slurmrestd.sock") || iter > 20 do
       sleep 1
       iter += 1
     end

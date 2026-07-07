@@ -35,8 +35,9 @@ from xdist import get_xdist_worker_id
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
 
-NUM_USERS_TO_CREATE = 5
+NUM_USERS_TO_CREATE = 1000
 NUM_USERS_TO_TEST = 3
+USER_NAME_PREFIX = "PclusterUser"
 
 
 def get_infra_stack_outputs(stack_name):
@@ -159,9 +160,10 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
     private_subnets = vpc_stack.get_all_private_subnets().copy()
     private_subnets.remove(private_subnet)
 
-    users = ""
-    for i in range(NUM_USERS_TO_CREATE):
-        users += f"PclusterUser{i},"
+    # Compact generator (stays under CFN's 4096-char param limit): create NUM_USERS_TO_CREATE users
+    # but only activate the first NUM_USERS_TO_TEST (the ones the test logs in with) to keep the
+    # password-reset step under the custom-resource Lambda timeout.
+    users = f"prefix:{USER_NAME_PREFIX};num:{NUM_USERS_TO_CREATE};active:{NUM_USERS_TO_TEST}"
 
     stack_parameters = [
         {
@@ -176,7 +178,7 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
             "ParameterKey": "ReadOnlyPassword",
             "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
         },
-        {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
+        {"ParameterKey": "UserNames", "ParameterValue": users},
         {
             "ParameterKey": "UserPassword",
             "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
