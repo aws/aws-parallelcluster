@@ -8,9 +8,11 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import logging
 import random
 from collections import OrderedDict
+from typing import List
 
 import boto3
 from assertpy import assert_that
@@ -26,6 +28,8 @@ from utils import (
     retrieve_tags,
     to_pascal_from_kebab_case,
 )
+
+SENSITIVE_PARAMETER_NAME_SUBSTRINGS = ("password", "secret")
 
 
 class CfnStack:
@@ -47,6 +51,21 @@ class CfnStack:
         self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
         self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
         self.tags = retrieve_tags(self.name, self.region)
+
+    @property
+    def obfuscated_parameters(self) -> List[dict]:
+        """
+        Return a copy of the stack parameters with sensitive values obfuscated.
+
+        A parameter is considered sensitive when its ParameterKey contains "password" or "secret"
+        (case insensitive). This is used to avoid logging secret values.
+        """
+        obfuscated = copy.deepcopy(self.parameters)
+        for parameter in obfuscated:
+            key = parameter.get("ParameterKey", "")
+            if any(substring in key.lower() for substring in SENSITIVE_PARAMETER_NAME_SUBSTRINGS):
+                parameter["ParameterValue"] = "****"
+        return obfuscated
 
     @property
     def cfn_outputs(self):
@@ -163,7 +182,9 @@ class CfnStacksFactory:
         if id in self.__created_stacks:
             raise ValueError("Stack {0} already exists in region {1}".format(name, region))
 
-        logging.info("Creating stack {0} in region {1} with parameters: {2}".format(name, region, stack.parameters))
+        logging.info(
+            "Creating stack {0} in region {1} with parameters: {2}".format(name, region, stack.obfuscated_parameters)
+        )
         is_template_url = stack.template.startswith("https://")
         with aws_credential_provider(region, self.__credentials):
             try:
