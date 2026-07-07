@@ -15,6 +15,7 @@ CHANGELOG
 - The CLI now requires the additional permission `tag:GetResources`.
 - Add support for Python 3.13 in pcluster CLI
 - Enforce NFSv4-only on the ParallelCluster-managed NFS server (head node). The NFSv3 client stack (rpcbind, rpc-statd, lockd) are unchanged, so cluster nodes can still mount external NFSv3 servers.
+- Change the default NFS lock manager port from 32768 to 4045. 32768 is in the Linux ephemeral port range (32768–60999), causing sporadic mount failures because of port collision. This only affects nodes that mount an external NFSv3 server; all ParallelCluster managed storage is mounted over NFSv4 and is unaffected. Customers who mount external NFSv3 servers and restrict NFS ports in a firewall must allow TCP/UDP 4045 instead of 32768.
 
 **BUG FIXES**
 - Fix sporadic S3 bucket (with name parallelcluster-*-v1-do-not-delete) creation failure when multiple create-cluster commands are running simultaneously in the same region.
