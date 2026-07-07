@@ -242,15 +242,17 @@ def test_build_image(
     )
 
     with soft_assertions():
-        _test_build_image_success(image, request.config.getoption("output_dir"))
+        _wait_for_build_instance(image, region)
         _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
         _test_build_imds_settings(image, "required", region)
+
+        _test_build_image_success(image, request.config.getoption("output_dir"))
+        _test_export_logs(s3_bucket_factory, image, region)
+        _test_export_logs(s3_bucket_factory, image, region, True)
         _test_image_tag_and_volume(image)
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
         _test_list_images(image)
-        _test_export_logs(s3_bucket_factory, image, region)
-        _test_export_logs(s3_bucket_factory, image, region, True)
 
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
@@ -563,6 +565,28 @@ def test_build_image_custom_components(
     _test_build_image_success(image, request.config.getoption("output_dir"))
 
 
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(10))
+def _wait_for_build_instance(image, region):
+    """Wait until the ImageBuilder build instance is launched.
+
+    The build instance exists only while the image is being built; it is terminated and the build-image
+    stack self-deletes once the image reaches BUILD_COMPLETE. Waiting for it here lets the tag and IMDS
+    checks run against a live instance instead of racing the teardown or passing vacuously.
+    """
+    instance_name = f"Build instance for ParallelClusterImage-{image.image_id}"
+    reservations = (
+        boto3.client("ec2", region_name=region)
+        .describe_instances(
+            Filters=[
+                {"Name": "tag:Name", "Values": [instance_name]},
+                {"Name": "instance-state-name", "Values": ["running"]},
+            ]
+        )
+        .get("Reservations")
+    )
+    return [instance for reservation in reservations for instance in reservation.get("Instances", [])]
+
+
 def _test_build_imds_settings(image, status, region):
     logging.info(f"Checking that the ImageBuilder instances have IMDSv2 {status}")
 
@@ -603,8 +627,10 @@ def _test_build_image_success(image, output_dir):
     pcluster_describe_image_result = image.describe()
     logging.info(pcluster_describe_image_result)
 
+    # Poll every 5 minutes so BUILD_COMPLETE is detected close to when it happens. The build-image stack
+    # self-deletes on build success, so detecting completion sooner reduces the export-image-logs race window.
     while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
-        time.sleep(600)
+        time.sleep(300)
         pcluster_describe_image_result = image.describe()
         logging.info(pcluster_describe_image_result)
     if image.image_status != "BUILD_COMPLETE":
