@@ -29,8 +29,10 @@ from common import PARTITION_TO_MAIN_REGION, assume_sts_role, get_aws_regions
 
 
 def add_common_arguments(parser):
-    """Add the CLI arguments shared by all artifact uploaders. Callers add their
-    own artifact-path argument (e.g. --node-archive-path)."""
+    """Add the CLI arguments shared by all artifact uploaders.
+
+    Callers add their own artifact-path argument (e.g. --node-archive-path).
+    """
     parser.add_argument(
         "--regions",
         type=str,
@@ -81,8 +83,11 @@ class S3Uploader:
         self.main_region = None
 
     def resolve_args(self, args):
-        """Resolve partition -> main region, parse opt-in credentials, and expand
-        the region list (handling "all" and purging unsupported regions)."""
+        """Resolve partition, credentials, and the effective region list from CLI args.
+
+        Maps partition -> main region, parses opt-in credentials, and expands the region
+        list (handling "all" and purging unsupported regions).
+        """
         self.main_region = PARTITION_TO_MAIN_REGION.get(args.partition)
         if self.main_region is None:
             print("Unsupported partition {0}".format(args.partition))
@@ -113,10 +118,12 @@ class S3Uploader:
 
     @staticmethod
     def get_bucket_name(args, region):
+        """Return the target bucket: the explicit --bucket override, else <region>-aws-parallelcluster."""
         return region + "-aws-parallelcluster" if not args.bucket else args.bucket
 
     @staticmethod
     def md5sum(archive_file, md5sum_file):
+        """Write an md5 checksum manifest for archive_file to md5sum_file."""
         blocksize = 65536
         # MD5 used for a checksum/integrity manifest, not for security.
         hasher = hashlib.md5(usedforsecurity=False)
@@ -130,6 +137,7 @@ class S3Uploader:
             md5.write("{0}  {1}".format(hasher.hexdigest(), os.path.basename(archive_file)))
 
     def create_s3_client(self, region):
+        """Return an S3 client for region, assuming the opt-in STS role when one is configured."""
         reg_credentials = [c for c in self.credentials if c[0] == region]
 
         if reg_credentials:
@@ -153,11 +161,13 @@ class S3Uploader:
         return s3
 
     def aws_s3_ls(self, s3, region, bucket_name, key):
+        """Record region in ls_error_array if an object already exists under key in bucket_name."""
         out = s3.list_objects_v2(Bucket=bucket_name, Prefix=key)
         if len(out.get("Contents", [])) > 0:
             self.ls_error_array.add(region)
 
     def aws_s3_bck(self, s3, args, region, bucket_name, full_name):
+        """Back up an existing artifact to the backup dir; record region on failure."""
         if args.dryrun:
             print(
                 "Not backing up {0} to bucket {1} override is {2}, dryrun is {3}".format(
@@ -175,6 +185,7 @@ class S3Uploader:
                 self.bck_error_array.add(region)
 
     def aws_s3_cp(self, s3, args, region, bucket_name, folder, src_file):
+        """Upload src_file to bucket_name under folder (public-read); record region on failure."""
         key = folder + "/" + os.path.basename(src_file)
         print("Bucket dest key: {0}".format(key))
         if args.dryrun:
