@@ -50,6 +50,9 @@ TOLERATED_CRASH_PATTERNS = [
     re.compile(r"gnome-software.*scroll_to \(libadwaita", re.DOTALL),
     # tracker-miner-fs-3, tracker-extract, and tracker-store crash on Ubuntu/RHEL — GNOME file indexer, unrelated to DCV
     re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
+    # ibus-extension-gtk3 aborts in the GNOME session — GNOME input-method component, unrelated to DCV.
+    # Observed on ubuntu2404/arm64 (g5g).
+    re.compile(r"ibus-extension-gtk3", re.DOTALL),
 ]
 
 
