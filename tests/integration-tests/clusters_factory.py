@@ -12,6 +12,7 @@
 import functools
 import json
 import logging
+import re
 import subprocess
 import time
 
