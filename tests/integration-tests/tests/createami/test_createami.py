@@ -72,16 +72,11 @@ def _get_base_ami(region, os, architecture):
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
         enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
     elif "rhel" in os or "ubuntu" in os or os == "rocky8":
-        # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
-        try:
-            base_ami = retrieve_latest_ami(region, os, ami_type="first_stage", architecture=architecture)
-        except IndexError:  # If first stage AMI is not available, use official AMI.
-            # Therefore, the test tries to succeed at best effort.
-            logging.info("First stage AMI not available, using official AMI instead.")
-            base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-            update_os_packages = True
-            if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
-                enable_lustre_client = False
+        # Use official AMIs. First stage AMIs must not be used as parent image in this test.
+        base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
+        update_os_packages = True
+        if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
+            enable_lustre_client = False
     else:
         # Test vanilla AMIs.
         base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
