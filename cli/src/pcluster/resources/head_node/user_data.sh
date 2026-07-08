@@ -72,7 +72,7 @@ function error_exit
   sleep 10
   # trim the error message because there is a size limit of 4096 bytes for cfn-signal
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html
-  cutoff=$(expr 4096 - $(stat --printf="%s" /tmp/wait_condition_handle.txt))
+  cutoff=$(expr 4096 - $(stat --printf="%s" ${PclusterTmpDir}/wait_condition_handle.txt))
   reason=$(head --bytes=${!cutoff} /var/log/parallelcluster/bootstrap_error_msg 2>/dev/null) || reason="$1"
   $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-signal --exit-code=1 --reason="${!reason}" "${!wait_condition_handle_presigned_url}" --region ${AWS::Region} --url ${CloudFormationUrl}
   exit 1
@@ -91,9 +91,9 @@ export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aw
 # Load ParallelCluster environment variables
 [ -f /etc/parallelcluster/pcluster_cookbook_environment.sh ] && . /etc/parallelcluster/pcluster_cookbook_environment.sh
 
-cd /tmp
+cd ${PclusterTmpDir}
 $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region} --url ${CloudFormationUrl}
-wait_condition_handle_presigned_url=$(cat /tmp/wait_condition_handle.txt)
+wait_condition_handle_presigned_url=$(cat ${PclusterTmpDir}/wait_condition_handle.txt)
 
 custom_cookbook=${CustomChefCookbook}
 export _region=${AWS::Region}

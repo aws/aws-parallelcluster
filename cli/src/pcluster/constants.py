@@ -245,6 +245,12 @@ DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 
 DEFAULT_EPHEMERAL_DIR = "/scratch"
 
+# Dedicated ParallelCluster-managed directory used to stage bootstrap files (dna.json, extra.json,
+# wait_condition_handle.txt, bootstrap.sh) instead of /tmp, so bootstrap works when /tmp is mounted
+# with noexec. Defined once here and referenced by cluster_stack.py (cfn-init) and the user_data
+# templates (via the PclusterTmpDir Fn::Sub variable).
+PCLUSTER_TMP_DIR = "/opt/parallelcluster/tmp"
+
 LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 
 IAM_NAME_PREFIX_LENGTH_LIMIT = 30

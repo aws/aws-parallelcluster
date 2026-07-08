@@ -76,6 +76,7 @@ from pcluster.constants import (
     P6E_GB200,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_S3_ARTIFACTS_DICT,
+    PCLUSTER_TMP_DIR,
     SLURM_PORTS_RANGE,
 )
 from pcluster.models.s3_bucket import S3Bucket
@@ -1430,29 +1431,20 @@ class ClusterCdkStack:
             },
             "deployConfigFiles": {
                 "files": {
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/dna.json": {  # nosec B108
+                    f"{PCLUSTER_TMP_DIR}/dna.json": {
                         "content": dna_json,
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
                         "encoding": "plain",
                     },
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/extra.json": {  # nosec B108
+                    f"{PCLUSTER_TMP_DIR}/extra.json": {
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
                         "content": self.config.extra_chef_attributes,
                     },
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/wait_condition_handle.txt": {  # nosec B108
+                    f"{PCLUSTER_TMP_DIR}/wait_condition_handle.txt": {
                         "mode": "000600",
                         "owner": "root",
                         "group": "root",
@@ -1464,8 +1456,9 @@ class ClusterCdkStack:
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
-                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
+                            f'jq -s ".[0] * .[1]" {PCLUSTER_TMP_DIR}/dna.json '
+                            f"{PCLUSTER_TMP_DIR}/extra.json > /etc/chef/dna.json "
+                            f'|| ( echo "jq not installed"; cp {PCLUSTER_TMP_DIR}/dna.json /etc/chef/dna.json )'
                         )
                     },
                 },
