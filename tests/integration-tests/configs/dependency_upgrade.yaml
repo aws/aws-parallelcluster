@@ -1,0 +1,176 @@
+{%- import 'common.jinja2' as common with context -%}
+{{- common.OSS_COMMERCIAL_X86.append("rocky8") or "" -}}
+{{- common.OSS_COMMERCIAL_X86.append("rocky9") or "" -}}
+---
+# Config for the dependency-upgrade integration run (check_dependency_updates_pipeline).
+#
+# Purpose: validate that the OS AMIs built with upgraded dependencies still work. Curated
+# subset of develop.yaml covering the features tied to the upgradable deps (see
+# DEP_TEST_FEATURES in check_dependency_updates.py): slurm stack, efa, dcv, pyxis,
+# efs/internal_efs/shared_home, slurm accounting/rest, gpu health checks.
+#
+# OS coverage vs. capacity:
+#   - Plain-region tests (c5.xlarge / m6g.xlarge, no capacity constraint) use
+#     {{ AVAILABLE_AMIS_OSS_X86 }} / {{ AVAILABLE_AMIS_OSS_ARM }} so every OS built this run is
+#     exercised, per architecture.
+#   - Capacity-sensitive tests (GPU/EFA/DCV instances) keep develop.yaml's capacity-reservation
+#     region AND its single OS verbatim: the reservation is per-OS, so these cannot fan out over
+#     all OSes without hitting ICE. Do not replace their region/oss.
+#
+# Excludes special-hardware tests (gb200/p6e/trainium/capacity blocks) that require
+# INSTANCE_TYPES_DATA and dedicated capacity; they do not validate dependency upgrades.
+test-suites:
+  basic:
+    # Capacity-reservation pinned (GPU/DCV instance) - keep region+oss verbatim from develop.yaml.
+    test_essential_features.py::test_essential_features:
+      dimensions:
+        - regions: [{{ US_EAST_1_INSTANCE_TYPE_0_xlarge_CAPACITY_RESERVATION_8_INSTANCES_2_HOURS_NOPG_DCV_OS_X86_1__g5g_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_1 }}]
+          instances: [{{ US_EAST_1_INSTANCE_TYPE_0 }}.xlarge]
+          oss: [{{ DCV_OS_X86_1 }}]
+          schedulers: ["slurm"]
+  dcv:
+    # Capacity-reservation pinned (GPU instances) - keep verbatim.
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        # Fan out over all built OSes: two same-AZ reservations split by platform
+        # (RHEL vs Linux/UNIX). 3 g4dn per cluster; sized for worst case 5 non-RHEL + 2 RHEL OSes.
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_15_INSTANCES_1_HOURS_NOPG_OTHER__g4dn_2xlarge_CAPACITY_RESERVATION_6_INSTANCES_1_HOURS_NOPG_rhel }}]
+          instances: ["g4dn.2xlarge"]
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+        - regions: [{{ g5g_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_3 }}]
+          instances: ["g5g.2xlarge"]
+          oss: [{{ DCV_OS_X86_3 }}]
+          schedulers: ["slurm"]
+  capacity_reservations:
+    # Verbatim from develop.yaml.
+    test_on_demand_capacity_reservation.py::test_on_demand_capacity_reservation:
+      dimensions:
+        - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [{{ OS_X86_3 }}]
+    test_capacity_blocks.py::test_capacity_blocks:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [{{ OS_X86_5 }}]
+          schedulers: ["slurm"]
+  efa:
+    # Fan out the vanilla EFA instances (c5n x86, c6gn ARM) over all built OSes via two
+    # same-AZ reservations split by platform (RHEL vs Linux/UNIX). 3 instances/cluster
+    # (2 compute + 1 head); worst case 5 non-RHEL + 2 RHEL OSes. GPU/HPC-specific EFA
+    # dims (p4d/p6-b200/hpc6id/hpc6a) test instance-specific behavior, not deps, and are dropped.
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_15_INSTANCES_1_HOURS_YESPG_OTHER__c5n_18xlarge_CAPACITY_RESERVATION_6_INSTANCES_1_HOURS_YESPG_rhel }}]
+          instances: ["c5n.18xlarge"]
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+        - regions: [{{ c6gn_16xlarge_CAPACITY_RESERVATION_15_INSTANCES_1_HOURS_YESPG_OTHER__c6gn_16xlarge_CAPACITY_RESERVATION_6_INSTANCES_1_HOURS_YESPG_rhel }}]
+          instances: ["c6gn.16xlarge"]
+          oss: {{ AVAILABLE_AMIS_OSS_ARM }}
+          schedulers: ["slurm"]
+  ultraserver:
+    # Verbatim from develop.yaml. Needs INSTANCE_TYPES_DATA (p6e-gb200.36xlarge).
+    test_gb200.py::test_gb200:
+      dimensions:
+        - regions: [ "use1-az1" ]  # do not move, unless instance type support is moved as well
+          instances: [ "g5g.xlarge" ]
+          oss: [ "alinux2023" ]
+          schedulers: [ "slurm" ]
+        - regions: [ "usw2-az4" ]  # do not move, unless instance type support is moved as well
+          instances: [ "p6e-gb200.36xlarge" ]
+          oss: [ "ubuntu2204", "ubuntu2404", "rocky9", "alinux2023", "rhel9" ]
+          schedulers: [ "slurm" ]
+  health_checks:
+    # Capacity-reservation pinned (GPU instance) - keep verbatim.
+    test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
+      dimensions:
+        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_OS_X86_5 }}]
+          instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}]
+          oss: [{{ OS_X86_5 }}]
+          schedulers: ["slurm"]
+  pyxis:
+    test_pyxis.py::test_pyxis:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_scaling:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_custom_munge_key.py::test_custom_munge_key:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_slurm_accounting.py::test_slurm_accounting:
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_slurm_accounting.py::test_slurm_accounting_external_dbd:
+      dimensions:
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_slurm_rest_api.py::test_slurm_rest_api:
+      dimensions:
+        - regions: ["eu-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+  storage:
+    test_efs.py::test_efs_access_point:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    # EFS tests can be done in any region.
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_efs.py::test_efs_same_az:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: [ "slurm" ]
+    # The checks performed in test_efs_same_az is similar to test_multiple_efs.
+    # We should consider this when assigning dimensions to each test.
+    test_efs.py::test_multiple_efs:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: [ "slurm" ]
+    test_shared_home.py::test_shared_home:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
+    test_internal_efs.py::test_internal_efs:
+      dimensions:
+        - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT }}
+          oss: {{ AVAILABLE_AMIS_OSS_X86 }}
+          schedulers: ["slurm"]
