@@ -3,7 +3,7 @@
 #SBATCH --output=cuda-gpu-validate-%j.out
 
 # Build and run a single CUDA sample (passed as a script argument) from the
-# pre-installed /usr/local/cuda-samples-13.0 tree. CUDA samples 13.x are
+# pre-installed /usr/local/cuda-samples-* tree. CUDA samples 13.x are
 # CMake-only and /usr/local/... isn't writable, so the script copies the
 # sample into a temp dir before building.
 
@@ -27,9 +27,20 @@ nvidia-smi -L
 nvidia-smi
 nvcc --version
 
-SAMPLES_SRC=/usr/local/cuda-samples-13.0
-if [[ ! -d "$SAMPLES_SRC/Samples/$SAMPLE_REL" ]]; then
-    echo "ERROR: sample not found: $SAMPLES_SRC/Samples/$SAMPLE_REL" >&2
+# Pick whichever cuda-samples-<ver> tree is installed (version not hardcoded).
+SAMPLES_SRC=$(ls -d /usr/local/cuda-samples-* 2>/dev/null | sort -V | tail -1)
+if [[ -z "$SAMPLES_SRC" ]]; then
+    echo "ERROR: no /usr/local/cuda-samples-* tree found" >&2
+    exit 2
+fi
+
+# 13.3+ moved C++ samples under cpp/; older trees keep them under Samples/.
+if [[ -d "$SAMPLES_SRC/cpp/$SAMPLE_REL" ]]; then
+    SAMPLE_ROOT="$SAMPLES_SRC/cpp"
+elif [[ -d "$SAMPLES_SRC/Samples/$SAMPLE_REL" ]]; then
+    SAMPLE_ROOT="$SAMPLES_SRC/Samples"
+else
+    echo "ERROR: sample not found under $SAMPLES_SRC (cpp/ or Samples/): $SAMPLE_REL" >&2
     exit 2
 fi
 
@@ -39,9 +50,9 @@ trap 'rm -rf "$WORKDIR"' EXIT
 # Shared scaffolding required by every sample (Common/, top-level cmake/)
 cp -r "$SAMPLES_SRC"/{Common,cmake,CMakeLists.txt} "$WORKDIR"/
 
-DST="$WORKDIR/Samples/$SAMPLE_REL"
+DST="$WORKDIR/samples/$SAMPLE_REL"
 mkdir -p "$(dirname "$DST")"
-cp -r "$SAMPLES_SRC/Samples/$SAMPLE_REL" "$DST"
+cp -r "$SAMPLE_ROOT/$SAMPLE_REL" "$DST"
 
 echo "===== Building $SAMPLE_REL ====="
 cmake -S "$DST" -B "$DST/build"
