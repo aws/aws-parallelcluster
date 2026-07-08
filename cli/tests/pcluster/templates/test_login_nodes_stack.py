@@ -65,9 +65,11 @@ def test_login_nodes_dna_json(
     expected_owner = "root:root"
     expected_permissions = "0644"
 
-    _assert_write_files_directive(login_node_user_data_template, "/tmp/dna.json", expected_owner, expected_permissions)
     _assert_write_files_directive(
-        login_node_user_data_template, "/tmp/extra.json", expected_owner, expected_permissions
+        login_node_user_data_template, "${PclusterTmpDir}/dna.json", expected_owner, expected_permissions
+    )
+    _assert_write_files_directive(
+        login_node_user_data_template, "${PclusterTmpDir}/extra.json", expected_owner, expected_permissions
     )
 
 

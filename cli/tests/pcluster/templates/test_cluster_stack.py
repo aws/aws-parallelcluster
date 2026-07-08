@@ -1063,7 +1063,11 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     )
 
     generated_head_node_dna_json = json.loads(
-        _get_cfn_init_file_content(template=generated_template, resource="HeadNodeLaunchTemplate", file="/tmp/dna.json")
+        _get_cfn_init_file_content(
+            template=generated_template,
+            resource="HeadNodeLaunchTemplate",
+            file="/opt/parallelcluster/tmp/dna.json",
+        )
     )
     slurm_specific_settings = {
         "ddb_table": "{'Ref': 'DynamoDBTable'}",

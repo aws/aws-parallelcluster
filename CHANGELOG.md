@@ -7,6 +7,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - Improve cluster update resiliency on login nodes by reusing the head-node-driven orchestration already in place on compute nodes,
   removing the dependency on cfn-hup and cfn-init.
+- Move all ParallelCluster-managed bootstrap files off `/tmp` into a dedicated `/opt/parallelcluster/tmp`
+  directory. Therefore, Image builds, cluster creations and updates work on custom AMIs that mount `/tmp` with `noexec`.
 
 **CHANGES**
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 

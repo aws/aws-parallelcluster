@@ -43,6 +43,7 @@ from pcluster.constants import (
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_DYNAMODB_PREFIX,
     PCLUSTER_NODE_TYPE_TAG,
+    PCLUSTER_TMP_DIR,
     ULTRASERVER_INSTANCE_PREFIX_LIST,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
@@ -97,6 +98,7 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue, LoginNodesPool], 
         "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
+        "PclusterTmpDir": PCLUSTER_TMP_DIR,
     }
 
 

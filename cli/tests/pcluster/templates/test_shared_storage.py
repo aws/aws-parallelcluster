@@ -222,7 +222,7 @@ def test_unmanaged_shared_storage_fsx(mocker, test_datadir, config_file_name):
         .get("AWS::CloudFormation::Init")
         .get("deployConfigFiles")
         .get("files")
-        .get("/tmp/dna.json")
+        .get("/opt/parallelcluster/tmp/dna.json")
         .get("content")
         .get("Fn::Join")[1][4]
     )
