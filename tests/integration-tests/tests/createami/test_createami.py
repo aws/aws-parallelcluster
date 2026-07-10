@@ -237,13 +237,18 @@ def test_build_image(
     )
 
     with soft_assertions():
+        # Validate export-image-logs as early as possible: as soon as the build log stream is
+        # available the image is still BUILD_IN_PROGRESS, so the build-image stack (which
+        # self-deletes only at BUILD_COMPLETE) is guaranteed to still exist.
+        _wait_for_image_log_stream(image)
+        _test_export_logs(s3_bucket_factory, image, region)
+        _test_export_logs(s3_bucket_factory, image, region, True)
+
         _wait_for_build_instance(image, region)
         _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
         _test_build_imds_settings(image, "required", region)
 
         _test_build_image_success(image, request.config.getoption("output_dir"))
-        _test_export_logs(s3_bucket_factory, image, region)
-        _test_export_logs(s3_bucket_factory, image, region, True)
         _test_image_tag_and_volume(image)
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
@@ -582,6 +587,22 @@ def _wait_for_build_instance(image, region):
     return [instance for reservation in reservations for instance in reservation.get("Instances", [])]
 
 
+@retry(
+    retry_on_result=lambda log_stream_available: not log_stream_available,
+    wait_fixed=seconds(20),
+    stop_max_delay=minutes(10),
+)
+def _wait_for_image_log_stream(image):
+    """Wait until the image build log stream is available in CloudWatch."""
+    expected_log_stream = f"{get_installed_parallelcluster_base_version()}/1"
+    try:
+        stream_names = {stream["logStreamName"] for stream in image.list_log_streams()["logStreams"]}
+    except Exception as e:  # noqa: BLE001 # log group/stream not created yet
+        logging.info("Image %s log streams not available yet: %s", image.image_id, e)
+        return False
+    return expected_log_stream in stream_names
+
+
 def _test_build_imds_settings(image, status, region):
     logging.info(f"Checking that the ImageBuilder instances have IMDSv2 {status}")
 
@@ -642,6 +663,7 @@ def test_build_image_wrong_pcluster_version(
     architecture,
     pcluster_ami_without_standard_naming,
     images_factory,
+    s3_bucket_factory,
     request,
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
@@ -666,6 +688,11 @@ def test_build_image_wrong_pcluster_version(
     image = images_factory(image_id, image_config, region)
 
     _test_build_image_failed(image, request.config.getoption("output_dir"))
+
+    # A failed build retains the build-image stack and the log stream, so validate that logs can
+    # still be exported from a failed build (this covers the stack-events export path too).
+    _test_export_logs(s3_bucket_factory, image, region)
+
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
