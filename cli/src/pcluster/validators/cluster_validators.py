@@ -51,7 +51,10 @@ NAME_MAX_LENGTH = 25
 SHARED_STORAGE_NAME_MAX_LENGTH = 30
 NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
-EFA_UNSUPPORTED_ARCHITECTURES_OSES = {"x86_64": [], "arm64": []}
+EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
+    "x86_64": ["almalinux8"],
+    "arm64": ["almalinux8"],
+}
 
 EFS_MESSAGES = {
     "errors": {

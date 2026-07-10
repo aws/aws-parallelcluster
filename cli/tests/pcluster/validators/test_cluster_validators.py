@@ -958,6 +958,19 @@ def test_efa_security_group_validator(
         (True, "rocky9", "arm64", None),
         (True, "rhel8", "x86_64", None),
         (True, "rhel8", "arm64", None),
+        (
+            True,
+            "almalinux8",
+            "x86_64",
+            "EFA is currently not supported on almalinux8 for x86_64 architecture.",
+        ),
+        (
+            True,
+            "almalinux8",
+            "arm64",
+            "EFA is currently not supported on almalinux8 for arm64 architecture.",
+        ),
+        (False, "almalinux8", "x86_64", None),
     ],
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
