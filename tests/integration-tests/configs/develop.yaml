@@ -1,6 +1,8 @@
 {%- import 'common.jinja2' as common with context -%}
 {{- common.OSS_COMMERCIAL_X86.append("rocky8") or "" -}}
 {{- common.OSS_COMMERCIAL_X86.append("rocky9") or "" -}}
+{{- common.OSS_COMMERCIAL_X86.append("almalinux8") or "" -}}
+{{- common.OSS_COMMERCIAL_ARM.append("almalinux8") or "" -}}
 ---
 test-suites:
   ad_integration:

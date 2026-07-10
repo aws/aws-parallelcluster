@@ -69,6 +69,7 @@ def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
         (None, None, "Missing data for required field"),
         ("ubuntu2204", "ami-12345678", None),
         ("alinux2023", None, None),
+        ("almalinux8", "ami-12345678", None),
     ],
 )
 def test_image_schema(os, custom_ami, failure_message):
@@ -85,6 +86,9 @@ def test_image_schema(os, custom_ami, failure_message):
         image = ImageSchema().load(image_schema)
         assert_that(image.os).is_equal_to(os)
         assert_that(image.custom_ami).is_equal_to(custom_ami)
+        output_schema = ImageSchema()
+        output_schema.context = {"delete_defaults_when_dump": True}
+        assert_that(output_schema.dump(image)).is_equal_to(image_schema)
 
 
 @pytest.mark.parametrize(

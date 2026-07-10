@@ -575,6 +575,7 @@ def get_username_for_os(os):
         "rocky8": "rocky",
         "rhel9": "ec2-user",
         "rocky9": "rocky",
+        "almalinux8": "ec2-user",
     }
     return usernames.get(os)
 
