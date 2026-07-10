@@ -30,6 +30,7 @@ phases:
                 rocky.8*) echo 'rocky8' ;;
                 rhel.9*) echo 'rhel9' ;;
                 rocky.9*) echo 'rocky9' ;;
+                almalinux.8*) echo 'almalinux8' ;;
                 *) echo "Unsupported OS: $RELEASE" && exit {{ FailExitCode }} ;;
               esac
 
@@ -55,14 +56,14 @@ phases:
               set -x
               # Get OS info
               . /etc/os-release
-              # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
+              # Check input base AMI OS and get OS information, the output should be like amzn.2023 | ubuntu.22.04 | rhel.8.10 | rocky.8.10 | almalinux.8.10
               RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               
               # Use OS name from previous step
               OS="{{ build.OperatingSystemName.outputs.stdout }}"
               
               # Set platform
-              [[ $OS =~ ^(alinux|rhel|rocky) ]] && PLATFORM='RHEL' || PLATFORM='DEBIAN'
+              [[ $OS =~ ^(alinux|almalinux|rhel|rocky) ]] && PLATFORM='RHEL' || PLATFORM='DEBIAN'
               
               # Set URLs
               COOKBOOK_NAME="aws-parallelcluster-cookbook-${CfnParamCookbookVersion}"
@@ -139,6 +140,7 @@ phases:
                 yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules ${!KERNEL_PACKAGES_PREFIX}-modules-extra
                 [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
+                [[ $OS == almalinux8 ]] && yum versionlock almalinux-release almalinux-repos
               else
                 apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
                 apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
@@ -276,6 +278,7 @@ phases:
                 yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules ${!KERNEL_PACKAGES_PREFIX}-modules-extra
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
+                [[ $OS == almalinux8 ]] && yum versionlock delete almalinux-release almalinux-repos
               else
                 apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
               fi

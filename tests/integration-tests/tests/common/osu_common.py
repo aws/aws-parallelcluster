@@ -20,7 +20,7 @@ from utils import render_jinja_template
 
 OSU_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/osu/"
 SUPPORTED_MPIS = ["openmpi", "intelmpi"]
-PRIVATE_OSES = ["rocky8", "rocky9"]
+PRIVATE_OSES = ["rocky8", "rocky9", "almalinux8"]
 
 
 def compile_osu(mpi_variant, remote_command_executor):

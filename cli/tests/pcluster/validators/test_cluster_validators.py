@@ -3777,12 +3777,22 @@ def test_multi_network_interfaces_instances_validator_mixed_queue(aws_api_mock):
         ("ami-000000000000", "rocky8", None, None),
         ("ami-000000000000", "alinux2023", None, None),
         ("ami-000000000000", "rhel8", None, None),
+        ("ami-000000000000", "almalinux8", None, None),
         ("ami-000000000000", "ubuntu2204", None, None),
         ("ami-000000000000", "ubuntu2404", None, None),
         (
             None,
             "rocky8",
             "ParallelCluster has no official AMI for rocky8. "
+            "Please build your own AMI using pcluster build-image command, "
+            "as explained in the documentation: "
+            "https://docs.aws.amazon.com/parallelcluster/latest/ug/building-custom-ami-v3.html",
+            FailureLevel.ERROR,
+        ),
+        (
+            None,
+            "almalinux8",
+            "ParallelCluster has no official AMI for almalinux8. "
             "Please build your own AMI using pcluster build-image command, "
             "as explained in the documentation: "
             "https://docs.aws.amazon.com/parallelcluster/latest/ug/building-custom-ami-v3.html",

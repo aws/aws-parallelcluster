@@ -14,7 +14,7 @@
 {%- set INSTANCES_DEFAULT = ["c5.xlarge", "m6g.xlarge"] -%}
 {%- set INSTANCES_EFA_SUPPORTED_X86 = ["c5n.9xlarge"] -%}
 {%- set INSTANCES_EFA_UNSUPPORTED_X86 = ["t3.micro"] -%}
-{%- set NOT_RELEASED_OSES = ["rocky8", "rocky9"] -%}
+{%- set NOT_RELEASED_OSES = ["rocky8", "rocky9", "almalinux8"] -%}
 
 {%- macro instance(instance_key) -%}
     {%- if additional_instance_types_map -%}

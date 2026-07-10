@@ -7,6 +7,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - Improve cluster update resiliency on login nodes by reusing the head-node-driven orchestration already in place on compute nodes,
   removing the dependency on cfn-hup and cfn-init.
+- Add support for AlmaLinux 8 as a `CustomAmi` created through the `build-image` process. ParallelCluster does not
+  publish an official AlmaLinux 8 AMI.
 
 **CHANGES**
 - The validator `ClusterNameValidator` now enforces cluster names to be limited to 40 characters when using `ExternalSlurmdbd`, 

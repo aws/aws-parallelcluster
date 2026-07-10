@@ -39,6 +39,7 @@ phases:
                 rocky.8*) echo rocky8;;
                 rhel.9*) echo rhel9;;
                 rocky.9*) echo rocky9;;
+                almalinux.8*) echo almalinux8;;
                 *) echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1;;
               esac
 
@@ -62,7 +63,7 @@ phases:
             - |
               set -v
               case '{{ test.OSName.outputs.stdout }}' in
-                alinux*|centos*|rhel*|rocky*) echo RHEL;;
+                alinux*|almalinux*|centos*|rhel*|rocky*) echo RHEL;;
                 ubuntu*) echo DEBIAN;;
               esac
 
@@ -90,7 +91,7 @@ phases:
               set -v
               ARCHITECTURE='{{ test.OSArchitecture.outputs.stdout }}'
               OS='{{ test.OSName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9|almalinux8)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"

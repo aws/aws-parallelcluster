@@ -32,9 +32,18 @@ SUPPORTED_OSES = [
     "rocky8",
     "rhel9",
     "rocky9",
+    "almalinux8",
 ]
-UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
-UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "rhel9"]
+UNSUPPORTED_OSES_FOR_MICRO_NANO = [
+    "ubuntu2204",
+    "ubuntu2404",
+    "rhel8",
+    "rocky8",
+    "rhel9",
+    "rocky9",
+    "almalinux8",
+]
+UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "rhel9", "almalinux8"]
 SUPPORTED_OSES_FOR_P6E_GB200 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6E_GB200))
 UNSUPPORTED_OSES_FOR_P6_B300 = []
 SUPPORTED_OSES_FOR_P6_B300 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6_B300))
@@ -65,6 +74,7 @@ CAPACITY_RESERVATION_OS_MAP = {
     "rocky8": CR_PLATFORM_LINUX_UNIX,
     "rhel9": CR_PLATFORM_RHEL,
     "rocky9": CR_PLATFORM_LINUX_UNIX,
+    "almalinux8": CR_PLATFORM_LINUX_UNIX,
 }
 
 OS_MAPPING = {
@@ -75,6 +85,7 @@ OS_MAPPING = {
     "rocky8": {"user": "rocky"},
     "rhel9": {"user": "ec2-user"},
     "rocky9": {"user": "rocky"},
+    "almalinux8": {"user": "ec2-user"},
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
@@ -85,9 +96,10 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "rocky8": "rocky8-hvm",
     "rhel9": "rhel9-hvm",
     "rocky9": "rocky9-hvm",
+    "almalinux8": "almalinux8-hvm",
 }
 # We do not publicly publish/release Parallelcluster AMI of below OSSes
-PRIVATE_OSES = ["rocky8", "rocky9"]
+PRIVATE_OSES = ["rocky8", "rocky9", "almalinux8"]
 
 IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
 

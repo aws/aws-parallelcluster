@@ -36,6 +36,7 @@ Allowed values for Operating System:
 5. rocky8
 6. rhel9
 7. rocky9
+8. almalinux8
 There are no VPC for the given region. Starting automatic creation of VPC and subnets...
 Allowed values for Availability Zone:
 1. eu-west-1a
