@@ -58,16 +58,20 @@ elif command -v yum >/dev/null 2>&1; then
     fi
 elif command -v apt-get >/dev/null 2>&1; then
     echo "Detected apt package manager"
-    export DEBIAN_FRONTEND=noninteractive
-    sudo apt-get update -y
+    # Make apt non-interactive so no prompt blocks the upgrade (under a PTY with no
+    # operator, any prompt would hang until the caller's timeout kills the command).
+    # DEBIAN_FRONTEND is passed *through* sudo, which resets the environment by default,
+    # so an exported var alone would not reach the root apt-get process.
+    _envars=(DEBIAN_FRONTEND=noninteractive)
+    sudo "${_envars[@]}" apt-get update -y
     if [[ "${FLAVOUR}" == "minimal" ]]; then
         # unattended-upgrades applies only the security pocket by default and will
         # upgrade linux-image-* (kernel) packages when needed.
-        sudo apt-get install -y unattended-upgrades
-        sudo unattended-upgrade -v
+        sudo "${_envars[@]}" apt-get install -y unattended-upgrades
+        sudo "${_envars[@]}" unattended-upgrade -v
     else
         # Apply all available package updates, including kernel packages.
-        sudo apt-get upgrade -y
+        sudo "${_envars[@]}" apt-get upgrade -y
     fi
 else
     echo "ERROR: no supported package manager found (dnf/yum/apt-get)" >&2
