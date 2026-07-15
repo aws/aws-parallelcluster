@@ -123,6 +123,8 @@ Conditions:
     - !Equals [!Ref CreateEfs, 'true']
     - !Not [!Equals [!Ref SubnetThree, '']]
   CreateFsxLustre: !Equals [!Ref CreateFsxLustre, 'true']
+  HasFsxLustreImportPath: !Not [!Equals [!Ref FsxLustreImportPath, '']]
+  HasFsxLustreExportPath: !Not [!Equals [!Ref FsxLustreExportPath, '']]
   CreateFsxOntap: !Equals [!Ref CreateFsxOntap, 'true']
   CreateFsxOpenZfs: !Equals [!Ref CreateFsxOpenZfs, 'true']
   CreateFileCache: !Equals [!Ref CreateFileCache, 'true']
@@ -206,8 +208,8 @@ Resources:
       FileSystemTypeVersion: '2.15'
       LustreConfiguration:
         DeploymentType: PERSISTENT_1
-        ExportPath: !Ref FsxLustreExportPath
-        ImportPath: !Ref FsxLustreImportPath
+        ExportPath: !If [HasFsxLustreExportPath, !Ref FsxLustreExportPath, !Ref 'AWS::NoValue']
+        ImportPath: !If [HasFsxLustreImportPath, !Ref FsxLustreImportPath, !Ref 'AWS::NoValue']
         PerUnitStorageThroughput: 50
       SecurityGroupIds:
         - !Ref FsxLustreSecurityGroup
