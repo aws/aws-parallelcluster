@@ -20,12 +20,12 @@ from pcluster.config.imagebuilder_config import ImagebuilderDevSettings
         pytest.param(None, "", "", id="unset blob -> empty overrides"),
         pytest.param("", "", "", id="empty blob -> empty overrides"),
         pytest.param(
-            '{"cinc_version": "18.8.54", "cinc_installer_url": "https://omnitruck.cinc.sh/install.sh"}',
-            "18.8.54",
+            '{"cinc_version": "1.2.3", "cinc_installer_url": "https://omnitruck.cinc.sh/install.sh"}',
+            "1.2.3",
             "https://omnitruck.cinc.sh/install.sh",
             id="both keys unfurled",
         ),
-        pytest.param('{"cinc_version": "18.8.54"}', "18.8.54", "", id="only cinc_version present"),
+        pytest.param('{"cinc_version": "1.2.3"}', "1.2.3", "", id="only cinc_version present"),
         pytest.param(
             '{"cinc_installer_url": "https://omnitruck.cinc.sh/install.sh"}',
             "",
