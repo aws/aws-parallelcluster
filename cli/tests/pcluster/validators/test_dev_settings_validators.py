@@ -230,7 +230,7 @@ def test_extra_chef_attributes_validator_cluster_readiness_check_ignore_failure(
         pytest.param("", None, None, id="empty string is valid"),
         pytest.param(None, None, None, id="None is valid"),
         pytest.param(
-            '{"cinc_version": "18.8.54", "cinc_installer_url": "https://omnitruck.cinc.sh/install.sh"}',
+            '{"cinc_version": "1.2.3", "cinc_installer_url": "https://omnitruck.cinc.sh/install.sh"}',
             None,
             None,
             id="valid JSON object",
