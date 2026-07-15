@@ -192,16 +192,18 @@ def test_build_image(
     )
 
     with soft_assertions():
-        # Validate export-image-logs as early as possible: as soon as the build log stream is
-        # available the image is still BUILD_IN_PROGRESS, so the build-image stack (which
-        # self-deletes only at BUILD_COMPLETE) is guaranteed to still exist.
-        _wait_for_image_log_stream(image)
-        _test_export_logs(s3_bucket_factory, image, region)
-        _test_export_logs(s3_bucket_factory, image, region, True)
-
         _wait_for_build_instance(image, region)
         _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
         _test_build_imds_settings(image, "required", region)
+
+        # Export logs during BUILD_IN_PROGRESS: on a successful build the stack self-deletes at
+        # BUILD_COMPLETE and that teardown removes the CloudWatch log group (ImageBuilder.delete calls
+        # delete_log_group), so the log can be exported reliably only while the stack still exists.
+        # Wait for a non-empty build log stream first, since the export produces the cloudwatch-logs
+        # entry only once the stream has ingested events.
+        _wait_for_image_log_stream(image)
+        _test_export_logs(s3_bucket_factory, image, region)
+        _test_export_logs(s3_bucket_factory, image, region, True)
 
         _test_build_image_success(image, request.config.getoption("output_dir"))
         _test_image_tag_and_volume(image)
@@ -212,6 +214,8 @@ def test_build_image(
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
     )
+
+    # On a successful build the stack self-deletes; assert that the deletion completed.
     _assert_build_image_stack_deleted(image.image_id, region, 900, 30)
 
 
@@ -293,13 +297,19 @@ def test_kernel4_build_image_run_cluster(
 def _test_list_images(image):
     images = image.list_images(region=image.region, image_status="AVAILABLE")["images"]
     matches = [img for img in images if img["imageId"] == image.image_id]
-    assert_that(matches).is_length(1)
-    assert_that(matches[0]["imageId"]).is_equal_to(image.image_id)
-    assert_that(matches[0]["region"]).is_equal_to(image.region)
+    assert_that(matches).described_as(
+        f"list-images (status=AVAILABLE) should return exactly one image with id {image.image_id}"
+    ).is_length(1)
+    assert_that(matches[0]["imageId"]).described_as("list-images returned image id").is_equal_to(image.image_id)
+    assert_that(matches[0]["region"]).described_as("list-images returned image region").is_equal_to(image.region)
     image.describe()
-    assert_that(matches[0]["ec2AmiInfo"]["amiId"]).is_equal_to(image.ec2_image_id)
-    assert_that(matches[0]["imageBuildStatus"]).is_equal_to("BUILD_COMPLETE")
-    assert_that(matches[0]).contains("version")
+    assert_that(matches[0]["ec2AmiInfo"]["amiId"]).described_as("list-images returned EC2 AMI id").is_equal_to(
+        image.ec2_image_id
+    )
+    assert_that(matches[0]["imageBuildStatus"]).described_as("list-images returned image build status").is_equal_to(
+        "BUILD_COMPLETE"
+    )
+    assert_that(matches[0]).described_as("list-images entry should contain a 'version' field").contains("version")
 
 
 def _test_image_stack_events(image):
@@ -323,7 +333,9 @@ def _test_list_image_log_streams(image):
 
     stream_names = {stream["logStreamName"] for stream in streams}
     expected_log_stream = f"{get_installed_parallelcluster_base_version()}/1"
-    assert_that(stream_names).contains(expected_log_stream)
+    assert_that(stream_names).described_as(
+        f"list-image-log-streams should contain the build log stream {expected_log_stream}"
+    ).contains(expected_log_stream)
 
 
 def _test_get_image_log_events(image):
@@ -355,13 +367,19 @@ def _test_get_image_log_events(image):
         events = image.get_log_events(log_stream_name, **args)["events"]
 
         if expect_count is not None:
-            assert_that(events).is_length(expect_count)
+            assert_that(events).described_as(
+                f"get-image-log-events with args {args} should return {expect_count} event(s)"
+            ).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).contains(first_event["message"])
+            assert_that(events[0]["message"]).described_as(
+                f"get-image-log-events with args {args} should return the first log event"
+            ).contains(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_contain(first_event["message"])
+            assert_that(events[0]["message"]).described_as(
+                f"get-image-log-events with args {args} should not return the first log event"
+            ).does_not_contain(first_event["message"])
 
 
 def _set_s3_bucket_policy(bucket_name, partition, region):
@@ -438,13 +456,17 @@ def _test_image_tag_and_volume(image):
     logging.info(f"Image List: {image_list}, length {len(image_list)}")
     if not image_list:
         raise ImageNotFound()
-    assert_that(len(image_list)).is_equal_to(1)
+    assert_that(len(image_list)).described_as(
+        f"exactly one EC2 image should be tagged with parallelcluster:image_id={image.image_id}"
+    ).is_equal_to(1)
 
     if len(image_list) > 0:
         created_image = image_list[0]
         volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
-        assert_that(volume_size).is_equal_to(200)
-        assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
+        assert_that(volume_size).described_as("root volume size of the built image").is_equal_to(200)
+        assert_that(created_image["Tags"]).described_as(
+            "built image tags should contain the configured dummyImageTag"
+        ).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
 
 
 @pytest.fixture()
@@ -581,19 +603,28 @@ def _wait_for_build_instance(image, region):
 
 
 @retry(
-    retry_on_result=lambda log_stream_available: not log_stream_available,
+    retry_on_result=lambda log_stream_ready: not log_stream_ready,
     wait_fixed=seconds(20),
     stop_max_delay=minutes(10),
 )
 def _wait_for_image_log_stream(image):
-    """Wait until the image build log stream is available in CloudWatch."""
+    """Wait until the image build log stream exists in CloudWatch and contains at least one event.
+
+    export-image-logs produces the cloudwatch-logs entry only if the build log stream both exists and
+    has ingested events: create-export-task writes objects only for streams that have data in the
+    window. Waiting for a non-empty stream (rather than mere existence) is what removes the export
+    race caused by CloudWatch eventual consistency.
+    """
     expected_log_stream = f"{get_installed_parallelcluster_base_version()}/1"
     try:
         stream_names = {stream["logStreamName"] for stream in image.list_log_streams()["logStreams"]}
+        if expected_log_stream not in stream_names:
+            return False
+        events = image.get_log_events(expected_log_stream, limit=1)["events"]
     except Exception as e:  # noqa: BLE001 # log group/stream not created yet
-        logging.info("Image %s log streams not available yet: %s", image.image_id, e)
+        logging.info("Image %s build log stream not ready yet: %s", image.image_id, e)
         return False
-    return expected_log_stream in stream_names
+    return len(events) > 0
 
 
 def _test_build_imds_settings(image, status, region):
@@ -645,7 +676,9 @@ def _test_build_image_success(image, output_dir):
     if image.image_status != "BUILD_COMPLETE":
         _export_image_logs(image, output_dir)
         _keep_recent_logs(image)
-    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
+    assert_that(image.image_status).described_as(f"final build status of image {image.image_id}").is_equal_to(
+        "BUILD_COMPLETE"
+    )
 
 
 @pytest.mark.usefixtures("os")
