@@ -599,7 +599,6 @@ Resources:
               - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
-              - elasticloadbalancing:CreateListener
               - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DescribeTags
               - elasticloadbalancing:DeleteListener
@@ -616,6 +615,14 @@ Resources:
                 aws:TagKeys: [ "parallelcluster:cluster-name" ]
             Effect: Allow
             Sid: LoginNodesFunctionalities
+          - Action:
+              - elasticloadbalancing:CreateListener
+            Resource: '*'
+            Condition:
+              "Null":
+                "aws:RequestTag/parallelcluster:cluster-name": "false"
+            Effect: Allow
+            Sid: LoginNodesFunctionalitiesCondition2
           - Action:
               - autoscaling:CreateAutoScalingGroup
               - autoscaling:DeleteTags
