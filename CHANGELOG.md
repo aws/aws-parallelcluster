@@ -32,6 +32,8 @@ CHANGELOG
 - Fix login nodes not mounting `/opt/parallelcluster/shared` when EFS is used as the internal shared storage type.
 - Fix an issue where compute nodes are incorrectly replaced when launching a large number of nodes due to eventual consistency.
 - Fix an issue where starting the compute fleet may not reliably recover the cluster from protected mode.
+- Fix cluster creation and update failures on clusters with login nodes, caused by the IAM policy
+  requiring the `parallelcluster:cluster-name` tag to be the only tag instead of just being present.
 
 **DEPRECATIONS**
 - Amazon Linux 2 is no longer supported.
