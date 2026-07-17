@@ -78,14 +78,14 @@ Resources:
           - Name: queue0
             ComputeResources:
             - Name: queue0-cr0
-              InstanceType: t3.micro
+              InstanceType: t3.medium
             Networking:
               SubnetIds:
               - !GetAtt [ PclusterVpc, Outputs.PrivateSubnetId ]
         LoginNodes:
           Pools:
             - Name: login
-              InstanceType: t3.small
+              InstanceType: t3.medium
               Count: 1
               Networking:
                 SubnetIds:
