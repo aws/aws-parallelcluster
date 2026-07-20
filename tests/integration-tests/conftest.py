@@ -88,6 +88,7 @@ from utils import (
     get_metadata,
     get_network_interfaces_count,
     get_similar_instance_types,
+    get_username_for_os,
     get_vpc_snakecase_value,
     random_alphanumeric,
     to_pascal_case,
@@ -465,20 +466,7 @@ def clusters_factory(request, region):
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, request, **kwargs)
         # Run pcluster-diag after every successful cluster creation
-        if cluster.create_complete:
-            try:
-                rce = RemoteCommandExecutor(cluster)
-                diag_result = rce.run_remote_command("sudo pcluster-diag run", timeout=120)
-                logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
-                remote_report_path = rce.run_remote_command(
-                    "ls -t /home/ec2-user/pcluster-diag-output/pcluster-diag-report-*.json | head -1",
-                    timeout=10,
-                ).stdout.strip()
-                if remote_report_path:
-                    report_dst = _write_diag_report_to_outdir(request, rce, remote_report_path)
-                    logging.info("pcluster-diag report saved to %s", report_dst)
-            except Exception as e:
-                logging.warning("pcluster-diag failed on cluster %s: %s", cluster.name, e)
+        _run_pcluster_diag(request, cluster)
         return cluster
 
     yield _cluster_factory
@@ -626,11 +614,25 @@ def _get_outdir_path(request, output_subdir, extension):
     )
 
 
-def _write_diag_report_to_outdir(request, rce, remote_report_path):
-    """Download a pcluster-diag JSON report from the cluster and save it to the test output directory."""
-    report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
-    rce.get_remote_files(remote_report_path, report_dst)
-    return report_dst
+def _run_pcluster_diag(request, cluster):
+    """Run pcluster-diag on the cluster and save the report to the test output directory."""
+    if not cluster.create_complete:
+        return
+    try:
+        rce = RemoteCommandExecutor(cluster)
+        diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
+        logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
+        user = get_username_for_os(cluster.os)
+        remote_report_path = rce.run_remote_command(
+            f"ls -t /home/{user}/pcluster-diag-output/pcluster-diag-report-*.json | head -1",
+            timeout=10,
+        ).stdout.strip()
+        if remote_report_path:
+            report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
+            rce.get_remote_files(remote_report_path, report_dst)
+            logging.info("pcluster-diag report saved to %s", report_dst)
+    except Exception as e:
+        logging.warning("pcluster-diag failed on cluster %s: %s", cluster.name, e)
 
 
 @pytest.fixture()
