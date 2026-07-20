@@ -27,6 +27,16 @@ if [[ "${FLAVOUR}" != "minimal" && "${FLAVOUR}" != "full" ]]; then
     exit 1
 fi
 
+# Recover the rpmdb in case a previously killed process left it corrupted (stale
+# Berkeley DB locks on EL8/AL2 cause "rpmdb open failed" on every rpm/dnf/yum call).
+# Gated on a probe query: if the rpmdb is usable, recovery is skipped entirely.
+fix_rpmdb() {
+    sudo rpm -q rpm >/dev/null 2>&1 && return 0
+    echo "rpmdb is broken, rebuilding it"
+    sudo rm -f /var/lib/rpm/__db.*
+    sudo rpm --rebuilddb
+}
+
 echo "===== Starting system ${FLAVOUR} patching on $(hostname) ====="
 # Report the running kernel before patching. The kernel after the reboot is
 # reported separately once the node has rebooted (the reboot is mandatory to
@@ -35,6 +45,7 @@ echo "Kernel before patching: $(uname -r)"
 
 if command -v dnf >/dev/null 2>&1; then
     echo "Detected dnf package manager"
+    fix_rpmdb
     sudo dnf clean all
     sudo dnf makecache --refresh || true
     if [[ "${FLAVOUR}" == "minimal" ]]; then
@@ -46,6 +57,7 @@ if command -v dnf >/dev/null 2>&1; then
     fi
 elif command -v yum >/dev/null 2>&1; then
     echo "Detected yum package manager"
+    fix_rpmdb
     sudo yum clean all
     sudo yum makecache || true
     if [[ "${FLAVOUR}" == "minimal" ]]; then
