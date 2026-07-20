@@ -32,7 +32,6 @@ import yaml
 from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
-from remote_command_executor import RemoteCommandExecutor
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
     add_default_markers,
@@ -61,6 +60,7 @@ from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
+from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
 from troposphere.efs import AccessPoint as EFSAccessPoint
@@ -470,6 +470,13 @@ def clusters_factory(request, region):
                 rce = RemoteCommandExecutor(cluster)
                 diag_result = rce.run_remote_command("sudo pcluster-diag run", timeout=120)
                 logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
+                remote_report_path = rce.run_remote_command(
+                    "ls -t /home/ec2-user/pcluster-diag-output/pcluster-diag-report-*.json | head -1",
+                    timeout=10,
+                ).stdout.strip()
+                if remote_report_path:
+                    report_dst = _write_diag_report_to_outdir(request, rce, remote_report_path)
+                    logging.info("pcluster-diag report saved to %s", report_dst)
             except Exception as e:
                 logging.warning("pcluster-diag failed on cluster %s: %s", cluster.name, e)
         return cluster
@@ -592,25 +599,38 @@ def images_factory(request):
 
 
 def _write_config_to_outdir(request, config, config_dir):
+    config_dst = _get_outdir_path(request, config_dir, "config")
+    copyfile(config, config_dst)
+    return config_dst
+
+
+def _get_outdir_path(request, output_subdir, extension):
+    """Generate an output file path following the standard test artifact naming convention."""
     out_dir = request.config.getoption("output_dir")
 
-    # Sanitize config file name to make it Windows compatible
+    # Sanitize file name to make it Windows compatible
     # request.node.nodeid example:
     # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
     test_file, test_name = request.node.nodeid.split("::", 1)
-    config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
+    file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
 
     os.makedirs(
-        "{out_dir}/{config_dir}/{test_dir}".format(
-            out_dir=out_dir, config_dir=config_dir, test_dir=os.path.dirname(test_file)
+        "{out_dir}/{output_subdir}/{test_dir}".format(
+            out_dir=out_dir, output_subdir=output_subdir, test_dir=os.path.dirname(test_file)
         ),
         exist_ok=True,
     )
-    config_dst = "{out_dir}/{config_dir}/{config_file_name}.config".format(
-        out_dir=out_dir, config_dir=config_dir, config_file_name=config_file_name
+
+    return "{out_dir}/{output_subdir}/{file_name}.{extension}".format(
+        out_dir=out_dir, output_subdir=output_subdir, file_name=file_name, extension=extension
     )
-    copyfile(config, config_dst)
-    return config_dst
+
+
+def _write_diag_report_to_outdir(request, rce, remote_report_path):
+    """Download a pcluster-diag JSON report from the cluster and save it to the test output directory."""
+    report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
+    rce.get_remote_files(remote_report_path, report_dst)
+    return report_dst
 
 
 @pytest.fixture()
