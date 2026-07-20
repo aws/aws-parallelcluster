@@ -32,6 +32,7 @@ import yaml
 from _pytest.fixtures import FixtureDef, SubRequest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory, CfnVpcStack
 from clusters_factory import Cluster, ClustersFactory
+from remote_command_executor import RemoteCommandExecutor
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
     add_default_markers,
@@ -463,6 +464,14 @@ def clusters_factory(request, region):
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, request, **kwargs)
+        # Run pcluster-diag after every successful cluster creation
+        if cluster.create_complete:
+            try:
+                rce = RemoteCommandExecutor(cluster)
+                diag_result = rce.run_remote_command("sudo pcluster-diag run", timeout=120)
+                logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
+            except Exception as e:
+                logging.warning("pcluster-diag failed on cluster %s: %s", cluster.name, e)
         return cluster
 
     yield _cluster_factory
