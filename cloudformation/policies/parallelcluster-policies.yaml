@@ -414,8 +414,8 @@ Resources:
               - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
             Effect: Allow
             Condition:
-              ForAnyValue:StringEquals:
-                aws:TagKeys: ["parallelcluster:cluster-name"]
+              "Null":
+                "aws:RequestTag/parallelcluster:cluster-name": "false"
             Sid: CloudFormationCreateAndUpdate
           - Action:
               - cloudformation:DeleteStack
@@ -599,7 +599,6 @@ Resources:
               - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
-              - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DescribeTags
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
@@ -617,6 +616,7 @@ Resources:
             Sid: LoginNodesFunctionalities
           - Action:
               - elasticloadbalancing:CreateListener
+              - elasticloadbalancing:CreateTargetGroup
             Resource: '*'
             Condition:
               "Null":
