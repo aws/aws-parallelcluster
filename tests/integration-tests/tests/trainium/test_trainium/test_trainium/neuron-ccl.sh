@@ -6,7 +6,9 @@
 
 cat <<'EOF' >submission-script.sh
 #!/bin/bash
-set -xe
+# pipefail: without it, a neuron-bench crash is masked by tee's exit 0, so the
+# Slurm job reports COMPLETED with an empty output-ccl.txt instead of failing.
+set -xeo pipefail
 
 # FIXME remove this repo once packages are public available
 TEMPORARY_ARTIFACTS_BUCKET_PATH=s3://aws-parallelcluster-beta/neuron/
