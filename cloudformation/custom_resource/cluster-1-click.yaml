@@ -82,6 +82,18 @@ Resources:
             Networking:
               SubnetIds:
               - !GetAtt [ PclusterVpc, Outputs.PrivateSubnetId ]
+        LoginNodes:
+          Pools:
+            - Name: login
+              InstanceType: t3.medium
+              Count: 1
+              Networking:
+                SubnetIds:
+                  - !GetAtt [ PclusterVpc, Outputs.PublicSubnetId ]
+              Iam:
+                AdditionalIamPolicies:
+                  - Policy: !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+              GracetimePeriod: 3
 
 Outputs:
   HeadNodeIp:
