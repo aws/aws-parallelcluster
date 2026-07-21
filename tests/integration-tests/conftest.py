@@ -27,6 +27,7 @@ from traceback import format_tb
 from typing import Any, Dict, List, Optional, Union
 
 import boto3
+import cfn_tools
 import pytest
 import yaml
 from _pytest.fixtures import FixtureDef, SubRequest
@@ -1118,6 +1119,86 @@ def setup_env_variable(region):
     del os.environ["AWS_DEFAULT_REGION"]
 
 
+def _build_cli_creds_template():
+    """
+    Build the single CloudFormation template deployed by ``initialize_cli_creds``.
+
+    Merges two sources into one template body so the common test path deploys a SINGLE stack
+    (no separate vended-policy stack, no cross-stack outputs):
+
+      1. cloudformation/policies/parallelcluster-policies.yaml (vended, customer-facing) - the real
+         cluster/image/log/batch/admin managed policies, read verbatim so tests catch policy drift.
+      2. tests/iam_policies/integ-tests-deploy-role.cfn.yaml - the assumable ParallelClusterUserRole
+         plus the test-only IntegTestsPolicy (S3/EC2/KMS/CloudWatch) attached to it.
+
+    The vended managed policies are attached to ParallelClusterUserRole via ManagedPolicyArns: within
+    one stack, !Ref <ManagedPolicy> resolves to that policy's ARN. Returns a YAML string.
+    """
+    policies_dir = os.path.join("..", "..", "cloudformation", "policies")
+    iam_policies_dir = os.path.join("..", "iam_policies")
+    vended_path = os.path.join(policies_dir, "parallelcluster-policies.yaml")
+    role_path = os.path.join(iam_policies_dir, "integ-tests-deploy-role.cfn.yaml")
+    for path in (vended_path, role_path):
+        assert os.path.exists(path), f"CLI-creds template source not found: {path}"
+
+    with open(vended_path, encoding="utf-8") as f:
+        merged = cfn_tools.load_yaml(f.read())
+
+    # The vended policies attach to ParallelClusterLambdaRole in the source; the merged stack still
+    # creates that Lambda role (harmless). We attach the same policies to the assumable
+    # ParallelClusterUserRole so the integ-test deploy role gets the real vended permissions.
+    #
+    # Two attachment mechanisms, because the vended template uses two IAM resource types:
+    #   - AWS::IAM::ManagedPolicy -> attach via the role's ManagedPolicyArns using intra-stack
+    #     !Ref -> ARN (a managed policy's !Ref resolves to its ARN).
+    #   - AWS::IAM::Policy (inline, e.g. ParallelClusterFSxS3AccessPolicy) -> cannot be referenced by
+    #     ARN, so add ParallelClusterUserRole to the resource's own Roles list. This mirrors the old
+    #     user-role.cfn.yaml, where FSxS3AccessPolicy attached to ParallelClusterUserRole (tests
+    #     exercise FSx-S3 import/export, so the deploy role needs these permissions).
+    #
+    # Both lists are derived dynamically by scanning the vended template, so a policy added to
+    # parallelcluster-policies.yaml later is picked up automatically instead of being silently dropped.
+    # Each managed policy's own Condition (if any) is honored by wrapping the ref in an
+    # Fn::If -> AWS::NoValue, so conditional policies (e.g. Batch, admin) attach only when created.
+    # AWS-managed policies the Lambda role references by ARN string (XRay, LambdaBasicExecution) are
+    # NOT resources here, so they are naturally excluded.
+    vended_policy_refs = []
+    inline_policy_names = []
+    for name, resource in merged.get("Resources", {}).items():
+        resource_type = resource.get("Type")
+        if resource_type == "AWS::IAM::ManagedPolicy":
+            condition = resource.get("Condition")
+            if condition:
+                vended_policy_refs.append({"Fn::If": [condition, {"Ref": name}, {"Ref": "AWS::NoValue"}]})
+            else:
+                vended_policy_refs.append({"Ref": name})
+        elif resource_type == "AWS::IAM::Policy":
+            inline_policy_names.append(name)
+    assert vended_policy_refs, f"No AWS::IAM::ManagedPolicy resources found in {vended_path}"
+
+    # Attach each inline AWS::IAM::Policy to ParallelClusterUserRole too (in addition to the Lambda
+    # role it already targets). A conditional inline policy is created only when its condition holds,
+    # so the extra Roles entry is inert when the resource is not created.
+    for name in inline_policy_names:
+        roles = merged["Resources"][name]["Properties"].setdefault("Roles", [])
+        roles.append({"Ref": "ParallelClusterUserRole"})
+
+    with open(role_path, encoding="utf-8") as f:
+        role_template = cfn_tools.load_yaml(f.read())
+    for section in ("Parameters", "Conditions", "Resources", "Outputs"):
+        for key, value in role_template.get(section, {}).items():
+            existing = merged.setdefault(section, {})
+            # Fail loudly on collisions rather than silently overwriting the vended definition.
+            assert key not in existing, (
+                f"Merge collision in {section}: '{key}' from {role_path} already exists in the "
+                f"vended template. Rename it in the source file or reconcile the definitions."
+            )
+            existing[key] = value
+
+    merged["Resources"]["ParallelClusterUserRole"]["Properties"]["ManagedPolicyArns"] = vended_policy_refs
+    return cfn_tools.dump_yaml(merged)
+
+
 @xdist_session_fixture(autouse=True)
 def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
@@ -1127,27 +1208,37 @@ def initialize_cli_creds(request):
         stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
         regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-        with open(stack_template_path, encoding="utf-8") as stack_template_file:
-            stack_template_data = stack_template_file.read()
+        # Single merged template: assumable role + test-infra policy + vended customer-facing
+        # policies, deployed as ONE stack. The vended policies are read verbatim so the common test
+        # path exercises the real policy and catches drift. Only needed when we
+        # create the stack; the reuse path (iam_user_role_stack_name) just reads a pre-existing one.
+        reuse_stack_name = request.config.getoption("iam_user_role_stack_name")
+        stack_template_data = None if reuse_stack_name else _build_cli_creds_template()
         cli_creds = {}
         for region in regions:
             # region may contain an az_id if an override was specified
             # here we ensure that we are using the region
             region = unmarshal_az_override(region)
-            if request.config.getoption("iam_user_role_stack_name"):
-                stack_name = request.config.getoption("iam_user_role_stack_name")
-                logging.info(f"Using stack {stack_name} in region {region}")
-                stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-                )
+            if reuse_stack_name:
+                # Reuse path: the operator's pre-existing stack must already carry the required
+                # permissions; we never deploy here, we only read the ParallelClusterUserRole output,
+                # so no template is passed (matches the API-stack reuse path).
+                logging.info(f"Using stack {reuse_stack_name} in region {region}")
+                stack = CfnStack(name=reuse_stack_name, region=region, template=None)
             else:
-                logging.info("Creating IAM roles for pcluster CLI")
+                logging.info("Creating IAM deploy role and policies for pcluster CLI")
                 stack_name = generate_stack_name(
                     "integ-tests-iam-user-role", request.config.getoption("stackname_suffix")
                 )
                 stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                    name=stack_name,
+                    region=region,
+                    capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                    template=stack_template_data,
+                    parameters=[
+                        {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
+                        {"ParameterKey": "EnableBatchAccess", "ParameterValue": "true"},
+                    ],
                 )
 
                 stack_factory.create_stack(stack)
