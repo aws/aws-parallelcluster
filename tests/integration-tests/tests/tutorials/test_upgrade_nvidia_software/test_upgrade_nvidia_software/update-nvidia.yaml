@@ -1,0 +1,206 @@
+name: update-nvidia
+description: >-
+  Update the NVIDIA software stack: driver, CUDA, Fabric Manager, IMEX and NVLSM.
+schemaVersion: 1.0
+
+# Single source of truth for every step in this document: upgrading the software versions or
+# changing the architecture (use "aarch64" for arm64) only requires editing these values.
+constants:
+  - NVIDIA_DRIVER_VERSION:
+      type: string
+      value: "{{ nvidia_driver_version }}"
+  - ARCH:
+      type: string
+      value: "{{ arch }}"
+  - CUDA_VERSION:
+      type: string
+      value: "{{ cuda_version }}"
+  - CUDA_SAMPLES_VERSION:
+      type: string
+      value: "{{ cuda_samples_version }}"
+  # Driver version pinned into the CUDA runfile filename by NVIDIA for this CUDA release. It is
+  # fixed per CUDA version and independent of the driver installed by this component.
+  # CUDA 13.2.2 ships as cuda_13.2.2_595.71.05_linux.run.
+  - CUDA_RELEASE_NVIDIA_VERSION:
+      type: string
+      value: "{{ cuda_release_nvidia_version }}"
+
+phases:
+  - name: build
+    steps:
+    - name: InstallDriver
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            # Values injected from the document constants.
+            NVIDIA_DRIVER_VERSION="{{ NVIDIA_DRIVER_VERSION }}"
+            ARCH="{{ ARCH }}"
+
+            # Create temporary directory
+            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
+
+            COMPILER_PATH="/usr/bin/gcc"
+            export CC="${COMPILER_PATH}"
+
+            NVIDIA_RUNFILE="NVIDIA-Linux-${ARCH}-${NVIDIA_DRIVER_VERSION}.run"
+            wget -P "${TMP_DIR}" "https://us.download.nvidia.com/tesla/${NVIDIA_DRIVER_VERSION}/${NVIDIA_RUNFILE}"
+            chmod +x "${TMP_DIR}/${NVIDIA_RUNFILE}"
+            "${TMP_DIR}/${NVIDIA_RUNFILE}" --silent --dkms --disable-nouveau -m="kernel-open"
+
+            # Cleanup
+            rm -rf "${TMP_DIR}"
+
+    - name: InstallNVLinkStack
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            # --------------------------------------------------------------------------
+            # Keep the NVLink software stack aligned with the NVIDIA driver.
+            #
+            # Upgrading the driver alone is not enough. NVIDIA Fabric Manager and IMEX
+            # must match the driver version EXACTLY; a mismatched service refuses to
+            # start, which breaks multi-GPU (NVSwitch: p4d/p4de, p5/p5e/p5en, p6-b200)
+            # and multi-node NVLink (GB200 NVL: p6e-gb200) communication even when
+            # "nvidia-smi" on a single GPU looks healthy.
+            #
+            # The packages are installed from the NVIDIA driver local repository
+            # (https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/),
+            # which bundles the NVLink software stack validated for this driver
+            # release: Fabric Manager, IMEX and libnvsdm at the exact driver version,
+            # plus a compatible NVLSM (NVLink Subnet Manager, versioned independently
+            # of the driver).
+            #
+            # NVIDIA_DRIVER_VERSION and ARCH are injected from the document constants,
+            # so they are guaranteed to match the values used by the InstallDriver step.
+            # --------------------------------------------------------------------------
+            NVIDIA_DRIVER_VERSION="{{ NVIDIA_DRIVER_VERSION }}"
+            ARCH="{{ ARCH }}"
+
+            # Create temporary directory
+            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
+
+            # Download the NVIDIA driver local repository for the target OS/arch and
+            # register it with dnf: installing the wrapper RPM only drops the repo
+            # definition, GPG keyring and bundled RPMs under /var, it does not install
+            # any driver package by itself. Adapt "amzn2023" for other distributions
+            # (e.g. rhel8, rhel9); the architecture comes from the ARCH document constant.
+            LOCAL_REPO_PKG="nvidia-driver-local-repo-amzn2023-${NVIDIA_DRIVER_VERSION}"
+            LOCAL_REPO_RPM="${LOCAL_REPO_PKG}-1.0-1.${ARCH}.rpm"
+            wget -P "${TMP_DIR}" "https://developer.download.nvidia.com/compute/nvidia-driver/${NVIDIA_DRIVER_VERSION}/local_installers/${LOCAL_REPO_RPM}"
+            dnf install -y "${TMP_DIR}/${LOCAL_REPO_RPM}"
+
+            # ParallelCluster AMIs pin the NVLink stack with dnf versionlock at build
+            # time. Stale locks filter the new versions out of the dnf transaction
+            # ("All matches were filtered out by exclude filtering") and silently keep
+            # nvlsm at the locked version, so clear them before installing.
+            dnf versionlock delete nvidia-fabricmanager nvidia-imex libnvsdm nvlsm || true
+
+            # Install/upgrade the NVLink software stack from the local repo. Fabric
+            # Manager, IMEX and libnvsdm are pinned to the exact driver version; NVLSM
+            # is installed at the version bundled in this driver's local repo;
+            # infiniband-diags and libibumad (from the OS repos) are runtime
+            # dependencies of NVLSM. --best is required on Amazon Linux 2023: dnf.conf
+            # ships best=False, which turns "dnf install <name>" into a no-op when any
+            # version is already installed, silently skipping the upgrade of unpinned
+            # packages such as nvlsm.
+            dnf install -y --best \
+              "nvidia-fabricmanager-${NVIDIA_DRIVER_VERSION}-1*" \
+              "nvidia-imex-${NVIDIA_DRIVER_VERSION}-1*" \
+              "libnvsdm-${NVIDIA_DRIVER_VERSION}-1*" \
+              nvlsm \
+              infiniband-diags libibumad
+
+            # Re-apply the version lock so a later "dnf upgrade" cannot drift these
+            # packages away from the driver version.
+            dnf versionlock add nvidia-fabricmanager nvidia-imex libnvsdm nvlsm
+
+            # Drop the local repository once the packages are installed: the wrapper
+            # package keeps a full copy of the bundled RPMs under /var, which would
+            # otherwise bloat the image. Removing it does not touch the packages
+            # installed from it.
+            dnf remove -y "${LOCAL_REPO_PKG}"
+
+            # Cleanup
+            rm -rf "${TMP_DIR}"
+
+    - name: InstallCuda
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            # Values injected from the document constants.
+            CUDA_VERSION="{{ CUDA_VERSION }}"
+            CUDA_SAMPLES_VERSION="{{ CUDA_SAMPLES_VERSION }}"
+            CUDA_RELEASE_NVIDIA_VERSION="{{ CUDA_RELEASE_NVIDIA_VERSION }}"
+
+            # Create temporary directory
+            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
+
+            CUDA_RUNFILE="cuda_${CUDA_VERSION}_${CUDA_RELEASE_NVIDIA_VERSION}_linux.run"
+            wget -P "${TMP_DIR}" "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_RUNFILE}"
+            chmod +x "${TMP_DIR}/${CUDA_RUNFILE}"
+            CUDA_TMP_INSTALL_DIR="${TMP_DIR}/cuda-install"
+            mkdir -p "${CUDA_TMP_INSTALL_DIR}"
+            "${TMP_DIR}/${CUDA_RUNFILE}" --silent --toolkit --samples --tmpdir="${CUDA_TMP_INSTALL_DIR}"
+
+            CUDA_SAMPLES_ARCHIVE="v${CUDA_SAMPLES_VERSION}.tar.gz"
+            wget -P "${TMP_DIR}" "https://github.com/NVIDIA/cuda-samples/archive/refs/tags/v${CUDA_SAMPLES_VERSION}.tar.gz"
+            tar xf "${TMP_DIR}/${CUDA_SAMPLES_ARCHIVE}" --directory "/usr/local/"
+
+            # Cleanup
+            rm -rf "${TMP_DIR}"
+
+            ## Add CUDA to PATH
+            CUDA_PATH="/usr/local/cuda"
+            echo "export PATH=${CUDA_PATH}/bin:\${PATH}" > /etc/profile.d/pcluster_cuda.sh
+            echo "export LD_LIBRARY_PATH=${CUDA_PATH}/lib64:\${LD_LIBRARY_PATH}" >> /etc/profile.d/pcluster_cuda.sh
+            chmod +x /etc/profile.d/pcluster_cuda.sh
+
+    - name: Validation
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            # Injected from the document constant, matching the installed driver version.
+            NVIDIA_DRIVER_VERSION="{{ NVIDIA_DRIVER_VERSION }}"
+
+            ## Driver and CUDA
+            source /etc/profile.d/pcluster_cuda.sh
+            ls -l /usr/local
+            which nvcc
+            nvcc --version
+            which nvidia-smi
+            nvidia-smi
+
+            ## NVLink stack alignment: Fabric Manager, IMEX and libnvsdm must match
+            ## the driver version exactly.
+            for pkg in nvidia-fabricmanager nvidia-imex libnvsdm; do
+              installed="$(rpm -q --qf '%{VERSION}' "${pkg}")"
+              echo "${pkg} version: ${installed} (driver: ${NVIDIA_DRIVER_VERSION})"
+              if [ "${installed}" != "${NVIDIA_DRIVER_VERSION}" ]; then
+                echo "ERROR: ${pkg} ${installed} does not match driver ${NVIDIA_DRIVER_VERSION}" >&2
+                exit 1
+              fi
+            done
+
+            ## NVLSM is versioned independently of the driver.
+            rpm -q nvlsm
+
+            ## Binary version checks (non-fatal: they require the driver to be loaded,
+            ## which may not be the case on the build instance).
+            nv-fabricmanager --version || true
+            nvidia-imex -v || true
