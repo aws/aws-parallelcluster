@@ -4,11 +4,7 @@ aws-xray-sdk
 freezegun
 jinja2
 munch
-# Pinned below 9.0 until the test suites are made pytest-9 compatible
-# (e.g. marks-on-fixtures removal). This is the dep that otherwise upgrades
-# pytest to 9.x during `pip install ../../cli`, overriding the pin in
-# tests/integration-tests/requirements.txt.
-pytest<9.0.0
+pytest
 pytest-cov
 pytest-datadir
 pytest-html

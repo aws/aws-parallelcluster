@@ -19,7 +19,7 @@ pexpect
 psutil
 pykwalify
 pyOpenSSL
-pytest<9.0.0
+pytest
 pytest-datadir
 pytest-html
 pytest-rerunfailures
