@@ -47,7 +47,7 @@ if command -v dnf >/dev/null 2>&1; then
     echo "Detected dnf package manager"
     fix_rpmdb
     sudo dnf clean all
-    sudo dnf makecache --refresh || true
+    sudo dnf makecache --refresh -y  || true
     if [[ "${FLAVOUR}" == "minimal" ]]; then
         # Apply only security errata. Kernel packages are allowed to be upgraded.
         sudo dnf upgrade --security -y
@@ -59,7 +59,7 @@ elif command -v yum >/dev/null 2>&1; then
     echo "Detected yum package manager"
     fix_rpmdb
     sudo yum clean all
-    sudo yum makecache || true
+    sudo yum makecache -y || true
     if [[ "${FLAVOUR}" == "minimal" ]]; then
         # update-minimal --security applies the smallest set of security errata.
         # Kernel bumps are allowed (no --exclude=kernel*).
