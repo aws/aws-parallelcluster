@@ -5,6 +5,8 @@ HeadNode:
   Networking:
     SubnetId: {{ public_subnet_id }}
     ElasticIp: true
+    AdditionalSecurityGroups:
+      - {{ fsx_efa_security_group_id }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -24,6 +26,8 @@ Scheduling:
           {% if placement_group_enabled and capacity_reservation_framework_placement_group %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
+        AdditionalSecurityGroups:
+          - {{ fsx_efa_security_group_id }}
       ComputeResources:
         - Name: efa-enabled-i1
           InstanceType: {{ instance }}
@@ -32,7 +36,18 @@ Scheduling:
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket_name }}/pcluster-efa-fsx-lustre-client-tutorial.sh
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
 SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
+  - MountDir: {{ fsx_mount_dir }}
+    Name: fsx-efa
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      FileSystemId: {{ fsx_fs_id }}
