@@ -291,9 +291,7 @@ def assert_instance_has_desired_imds_v2_setting(instance, status):
 
     logging.info(f"Instance {instance_id}{instance_name_part} has IMDSv2 {imds_v2_status}")
 
-    assert_that(imds_v2_status).described_as(
-        f"IMDSv2 HttpTokens setting of instance {instance_id}{instance_name_part}"
-    ).is_equal_to(status)
+    assert_that(imds_v2_status).is_equal_to(status)
 
 
 def assert_instance_has_desired_tags(instance, tags: List[dict]):
@@ -305,9 +303,7 @@ def assert_instance_has_desired_tags(instance, tags: List[dict]):
     logging.info(f"Instance {instance_id}{instance_name_part} has tags {instance_tags}")
 
     for tag in tags:
-        assert_that(instance_tags).described_as(
-            f"tags of instance {instance_id}{instance_name_part} should contain {tag}"
-        ).contains(tag)
+        assert_that(instance_tags).contains(tag)
 
 
 def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_command_executor=None):
