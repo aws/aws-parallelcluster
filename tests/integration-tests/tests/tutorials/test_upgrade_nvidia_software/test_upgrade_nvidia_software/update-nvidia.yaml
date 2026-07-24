@@ -1,9 +1,3 @@
-# Template derived from pcluster-configurations build-config/tutorials/upgrade-nvidia-software/
-# component-nvlink-stack.yaml: identical document, except the values of the constants below are
-# lowercase jinja variables injected by the test, which then asserts the same versions on the
-# cluster. The uppercase curly-brace references in the steps are AWSTOE constant references
-# resolved by Image Builder at build time, not jinja variables: the test renders this template
-# with DebugUndefined so they pass through verbatim.
 name: update-nvidia
 description: >-
   Update the NVIDIA software stack: driver, CUDA, Fabric Manager, IMEX and NVLSM.
@@ -26,7 +20,7 @@ constants:
       value: "{{ cuda_samples_version }}"
   # Driver version pinned into the CUDA runfile filename by NVIDIA for this CUDA release. It is
   # fixed per CUDA version and independent of the driver installed by this component.
-  # CUDA 13.3.1 ships as cuda_13.3.1_610.43.02_linux.run.
+  # CUDA 13.2.2 ships as cuda_13.2.2_595.71.05_linux.run.
   - CUDA_RELEASE_NVIDIA_VERSION:
       type: string
       value: "{{ cuda_release_nvidia_version }}"
@@ -34,7 +28,7 @@ constants:
 phases:
   - name: build
     steps:
-    - name: InstallNvidia
+    - name: InstallDriver
       action: ExecuteBash
       inputs:
         commands:
@@ -59,42 +53,6 @@ phases:
 
             # Cleanup
             rm -rf "${TMP_DIR}"
-
-    - name: InstallCuda
-      action: ExecuteBash
-      inputs:
-        commands:
-          - |
-            #!/bin/bash
-            set -ex
-
-            # Values injected from the document constants.
-            CUDA_VERSION="{{ CUDA_VERSION }}"
-            CUDA_SAMPLES_VERSION="{{ CUDA_SAMPLES_VERSION }}"
-            CUDA_RELEASE_NVIDIA_VERSION="{{ CUDA_RELEASE_NVIDIA_VERSION }}"
-
-            # Create temporary directory
-            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
-
-            CUDA_RUNFILE="cuda_${CUDA_VERSION}_${CUDA_RELEASE_NVIDIA_VERSION}_linux.run"
-            wget -P "${TMP_DIR}" "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_RUNFILE}"
-            chmod +x "${TMP_DIR}/${CUDA_RUNFILE}"
-            CUDA_TMP_INSTALL_DIR="${TMP_DIR}/cuda-install"
-            mkdir -p "${CUDA_TMP_INSTALL_DIR}"
-            "${TMP_DIR}/${CUDA_RUNFILE}" --silent --toolkit --samples --tmpdir="${CUDA_TMP_INSTALL_DIR}"
-
-            CUDA_SAMPLES_ARCHIVE="v${CUDA_SAMPLES_VERSION}.tar.gz"
-            wget -P "${TMP_DIR}" "https://github.com/NVIDIA/cuda-samples/archive/refs/tags/v${CUDA_SAMPLES_VERSION}.tar.gz"
-            tar xf "${TMP_DIR}/${CUDA_SAMPLES_ARCHIVE}" --directory "/usr/local/"
-
-            # Cleanup
-            rm -rf "${TMP_DIR}"
-
-            ## Add CUDA to PATH
-            CUDA_PATH="/usr/local/cuda"
-            echo "export PATH=${CUDA_PATH}/bin:\${PATH}" > /etc/profile.d/pcluster_cuda.sh
-            echo "export LD_LIBRARY_PATH=${CUDA_PATH}/lib64:\${LD_LIBRARY_PATH}" >> /etc/profile.d/pcluster_cuda.sh
-            chmod +x /etc/profile.d/pcluster_cuda.sh
 
     - name: InstallNVLinkStack
       action: ExecuteBash
@@ -121,7 +79,7 @@ phases:
             # of the driver).
             #
             # NVIDIA_DRIVER_VERSION and ARCH are injected from the document constants,
-            # so they are guaranteed to match the values used by the InstallNvidia step.
+            # so they are guaranteed to match the values used by the InstallDriver step.
             # --------------------------------------------------------------------------
             NVIDIA_DRIVER_VERSION="{{ NVIDIA_DRIVER_VERSION }}"
             ARCH="{{ ARCH }}"
@@ -172,6 +130,42 @@ phases:
 
             # Cleanup
             rm -rf "${TMP_DIR}"
+
+    - name: InstallCuda
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            # Values injected from the document constants.
+            CUDA_VERSION="{{ CUDA_VERSION }}"
+            CUDA_SAMPLES_VERSION="{{ CUDA_SAMPLES_VERSION }}"
+            CUDA_RELEASE_NVIDIA_VERSION="{{ CUDA_RELEASE_NVIDIA_VERSION }}"
+
+            # Create temporary directory
+            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
+
+            CUDA_RUNFILE="cuda_${CUDA_VERSION}_${CUDA_RELEASE_NVIDIA_VERSION}_linux.run"
+            wget -P "${TMP_DIR}" "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_RUNFILE}"
+            chmod +x "${TMP_DIR}/${CUDA_RUNFILE}"
+            CUDA_TMP_INSTALL_DIR="${TMP_DIR}/cuda-install"
+            mkdir -p "${CUDA_TMP_INSTALL_DIR}"
+            "${TMP_DIR}/${CUDA_RUNFILE}" --silent --toolkit --samples --tmpdir="${CUDA_TMP_INSTALL_DIR}"
+
+            CUDA_SAMPLES_ARCHIVE="v${CUDA_SAMPLES_VERSION}.tar.gz"
+            wget -P "${TMP_DIR}" "https://github.com/NVIDIA/cuda-samples/archive/refs/tags/v${CUDA_SAMPLES_VERSION}.tar.gz"
+            tar xf "${TMP_DIR}/${CUDA_SAMPLES_ARCHIVE}" --directory "/usr/local/"
+
+            # Cleanup
+            rm -rf "${TMP_DIR}"
+
+            ## Add CUDA to PATH
+            CUDA_PATH="/usr/local/cuda"
+            echo "export PATH=${CUDA_PATH}/bin:\${PATH}" > /etc/profile.d/pcluster_cuda.sh
+            echo "export LD_LIBRARY_PATH=${CUDA_PATH}/lib64:\${LD_LIBRARY_PATH}" >> /etc/profile.d/pcluster_cuda.sh
+            chmod +x /etc/profile.d/pcluster_cuda.sh
 
     - name: Validation
       action: ExecuteBash

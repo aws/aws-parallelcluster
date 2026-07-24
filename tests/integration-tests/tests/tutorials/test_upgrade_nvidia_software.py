@@ -41,7 +41,7 @@ QUEUE_NAME = "q1"
 COMPUTE_RESOURCE_NAME = "cr1"
 
 # Software versions installed by the component. The test injects these values into the AWSTOE
-# constants of the component document (placeholder markers in component-nvlink-stack.yaml) and
+# constants of the component document (placeholder markers in update-nvidia.yaml) and
 # asserts the same versions on the cluster nodes.
 NVIDIA_DRIVER_VERSION = "580.173.02"
 CUDA_VERSION = "13.3.1"
@@ -113,7 +113,7 @@ def test_upgrade_nvidia_software(
     1. Create an EC2 Image Builder component with the NVIDIA upgrade procedure (driver + CUDA
        runfiles, NVLink stack from the NVIDIA driver local repository), injecting the expected
        software versions into the AWSTOE constants of the component document.
-    2. Build a custom AMI with `pcluster build-image` using the official ParallelCluster AMI as
+    2. Build a custom AMI with `pcluster build-image` using the official vanilla OS AMI as
        parent and the component from step 1.
     3. Wait for the AMI produced by the build to be available in EC2.
     4. Create a cluster using the custom AMI, with a static GPU compute node.
@@ -129,9 +129,9 @@ def test_upgrade_nvidia_software(
     component_document = _render_component_document(test_datadir, architecture)
     component_arn = nvidia_stack_component(component_document)
 
-    # Step 2: build the custom AMI with pcluster build-image, using the official ParallelCluster
-    # AMI as parent image (the same procedure documented in the tutorial).
-    parent_image = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
+    # Step 2: build the custom AMI with pcluster build-image, using the official vanilla OS AMI
+    # as parent image.
+    parent_image = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
     image_id = generate_stack_name("integ-tests-upgrade-nvidia", request.config.getoption("stackname_suffix"))
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
@@ -192,7 +192,7 @@ def _render_component_document(test_datadir, architecture):
         "CUDA_RELEASE_NVIDIA_VERSION": CUDA_RELEASE_NVIDIA_VERSION,
     }
     template = SandboxedEnvironment(undefined=DebugUndefined).from_string(
-        (test_datadir / "component-nvlink-stack.yaml").read_text()
+        (test_datadir / "update-nvidia.yaml").read_text()
     )
     document = template.render(**{name.lower(): value for name, value in expected_constants.items()})
 
