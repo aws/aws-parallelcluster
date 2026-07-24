@@ -136,8 +136,8 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: [{{ p4d_24xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2 }}]
-          instances: ["p4d.24xlarge"]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_0 }}]
+          instances: [ "c5n.18xlarge" ]
           oss: ["alinux2"]
           schedulers: ["slurm"]
   iam:
