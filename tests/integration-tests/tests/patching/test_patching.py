@@ -22,7 +22,6 @@ from tests.common.osu_common import PRIVATE_OSES
 from tests.common.utils import (
     COMPUTE_NODE,
     GPU_JOB_SCRIPT,
-    HEAD_NODE,
     LOGIN_NODE,
     NODE_TYPES,
     reboot_head_node,
@@ -173,12 +172,9 @@ def test_patching_cluster(
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=False)
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=True)
 
-    # Snapshot and log the kernel modules loaded after patching, then assert (softly,
-    # so every node type is reported even if one fails) that every module loaded
-    # before patching is still loaded on the head, compute and login nodes.
-    kernel_modules_after = _collect_loaded_kernel_modules(
-        cluster, scheduler_commands_factory, trigger_head_node_mount=True
-    )
+    # Trigger lazily-loaded modules so that we can compare pre v/s post reboot kernel modules.
+    _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory)
+    kernel_modules_after = _collect_loaded_kernel_modules(cluster, scheduler_commands_factory)
     logging.info("Kernel modules loaded after patching: %s", kernel_modules_after)
     with soft_assertions():
         for node_type in NODE_TYPES:
@@ -248,23 +244,26 @@ def _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node):
     logging.info("GPU validation job %s submitted from the %s succeeded", job_id, source)
 
 
-def _collect_loaded_kernel_modules(cluster, scheduler_commands_factory, trigger_head_node_mount=False):
-    """Snapshot the loaded kernel modules per node type.
+def _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory):
+    """Ensure on-demand kernel modules are loaded before the post-reboot snapshot.
 
-    After patching, the head node is rebooted in place, so we need to perform a read
-    operation on the FSx storage to trigger the loading of the Lustre kernel modules
-    before sampling. This is gated by trigger_head_node_mount, since it is only needed
-    for the post-reboot snapshot: before patching the mount has already been triggered,
-    and compute and login nodes perform the mount as part of their bootstrap and so
-    trigger it implicitly.
+    Some modules load lazily and are absent right after the reboot until something
+    exercises them, which would make the post-reboot snapshot miss them and fail the
+    before/after comparison.
     """
+    for node_type in NODE_TYPES:
+        executor = _node_executor(cluster, scheduler_commands_factory, node_type)
+        # Read the FSx for Lustre mountpoint to trigger the loading of lustre kernel module.
+        executor.run_remote_command(f"ls {FSX_LUSTRE_MOUNT_DIR}")
+        # Load the kernel TLS module directly
+        executor.run_remote_command("sudo modprobe tls")
+
+
+def _collect_loaded_kernel_modules(cluster, scheduler_commands_factory):
+    """Snapshot the loaded kernel modules per node type."""
     modules = {}
     for node_type in NODE_TYPES:
         executor = _node_executor(cluster, scheduler_commands_factory, node_type)
-        if node_type == HEAD_NODE and trigger_head_node_mount:
-            # Access the FSx for Lustre mountpoint to trigger its on-demand automount,
-            # so its client kernel modules get loaded before sampling.
-            executor.run_remote_command(f"ls {FSX_LUSTRE_MOUNT_DIR}")
         modules[node_type] = _loaded_kernel_modules(executor)
     return modules
 
