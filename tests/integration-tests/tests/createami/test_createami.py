@@ -197,8 +197,15 @@ def test_build_image(
         _test_build_imds_settings(image, "required", region)
 
         _test_build_image_success(image, request.config.getoption("output_dir"))
-        _test_export_logs(s3_bucket_factory, image, region)
-        _test_export_logs(s3_bucket_factory, image, region, True)
+
+        # Only validate export-image-logs if the build did NOT complete successfully. On a successful
+        # build the build-image stack self-deletes, which races the export command and causes
+        # intermittent "stack does not exist" failures; a successful build also does not need its logs
+        # exported. If the build failed the stack is retained, so the export reliably has its stack.
+        if image.image_status != "BUILD_COMPLETE":
+            _test_export_logs(s3_bucket_factory, image, region)
+            _test_export_logs(s3_bucket_factory, image, region, True)
+
         _test_image_tag_and_volume(image)
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
@@ -635,6 +642,7 @@ def test_build_image_wrong_pcluster_version(
     architecture,
     pcluster_ami_without_standard_naming,
     images_factory,
+    s3_bucket_factory,
     request,
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
@@ -656,6 +664,13 @@ def test_build_image_wrong_pcluster_version(
     image = images_factory(image_id, image_config, region)
 
     _test_build_image_failed(image, request.config.getoption("output_dir"))
+
+    # This build deterministically fails, so the build-image stack is retained (it does not
+    # self-delete). That makes it a reliable place to validate export-image-logs end to end, for
+    # both a custom bucket and the default pcluster bucket.
+    _test_export_logs(s3_bucket_factory, image, region)
+    _test_export_logs(s3_bucket_factory, image, region, True)
+
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
