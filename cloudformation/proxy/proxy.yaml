@@ -381,8 +381,8 @@ Resources:
 
               # Domain allowlist for isolated network:
               # OS package repos: Ubuntu, Rocky, Amazon Linux
-              # AWS services: awscli, EFA installer, S3 (global + virtual-hosted)
-              # Build dependencies: Rust crates (efs-utils), snap store (Firefox/DCV on Ubuntu)
+              # AWS services: awscli, EFA installer, efs-utils package repo + GPG key (CloudFront), S3 (global + virtual-hosted)
+              # Build dependencies: Rust crates, snap store (Firefox/DCV on Ubuntu)
               # RHEL repos: Red Hat Update Infrastructure (RHUI)
               # EPEL GPG key: CloudFront distribution
               # DCV GPG key: CloudFront distribution (NICE DCV)
@@ -414,6 +414,7 @@ Resources:
             \.s3\.amazonaws\.com
             ^s3\.amazonaws\.com
             ^efa-installer\.amazonaws\.com
+            ^amazon-efs-utils\.aws\.com
             ^index\.crates\.io
             ^static\.crates\.io
             ^api\.snapcraft\.io
