@@ -167,6 +167,7 @@ def retrieve_latest_ami(
                 and not request.config.getoption("pcluster_git_ref")
                 and not request.config.getoption("cookbook_git_ref")
                 and not request.config.getoption("node_git_ref")
+                and not request.config.getoption("ami_owner")
                 and not allow_private_ami
                 and os not in PRIVATE_OSES
             ):  # If none of Git refs is provided, the test is running against released version.
@@ -174,10 +175,16 @@ def retrieve_latest_ami(
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})
         else:
             ami_name = _get_ami_for_os(ami_type, os, architecture).get("name")
+        if request and request.config.getoption("ami_owner") and ami_type == "pcluster":
+            owners = [
+                request.config.getoption("ami_owner")
+            ]  # ami owner should take effect only when getting pcluster AMI
+        else:
+            owners = _get_ami_for_os(ami_type, os, architecture).get("owners")
         describe_images_args = {
             "Filters": [{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
-            "Owners": _get_ami_for_os(ami_type, os, architecture).get("owners"),
+            "Owners": owners,
             "IncludeDeprecated": _get_ami_for_os(ami_type, os, architecture).get("includeDeprecated", False),
         }
         logging.info("Retrieving AMI with DescribeImages arguments: %s" % describe_images_args)

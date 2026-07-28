@@ -903,6 +903,7 @@ def inject_additional_config_settings(  # noqa C901
                 ami_type="pcluster",
                 architecture=architecture,
                 additional_filters=_build_private_os_ami_filters(request),
+                request=request,
             ),
             ("Image", "CustomAmi"),
         )
