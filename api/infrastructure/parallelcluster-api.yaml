@@ -193,7 +193,6 @@ Resources:
         FsxS3Buckets: !Ref FsxS3Buckets
         PermissionsBoundaryPolicy: !Ref PermissionsBoundaryPolicy
         IAMRoleAndPolicyPrefix: !Ref IAMRoleAndPolicyPrefix
-        EnableBatchAccess: true
         AdditionalPolicies: !Ref ParallelClusterFunctionAdditionalPolicies
 
   PclusterLayer:
