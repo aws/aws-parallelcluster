@@ -48,14 +48,6 @@ Parameters:
     ConstraintDescription: "The value must be a valid ARN in the format: arn:{AWS::Partition}:iam::{AWS::AccountId}:policy/PolicyNameParameter"
     AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
 
-  EnableBatchAccess:
-    Description: |
-      When set to true the ParallelCluster ParallelClusterClusterPolicyBatch is created which can access Batch actions and resources.
-    Type: String
-    Default: false
-    AllowedValues:
-      - true
-      - false
   IAMRoleAndPolicyPrefix:
     Type: String
     Description: 'Prefix for IAM roles and policies'
@@ -94,16 +86,11 @@ Outputs:
     Condition: EnableIamPolicy
     Value: !Ref DefaultParallelClusterIamAdminPolicy
 
-  ParallelClusterClusterPolicyBatch:
-    Condition: EnableBatchAccessCondition
-    Value: !Ref ParallelClusterClusterPolicyBatch
-
 
 
 Conditions:
   IsMultiRegion: !Equals [!Ref Region, '*']
   EnableFSxS3AccessCondition: !Equals [!Ref EnableFSxS3Access, true]
-  EnableBatchAccessCondition: !Equals [!Ref EnableBatchAccess, true]
   EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UseAdditionalPolicies: !Not [!Equals [!Ref AdditionalPolicies, '']]
   UseAllBucketsForFSxS3: !Equals [!Ref FsxS3Buckets, "*"]
@@ -204,101 +191,12 @@ Resources:
         # Required to run ParallelCluster functionalities
         - !Ref ParallelClusterClusterPolicy1
         - !Ref ParallelClusterClusterPolicy2
-        - !If
-          - EnableBatchAccessCondition
-          - !Ref ParallelClusterClusterPolicyBatch
-          - !Ref AWS::NoValue
         - !Ref ParallelClusterImageManagedPolicy
         - !Ref ParallelClusterLogRetrievalPolicy
         - !If
           - UseAdditionalPolicies
           - !Ref AdditionalPolicies
           - !Ref AWS::NoValue
-
-  ### CLUSTER ACTIONS POLICIES
-
-  ParallelClusterClusterPolicyBatch:
-    Type: AWS::IAM::ManagedPolicy
-    Condition: EnableBatchAccessCondition
-    Properties:
-      ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicyBatch-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Action:
-              - iam:PassRole
-            Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-            Effect: Allow
-            Condition:
-              StringEqualsIfExists:
-                iam:PassedToService:
-                  - ecs-tasks.amazonaws.com
-                  - batch.amazonaws.com
-                  - codebuild.amazonaws.com
-            Sid: IamPassRole
-          - Action:
-              - iam:CreateServiceLinkedRole
-              - iam:DeleteServiceLinkedRole
-            Resource:
-              # AWS Batch creates a service linked role automatically for the ComputeEnvironment
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/*
-            Effect: Allow
-            Condition:
-              StringEquals:
-                iam:AWSServiceName:
-                  - batch.amazonaws.com
-          - Action:
-              - codebuild:*
-            Resource: !Sub arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/pcluster-*
-            Effect: Allow
-          - Action:
-              - ecr:*
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: ECR
-          - Action:
-              - batch:*
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: Batch
-          - Action:
-              - events:*
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Resource: '*'
-            Sid: AmazonCloudWatchEvents
-          - Action:
-              - ecs:DescribeContainerInstances
-              - ecs:ListContainerInstances
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: ECS
 
   ParallelClusterFSxS3AccessPolicy:
     Type: AWS::IAM::Policy

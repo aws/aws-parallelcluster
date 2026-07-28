@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   Integration-test deploy role for the pcluster CLI, plus the test-only permissions attached to it.
   Defines ParallelClusterUserRole (the assumable role the CLI/CI assumes to run pcluster) and
-  IntegTestsPolicy (test-infra permissions the customer-facing vended policy must never ship). The
+  IntegTestsPolicy (test-infra permissions the customer-facing policy must never ship). The
   real ParallelCluster permissions come from cloudformation/policies/parallelcluster-policies.yaml,
   which conftest.py merges into the same stack and attaches to ParallelClusterUserRole. Inline
   cluster/image/log/batch policies and IAM path/name-prefix plumbing live in user-role.cfn.yaml
@@ -68,7 +68,7 @@ Resources:
           # Required to read the Directory Service password when tests create AD-integrated clusters.
           # The customer path scopes this to the specific secret ARN on the head-node role (added by
           # the CLI); the test deploy role assumes one identity across arbitrary test clusters, so it
-          # needs a broad grant. This is test-only and deliberately NOT in the vended policy.
+          # needs a broad grant. This is test-only.
           - Action: "secretsmanager:GetSecretValue"
             Resource: !Sub arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:*
             Effect: Allow
