@@ -28,7 +28,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from troposphere import Template, iam
-from utils import generate_stack_name, get_arn_partition, get_gpu_count
+from utils import generate_stack_name, get_arn_partition, get_gpu_count, run_command
 
 from tests.common.assertions import (
     _assert_build_image_stack_deleted,
@@ -202,9 +202,15 @@ def test_build_image(
         # build the build-image stack self-deletes, which races the export command and causes
         # intermittent "stack does not exist" failures; a successful build also does not need its logs
         # exported. If the build failed the stack is retained, so the export reliably has its stack.
+        #
+        # On a successful build we still want evidence that the build logs reached CloudWatch, so we tail
+        # the image build log group instead: `aws logs tail` reads the log group directly and has none of
+        # export's dependencies (no S3 bucket, no build-image stack), so it cannot hit the deletion race.
         if image.image_status != "BUILD_COMPLETE":
             _test_export_logs(s3_bucket_factory, image, region)
             _test_export_logs(s3_bucket_factory, image, region, True)
+        else:
+            _test_tail_image_logs(image, region)
 
         _test_image_tag_and_volume(image)
         _test_list_image_log_streams(image)
@@ -386,6 +392,27 @@ def _set_s3_bucket_policy(bucket_name, partition, region):
         ],
     }
     boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
+
+
+def _test_tail_image_logs(image, region):
+    """Assert the image build logs reached CloudWatch by tailing the image build log group.
+
+    Used on a successful build, where export-image-logs is skipped (the build-image stack self-deletes
+    and races the export). ``aws logs tail`` reads the log group directly -- no S3 bucket and no
+    dependency on the build-image stack -- so it gives race-free evidence that logs are being pushed.
+    The image build log group is ``/aws/imagebuilder/ParallelClusterImage-<image_id>``.
+    """
+    logging.info("Testing that image build logs reached CloudWatch via aws logs tail")
+    log_group_name = f"/aws/imagebuilder/ParallelClusterImage-{image.image_id}"
+    # `aws logs tail` defaults to only the last 10 minutes; an image build takes much longer, so widen
+    # the window with --since so an empty result means "no logs" rather than "no logs in the last 10 min".
+    result = run_command(
+        ["aws", "logs", "tail", log_group_name, "--since", "1h", "--region", region],
+        raise_on_error=True,
+    )
+    assert_that(result.stdout.strip()).described_as(
+        f"no log events found in {log_group_name}; build logs were not pushed to CloudWatch"
+    ).is_not_empty()
 
 
 def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=False):
