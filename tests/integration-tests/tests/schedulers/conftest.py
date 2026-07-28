@@ -191,7 +191,9 @@ def slurm_dbd(request, database, region, os, vpc_stack_for_database, munge_key):
                 {
                     "ParameterKey": "AmiId",
                     "ParameterValue": (
-                        custom_ami if custom_ami else retrieve_latest_ami(region, os, ami_type="pcluster")
+                        custom_ami
+                        if custom_ami
+                        else retrieve_latest_ami(region, os, ami_type="pcluster", request=request)
                     ),
                 },
                 {"ParameterKey": "DBMSClientSG", "ParameterValue": database.cfn_outputs["DatabaseClientSecurityGroup"]},

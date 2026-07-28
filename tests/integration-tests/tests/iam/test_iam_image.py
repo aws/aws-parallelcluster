@@ -29,10 +29,13 @@ def test_iam_roles(
     pcluster_config_reader,
     images_factory,
     test_datadir,
+    request,
 ):
     instance_profile, lambda_cleanup_role = _create_image_roles(create_roles_stack)
 
-    image = _build_image(images_factory, instance_profile, lambda_cleanup_role, os, pcluster_config_reader, region)
+    image = _build_image(
+        images_factory, instance_profile, lambda_cleanup_role, os, pcluster_config_reader, region, request
+    )
 
     cfn_client = boto3.client("cloudformation", region_name=region)
     ec2_client = boto3.client("ec2", region_name=region)
@@ -53,11 +56,11 @@ def test_iam_roles(
     _wait_build_image_complete(image)
 
 
-def _build_image(images_factory, instance_profile, lambda_cleanup_role, os, pcluster_config_reader, region):
+def _build_image(images_factory, instance_profile, lambda_cleanup_role, os, pcluster_config_reader, region, request):
     # Generate image ID
     image_id = generate_stack_name("integ-tests-build-image", "")
     # Get base AMI
-    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture="x86_64")
+    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture="x86_64", request=request)
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
