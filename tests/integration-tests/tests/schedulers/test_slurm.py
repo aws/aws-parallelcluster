@@ -26,6 +26,7 @@ from utils import (
     check_status,
     get_compute_nodes_instance_ids,
     get_instance_info,
+    get_username_for_os,
     retrieve_clustermgtd_conf_path,
     retrieve_supervisorctl_path,
     set_protected_failure_count,
@@ -38,6 +39,7 @@ from tests.common.assertions import (
     assert_lines_in_logs,
     assert_msg_in_log,
     assert_msg_in_log_at_least,
+    assert_msg_in_log_at_most,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     assert_no_node_in_ec2,
@@ -538,6 +540,196 @@ def _assert_slurm_nodes_have_instance_id(scheduler_commands, nodes, expected_ins
         assert_that(expected_instance_ids).contains(instance_id)
         node_to_instance_id[node] = instance_id
     return node_to_instance_id
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_slurm_maintenance_reservation(
+    region, os, pcluster_config_reader, clusters_factory, scheduler_commands_factory
+):
+    """
+    Test that a user-created Slurm reservation with the maint flag follows standard Slurm semantics.
+
+    A reservation created with flags=maint is a scheduling/accounting construct: it keeps unreserved jobs off the
+    reserved nodes but does not change node power state or prevent launching. Per the design decision (clustermgtd
+    treats nodes normally) ParallelCluster does not special-case reserved nodes, so on a single cluster we check
+    both node types:
+    - static node: unreserved jobs stay pending on it, but when it becomes unhealthy clustermgtd replaces it and
+      lets the replacement bootstrap back to idle while keeping its reservation;
+    - dynamic node: unreserved jobs stay pending and the node is not powered up, a job submitted with
+      --reservation resumes the node and runs to completion, and after the reservation is deleted the node
+      accepts unreserved jobs again.
+    """
+    num_static_nodes = 1
+    num_dynamic_nodes = 2
+    scaledown_idletime = 3
+    cluster_config = pcluster_config_reader(
+        num_static_nodes=num_static_nodes, num_dynamic_nodes=num_dynamic_nodes, scaledown_idletime=scaledown_idletime
+    )
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    partition = "queue1"
+
+    # Wait for the static nodes to register (dynamic nodes are defined up front), then split by type.
+    wait_for_num_nodes_in_scheduler(scheduler_commands, num_static_nodes, filter_by_partition=partition)
+    static_nodes, dynamic_nodes = get_partition_nodes(scheduler_commands.get_compute_nodes(partition, all_nodes=True))
+    wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"], stop_max_delay_secs=300)
+    _shorten_clustermgtd_loop(remote_command_executor)
+    static_node = static_nodes[0]
+    dynamic_node = dynamic_nodes[0]
+    reservation_user = get_username_for_os(os)
+
+    # Static node: unreserved jobs are blocked, an unhealthy node is still replaced, and once the reservation is
+    # removed the pending job runs.
+    _create_user_maintenance_reservation(
+        remote_command_executor, scheduler_commands, "usermaint_st", static_node, users=reservation_user
+    )
+    static_job_id = _submit_job_pinned_to_node(scheduler_commands, static_node, partition)
+    _assert_job_stays_pending(scheduler_commands, static_job_id)
+    _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node)
+    _delete_slurm_reservation(remote_command_executor, "usermaint_st")
+    _assert_reservation_cleared(scheduler_commands, static_node)
+    scheduler_commands.wait_job_completed(static_job_id)
+    scheduler_commands.assert_job_succeeded(static_job_id)
+
+    # Dynamic node: unreserved jobs are blocked without powering the node up, a --reservation job resumes and
+    # runs it, and once the reservation is removed the pending job runs.
+    _create_user_maintenance_reservation(
+        remote_command_executor, scheduler_commands, "usermaint_dy", dynamic_node, users=reservation_user
+    )
+    dynamic_job_id = _submit_job_pinned_to_node(scheduler_commands, dynamic_node, partition)
+    _assert_job_stays_pending(scheduler_commands, dynamic_job_id)
+    assert_num_instances_constant(cluster.cfn_name, region, desired=num_static_nodes, timeout=2)
+    assert_that(_get_node_state_flags(scheduler_commands, dynamic_node)).does_not_contain("POWERING_UP")
+    _assert_reservation_job_runs_on_reserved_node(
+        scheduler_commands, cluster, region, dynamic_node, partition, "usermaint_dy", num_static_nodes
+    )
+    _delete_slurm_reservation(remote_command_executor, "usermaint_dy")
+    _assert_reservation_cleared(scheduler_commands, dynamic_node)
+    scheduler_commands.wait_job_completed(dynamic_job_id)
+    scheduler_commands.assert_job_succeeded(dynamic_job_id)
+
+    assert_no_errors_in_logs(remote_command_executor, "slurm", skip_ice=True)
+
+
+def _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node):
+    """Set the reserved static node DOWN and confirm clustermgtd replaces it once, back to idle, keeping reserved."""
+    clustermgtd_log = "/var/log/parallelcluster/clustermgtd"
+    # Set it DOWN as a prolog/health failure would; bound the wait so a kill/relaunch regression fails fast.
+    scheduler_commands.set_nodes_state([static_node], state="down")
+
+    # "settled IDLE" excludes these transient/busy flags; the replacement must bootstrap fully, not just appear.
+    unsettled_flags = {"DOWN", "POWERING_UP", "ALLOCATED", "MIXED", "COMPLETING", "DRAIN"}
+    recovered_flags = None
+    for _ in range(30):
+        state_flags = _get_node_state_flags(scheduler_commands, static_node)
+        if "IDLE" in state_flags and not (state_flags & unsettled_flags):
+            recovered_flags = state_flags
+            break
+        time.sleep(30)
+    assert_that(recovered_flags).described_as("static node bootstrapped back to idle while reserved").is_not_none()
+    # The reservation must survive the replacement, not be dropped along with the old instance.
+    assert_that(recovered_flags).contains("MAINTENANCE", "RESERVED")
+
+    # clustermgtd logs this once per replacement round: expect one legitimate replacement, not a relaunch loop.
+    replacement_msg = "Terminating instances backing unhealthy static nodes"
+    assert_msg_in_log_at_least(remote_command_executor, clustermgtd_log, replacement_msg, count=1)
+    assert_msg_in_log_at_most(remote_command_executor, clustermgtd_log, replacement_msg, count=2)
+
+
+def _shorten_clustermgtd_loop(remote_command_executor, loop_time=30):
+    """Reduce the clustermgtd loop interval and restart the daemon so node maintenance actions surface quickly."""
+    clustermgtd_log = "/var/log/parallelcluster/clustermgtd"
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/^loop_time /d' {clustermgtd_conf_path}; "
+        f"echo 'loop_time = {loop_time}' | sudo tee -a {clustermgtd_conf_path}"
+    )
+    remote_command_executor.clear_clustermgtd_log()
+    supervisorctl_path = retrieve_supervisorctl_path(remote_command_executor)
+    remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} restart clustermgtd")
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_lines_in_logs)(
+        remote_command_executor, [clustermgtd_log], ["ClusterManager Startup"]
+    )
+
+
+def _create_user_maintenance_reservation(remote_command_executor, scheduler_commands, reservation_name, node, users):
+    """Create a user-owned maintenance reservation on a node and wait for the node to enter MAINTENANCE+RESERVED."""
+    logging.info("Creating user maintenance reservation %s on node %s for users %s", reservation_name, node, users)
+    remote_command_executor.run_remote_command(
+        "sudo -i scontrol create reservation "
+        f"ReservationName={reservation_name} user={users} starttime=now duration=infinite "
+        f"flags=maint nodes={node}"
+    )
+    result = remote_command_executor.run_remote_command(f"scontrol show ReservationName={reservation_name}")
+    assert_that(result.stdout).contains("Flags=MAINT")
+
+    # The MAINTENANCE+RESERVED flags do not propagate to the node instantly, so poll for them.
+    @retry(wait_fixed=seconds(5), stop_max_delay=seconds(60))
+    def _wait_reserved():
+        assert_that(_get_node_state_flags(scheduler_commands, node)).contains("MAINTENANCE", "RESERVED")
+
+    _wait_reserved()
+
+
+def _delete_slurm_reservation(remote_command_executor, reservation_name):
+    logging.info("Deleting Slurm reservation %s", reservation_name)
+    remote_command_executor.run_remote_command(f"sudo -i scontrol delete ReservationName={reservation_name}")
+
+
+def _get_node_state_flags(scheduler_commands, node):
+    """Return the set of scontrol State flags for a node, e.g. {'IDLE', 'CLOUD', 'MAINTENANCE', 'RESERVED'}.
+
+    Uses scontrol (not sinfo state codes) because reserved/maintenance nodes render with version-dependent
+    suffix symbols in sinfo, whereas scontrol always reports the '+'-separated flag set.
+    """
+    node_info = scheduler_commands.get_node_info(node)
+    # Negative lookbehind avoids matching the NextState= field that scontrol also prints.
+    match = re.search(r"(?<!Next)State=(\S+)", node_info)
+    assert_that(match, f"State not found for node {node}").is_not_none()
+    return set(match.group(1).split("+"))
+
+
+def _submit_job_pinned_to_node(scheduler_commands, node, partition):
+    """Submit an unreserved job pinned to a single node and return its job id."""
+    result = scheduler_commands.submit_command("hostname", nodes=1, partition=partition, host=node)
+    return scheduler_commands.assert_job_submitted(result.stdout)
+
+
+def _assert_job_stays_pending(scheduler_commands, job_id):
+    """Confirm a job stays pending across a few polls, so a transient pending does not pass for a lasting block."""
+    for _ in range(4):
+        assert_that(scheduler_commands.get_job_info(job_id, field="JobState")).is_equal_to("PENDING")
+        time.sleep(15)
+
+
+def _assert_reservation_cleared(scheduler_commands, node):
+    """Wait for the MAINTENANCE+RESERVED flags to clear from a node after the reservation is deleted."""
+
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(1))
+    def _check():
+        assert_that(_get_node_state_flags(scheduler_commands, node)).does_not_contain("MAINTENANCE", "RESERVED")
+
+    _check()
+
+
+def _assert_reservation_job_runs_on_reserved_node(
+    scheduler_commands, cluster, region, reserved_node, partition, reservation_name, num_static_nodes
+):
+    """A job targeting the reservation must run on the reserved node: Slurm resumes it, then powers it back down."""
+    logging.info("Submitting a --reservation job that should run on reserved node %s", reserved_node)
+    result = scheduler_commands.submit_command(
+        "hostname", nodes=1, partition=partition, host=reserved_node, other_options=f"--reservation={reservation_name}"
+    )
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    # The reservation did not block the resume path: the node was powered up to run the job.
+    assert_that(scheduler_commands.get_job_info(job_id, field="NodeList")).contains(reserved_node)
+    # Once idle past ScaledownIdletime the node powers back down, returning to the static-node instance count.
+    wait_for_num_instances_in_cluster(cluster.cfn_name, region, num_static_nodes)
+    # Once idle past ScaledownIdletime the node powers back down, returning to the static-node instance count.
+    wait_for_num_instances_in_cluster(cluster.cfn_name, region, num_static_nodes)
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")

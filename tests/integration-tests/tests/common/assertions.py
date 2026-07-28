@@ -175,6 +175,14 @@ def assert_msg_in_log_at_least(remote_command_executor: RemoteCommandExecutor, l
     assert_that(log.count(message)).described_as(f"occurrences of '{message}'").is_greater_than_or_equal_to(count)
 
 
+def assert_msg_in_log_at_most(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str, count: int):
+    """Assert message appears at most count times in log_file."""
+    __tracebackhide__ = True
+    log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+    log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
+    assert_that(log.count(message)).described_as(f"occurrences of '{message}'").is_less_than_or_equal_to(count)
+
+
 def assert_lines_in_logs(remote_command_executor: RemoteCommandExecutor, log_files, expected_errors):
     # assert every expected error exists in at least one of the log files
     __tracebackhide__ = True
