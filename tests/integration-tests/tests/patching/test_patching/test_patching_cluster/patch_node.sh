@@ -37,6 +37,27 @@ fix_rpmdb() {
     sudo rpm --rebuilddb
 }
 
+# On RHEL/Rocky the AMI's aws-fsx repo is pinned to the minor release it was built on, so a
+# patching kernel bump leaves no matching lustre kmod and FSx mounts fail after reboot..
+# Before the reboot, and targeting the kernel about to boot, re-point the repo
+# at the new minor and upgrade the client to that minor's newest build. 
+# If the upgrade no-ops (same version, different .ko) reinstall to swap the module, 
+# then fail if none resolves for the new kernel.
+# https://docs.aws.amazon.com/fsx/latest/LustreGuide/install-lustre-client.html
+refresh_lustre_client() {
+    [[ -f /etc/yum.repos.d/aws-fsx.repo ]] || return 0
+    local new_kernel
+    new_kernel=$(rpm -q kernel --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
+    modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 && return 0
+    sudo sed -i -E "s#(/el/)[0-9]+(\.[0-9]+)?#\1$(. /etc/os-release && echo "${VERSION_ID}")#" /etc/yum.repos.d/aws-fsx.repo
+    sudo dnf clean metadata
+    sudo dnf upgrade -y kmod-lustre-client lustre-client
+    modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 \
+        || sudo dnf reinstall -y kmod-lustre-client lustre-client || true
+    modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 \
+        || { echo "ERROR: no FSx Lustre client available for kernel ${new_kernel}" >&2; exit 1; }
+}
+
 echo "===== Starting system ${FLAVOUR} patching on $(hostname) ====="
 # Report the running kernel before patching. The kernel after the reboot is
 # reported separately once the node has rebooted (the reboot is mandatory to
@@ -88,6 +109,12 @@ elif command -v apt-get >/dev/null 2>&1; then
 else
     echo "ERROR: no supported package manager found (dnf/yum/apt-get)" >&2
     exit 1
+fi
+
+# The pinned-repo kmod mismatch is a RHEL/Rocky-only problem; AL2023 and Ubuntu get their
+# Lustre client from non-pinned channels, so only run the fix-up there.
+if [[ "$(. /etc/os-release && echo "${ID}")" =~ ^(rhel|rocky)$ ]]; then
+    refresh_lustre_client
 fi
 
 echo "===== System ${FLAVOUR} patching completed on $(hostname) ====="
