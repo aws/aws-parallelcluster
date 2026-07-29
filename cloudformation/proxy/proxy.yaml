@@ -31,6 +31,13 @@ Parameters:
       - "true"
       - "false"
 
+  PrivateSubnetAvailabilityZone:
+    Description: >-
+      AZ name (e.g. us-east-1c) for the private subnet. 
+      When empty, the private subnet falls back to the Region's "b" AZ.
+    Type: String
+    Default: ""
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -39,6 +46,7 @@ Metadata:
         Parameters:
           - VpcCidr
           - SSHCidr
+          - PrivateSubnetAvailabilityZone
       - Label:
           default: Permissions
         Parameters:
@@ -57,6 +65,7 @@ Conditions:
   IsClusterProxy: !Not [!Condition IsBuildImageProxy]
   # China regions (aws-cn partition) use cn.com.amazonaws prefix for VPC Interface endpoint service names
   IsChinaRegion: !Equals [!Ref "AWS::Partition", "aws-cn"]
+  HasPrivateSubnetAvailabilityZone: !Not [!Equals [!Ref PrivateSubnetAvailabilityZone, ""]]
 
 Resources:
 
@@ -118,7 +127,7 @@ Resources:
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}b
+      AvailabilityZone: !If [HasPrivateSubnetAvailabilityZone, !Ref PrivateSubnetAvailabilityZone, !Sub "${AWS::Region}b"]
       CidrBlock: !Select [ 1, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
       MapPublicIpOnLaunch: false
       VpcId: !Ref Vpc

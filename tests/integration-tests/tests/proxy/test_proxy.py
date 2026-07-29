@@ -15,6 +15,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
+from conftest_networking import get_az_id_to_az_name_map
 from remote_command_executor import RemoteCommandExecutor
 from utils import generate_stack_name
 
@@ -22,7 +23,7 @@ from tests.common.schedulers_common import SlurmCommands
 
 
 @pytest.fixture(scope="class")
-def proxy_stack_factory(region, request, cfn_stacks_factory):
+def proxy_stack_factory(region, request, cfn_stacks_factory, az_id):
     """
     Set up and tear down a CloudFormation stack to deploy a proxy environment.
 
@@ -51,6 +52,11 @@ def proxy_stack_factory(region, request, cfn_stacks_factory):
                 )
             else:
                 stack_name = generate_stack_name("integ-tests-proxy", request.config.getoption("stackname_suffix"))
+                private_subnet_az = (
+                    get_az_id_to_az_name_map(region, request.config.getoption("credential")).get(az_id, "")
+                    if az_id
+                    else ""
+                )
                 stack_parameters = [
                     {"ParameterKey": "Keypair", "ParameterValue": request.config.getoption("key_name")},
                     {"ParameterKey": "VpcCidr", "ParameterValue": "10.0.0.0/16"},
@@ -63,6 +69,7 @@ def proxy_stack_factory(region, request, cfn_stacks_factory):
                         "ParameterValue": "true" if enable_build_image_proxy else "false",
                     },
                     {"ParameterKey": "InstanceType", "ParameterValue": "t3.medium"},
+                    {"ParameterKey": "PrivateSubnetAvailabilityZone", "ParameterValue": private_subnet_az},
                 ]
                 capabilities = ["CAPABILITY_IAM"]
                 tags = [{"Key": "parallelcluster:integ-tests-proxy-stack", "Value": "proxy"}]
