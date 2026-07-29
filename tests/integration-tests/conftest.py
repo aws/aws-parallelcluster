@@ -445,7 +445,9 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+    def _cluster_factory(
+        cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, bastion=None, **kwargs
+    ):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster_name = (
             request.config.getoption("cluster")
@@ -467,7 +469,7 @@ def clusters_factory(request, region):
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, request, **kwargs)
         # Run pcluster-diag after every successful cluster creation
-        _run_pcluster_diag(request, cluster)
+        _run_pcluster_diag(request, cluster, bastion=bastion)
         return cluster
 
     yield _cluster_factory
@@ -615,11 +617,15 @@ def _get_outdir_path(request, output_subdir, extension):
     )
 
 
-def _run_pcluster_diag(request, cluster):
-    """Run pcluster-diag on the cluster and save the report to the test output directory."""
+def _run_pcluster_diag(request, cluster, bastion=None):
+    """Run pcluster-diag on the cluster and save the report to the test output directory.
+
+    :param bastion: optional "user@host" SSH bastion used to reach head nodes that are not directly
+        reachable, e.g. clusters deployed in a private subnet behind a proxy.
+    """
     if not cluster.create_complete:
         return
-    rce = RemoteCommandExecutor(cluster)
+    rce = RemoteCommandExecutor(cluster, bastion=bastion)
     diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
     logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
     user = get_username_for_os(cluster.os)

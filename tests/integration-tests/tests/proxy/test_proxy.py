@@ -127,9 +127,11 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, clusters_factory, sc
     assert_that(proxy_public_ip).is_not_none().described_as("Proxy public IP should not be None")
 
     cluster_config = pcluster_config_reader(proxy_address=proxy_address, subnet_with_proxy=subnet_with_proxy)
-    cluster = clusters_factory(cluster_config)
 
+    # The head node sits in a private subnet reachable only through the proxy instance, which acts as an
+    # SSH bastion. Pass it to the factory so the post-creation pcluster-diag can reach the head node too.
     bastion = f"ubuntu@{proxy_public_ip}"
+    cluster = clusters_factory(cluster_config, bastion=bastion)
 
     remote_command_executor = RemoteCommandExecutor(cluster=cluster, bastion=bastion)
     slurm_commands = SlurmCommands(remote_command_executor)

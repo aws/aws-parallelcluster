@@ -44,7 +44,7 @@ fix_rpmdb() {
 # If the upgrade no-ops (same version, different .ko) reinstall to swap the module, 
 # then fail if none resolves for the new kernel.
 # https://docs.aws.amazon.com/fsx/latest/LustreGuide/install-lustre-client.html
-refresh_lustre_client() {
+refresh_lustre_client_rhel() {
     [[ -f /etc/yum.repos.d/aws-fsx.repo ]] || return 0
     local new_kernel
     new_kernel=$(rpm -q kernel --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
@@ -54,6 +54,24 @@ refresh_lustre_client() {
     sudo dnf upgrade -y kmod-lustre-client lustre-client
     modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 \
         || sudo dnf reinstall -y kmod-lustre-client lustre-client || true
+    modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 \
+        || { echo "ERROR: no FSx Lustre client available for kernel ${new_kernel}" >&2; exit 1; }
+}
+
+# On Ubuntu the FSx Lustre client kernel module ships as a per-kernel package
+# (lustre-client-modules-<uname-r>), so a patching kernel bump leaves no matching
+# module for the new kernel about to boot.
+# Before the reboot, install the target kernel's module package, mirroring the
+# cookbook's Ubuntu lustre setup.
+# See https://docs.aws.amazon.com/fsx/latest/LustreGuide/install-lustre-client.html
+refresh_lustre_client_debian() {
+    [[ -f /etc/apt/sources.list.d/fsxlustreclientrepo.list ]] || return 0
+    local new_kernel
+    new_kernel=$(find /lib/modules -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -V | tail -n1)
+    modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 && return 0
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        "lustre-client-modules-${new_kernel}" lustre-client-modules-aws || true
     modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 \
         || { echo "ERROR: no FSx Lustre client available for kernel ${new_kernel}" >&2; exit 1; }
 }
@@ -111,10 +129,15 @@ else
     exit 1
 fi
 
-# The pinned-repo kmod mismatch is a RHEL/Rocky-only problem; AL2023 and Ubuntu get their
-# Lustre client from non-pinned channels, so only run the fix-up there.
-if [[ "$(. /etc/os-release && echo "${ID}")" =~ ^(rhel|rocky)$ ]]; then
-    refresh_lustre_client
-fi
+# A patching kernel bump can leave the FSx Lustre client without a module matching
+# the kernel about to boot, which breaks FSx mounts after the reboot. Refresh the
+# client per-OS: RHEL/Rocky re-point the minor-pinned repo, Ubuntu installs the
+# per-kernel module package. AL2/AL2023 pull Lustre from non-pinned channels that
+# already track the kernel, so they need no fix-up.
+case "$(. /etc/os-release && echo "${ID}")" in
+    rhel | rocky) refresh_lustre_client_rhel ;;
+    ubuntu) refresh_lustre_client_debian ;;
+    *) : ;;
+esac
 
 echo "===== System ${FLAVOUR} patching completed on $(hostname) ====="
