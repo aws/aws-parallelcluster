@@ -48,7 +48,7 @@ UNTOLERATED_CRASH_PATTERNS = [
 # TOLERATED_CRASH_PATTERNS = [
 #     # gnome-software segfaults in libadwaita related to animated scrolling of UI widget, observed on RHEL9/Rocky9
 #     re.compile(r"gnome-software.*scroll_to \(libadwaita", re.DOTALL),
-#     # tracker-miner-fs-3, tracker-extract, and tracker-store crash on Ubuntu/RHEL — GNOME file indexer, unrelated to DCV
+#     # tracker-miner-fs-3, tracker-extract, and tracker-store crash - GNOME file indexer, unrelated to DCV
 #     re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
 #     # ibus-extension-gtk3 aborts in the GNOME session — GNOME input-method component, unrelated to DCV.
 #     # Observed on ubuntu2404/arm64 (g5g).
