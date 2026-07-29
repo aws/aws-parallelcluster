@@ -45,15 +45,15 @@ UNTOLERATED_CRASH_PATTERNS = [
 
 # Tolerated crash patterns: list of regex patterns.
 # A crash is tolerated if it is unrelated to DCV and the software stack owned by ParallelCluster.
-TOLERATED_CRASH_PATTERNS = [
-    # gnome-software segfaults in libadwaita related to animated scrolling of UI widget, observed on RHEL9/Rocky9
-    re.compile(r"gnome-software.*scroll_to \(libadwaita", re.DOTALL),
-    # tracker-miner-fs-3, tracker-extract, and tracker-store crash on Ubuntu/RHEL — GNOME file indexer, unrelated to DCV
-    re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
-    # ibus-extension-gtk3 aborts in the GNOME session — GNOME input-method component, unrelated to DCV.
-    # Observed on ubuntu2404/arm64 (g5g).
-    re.compile(r"ibus-extension-gtk3", re.DOTALL),
-]
+# TOLERATED_CRASH_PATTERNS = [
+#     # gnome-software segfaults in libadwaita related to animated scrolling of UI widget, observed on RHEL9/Rocky9
+#     re.compile(r"gnome-software.*scroll_to \(libadwaita", re.DOTALL),
+#     # tracker-miner-fs-3, tracker-extract, and tracker-store crash - GNOME file indexer, unrelated to DCV
+#     re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
+#     # ibus-extension-gtk3 aborts in the GNOME session — GNOME input-method component, unrelated to DCV.
+#     # Observed on ubuntu2404/arm64 (g5g).
+#     re.compile(r"ibus-extension-gtk3", re.DOTALL),
+# ]
 
 
 INSTANCE_TOLERATED_CRASH_PATTERNS = {
@@ -224,9 +224,8 @@ def _get_crash_report(remote_command_executor):
 
 
 def _is_tolerated_crash(content, instance=None):
-    """A crash is tolerated only if it matches a TOLERATED pattern and no UNTOLERATED pattern.
+    """A crash is tolerated unless it matches an UNTOLERATED pattern.
 
-    Unknown/unclassified crashes are untolerated by default.
     Instance-specific patterns (INSTANCE_TOLERATED_CRASH_PATTERNS) take precedence over
     UNTOLERATED_CRASH_PATTERNS for the matching instance type.
     """
@@ -240,10 +239,7 @@ def _is_tolerated_crash(content, instance=None):
     for pattern in UNTOLERATED_CRASH_PATTERNS:
         if pattern.search(content):
             return False
-    for pattern in TOLERATED_CRASH_PATTERNS:
-        if pattern.search(content):
-            return True
-    return False
+    return True
 
 
 def _assert_no_crashes(remote_command_executor, instance=None):

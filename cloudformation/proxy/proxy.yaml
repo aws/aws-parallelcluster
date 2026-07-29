@@ -476,6 +476,10 @@ Resources:
             echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
             echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
             apt-get $APT_RETRY install -y iptables-persistent
+
+            curl -X PUT -H "Content-Type:" \
+              --data-binary '{"Status":"SUCCESS","Reason":"Proxy ready","UniqueId":"Proxy","Data":"OK"}' \
+              "${ProxyReadyWaitConditionHandle}"
       Tags:
         - Key: Name
           Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
@@ -488,6 +492,19 @@ Resources:
       SourceDestCheck: false
       SubnetId: !Ref PublicSubnet
 
+  # Signaled upon the finish Proxy UserData. ProxyClient depends on this so it launches only after the
+  # proxy can actually carry network traffic.
+  ProxyReadyWaitConditionHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  ProxyReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Proxy
+    Properties:
+      Count: 1
+      Handle: !Ref ProxyReadyWaitConditionHandle
+      Timeout: 600
+
   # PROXY VERIFICATION CLIENT
   # In cluster mode: tests explicit proxy (http_proxy env var) by downloading from GitHub.
   # In build-image mode: tests transparent proxy (iptables REDIRECT) by curling allowlisted domains.
@@ -495,6 +512,7 @@ Resources:
     Type: AWS::EC2::Instance
     DependsOn:
       - Proxy
+      - ProxyReadyWaitCondition
     Properties:
       IamInstanceProfile: !Ref ProxyClientNodeInstanceProfile
       ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
