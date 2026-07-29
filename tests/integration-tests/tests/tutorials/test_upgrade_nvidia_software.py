@@ -43,19 +43,12 @@ COMPUTE_RESOURCE_NAME = "cr1"
 # Software versions installed by the component. The test injects these values into the AWSTOE
 # constants of the component document (placeholder markers in update-nvidia.yaml) and
 # asserts the same versions on the cluster nodes.
-NVIDIA_DRIVER_VERSION = "580.173.02"
-CUDA_VERSION = "13.3.1"
+NVIDIA_DRIVER_VERSION = "595.71.05"
+CUDA_VERSION = "13.2.2"
 CUDA_SAMPLES_VERSION = "13.3"
-# Driver version pinned into the CUDA runfile filename by NVIDIA for this CUDA release. It is
-# fixed per CUDA version and independent of the driver installed by the component.
-CUDA_RELEASE_NVIDIA_VERSION = "610.43.02"
-# nvcc reports the major.minor release of the CUDA toolkit.
+CUDA_RELEASE_NVIDIA_VERSION = "595.71.05"
 CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
-
-# NVLSM is versioned independently of the driver and is not pinned in the component: the component
-# installs the version bundled in the NVIDIA driver local repository for NVIDIA_DRIVER_VERSION
-# (2025.10.14 is the version bundled in the 580.173.02 driver local repository).
-NVLSM_BUNDLED_VERSION = "2025.10.14"
+NVLSM_BUNDLED_VERSION = "2025.10.12"
 
 # Packages whose version must match the NVIDIA driver version exactly.
 DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex", "libnvsdm"]
