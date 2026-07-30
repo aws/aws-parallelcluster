@@ -618,21 +618,18 @@ def _run_pcluster_diag(request, cluster):
     """Run pcluster-diag on the cluster and save the report to the test output directory."""
     if not cluster.create_complete:
         return
-    try:
-        rce = RemoteCommandExecutor(cluster)
-        diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
-        logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
-        user = get_username_for_os(cluster.os)
-        remote_report_path = rce.run_remote_command(
-            f"ls -t /home/{user}/pcluster-diag-output/pcluster-diag-report-*.json | head -1",
-            timeout=10,
-        ).stdout.strip()
-        if remote_report_path:
-            report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
-            rce.get_remote_files(remote_report_path, report_dst)
-            logging.info("pcluster-diag report saved to %s", report_dst)
-    except Exception as e:
-        logging.warning("pcluster-diag failed on cluster %s: %s", cluster.name, e)
+    rce = RemoteCommandExecutor(cluster)
+    diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
+    logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
+    user = get_username_for_os(cluster.os)
+    remote_report_path = rce.run_remote_command(
+        f"ls -t /home/{user}/pcluster-diag-output/pcluster-diag-report-*.json | head -1",
+        timeout=10,
+    ).stdout.strip()
+    if remote_report_path:
+        report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
+        rce.get_remote_files(remote_report_path, report_dst)
+        logging.info("pcluster-diag report saved to %s", report_dst)
 
 
 @pytest.fixture()
