@@ -15,7 +15,9 @@ Scheduling:
     - Name: queue1
       Networking:
         SubnetIds:
+          {% for private_subnet_id in private_subnet_ids %}
           - {{ private_subnet_id }}
+          {% endfor %}
       ComputeResources:
         - Name: compute-resource1
           Instances:
