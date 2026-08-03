@@ -67,7 +67,8 @@ refresh_lustre_client_rhel() {
 refresh_lustre_client_debian() {
     [[ -f /etc/apt/sources.list.d/fsxlustreclientrepo.list ]] || return 0
     local new_kernel
-    new_kernel=$(find /lib/modules -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort -V | tail -n1)
+    new_kernel=$(dpkg-query -W -f='${Package}\n' 'linux-image-*-aws' 2>/dev/null \
+        | sed 's/^linux-image-//' | grep -E '^[0-9]' | sort -V | tail -n1)
     modinfo -k "${new_kernel}" lustre >/dev/null 2>&1 && return 0
     sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
