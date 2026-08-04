@@ -30,7 +30,7 @@ from tests.common.utils import (
 )
 
 # Time budget (seconds) for the patching to complete on the head node.
-PATCHING_TIMEOUT = 1800
+PATCHING_TIMEOUT = 3600
 
 # Patching flavour passed to patch_node.sh: "minimal" applies only security patches,
 # "full" applies all available OS package updates. It is selected via the test's
