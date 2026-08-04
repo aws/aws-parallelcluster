@@ -606,24 +606,26 @@ def test_ad_integration(  # noqa: C901
     vpc = directory_stack_outputs.get("VpcId")
     config_params.update(get_vpc_public_subnet(vpc))
 
-    cluster_config = pcluster_config_reader(**config_params)
-    cluster = clusters_factory(cluster_config)
-
     certificate_secret_arn = directory_stack_outputs.get("DomainCertificateSecretArn")
     certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
     with open(test_datadir / "certificate.crt", "w") as f:
         f.write(certificate)
 
+    def setup_directory_certificate(cluster):
+        remote_command_executor = RemoteCommandExecutor(cluster)
+        remote_command_executor.run_remote_command(
+            f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
+            additional_files=[test_datadir / "certificate.crt"],
+        )
+        if directory_certificate_verification:
+            logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
+            time.sleep(600)
+            # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
+            #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+
+    cluster_config = pcluster_config_reader(**config_params)
+    cluster = clusters_factory(cluster_config, post_cluster_setup=setup_directory_certificate)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    remote_command_executor.run_remote_command(
-        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
-        additional_files=[test_datadir / "certificate.crt"],
-    )
-    if directory_certificate_verification:
-        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-        time.sleep(600)
-        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
@@ -731,25 +733,25 @@ def test_ad_integration_on_login_nodes(
         directory_certificate_verification,
     )
     config_params.update(get_vpc_public_subnet(directory_stack_outputs.get("VpcId")))
-    cluster_config = pcluster_config_reader(**config_params)
-    cluster = clusters_factory(cluster_config)
-
     certificate_secret_arn = directory_stack_outputs.get("DomainCertificateSecretArn")
     certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
     with open(test_datadir / "certificate.crt", "w") as f:
         f.write(certificate)
 
-    # Publish compute node count metric every minute via cron job
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    remote_command_executor.run_remote_command(
-        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i service sssd restart",
-        additional_files=[test_datadir / "certificate.crt"],
-    )
-    if directory_certificate_verification:
-        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-        time.sleep(600)
-        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+    def setup_directory_certificate(cluster):
+        remote_command_executor = RemoteCommandExecutor(cluster)
+        remote_command_executor.run_remote_command(
+            f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i service sssd restart",
+            additional_files=[test_datadir / "certificate.crt"],
+        )
+        if directory_certificate_verification:
+            logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
+            time.sleep(600)
+            # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
+            #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+
+    cluster_config = pcluster_config_reader(**config_params)
+    cluster = clusters_factory(cluster_config, post_cluster_setup=setup_directory_certificate)
 
     login_node_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
     scheduler_commands = scheduler_commands_factory(login_node_command_executor)
