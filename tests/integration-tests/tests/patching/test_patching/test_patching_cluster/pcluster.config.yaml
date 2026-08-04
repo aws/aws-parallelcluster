@@ -4,7 +4,7 @@ Image:
   CustomAmi: {{ base_ami }}
   {% endif %}
 HeadNode:
-  InstanceType: {{ instance }}
+  InstanceType: {{ head_node_instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
     ElasticIp: true
@@ -15,7 +15,7 @@ HeadNode:
 LoginNodes:
   Pools:
     - Name: login1
-      InstanceType: {{ instance }}
+      InstanceType: {{ login_node_instance }}
       Count: {{ login_nodes_count }}
       GracetimePeriod: 3
       {% if patched_ami %}
@@ -50,7 +50,10 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: cr1
-          InstanceType: {{ instance }}
+          Instances:
+            {% for instance_type in flexible_instance_types %}
+            - InstanceType: {{ instance_type }}
+            {% endfor %}
           MinCount: 1
           MaxCount: 1
           Efa:
