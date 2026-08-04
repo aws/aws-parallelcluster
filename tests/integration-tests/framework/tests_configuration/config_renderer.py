@@ -93,6 +93,9 @@ def _get_os_parameters(config=None, args=None):
 
     rhel_oss = [os for os in SUPPORTED_OSES if "rhel" in os]
     _propagate_os_jinja_variables("RHEL_", result, rotation_seed, rhel_oss)
+
+    ubuntu_oss = [os for os in SUPPORTED_OSES if "ubuntu" in os]
+    _propagate_os_jinja_variables("UBUNTU_", result, rotation_seed, ubuntu_oss)
     return result
 
 
