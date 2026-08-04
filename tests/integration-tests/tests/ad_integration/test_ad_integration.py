@@ -18,6 +18,7 @@ import random
 import string
 import time
 import zipfile
+from functools import partial
 from pathlib import Path
 
 import boto3
@@ -100,6 +101,24 @@ def get_ad_config_param_vals(
         "ldap_tls_req_cert": "never" if directory_certificate_verification is False else "hard",
         "private_subnet_id": directory_stack_outputs.get("PrivateSubnetIds").split(",")[0],
     }
+
+
+def setup_directory_certificate(
+    cluster,
+    ldap_tls_ca_cert,
+    certificate_path,
+    directory_certificate_verification,
+):
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor.run_remote_command(
+        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
+        additional_files=[certificate_path],
+    )
+    if directory_certificate_verification:
+        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
+        time.sleep(600)
+        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
+        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
 
 
 def _add_file_to_zip(zip_file, path, arcname):
@@ -611,20 +630,16 @@ def test_ad_integration(  # noqa: C901
     with open(test_datadir / "certificate.crt", "w") as f:
         f.write(certificate)
 
-    def setup_directory_certificate(cluster):
-        remote_command_executor = RemoteCommandExecutor(cluster)
-        remote_command_executor.run_remote_command(
-            f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
-            additional_files=[test_datadir / "certificate.crt"],
-        )
-        if directory_certificate_verification:
-            logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-            time.sleep(600)
-            # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-            #  We should look for other methods to let the SSSD agent use the new certificate more quickly
-
     cluster_config = pcluster_config_reader(**config_params)
-    cluster = clusters_factory(cluster_config, post_cluster_setup=setup_directory_certificate)
+    cluster = clusters_factory(
+        cluster_config,
+        post_cluster_setup=partial(
+            setup_directory_certificate,
+            ldap_tls_ca_cert=ldap_tls_ca_cert,
+            certificate_path=test_datadir / "certificate.crt",
+            directory_certificate_verification=directory_certificate_verification,
+        ),
+    )
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -738,20 +753,16 @@ def test_ad_integration_on_login_nodes(
     with open(test_datadir / "certificate.crt", "w") as f:
         f.write(certificate)
 
-    def setup_directory_certificate(cluster):
-        remote_command_executor = RemoteCommandExecutor(cluster)
-        remote_command_executor.run_remote_command(
-            f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i service sssd restart",
-            additional_files=[test_datadir / "certificate.crt"],
-        )
-        if directory_certificate_verification:
-            logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-            time.sleep(600)
-            # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-            #  We should look for other methods to let the SSSD agent use the new certificate more quickly
-
     cluster_config = pcluster_config_reader(**config_params)
-    cluster = clusters_factory(cluster_config, post_cluster_setup=setup_directory_certificate)
+    cluster = clusters_factory(
+        cluster_config,
+        post_cluster_setup=partial(
+            setup_directory_certificate,
+            ldap_tls_ca_cert=ldap_tls_ca_cert,
+            certificate_path=test_datadir / "certificate.crt",
+            directory_certificate_verification=directory_certificate_verification,
+        ),
+    )
 
     login_node_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
     scheduler_commands = scheduler_commands_factory(login_node_command_executor)
