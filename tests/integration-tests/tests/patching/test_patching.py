@@ -42,6 +42,9 @@ DEFAULT_PATCHING_FLAVOUR = "minimal"
 # so it is defined in a single place.
 FSX_LUSTRE_MOUNT_DIR = "/shared-fsxlustre"
 
+HEAD_NODE_INSTANCE = "c5.xlarge"
+LOGIN_NODE_INSTANCE = "c5.xlarge"
+
 
 def test_patching_cluster(
     region,
@@ -83,7 +86,11 @@ def test_patching_cluster(
     # Start the cluster creation but do not block on it: the AMI patching below
     # runs concurrently while the cluster comes up.
     create_config = pcluster_config_reader(
-        output_file="pcluster.config.create.yaml", login_nodes_count=1, fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR
+        output_file="pcluster.config.create.yaml",
+        login_nodes_count=1,
+        head_node_instance=HEAD_NODE_INSTANCE,
+        login_node_instance=LOGIN_NODE_INSTANCE,
+        fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR,
     )
     cluster = clusters_factory(create_config, wait=False)
 
@@ -123,6 +130,8 @@ def test_patching_cluster(
         output_file="pcluster.config.stop-login.yaml",
         login_nodes_count=0,
         base_ami=base_ami_pin,
+        head_node_instance=HEAD_NODE_INSTANCE,
+        login_node_instance=LOGIN_NODE_INSTANCE,
         fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR,
     )
     cluster.update(str(stop_login_config))
@@ -137,6 +146,8 @@ def test_patching_cluster(
         login_nodes_count=1,
         base_ami=base_ami_pin,
         patched_ami=patched_ami,
+        head_node_instance=HEAD_NODE_INSTANCE,
+        login_node_instance=LOGIN_NODE_INSTANCE,
         fsx_lustre_mount_dir=FSX_LUSTRE_MOUNT_DIR,
     )
     cluster.update(str(update_config))
