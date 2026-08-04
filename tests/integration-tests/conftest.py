@@ -25,6 +25,7 @@ from itertools import product
 from shutil import copyfile
 from traceback import format_tb
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 import boto3
 import cfn_tools
@@ -86,6 +87,7 @@ from utils import (
     get_architecture_supported_by_instance_type,
     get_arn_partition,
     get_instance_info,
+    get_instance_public_ip_by_private_ip,
     get_metadata,
     get_network_interfaces_count,
     get_similar_instance_types,
@@ -622,7 +624,8 @@ def _run_pcluster_diag(request, cluster):
     """Run pcluster-diag on the cluster and save the report to the test output directory."""
     if not cluster.create_complete:
         return
-    rce = RemoteCommandExecutor(cluster)
+    bastion = _get_bastion(request, cluster)
+    rce = RemoteCommandExecutor(cluster, bastion=bastion)
     diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
     logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
     remote_report_path = rce.run_remote_command(
@@ -633,6 +636,40 @@ def _run_pcluster_diag(request, cluster):
         report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
         rce.get_remote_files(remote_report_path, report_dst)
         logging.info("pcluster-diag report saved to %s", report_dst)
+
+
+def _get_bastion(request, cluster):
+    """Return the SSH endpoint pcluster-diag must use to reach the cluster head node.
+
+    Returns None when the head node is directly reachable (it has a public IP), otherwise the
+    "user@ip" SSH bastion to tunnel through.
+    """
+    # 1. Head node directly reachable from the test runner.
+    if cluster.head_node_public_ip:
+        return None
+
+    # 2. Head node behind an HTTP proxy declared in the cluster config.
+    proxy_address = cluster.config.get("HeadNode", {}).get("Networking", {}).get("Proxy", {}).get("HttpProxyAddress")
+    proxy_private_ip = urlparse(proxy_address).hostname if proxy_address else None
+    if proxy_private_ip:
+        proxy_public_ip = get_instance_public_ip_by_private_ip(proxy_private_ip, cluster.region)
+        if proxy_public_ip:
+            # The proxy instance runs Ubuntu, so pcluster-diag tunnels through it as the "ubuntu" user.
+            return f"ubuntu@{proxy_public_ip}"
+
+    # 3. Head node in a private/no-internet subnet reachable through the VPC-stack bastion. Try the
+    #    endpoints VPC (used by no-internet tests) before the base VPC.
+    for fixture_name in ("vpc_stack_with_endpoints", "vpc_stack"):
+        if fixture_name in request.fixturenames:
+            bastion = getattr(request.getfixturevalue(fixture_name), "bastion", None)
+            if bastion:
+                return bastion
+
+    # 4. No reachable path to the head node.
+    raise RuntimeError(
+        f"Cannot run pcluster-diag on cluster {cluster.name}: the head node has no public IP, the cluster "
+        "config declares no HTTP proxy, and the test exposes no VPC-stack bastion to reach it."
+    )
 
 
 @pytest.fixture()
