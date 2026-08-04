@@ -1911,49 +1911,25 @@ def ami_copy(region):
             logging.error("Delete copied AMI snapshot failed due to %s", e)
 
 
-def _log_ami_patching_build_output(region, stack_name):  # noqa: C901
-    """Fetch and log the EC2 Image Builder execution logs for the patched-AMI build.
+def _log_ami_patching_build_output(region, stack_name):
+    """Log the EC2 Image Builder execution logs for the patched-AMI build.
 
-    Image Builder streams the output of every recipe step (including the patch
-    script stdout from the ApplyPatches ExecuteBash step) to the CloudWatch log
-    group /aws/imagebuilder/pcluster-ami-patching-recipe-<stack_name>. Surfacing it
-    here mirrors how the head node patching output is logged by the test, so the AMI
-    patching output is available in the test logs too. Any failure to retrieve the
-    logs is swallowed so it never fails the test.
+    Image Builder streams the output of every recipe step (including the patch script
+    output) to the CloudWatch log group
+    /aws/imagebuilder/pcluster-ami-patching-recipe-<stack_name>. Logging it surfaces the
+    patch output (and, on failure, the root cause) in the test logs. Any failure to
+    retrieve the logs is swallowed so it never fails the test.
     """
     log_group_name = f"/aws/imagebuilder/pcluster-ami-patching-recipe-{stack_name}"
     logs_client = boto3.client("logs", region_name=region)
     try:
-        streams = []
-        next_token = None
-        while True:
-            kwargs = {"logGroupName": log_group_name, "orderBy": "LogStreamName"}
-            if next_token:
-                kwargs["nextToken"] = next_token
-            response = logs_client.describe_log_streams(**kwargs)
-            streams.extend(response.get("logStreams", []))
-            next_token = response.get("nextToken")
-            if not next_token:
-                break
-        if not streams:
-            logging.info("No AMI patching Image Builder log streams found in log group %s", log_group_name)
-            return
-        for stream in streams:
-            stream_name = stream["logStreamName"]
-            messages = []
-            prev_token = None
-            event_token = None
-            while True:
-                event_kwargs = {"logGroupName": log_group_name, "logStreamName": stream_name, "startFromHead": True}
-                if event_token:
-                    event_kwargs["nextToken"] = event_token
-                event_response = logs_client.get_log_events(**event_kwargs)
-                messages.extend(event["message"] for event in event_response.get("events", []))
-                event_token = event_response.get("nextForwardToken")
-                if event_token == prev_token:
-                    break
-                prev_token = event_token
-            logging.info("AMI patching Image Builder log (stream %s):\n%s", stream_name, "\n".join(messages))
+        messages = []
+        for page in logs_client.get_paginator("filter_log_events").paginate(logGroupName=log_group_name):
+            messages.extend(event["message"] for event in page.get("events", []))
+        if messages:
+            logging.info("AMI patching Image Builder logs:\n%s", "\n".join(messages))
+        else:
+            logging.info("No AMI patching Image Builder logs found in log group %s", log_group_name)
     except Exception as e:  # noqa: BLE001
         logging.warning("Could not retrieve AMI patching Image Builder logs from log group %s: %s", log_group_name, e)
 
@@ -2019,7 +1995,11 @@ def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_fac
         )
         # create_stack blocks until CREATE_COMPLETE, i.e. until Image Builder has
         # finished building the patched AMI.
-        cfn_stacks_factory.create_stack(stack)
+        try:
+            cfn_stacks_factory.create_stack(stack)
+        except Exception:  # noqa: BLE001
+            _log_ami_patching_build_output(region, stack_name)
+            raise
         ami_id = stack.cfn_outputs["AmiId"]
         built.append((ami_id, stack_name))
         logging.info("Patched AMI %s is available", ami_id)
