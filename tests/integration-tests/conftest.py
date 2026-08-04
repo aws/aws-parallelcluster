@@ -89,7 +89,6 @@ from utils import (
     get_metadata,
     get_network_interfaces_count,
     get_similar_instance_types,
-    get_username_for_os,
     get_vpc_snakecase_value,
     random_alphanumeric,
     to_pascal_case,
@@ -635,9 +634,8 @@ def _run_pcluster_diag(request, cluster, bastion=None):
     rce = RemoteCommandExecutor(cluster, bastion=bastion)
     diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
     logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
-    user = get_username_for_os(cluster.os)
     remote_report_path = rce.run_remote_command(
-        f"ls -t /home/{user}/pcluster-diag-output/pcluster-diag-report-*.json | head -1",
+        'ls -t "$HOME"/pcluster-diag-output/pcluster-diag-report-*.json | head -1',
         timeout=10,
     ).stdout.strip()
     if remote_report_path:
