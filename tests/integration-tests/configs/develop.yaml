@@ -147,6 +147,10 @@ test-suites:
           instances: ["g4dn.2xlarge"]
           oss: {{ NO_RHEL_OS_X86 }}
           schedulers: ["slurm"]
+        - regions: ["us-east-1"]
+          instances: ["c5.4xlarge"]
+          oss: [{{ OS_X86_2 }}]
+          schedulers: ["slurm"]
         - regions: ["cnn1-az1"]
           instances: ["g4dn.2xlarge"]
           schedulers: ["slurm"]

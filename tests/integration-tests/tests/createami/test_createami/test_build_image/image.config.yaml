@@ -36,8 +36,3 @@ DeploymentSettings:
         - {{ default_vpc_security_group_id }}
 DevSettings:
     TerminateInstanceOnFailure: True
-{% if enable_dcv == "false" %}
-    Cookbook:
-        ExtraChefAttributes: |
-            {"cluster": {"dcv": {"install_enabled": false}}}
-{% endif %}

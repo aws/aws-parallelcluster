@@ -41,3 +41,5 @@ SharedStorage:
       DeletionPolicy: Delete
 DevSettings:
   EfaInterfaceType: efa
+  Cookbook:
+    ExtraChefAttributes: '{"cluster": {"tmp_noexec": "true"}}'
