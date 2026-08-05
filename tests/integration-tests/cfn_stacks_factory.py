@@ -102,6 +102,18 @@ class CfnVpcStack(CfnStack):
         if "CAPABILITY_NAMED_IAM" not in self.capabilities:
             self.capabilities.append("CAPABILITY_NAMED_IAM")
 
+    @property
+    def bastion(self):
+        """Return the SSH bastion for this VPC as "user@ip", or None if the VPC has no bastion.
+
+        The network template emits the BastionUser/BastionIP outputs only for VPCs that deploy a
+        bastion instance (e.g. to reach head nodes in private or no-internet subnets).
+        """
+        outputs = self.cfn_outputs
+        user = outputs.get("BastionUser")
+        ip = outputs.get("BastionIP")
+        return f"{user}@{ip}" if user and ip else None
+
     def set_az_override(self, az_override):
         """Sets the az_id to override the default AZ used to pick the subnets."""
         self.az_override = az_override
