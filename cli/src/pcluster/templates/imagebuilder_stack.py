@@ -41,6 +41,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
+    PCLUSTER_TMP_DIR,
     PCLUSTER_VERSION_TAG,
 )
 from pcluster.imagebuilder_utils import (
@@ -347,6 +348,7 @@ class ImageBuilderCdkStack(Stack):
             version=utils.get_installed_version(base_version_only=True),
             tags=build_tags,
             parent_image=self.config.build.parent_image,
+            working_directory=PCLUSTER_TMP_DIR,
             components=components,
             block_device_mappings=[
                 imagebuilder.CfnImageRecipe.InstanceBlockDeviceMappingProperty(

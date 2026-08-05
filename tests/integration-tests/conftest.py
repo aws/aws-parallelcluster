@@ -22,6 +22,7 @@ import re
 import time
 from functools import partial
 from itertools import product
+from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
 from typing import Any, Dict, List, Optional, Union
@@ -2474,3 +2475,43 @@ def store_secret_in_secret_manager(request, cfn_stacks_factory):
             for secret_arn in secrets:
                 logging.info("Deleting secret %s", secret_arn)
                 secrets_manager_client.delete_secret(SecretId=secret_arn)
+
+
+@pytest.fixture()
+def noexec_tmp_ami_factory(region, vpc_stack, request, cfn_stacks_factory):
+    """Build temporary AMIs whose /tmp mount is noexec from early boot."""
+    template_path = Path(__file__).resolve().parents[2] / "cloudformation" / "patching" / "ami-patching.yaml"
+    template_body = template_path.read_text(encoding="utf-8")
+    built = []
+
+    def _build(parent_image, builder_instance):
+        stack_name = generate_stack_name("integ-tests-tmp-noexec-ami", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(
+            name=stack_name,
+            region=region,
+            template=template_body,
+            parameters=[
+                {"ParameterKey": "ParentImage", "ParameterValue": parent_image},
+                {"ParameterKey": "InstanceType", "ParameterValue": builder_instance},
+                {"ParameterKey": "SubnetId", "ParameterValue": vpc_stack.get_public_subnet()},
+                {"ParameterKey": "VpcId", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+                {"ParameterKey": "EnableNoExecTmp", "ParameterValue": "true"},
+            ],
+            capabilities=["CAPABILITY_IAM"],
+        )
+        logging.info("Building a temporary /tmp-noexec AMI from %s", parent_image)
+        cfn_stacks_factory.create_stack(stack)
+        ami_id = stack.cfn_outputs["AmiId"]
+        boto3.client("ec2", region_name=region).get_waiter("image_available").wait(ImageIds=[ami_id])
+        built.append((ami_id, stack_name))
+        logging.info("Temporary /tmp-noexec AMI %s is available", ami_id)
+        return ami_id
+
+    yield _build
+    if request.config.getoption("no_delete"):
+        logging.info("--no-delete specified: retaining temporary /tmp-noexec AMI(s) and stack(s): %s", built)
+        return
+
+    for ami_id, stack_name in reversed(built):
+        logging.info("Deleting stack %s and temporary /tmp-noexec AMI %s", stack_name, ami_id)
+        cfn_stacks_factory.delete_stack(stack_name, region)
