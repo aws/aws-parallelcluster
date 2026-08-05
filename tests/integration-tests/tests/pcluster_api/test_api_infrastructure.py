@@ -90,6 +90,7 @@ def api_with_full_settings(
     params.append({"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"})
     params.append({"ParameterKey": "FsxS3Buckets", "ParameterValue": "*"})
     params.append({"ParameterKey": "IAMRoleAndPolicyPrefix", "ParameterValue": "abcdefghij"})
+    params.append({"ParameterKey": "LambdaFunctionTimeout", "ParameterValue": "60"})
     params.append({"ParameterKey": "PermissionsBoundaryPolicy", "ParameterValue": api_permissions_boundary_policy_arn})
     params.append({"ParameterKey": "Region", "ParameterValue": region})
 
@@ -148,18 +149,21 @@ def test_api_infrastructure_with_full_parameters(region, api_with_full_settings)
     parallelcluster_api_url = api_with_full_settings.cfn_outputs["ParallelClusterApiInvokeUrl"]
     parallelcluster_user_role = api_with_full_settings.cfn_outputs["ParallelClusterApiUserRole"]
 
-    _assert_parallelcluster_lambda(lambda_name=parallelcluster_lambda_name, lambda_arn=parallelcluster_lambda_arn)
+    _assert_parallelcluster_lambda(
+        lambda_name=parallelcluster_lambda_name, lambda_arn=parallelcluster_lambda_arn, expected_timeout=60
+    )
     _assert_parallelcluster_api(api_id=parallelcluster_api_id, api_url=parallelcluster_api_url)
     _test_auth(region, parallelcluster_user_role, parallelcluster_api_url)
     _test_api_deletion(api_with_full_settings)
 
 
-def _assert_parallelcluster_lambda(lambda_name, lambda_arn):
+def _assert_parallelcluster_lambda(lambda_name, lambda_arn, expected_timeout=30):
     """Check that the ParallelCluster Lambda is correctly configured
 
     :param client: the Lambda client
     :param lambda_name: the name of the ParallelCluster Lambda
     :param lambda_arn: the ARN of the ParallelCluster Lambda
+    :param expected_timeout: the expected timeout of the Lambda function
     """
     logging.info("Checking Lambda configuration")
 
@@ -167,7 +171,7 @@ def _assert_parallelcluster_lambda(lambda_name, lambda_arn):
     lambda_resource = client.get_function(FunctionName=lambda_name)
     lambda_configuration = lambda_resource["Configuration"]
     assert_that(lambda_configuration["FunctionArn"]).is_equal_to(lambda_arn)
-    assert_that(lambda_configuration["Timeout"]).is_equal_to(30)
+    assert_that(lambda_configuration["Timeout"]).is_equal_to(expected_timeout)
     assert_that(lambda_configuration).contains("Layers")
     assert_that(len(lambda_configuration["Layers"])).is_equal_to(1)
     assert_that(lambda_configuration["Layers"][0]).contains("Arn")

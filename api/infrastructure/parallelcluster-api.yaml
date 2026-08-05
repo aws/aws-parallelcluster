@@ -111,6 +111,15 @@ Parameters:
     Default: ''
     MaxLength: 10
 
+  LambdaFunctionTimeout:
+    Description: |
+      Timeout in seconds for the ParallelCluster Lambda function.
+      Increase this value if cluster operations time out during configuration validation.
+    Type: Number
+    Default: 30
+    MinValue: 30
+    MaxValue: 900
+
 Mappings:
   ParallelCluster:
     Constants:
@@ -122,7 +131,7 @@ Mappings:
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 30
+    Timeout: !Ref LambdaFunctionTimeout
     Tags:
       'parallelcluster:version': !FindInMap [ParallelCluster, Constants, Version]
 
@@ -295,7 +304,7 @@ Resources:
       TracingConfig:
         Mode: Active
       MemorySize: 2048
-      Timeout: 30
+      Timeout: !Ref LambdaFunctionTimeout
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt [ PclusterPolicies, Outputs.ParallelClusterLambdaRoleArn ]]
       Tags:
         - Key: 'parallelcluster:resource'
