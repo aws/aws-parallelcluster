@@ -85,9 +85,7 @@ Resources:
               urllib.request.urlopen(req)
 
           def cleanup(stack_name):
-              # Deregister the patched AMI(s) built by this stack and delete their
-              # snapshots. The snapshots are tagged first so DeleteSnapshot is allowed
-              # by the (tag-scoped) IAM policy.
+              # Deregister the patched AMI(s) built by this stack and delete their snapshots.
               if not stack_name:
                   return
               images = ec2.describe_images(Owners=["self"], Filters=[
@@ -95,9 +93,6 @@ Resources:
               for img in images:
                   snaps = [m["Ebs"]["SnapshotId"] for m in img.get("BlockDeviceMappings", [])
                            if m.get("Ebs", {}).get("SnapshotId")]
-                  if snaps:
-                      ec2.create_tags(Resources=snaps, Tags=[
-                          {"Key": "parallelcluster:ami-patching-stack", "Value": stack_name}])
                   ec2.deregister_image(ImageId=img["ImageId"])
                   for snap in snaps:
                       ec2.delete_snapshot(SnapshotId=snap)
@@ -143,12 +138,6 @@ Resources:
                 Action: ec2:DescribeImages
                 Resource: "*"
               - Effect: Allow
-                Action: ec2:CreateTags
-                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*
-                Condition:
-                  StringEquals:
-                    aws:RequestTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
-              - Effect: Allow
                 Action: ec2:DeregisterImage
                 Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::image/*
                 Condition:
@@ -156,7 +145,7 @@ Resources:
                     aws:ResourceTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
               - Effect: Allow
                 Action: ec2:DeleteSnapshot
-                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*
                 Condition:
                   StringEquals:
                     aws:ResourceTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
