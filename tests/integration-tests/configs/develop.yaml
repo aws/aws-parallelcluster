@@ -321,6 +321,10 @@ test-suites:
           instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}]
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
+        - regions: [ "aps1-az2" ]  # do not move, unless capacity reservation is moved as well
+          instances: [ "p6-b200.48xlarge" ]
+          oss: ["rhel8", "rhel9"]
+          schedulers: [ "slurm" ]
   iam:
     test_iam.py::test_iam_policies:
       dimensions:
