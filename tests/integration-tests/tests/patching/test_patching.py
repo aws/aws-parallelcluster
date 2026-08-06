@@ -42,7 +42,10 @@ DEFAULT_PATCHING_FLAVOUR = "minimal"
 # so it is defined in a single place.
 FSX_LUSTRE_MOUNT_DIR = "/shared-fsxlustre"
 
-HEAD_NODE_INSTANCE = "c5.xlarge"
+# The head node is patched in place, which recompiles EFA against the new kernel. Use at least
+# the memory of a c5.4xlarge: a known issue in the EFA compilation can cause an OOM error on
+# smaller instance types.
+HEAD_NODE_INSTANCE = "c5.4xlarge"
 LOGIN_NODE_INSTANCE = "c5.xlarge"
 
 
