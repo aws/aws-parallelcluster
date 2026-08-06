@@ -579,6 +579,21 @@ def get_username_for_os(os):
     return usernames.get(os)
 
 
+def get_instance_public_ip_by_private_ip(private_ip, region):
+    """Return the public IP of the running instance that has the given private IP.
+
+    Assumes a single instance matches the given private IP.
+    """
+    ec2 = boto3.client("ec2", region_name=region)
+    reservations = ec2.describe_instances(
+        Filters=[
+            {"Name": "private-ip-address", "Values": [private_ip]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+        ]
+    ).get("Reservations")
+    return reservations[0].get("Instances")[0].get("PublicIpAddress")
+
+
 def add_keys_to_known_hosts(hostname, host_keys_file):
     """Add ssh key for a host to a known_hosts file, retrying if the host is not yet reachable."""
 
