@@ -3,12 +3,12 @@ test-suites:
     test_scaling.py::test_scaling_stress_test:
       dimensions:
         - regions: [ "us-east-1" ]
-          instances: [ "t3.medium" ]
+          instances: [ "c5.large" ]
           oss: [ "alinux2023" ]
           schedulers: [ "slurm" ]
     test_scaling.py::test_static_scaling_stress_test:
       dimensions:
         - regions: [ "us-east-1" ]
-          instances: [ "t3.medium" ]
+          instances: [ "c5.large" ]
           oss: [ "alinux2023" ]
           schedulers: [ "slurm" ]

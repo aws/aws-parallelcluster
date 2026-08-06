@@ -19,12 +19,25 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           Instances:
+            # This queue is multi-AZ (see SubnetIds below) for capacity breadth. All-or-Nothing
+            # is only enforced at the EC2 CreateFleet level (MinTargetCapacity) for
+            # single-instance-type OR single-subnet queues, so the instance list depends on the
+            # scaling strategy:
+            #  - best-effort: no atomicity requirement, so use the flexible multi-instance-type
+            #    set for better capacity diversification across pools (the realistic path). The
+            #    list ({{ instance }} + equivalents) is retrieved dynamically by
+            #    get_similar_instance_types via the injected flexible_instance_types variable.
+            #  - all-or-nothing (and other atomic strategies): pin a single instance type so that
+            #    All-or-Nothing is actually enforced by EC2 rather than silently skipped.
+            # The primary instance type comes from the test config (configs/scaling_stress_test.yaml)
+            # and must match the keys in results/baseline.json.
+            {% if scaling_strategy == "best-effort" %}
+            {% for instance_type in flexible_instance_types %}
+            - InstanceType: {{ instance_type }}
+            {% endfor %}
+            {% else %}
             - InstanceType: {{ instance }}
-            - InstanceType: t3.large
-            - InstanceType: c5.large
-            - InstanceType: c6i.large
-            - InstanceType: m5.large
-            - InstanceType: m6i.large
+            {% endif %}
           MaxCount: {{ max_cluster_size }}
       Networking:
         SubnetIds:
