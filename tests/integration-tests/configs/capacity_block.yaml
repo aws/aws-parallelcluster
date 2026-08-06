@@ -1,0 +1,21 @@
+# Tests for instance types that can realistically only be obtained through capacity blocks.
+#
+# The `*_CAPACITY_BLOCK_*` variable makes the framework find or buy a capacity block before the
+# tests are collected, and renders to the AZ of that block so the tests run where the capacity is.
+# Buying a capacity block is an upfront, non-refundable charge, so this config is meant to be run
+# on demand only, never on a schedule.
+#
+# Capacity blocks are sold in whole days ending at 11:30 UTC, plus "instant" blocks covering what
+# is left of the current day. Only instant blocks are bought, and only when they last at least the
+# hours declared in the variable name. How long a block is depends on how close to 11:30 UTC it is
+# bought (6h at the earliest, when bought right before the 05:00 UTC cut-off), so that number only
+# needs to cover a full run of the tests below, currently ~4h40m.
+test-suites:
+  efa:
+    test_efa.py::test_efa:
+      dimensions:
+        - regions: [{{ p6_b200_48xlarge_CAPACITY_BLOCK_2_INSTANCES_5_HOURS_alinux2023 }}]
+          instances: [ "p6-b200.48xlarge" ]
+          # RHEL needs its own capacity block, since a block is bound to a single platform.
+          oss: ["alinux2023", "ubuntu2204", "ubuntu2404", "rocky8", "rocky9"]
+          schedulers: [ "slurm" ]
