@@ -22,6 +22,7 @@ from tests.common.osu_common import PRIVATE_OSES
 from tests.common.utils import (
     COMPUTE_NODE,
     GPU_JOB_SCRIPT,
+    HEAD_NODE,
     LOGIN_NODE,
     NODE_TYPES,
     reboot_head_node,
@@ -47,6 +48,48 @@ FSX_LUSTRE_MOUNT_DIR = "/shared-fsxlustre"
 # smaller instance types.
 HEAD_NODE_INSTANCE = "c5.4xlarge"
 LOGIN_NODE_INSTANCE = "c5.xlarge"
+
+# Kernel modules that are loaded lazily (e.g. by ss, systemd-networkd, or other daemons that
+# may or may not have run by the time we snapshot). We force-load these after patching so that
+# the before/after comparison does not flag them as missing.
+# Maintained per OS and per node type. Keep module names alphabetically sorted.
+LAZY_KERNEL_MODULES = {
+    "alinux2023": {
+        HEAD_NODE: ["tls"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+    "rhel8": {
+        HEAD_NODE: ["af_packet_diag", "inet_diag", "tcp_diag", "tls", "udp_diag"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+    "rhel9": {
+        HEAD_NODE: ["tls"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+    "rocky8": {
+        HEAD_NODE: ["af_packet_diag", "inet_diag", "tcp_diag", "tls", "udp_diag"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+    "rocky9": {
+        HEAD_NODE: ["tls"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+    "ubuntu2204": {
+        HEAD_NODE: ["tls"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+    "ubuntu2404": {
+        HEAD_NODE: ["tls"],
+        COMPUTE_NODE: ["tls"],
+        LOGIN_NODE: ["tls"],
+    },
+}
 
 
 def test_patching_cluster(
@@ -187,7 +230,7 @@ def test_patching_cluster(
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=True)
 
     # Trigger lazily-loaded modules so that we can compare pre v/s post reboot kernel modules.
-    _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory)
+    _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory, os)
     kernel_modules_after = _collect_loaded_kernel_modules(cluster, scheduler_commands_factory)
     logging.info("Kernel modules loaded after patching: %s", kernel_modules_after)
     with soft_assertions():
@@ -258,7 +301,7 @@ def _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node):
     logging.info("GPU validation job %s submitted from the %s succeeded", job_id, source)
 
 
-def _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory):
+def _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory, os):
     """Ensure on-demand kernel modules are loaded before the post-reboot snapshot.
 
     Some modules load lazily and are absent right after the reboot until something
@@ -269,8 +312,9 @@ def _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory):
         executor = _node_executor(cluster, scheduler_commands_factory, node_type)
         # Read the FSx for Lustre mountpoint to trigger the loading of lustre kernel module.
         executor.run_remote_command(f"ls {FSX_LUSTRE_MOUNT_DIR}")
-        # Load the kernel TLS module directly
-        executor.run_remote_command("sudo modprobe tls")
+        # Force-load known lazily-loaded modules for this OS and node type.
+        for module in LAZY_KERNEL_MODULES.get(os, {}).get(node_type, []):
+            executor.run_remote_command(f"sudo modprobe {module}")
 
 
 def _collect_loaded_kernel_modules(cluster, scheduler_commands_factory):
