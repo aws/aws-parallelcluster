@@ -478,6 +478,14 @@ class Cluster:
         return instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
 
     @property
+    def head_node_public_ip(self):
+        """Return the public ip of the cluster head node, or None if it does not have one."""
+        ec2 = boto3.client("ec2", region_name=self.region)
+        reservations = ec2.describe_instances(InstanceIds=[self.head_node_instance_id]).get("Reservations")
+        instance = reservations[0].get("Instances")[0]
+        return instance.get("PublicIpAddress")
+
+    @property
     def head_node_instance_id(self):
         """Return the given cluster's head node's instance ID."""
         return self.cfn_resources.get("HeadNode")
