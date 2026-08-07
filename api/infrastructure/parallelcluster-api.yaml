@@ -131,19 +131,19 @@ Globals:
       DefaultAuthorizer: AWS_IAM
       ResourcePolicy:
         CustomStatements:
-          Effect: 'Deny'
-          Action: 'execute-api:Invoke'
-          Resource: ['execute-api:/*/*/*']
-          Principal: '*'
-          Condition:
-            StringNotLike:
-              # This allows also creds assumed through sts for the ParallelClusterApiUserRole role
-              aws:PrincipalArn: !If
-                - CreateApiUserRoleCondition
-                - !Sub
-                  - arn:${AWS::Partition}:*::${AWS::AccountId}:*/${IAMRoleAndPolicyPrefix}PCAPIUserRole-${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
-                - '*'
+          - Effect: 'Deny'
+            Action: 'execute-api:Invoke'
+            Resource: ['execute-api:/*/*/*']
+            Principal: '*'
+            Condition:
+              StringNotLike:
+                # This allows also creds assumed through sts for the ParallelClusterApiUserRole role
+                aws:PrincipalArn: !If
+                  - CreateApiUserRoleCondition
+                  - !Sub
+                    - arn:${AWS::Partition}:*::${AWS::AccountId}:*/${IAMRoleAndPolicyPrefix}PCAPIUserRole-${StackIdSuffix}*
+                    - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
+                  - '*'
     TracingEnabled: True
     EndpointConfiguration:
       Type: REGIONAL

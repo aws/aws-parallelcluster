@@ -10,6 +10,50 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: slurm
+{% if capacity_reservation_id %}
+  # Capacity Block variant, used for p-family instances. The GPU health check runs from the prolog and
+  # on the intricate GPU topology of the p families a DCGMI diagnostic can run for several minutes (the
+  # health check manager allows it up to health_check_timeout, 600s by default). Prolog time counts
+  # towards BatchStartTimeout, so the cookbook defaults (BatchStartTimeout=180, MessageTimeout=60) would
+  # make slurmctld declare the batch job missing and requeue it while the check is still running, i.e.
+  # the "Prolog hung" / "Batch Job missing" failures described in
+  # https://github.com/aws/aws-parallelcluster/wiki/(3.6.0-%E2%80%90-latest)-Long-GPU-health-checks---Prolog-cause-%E2%80%9CProlog-hung%E2%80%9D-or-%E2%80%9CBatch-Job-missing%E2%80%9D-errors
+  # PrologFlags=Alloc,NoHold additionally moves the prolog to resource allocation time so it does not
+  # block task launch across every allocated node.
+  SlurmSettings:
+    CustomSlurmSettings:
+      - PrologFlags: "Alloc,NoHold"
+      # The wiki recommends more than 240s for complex GPU topologies.
+      - MessageTimeout: 300
+      # Comfortably above the 600s health check timeout, so a slow-but-healthy check is not requeued.
+      - BatchStartTimeout: 900
+  SlurmQueues:
+  - Name: queue-1
+    CapacityType: CAPACITY_BLOCK
+    CapacityReservationTarget:
+      CapacityReservationId: {{ capacity_reservation_id }}
+    ComputeResources:
+    - Name: compute-resource-1
+      # A single instance type (not a flexible Instances list) and static nodes spanning the whole
+      # Capacity Block, which is what CAPACITY_BLOCK requires.
+      InstanceType: {{ instance }}
+      MinCount: {{ max_queue_size }}
+      MaxCount: {{ max_queue_size }}
+      # Matches how the p-family capacity-block queues are configured in the efa and ultraserver/test_gb200
+      # tests, so the cluster shape here is the same one those instances are expected to run with.
+      DisableSimultaneousMultithreading: true
+      Efa:
+        Enabled: true
+      HealthChecks:
+        Gpu:
+          Enabled: true
+    Networking:
+      # Capacity Blocks come with their own capacity guarantees, so no placement group is requested.
+      PlacementGroup:
+        Enabled: false
+      SubnetIds:
+        - {{ private_subnet_id }}
+{% else %}
   SlurmQueues:
   - Name: queue-1
     HealthChecks:
@@ -71,3 +115,4 @@ Scheduling:
         {% for private_subnet_id in private_subnet_ids %}
         - {{ private_subnet_id }}
         {% endfor %}
+{% endif %}
