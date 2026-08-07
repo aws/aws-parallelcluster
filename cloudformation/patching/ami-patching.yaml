@@ -4,7 +4,7 @@ Description: >-
 
 Parameters:
   ParentImage:
-    Description: The ParallelCluster AMI to patch.
+    Description: The AMI to patch.
     Type: String
   InstanceType:
     Description: Instance type used by Image Builder to build the patched AMI.
@@ -18,6 +18,7 @@ Parameters:
   PatchScriptS3Uri:
     Description: S3 URI (s3://bucket/key) of the patching script to run on the build instance.
     Type: String
+    Default: ""
   PatchFlavour:
     Description: >-
       Patching flavour passed to the patch script. 'minimal' applies only security
@@ -31,6 +32,17 @@ Parameters:
       - full
       - minimal-capped
       - full-capped
+  EnableNoExecTmp:
+    Description: Build an AMI with noexec, nosuid, and nodev mount options on /tmp instead of applying patches.
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+
+Conditions:
+  BuildNoExecTmpImage: !Equals [!Ref EnableNoExecTmp, "true"]
+  BuildPatchedImage: !Equals [!Ref EnableNoExecTmp, "false"]
 
 Resources:
 
@@ -85,9 +97,7 @@ Resources:
               urllib.request.urlopen(req)
 
           def cleanup(stack_name):
-              # Deregister the patched AMI(s) built by this stack and delete their
-              # snapshots. The snapshots are tagged first so DeleteSnapshot is allowed
-              # by the (tag-scoped) IAM policy.
+              # Deregister the patched AMI(s) built by this stack and delete their snapshots.
               if not stack_name:
                   return
               images = ec2.describe_images(Owners=["self"], Filters=[
@@ -95,9 +105,6 @@ Resources:
               for img in images:
                   snaps = [m["Ebs"]["SnapshotId"] for m in img.get("BlockDeviceMappings", [])
                            if m.get("Ebs", {}).get("SnapshotId")]
-                  if snaps:
-                      ec2.create_tags(Resources=snaps, Tags=[
-                          {"Key": "parallelcluster:ami-patching-stack", "Value": stack_name}])
                   ec2.deregister_image(ImageId=img["ImageId"])
                   for snap in snaps:
                       ec2.delete_snapshot(SnapshotId=snap)
@@ -143,12 +150,6 @@ Resources:
                 Action: ec2:DescribeImages
                 Resource: "*"
               - Effect: Allow
-                Action: ec2:CreateTags
-                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*
-                Condition:
-                  StringEquals:
-                    aws:RequestTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
-              - Effect: Allow
                 Action: ec2:DeregisterImage
                 Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::image/*
                 Condition:
@@ -156,7 +157,7 @@ Resources:
                     aws:ResourceTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
               - Effect: Allow
                 Action: ec2:DeleteSnapshot
-                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*
                 Condition:
                   StringEquals:
                     aws:ResourceTag/parallelcluster:ami-patching-stack: !Ref AWS::StackName
@@ -164,8 +165,10 @@ Resources:
   # ===========================================================================
   # Image Builder
   #
-  # Builds the patched AMI: the build instance downloads and runs the patching
-  # script, reboots, executes the AMI cleanup and create the new AMI.
+  # Builds an AMI using the selected component: by default the build instance
+  # downloads and runs the patching script; when EnableNoExecTmp is true, it
+  # configures restrictive /tmp mount options instead. Both paths reboot, run
+  # the AMI cleanup, and create a new AMI.
   # ===========================================================================
 
   PatchedImage:
@@ -184,11 +187,13 @@ Resources:
       Name: !Sub pcluster-ami-patching-recipe-${AWS::StackName}
       Version: 1.0.0
       ParentImage: !Ref ParentImage
+      WorkingDirectory: /opt/parallelcluster/tmp
       Components:
-        - ComponentArn: !Ref PatchComponent
+        - ComponentArn: !If [BuildNoExecTmpImage, !Ref NoExecTmpComponent, !Ref PatchComponent]
 
   PatchComponent:
     Type: AWS::ImageBuilder::Component
+    Condition: BuildPatchedImage
     Properties:
       Name: !Sub pcluster-ami-patching-${AWS::StackName}
       Platform: Linux
@@ -233,6 +238,66 @@ Resources:
                   commands:
                     - /usr/local/sbin/ami_cleanup.sh
 
+  NoExecTmpComponent:
+    Type: AWS::ImageBuilder::Component
+    Condition: BuildNoExecTmpImage
+    Properties:
+      Name: !Sub pcluster-tmp-noexec-${AWS::StackName}
+      Platform: Linux
+      Version: 1.0.0
+      Description: Persist and validate noexec, nosuid, and nodev mount options on /tmp.
+      Data: |
+        name: ConfigureNoExecTmpMount
+        description: Persist and validate restrictive mount options on /tmp.
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: ConfigureTmpMount
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - |
+                      set -euxo pipefail
+                      awk '
+                      function add_option(options_list, option, item_count, i, items) {
+                          item_count = split(options_list, items, ",")
+                          for (i = 1; i <= item_count; i++) {
+                              if (items[i] == option) return options_list
+                          }
+                          return options_list "," option
+                      }
+                      BEGIN { found = 0 }
+                      $1 !~ /^#/ && $2 == "/tmp" {
+                          $4 = add_option($4, "noexec")
+                          $4 = add_option($4, "nosuid")
+                          $4 = add_option($4, "nodev")
+                          found = 1
+                      }
+                      { print }
+                      END {
+                          if (!found) print "/tmp", "/tmp", "none", "bind,rw,nodev,nosuid,noexec", "0", "0"
+                      }
+                      ' OFS='\t' /etc/fstab > /etc/fstab.pcluster-tmp-noexec
+                      install -o root -g root -m 0644 /etc/fstab.pcluster-tmp-noexec /etc/fstab
+                      rm -f /etc/fstab.pcluster-tmp-noexec
+                      findmnt --verify --tab-file /etc/fstab
+              - name: Reboot
+                action: Reboot
+              - name: VerifyTmpMountAfterReboot
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - |
+                      set -euxo pipefail
+                      options_list=$(findmnt -no OPTIONS --target /tmp)
+                      for option in noexec nosuid nodev; do
+                          echo "$options_list" | tr ',' '\n' | grep -Fx "$option"
+                      done
+                      if [[ -x /usr/local/sbin/ami_cleanup.sh ]]; then
+                          /usr/local/sbin/ami_cleanup.sh
+                      fi
+
   RecipeLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -262,13 +327,16 @@ Resources:
       Distributions:
         - Region: !Ref AWS::Region
           AmiDistributionConfiguration:
-            # The distributed AMI name is "patched-<SourceName>-<buildDate>". The
+            # Patched AMIs use "patched-<SourceName>-<buildDate>". The
             # "patched-" prefix keeps the name from matching the pcluster AMI name
             # filter used to discover base AMIs, so the patched AMI is only consumed
             # explicitly by id and never picked up as the "latest" AMI on updates.
-            Name: !Sub
-              - "patched-${SourceName}-{{ imagebuilder:buildDate }}"
-              - SourceName: !GetAtt AmiHelper.SourceName
+            Name: !If
+              - BuildNoExecTmpImage
+              - !Sub "tmp-noexec-${AWS::StackName}-{{ imagebuilder:buildDate }}"
+              - !Sub
+                - "patched-${SourceName}-{{ imagebuilder:buildDate }}"
+                - SourceName: !GetAtt AmiHelper.SourceName
             AmiTags:
               parallelcluster:ami-patching-stack: !Ref AWS::StackName
               parallelcluster:source-ami: !Ref ParentImage
@@ -292,16 +360,18 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
-      Policies:
-        - PolicyName: read-patch-script
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action: s3:GetObject
-                Resource: !Sub
-                  - arn:${AWS::Partition}:s3:::${BucketAndKey}
-                  - BucketAndKey: !Select [1, !Split ["s3://", !Ref PatchScriptS3Uri]]
+      Policies: !If
+        - BuildNoExecTmpImage
+        - !Ref AWS::NoValue
+        - - PolicyName: read-patch-script
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action: s3:GetObject
+                  Resource: !Sub
+                    - arn:${AWS::Partition}:s3:::${BucketAndKey}
+                    - BucketAndKey: !Select [1, !Split ["s3://", !Ref PatchScriptS3Uri]]
 
   BuildSecurityGroup:
     Type: AWS::EC2::SecurityGroup

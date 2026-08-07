@@ -296,12 +296,3 @@ phases:
               # Final cleanup
               rm -f /opt/parallelcluster/system_info
               /usr/local/sbin/ami_cleanup.sh "${CfnParamIsOfficialAmiBuild}"
-
-  - name: validate
-    steps:
-      - name: PClusterValidate
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              echo "Check ParallelCluster software stack has been installed"

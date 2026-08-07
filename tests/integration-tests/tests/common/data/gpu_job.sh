@@ -44,8 +44,10 @@ else
     exit 2
 fi
 
-WORKDIR=$(mktemp -d)
-trap 'rm -rf "$WORKDIR"' EXIT
+WORKDIR=$(sudo -n mktemp -d "/opt/parallelcluster/tmp/pcluster-cuda-samples.XXXXXX")
+sudo -n chown "$(id -u):$(id -g)" "$WORKDIR"
+export TMPDIR="$WORKDIR"
+trap 'sudo rm -rf "$WORKDIR"' EXIT
 
 # Shared scaffolding required by every sample (Common/, top-level cmake/)
 cp -r "$SAMPLES_SRC"/{Common,cmake,CMakeLists.txt} "$WORKDIR"/
