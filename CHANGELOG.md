@@ -12,6 +12,7 @@ CHANGELOG
   compute nodes, removing the dependency on cfn-hup and cfn-init.
 - Move all ParallelCluster-managed bootstrap files off `/tmp` into a dedicated `/opt/parallelcluster/tmp`
   directory, so that image builds, cluster creations, and updates work on custom AMIs that mount `/tmp` with noexec.
+  Image builds work on the custom AMIs only if GDRcopy installation is skipped.
 
 **CHANGES**
 - The validator `ClusterNameValidator` now limits cluster names to 40 characters when using `ExternalSlurmdbd`,
@@ -27,8 +28,8 @@ CHANGELOG
 - Install the NVIDIA driver, CUDA toolkit, Fabric Manager, NVLSM, and IMEX from the distribution package manager using NVIDIA local repo packages instead of the run file installers.
 - On RHEL-family OSes, install the Xorg driver for DCV GPU acceleration and disable Wayland so that GDM always starts Xorg.
   This is now required after switching NVIDIA driver installation to local repo packages; previously it was needed only on Ubuntu.
-- Upgrade NVIDIA driver, Fabric Manager, and IMEX to version 580.173.02 (from 580.126.20).
-- Upgrade CUDA Toolkit to version 13.3.1 (from 13.0.2).
+- Upgrade NVIDIA driver, Fabric Manager, and IMEX to version 595.71.05 (from 580.126.20).
+- Upgrade CUDA Toolkit to version 13.2.2 (from 13.0.2).
 - Upgrade DCGM to version 4.6.0 (from 4.5.1).
 - In GPU Health Check, skip DCGM diagnostics when NVIDIA MIG is enabled because dcgmi diag does not support MIG.
 - Upgrade Slurm to version 25.11.6 (from 25.11.4).
@@ -84,7 +85,7 @@ CHANGELOG
 - Fix `build-image` failure by skipping installation of `fabric-manager`, `gdrcopy`, and `dcgm` if the parent image already has a version installed.
 - Fix an issue where compute nodes are replaced when launching a large number of nodes due to eventual consistency.
 - Fix a race condition where a fleet start was not enough to exit protected mode.
-  Even if ParallelCluster was not launching new nodes, issuing the start too early, while some nodes were still coming up, could leave the fleet in protected mode.
+  This race condition is triggered when a fleet stop is issued on a fleet transitioning into protected mode while some of its nodes are powering up.
 - Fix an issue where static nodes in a maintenance reservation enter a terminate/relaunch loop when being replaced.
 - Fix cluster creation and update failures caused by IAM policy tag conditions that required the `parallelcluster:cluster-name`
   tag to be the only tag on a request rather than merely present. This affected clusters with login nodes as well as stack
