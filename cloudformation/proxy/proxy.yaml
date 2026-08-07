@@ -574,6 +574,8 @@ Resources:
 
   ProxyVerificationWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
+    DependsOn:
+      - Proxy
     Properties:
       Count: 1
       Handle: !Ref ProxyVerificationWaitConditionHandle
