@@ -2,30 +2,43 @@
 #
 # Patching script.
 #
-# Applies OS package updates using the native package manager, in one of two
+# Applies OS package updates using the native package manager, in one of four
 # flavours (mandatory first argument):
 #
-#   minimal: apply only the available *security* patches (smallest set).
-#   full:    apply all available package updates (comprehensive upgrade).
+#   minimal:        apply only the available *security* patches (smallest set).
+#   full:           apply all available package updates (comprehensive upgrade).
+#   minimal-capped: like minimal, but cap the kernel (see below).
+#   full-capped:    like full, but cap the kernel (see below).
 #
-# Kernel packages are intentionally NOT excluded in either flavour: if an update
-# requires a newer kernel, the bump is accepted. A reboot after this script runs
-# is required to activate a new kernel.
+# Kernel packages are NOT excluded: if an update requires a newer kernel, the bump is
+# accepted. A reboot after this script runs is required to activate a new kernel.
 #
-# Usage: patch_node.sh <minimal|full>
+# The "-capped" variants additionally constrain the kernel so it is never bumped past the
+# newest version the FSx Lustre client supports, which prevents FSx mounts from breaking
+# after reboot when the client lags the kernel. Capping applies on Ubuntu (per-kernel
+# lustre-client-modules package) and RHEL/Rocky (minor-pinned FSx repo); AL2/AL2023 ship
+# the Lustre module in-tree with the kernel, so there is nothing to cap there.
+#
+# Usage: patch_node.sh <minimal|full|minimal-capped|full-capped>
 #
 # Supports dnf (AL2023/RHEL9/Rocky9), yum (AL2/RHEL8) and apt (Ubuntu).
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-    echo "ERROR: missing mandatory patching flavour argument (minimal|full)" >&2
+    echo "ERROR: missing mandatory patching flavour argument (minimal|full|minimal-capped|full-capped)" >&2
     exit 1
 fi
 FLAVOUR="$1"
-if [[ "${FLAVOUR}" != "minimal" && "${FLAVOUR}" != "full" ]]; then
-    echo "ERROR: invalid patching flavour '${FLAVOUR}', expected 'minimal' or 'full'" >&2
-    exit 1
-fi
+case "${FLAVOUR}" in
+    minimal | full | minimal-capped | full-capped) ;;
+    *)
+        echo "ERROR: invalid patching flavour '${FLAVOUR}', expected one of: minimal, full, minimal-capped, full-capped" >&2
+        exit 1
+        ;;
+esac
+
+BASE_FLAVOUR="${FLAVOUR%-capped}"
+[[ "${FLAVOUR}" == *-capped ]] && CAPPED=true || CAPPED=false
 
 # Recover the rpmdb in case a previously killed process left it corrupted (stale
 # Berkeley DB locks on EL8/AL2 cause "rpmdb open failed" on every rpm/dnf/yum call).
@@ -77,6 +90,53 @@ refresh_lustre_client_debian() {
         || { echo "ERROR: no FSx Lustre client available for kernel ${new_kernel}" >&2; exit 1; }
 }
 
+# Cap the kernel on Ubuntu (used only by the "-capped" flavours). The FSx Lustre client is a
+# per-kernel package (lustre-client-modules-<uname-r>), so the newest such package is the
+# highest kernel Lustre supports. Install exactly that kernel and hold the kernel
+# meta-packages so neither the security nor the full upgrade can pull a newer one. Assumes
+# the apt cache is already refreshed. No-op when FSx Lustre is not configured.
+cap_kernel_debian() {
+    [[ -f /etc/apt/sources.list.d/fsxlustreclientrepo.list ]] || return 0
+    local cap
+    cap=$(apt-cache pkgnames lustre-client-modules- \
+        | sed -n 's/^lustre-client-modules-\([0-9].*-aws\)$/\1/p' | sort -V | tail -n1)
+    [[ -n "${cap}" ]] || { echo "ERROR: could not determine the max FSx Lustre-supported kernel" >&2; exit 1; }
+    echo "Capping kernel to the max FSx Lustre-supported version: ${cap}"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        "linux-image-${cap}" "linux-headers-${cap}" "linux-modules-${cap}" "linux-modules-extra-${cap}"
+    sudo apt-mark hold linux-aws linux-image-aws linux-headers-aws
+}
+
+# Cap the kernel on RHEL/Rocky (used only by the "-capped" flavours). FSx publishes the
+# Lustre kmod per EL minor (/el/<major>.<minor>/), so a kernel is supported only if FSx ships
+# a repo for that kernel's minor. Cap to the newest available kernel whose minor FSx already
+# publishes and version-lock it so the upgrade stops there. AL2/AL2023 ship the Lustre module
+# in-tree with the kernel, so there is nothing to cap. No-op when FSx Lustre is not configured.
+cap_kernel_dnf() {
+    local id
+    id=$(. /etc/os-release && echo "${ID}")
+    if [[ ! "${id}" =~ ^(rhel|rocky)$ ]]; then
+        echo "Kernel cap not applicable on '${id}' (in-tree Lustre module); skipping cap"
+        return 0
+    fi
+    [[ -f /etc/yum.repos.d/aws-fsx.repo ]] || return 0
+    local maj arch cap
+    maj=$(. /etc/os-release && echo "${VERSION_ID%%.*}")
+    arch=$(uname -m)
+    cap=$(sudo dnf -q repoquery kernel --qf '%{version}-%{release}.%{arch}\n' 2>/dev/null | sort -rV | while read -r k; do
+        minor=$(printf '%s' "${k}" | sed -n "s/.*\.el${maj}_\([0-9]\+\)\..*/\1/p")
+        [[ -n "${minor}" ]] || continue
+        if curl -fsL -o /dev/null "https://fsx-lustre-client-repo.s3.amazonaws.com/el/${maj}.${minor}/${arch}/repodata/repomd.xml"; then
+            echo "${k}"
+            break
+        fi
+    done || true)
+    [[ -n "${cap}" ]] || { echo "ERROR: could not determine the max FSx Lustre-supported kernel" >&2; exit 1; }
+    echo "Capping kernel to the max FSx Lustre-supported version: ${cap}"
+    sudo dnf install -y python3-dnf-plugin-versionlock
+    sudo dnf versionlock add "kernel-${cap}" "kernel-core-${cap}" "kernel-modules-${cap}"
+}
+
 echo "===== Starting system ${FLAVOUR} patching on $(hostname) ====="
 # Report the running kernel before patching. The kernel after the reboot is
 # reported separately once the node has rebooted (the reboot is mandatory to
@@ -88,7 +148,10 @@ if command -v dnf >/dev/null 2>&1; then
     fix_rpmdb
     sudo dnf clean all
     sudo dnf makecache --refresh -y  || true
-    if [[ "${FLAVOUR}" == "minimal" ]]; then
+    if [[ "${CAPPED}" == "true" ]]; then
+        cap_kernel_dnf
+    fi
+    if [[ "${BASE_FLAVOUR}" == "minimal" ]]; then
         # Apply only security errata. Kernel packages are allowed to be upgraded.
         sudo dnf upgrade --security -y
     else
@@ -100,7 +163,12 @@ elif command -v yum >/dev/null 2>&1; then
     fix_rpmdb
     sudo yum clean all
     sudo yum makecache -y || true
-    if [[ "${FLAVOUR}" == "minimal" ]]; then
+    if [[ "${CAPPED}" == "true" ]]; then
+        # The yum path is AL2, which ships the Lustre module in-tree/co-released with the
+        # kernel (RHEL/Rocky use the dnf path). Nothing to cap here.
+        echo "Kernel cap not applicable on this platform (in-tree/co-released Lustre); skipping cap"
+    fi
+    if [[ "${BASE_FLAVOUR}" == "minimal" ]]; then
         # update-minimal --security applies the smallest set of security errata.
         # Kernel bumps are allowed (no --exclude=kernel*).
         sudo yum update-minimal --security -y
@@ -116,7 +184,10 @@ elif command -v apt-get >/dev/null 2>&1; then
     # so an exported var alone would not reach the root apt-get process.
     _envars=(DEBIAN_FRONTEND=noninteractive)
     sudo "${_envars[@]}" apt-get update -y
-    if [[ "${FLAVOUR}" == "minimal" ]]; then
+    if [[ "${CAPPED}" == "true" ]]; then
+        cap_kernel_debian
+    fi
+    if [[ "${BASE_FLAVOUR}" == "minimal" ]]; then
         # unattended-upgrades applies only the security pocket by default and will
         # upgrade linux-image-* (kernel) packages when needed.
         sudo "${_envars[@]}" apt-get install -y unattended-upgrades

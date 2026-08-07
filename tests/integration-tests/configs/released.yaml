@@ -118,16 +118,21 @@ test-suites:
   # patching:
   #   test_patching.py::test_patching_cluster:
   #     dimensions:
-  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_rhel9 }}]
+  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
   #         instances: ["g4dn.8xlarge"]
-  #         oss: {{ RHEL_OS_X86 }}
+  #         oss: [{{ UBUNTU_OS_X86_0 }}]
   #         schedulers: ["slurm"]
-  #         flags: ["patching:minimal"]
-  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+  #         flags: ["patching:full-capped"]
+  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_rhel9 }}]
   #         instances: ["g4dn.8xlarge"]
-  #         oss: {{ NO_RHEL_OS_X86 }}
+  #         oss: [{{ RHEL_OS_X86_0 }}]
   #         schedulers: ["slurm"]
-  #         flags: ["patching:minimal"]
+  #         flags: ["patching:full-capped"]
+  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }}]
+  #         instances: ["g4dn.8xlarge"]
+  #         oss: ["alinux2023"]
+  #         schedulers: ["slurm"]
+  #         flags: ["patching:full"]
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_1_click:
       dimensions:

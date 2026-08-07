@@ -21,12 +21,16 @@ Parameters:
   PatchFlavour:
     Description: >-
       Patching flavour passed to the patch script. 'minimal' applies only security
-      errata (smallest set); 'full' applies all available package updates.
+      errata (smallest set); 'full' applies all available package updates. The
+      '-capped' variants additionally cap the kernel to the newest version the FSx
+      Lustre client supports.
     Type: String
     Default: minimal
     AllowedValues:
       - minimal
       - full
+      - minimal-capped
+      - full-capped
 
 Resources:
 
