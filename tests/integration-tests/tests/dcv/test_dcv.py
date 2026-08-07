@@ -43,6 +43,12 @@ UNTOLERATED_CRASH_PATTERNS = [
     re.compile(r"dcv|nvidia", re.IGNORECASE),
 ]
 
+# Crashes matching these patterns are always tolerated, overriding UNTOLERATED_CRASH_PATTERNS.
+TOLERATED_CRASH_PATTERNS = [
+    # nvidia-settings crash is a known issue
+    re.compile(r"nvidia-settings", re.IGNORECASE),
+]
+
 # Tolerated crash patterns: list of regex patterns.
 # A crash is tolerated if it is unrelated to DCV and the software stack owned by ParallelCluster.
 # TOLERATED_CRASH_PATTERNS = [
@@ -229,7 +235,11 @@ def _is_tolerated_crash(content, instance=None):
     Instance-specific patterns (INSTANCE_TOLERATED_CRASH_PATTERNS) take precedence over
     UNTOLERATED_CRASH_PATTERNS for the matching instance type.
     """
-    # Check instance-specific tolerations first — these override UNTOLERATED patterns.
+    # Check global tolerated patterns first — these override UNTOLERATED patterns.
+    for pattern in TOLERATED_CRASH_PATTERNS:
+        if pattern.search(content):
+            return True
+    # Check instance-specific tolerations — these override UNTOLERATED patterns.
     if instance:
         for prefix, patterns in INSTANCE_TOLERATED_CRASH_PATTERNS.items():
             if instance.startswith(prefix):
