@@ -418,10 +418,9 @@ def _find_or_buy_capacity_block(region, instance_type, os_platform, count, min_h
     ec2_client = boto3.client("ec2", region_name=region)
     reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
     if reservation:
-        _wait_for_capacity_block_active(
+        return _wait_for_capacity_block_active(
             ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
         )
-        return reservation.get("AvailabilityZoneId")
     return _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours)
 
 
@@ -541,10 +540,9 @@ def _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, 
         )
         reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
         if reservation:
-            _wait_for_capacity_block_active(
+            return _wait_for_capacity_block_active(
                 ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
             )
-            return reservation.get("AvailabilityZoneId")
         # Nothing was charged after all, so the other regions can still be tried.
         logging.warning("Purchase of %s did not go through, moving on", offering["CapacityBlockOfferingId"])
         return None
@@ -554,27 +552,29 @@ def _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, 
         instance_type,
         count,
         os_platform,
-        reservation.get("AvailabilityZoneId"),
+        offering["AvailabilityZone"],
         offering["StartDate"],
         offering["EndDate"],
         fee,
         offering["CurrencyCode"],
     )
-    _wait_for_capacity_block_active(
+    return _wait_for_capacity_block_active(
         ec2_client, reservation["CapacityReservationId"], offering["StartDate"], offering["EndDate"]
     )
-    return reservation.get("AvailabilityZoneId")
 
 
 def _wait_for_capacity_block_active(ec2_client, reservation_id, start_date, end_date):
-    """Block until the capacity block is active, raising if it never becomes usable.
+    """Block until the capacity block is active, then return its AZ ID.
 
     A freshly bought instant block only starts ~30 minutes later: until then it is `scheduled` and
-    instances cannot be launched against it, so the tests have to wait for it here.
+    instances cannot be launched against it, so the tests have to wait for it here. The AZ is read
+    back here too, since EC2 does not report one until the block has been allocated.
 
     The block is paid for whatever happens, so this keeps waiting for as long as the block exists:
     whatever time is left of it is worth attempting the tests with. The wait ends by itself because
     EC2 moves the reservation to `expired` once its end date passes.
+
+    Raises if the block never becomes usable.
     """
     logging.info(
         "Waiting for capacity block %s to become active (starts at %s, expires at %s)",
@@ -584,16 +584,18 @@ def _wait_for_capacity_block_active(ec2_client, reservation_id, start_date, end_
     )
     while True:
         try:
-            state = ec2_client.describe_capacity_reservations(CapacityReservationIds=[reservation_id])[
+            reservation = ec2_client.describe_capacity_reservations(CapacityReservationIds=[reservation_id])[
                 "CapacityReservations"
-            ][0]["State"]
+            ][0]
         except Exception as e:
             # The reservation can briefly be unreadable right after purchase.
             logging.info("Could not read state of capacity block %s yet: %s", reservation_id, e)
-            state = "unknown"
+            reservation = {"State": "unknown"}
+        state = reservation["State"]
         if state == "active":
-            logging.info("Capacity block %s is active", reservation_id)
-            return
+            az_id = reservation["AvailabilityZoneId"]
+            logging.info("Capacity block %s is active in %s", reservation_id, az_id)
+            return az_id
         if state in ("cancelled", "expired", "failed", "payment-failed"):
             raise Exception(
                 f"Capacity block {reservation_id} reached unusable state {state} before the tests could "
