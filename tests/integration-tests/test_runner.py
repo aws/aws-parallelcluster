@@ -871,10 +871,7 @@ def _make_logging_dirs(base_dir):
 
 def _run_parallel(args):
     jobs = []
-    if args.regions:
-        enabled_regions = args.regions
-    else:
-        enabled_regions = get_all_regions(args.tests_config)
+    enabled_regions = get_all_regions(args.tests_config)
 
     # unmarshal az and collect unique regions
     unique_regions = set()
