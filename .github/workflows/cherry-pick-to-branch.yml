@@ -30,7 +30,7 @@ jobs:
           # workflow_dispatch has no PR event payload, so fetch everything we need
           # about the PR from the API.
           PR_JSON=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" \
-            --json baseRefName,title,author,commits)
+            --json baseRefName,title,author)
 
           SOURCE_BRANCH=$(echo "${PR_JSON}" | jq -r '.baseRefName')
           PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
@@ -44,8 +44,17 @@ jobs:
             fi
           done
 
-          # Get all commit SHAs from the PR
-          COMMITS=$(echo "${PR_JSON}" | jq -r '.commits[].oid' | tr '\n' ' ')
+          # A PR can contain merges from its base branch. Those commits should not be cherry-picked.
+          # The types of commit are distinguished by the number of parents:
+          # 1 paranet = non-merge commits, 2 parents = merge commit
+          COMMITS=$(gh api --paginate \
+            "repos/${REPO}/pulls/${PR_NUMBER}/commits?per_page=100" \
+            --jq '.[] | select((.parents | length) < 2) | .sha' | tr '\n' ' ')
+
+          if [ -z "${COMMITS// }" ]; then
+            echo "::error::PR #${PR_NUMBER} contains no non-merge commits to cherry-pick"
+            exit 1
+          fi
 
           echo "commits=${COMMITS}" >> "$GITHUB_OUTPUT"
           echo "source_branch=${SOURCE_BRANCH}" >> "$GITHUB_OUTPUT"
