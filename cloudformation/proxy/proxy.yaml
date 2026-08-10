@@ -347,10 +347,37 @@ Resources:
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
+            # Signal the success/failure to the wait condition.
+            function signal() {
+              curl -X PUT -H "Content-Type:" \
+                --data-binary "{\"Status\":\"$1\",\"Reason\":\"$2\",\"UniqueId\":\"Proxy\",\"Data\":\"$1\"}" \
+                "${ProxyReadyWaitConditionHandle}"
+            }
+
+            # On any error, signal the failure to the wait condition
+            function signal_failure() {
+              rc=$?
+              trap - EXIT
+              if [ "$rc" -ne 0 ]; then
+                signal FAILURE "Proxy UserData failed before signaling ready" || true
+              fi
+            }
+            trap signal_failure EXIT
+
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
             # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
             APT_RETRY="-o Acquire::Retries=5"
+
+            # Stop Ubuntu's boot-time apt/dpkg jobs so they can't hold the dpkg lock while we install packages. 
+            # Otherwise they race with this UserData and cause locking failures.
+            systemctl mask --now \
+              apt-daily.timer apt-daily-upgrade.timer \
+              apt-daily.service apt-daily-upgrade.service \
+              unattended-upgrades.service packagekit.service || true
+
+            # Finish any transaction interrupted by the masking above.
+            dpkg --configure -a
 
             # Enable IP forwarding — without this, the kernel drops packets routed from
             # the private subnet, causing "connection timed out" in the ConfigureSystem step.
@@ -477,9 +504,7 @@ Resources:
             echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
             apt-get $APT_RETRY install -y iptables-persistent
 
-            curl -X PUT -H "Content-Type:" \
-              --data-binary '{"Status":"SUCCESS","Reason":"Proxy ready","UniqueId":"Proxy","Data":"OK"}' \
-              "${ProxyReadyWaitConditionHandle}"
+            signal SUCCESS "Proxy ready"
       Tags:
         - Key: Name
           Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
@@ -531,33 +556,56 @@ Resources:
             #!/bin/bash -ex
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+            # Signal the success/failure to the wait condition.
+            function signal() {
+              curl -X PUT -H "Content-Type:" \
+                --data-binary "{\"Status\":\"$1\",\"Reason\":\"$2\",\"UniqueId\":\"ProxyClient\",\"Data\":\"$1\"}" \
+                "${ProxyVerificationWaitConditionHandle}"
+            }
+
+            # On any error, signal the failure to the wait condition
+            function signal_failure() {
+              rc=$?
+              trap - EXIT
+              if [ "$rc" -ne 0 ]; then
+                signal FAILURE "ProxyClient UserData failed before signaling verification" || true
+              fi
+            }
+            trap signal_failure EXIT
+
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
             # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
             APT_RETRY="-o Acquire::Retries=5"
 
+            # Stop Ubuntu's boot-time apt/dpkg jobs so they can't hold the dpkg lock while we install packages. 
+            # Otherwise they race with this UserData and cause locking failures.
+            systemctl mask --now \
+              apt-daily.timer apt-daily-upgrade.timer \
+              apt-daily.service apt-daily-upgrade.service \
+              unattended-upgrades.service packagekit.service || true
+
+            # Finish any transaction interrupted by the masking above.
+            dpkg --configure -a
+
             apt-get $APT_RETRY update -y
-            apt-get $APT_RETRY -y install python3-pip
 
             if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
               echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
               https_proxy="http://${ProxyPrivateIp}:${ProxyPort}" curl -v -o /dev/null https://api.snapcraft.io/v2/snaps/info/core 2>&1 || exit 1
               echo "==> HTTPS transparent proxy test passed"
-              echo "==> Signaling success via curl"
-              curl -X PUT -H "Content-Type:" \
-                --data-binary '{"Status":"SUCCESS","Reason":"Proxy verification passed","UniqueId":"ProxyClient","Data":"OK"}' \
-                "${ProxyVerificationWaitConditionHandle}"
+              echo "==> Signaling success"
+              signal SUCCESS "Proxy verification passed"
             else
-              echo "==> Installing cfn-bootstrap"
-              pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
               echo "==> Testing explicit proxy"
               echo "http_proxy=\"http://${ProxyPrivateIp}:${ProxyPort}\" wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip" > /home/ubuntu/test-proxy.sh
               echo "wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip" >> /home/ubuntu/test-proxy.sh
               chmod +x /home/ubuntu/test-proxy.sh
               bash -ex /home/ubuntu/test-proxy.sh
               echo "==> Explicit proxy test passed"
-
-              /usr/local/bin/cfn-signal --exit-code 0 --stack "${AWS::StackName}" --region "${AWS::Region}" "${ProxyVerificationWaitConditionHandle}"
+              echo "==> Signaling success"
+              signal SUCCESS "Proxy verification passed"
             fi
 
           - {
