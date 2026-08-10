@@ -13,11 +13,13 @@ import logging
 import os
 import random
 import re
+import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 import boto3
 import yaml
+from botocore.exceptions import ClientError
 from jinja2 import FileSystemLoader, meta
 from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
@@ -30,6 +32,18 @@ from pcluster.constants import (
     UNSUPPORTED_OSES_FOR_LUSTRE,
     UNSUPPORTED_OSES_FOR_NON_GPU_DCV,
 )
+
+# An instant capacity block starts ~30 minutes after the request; allow some slack when telling
+# instant offerings apart from standard ones (which start at the next 11:30 UTC boundary).
+INSTANT_CAPACITY_BLOCK_START_MINUTES = 45
+
+# Never buy more than the remainder of one capacity-block day: instant offerings can span several
+# days (ending on a later 11:30 UTC boundary) and cost a multiple of what a test run needs.
+MAX_CAPACITY_BLOCK_HOURS = 24
+
+# Set this to render capacity block variables without looking for (or buying) any capacity. Config
+# validation renders every file under configs/, and that must never spend money.
+CAPACITY_BLOCK_DRY_RUN_ENV_VAR = "PCLUSTER_SKIP_CAPACITY_BLOCK_PURCHASE"
 
 
 def _get_global_build_number(config=None, args=None):
@@ -321,7 +335,9 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
     variables = _get_all_jinja_variables(config_file)
     az_for_capacity_reservation = {}
     for var in variables:
-        if "CAPACITY_RESERVATION" in var:
+        if "CAPACITY_BLOCK" in var:
+            _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters)
+        elif "CAPACITY_RESERVATION" in var:
             logging.info("Checking capacity reservation for %s", var)
             specs = []
             for part in var.split("__"):  # Support multiple instance types separated by __
@@ -348,6 +364,257 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 logging.info("Failed to create capacity reservation for %s. Using use1-az6", var)
                 az_for_capacity_reservation[var] = "use1-az6"
     return az_for_capacity_reservation
+
+
+def _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters):
+    """Resolve a ``*_CAPACITY_BLOCK_*`` variable to the AZ of a usable capacity block.
+
+    Some instance types (notably the p6 family) can realistically only be obtained through capacity
+    blocks. A block already owned is reused when it still covers the run; otherwise an "instant"
+    block is bought, sweeping the candidate regions until one has an offering. The AZ of the block
+    is what the variable renders to, so the test runs where the capacity actually is.
+
+    Buying a capacity block is an upfront, non-refundable charge, hence only one is ever bought and
+    only for variables explicitly declared as capacity blocks in the test config.
+
+    Raises when no capacity block can be obtained in any candidate region.
+    """
+    logging.info("Checking capacity block for %s", var)
+    count, hours, instance_type, os_name = _parse_capacity_block_variable(var)
+    instance_type, os_platform = _resolve_instance_type_and_os(
+        instance_type, instance_type_parameters, os_name, os_parameters
+    )
+    if os.environ.get(CAPACITY_BLOCK_DRY_RUN_ENV_VAR):
+        # Config validation renders every file under configs/, which must not spend money. Render a
+        # placeholder AZ just to keep the test yaml valid.
+        logging.info("%s set: not looking for a capacity block for %s", CAPACITY_BLOCK_DRY_RUN_ENV_VAR, var)
+        az_for_capacity_reservation[var] = "use1-az6"
+        return
+    # Regions where the capacity-block-only instance types (p6 family) are offered.
+    candidate_regions = [
+        "ap-south-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-2",
+    ]
+    random.shuffle(candidate_regions)
+
+    for region in candidate_regions:
+        az_id = _find_or_buy_capacity_block(region, instance_type, os_platform, count, hours)
+        if az_id:
+            az_for_capacity_reservation[var] = az_id
+            return
+    # Tests declaring a capacity block are run on demand, so there is nothing to gain from carrying
+    # on with a config that cannot possibly work: fail loudly instead of skipping later on.
+    raise Exception(
+        f"Could not find or buy a capacity block for {instance_type} ({os_platform}, {count} instances, "
+        f">={hours}h) in any of {candidate_regions}. Capacity blocks are only sold until "
+        "05:00 UTC for same-day use; retry within the selling window or pick another instance type."
+    )
+
+
+def _find_or_buy_capacity_block(region, instance_type, os_platform, count, min_hours):
+    """Return the AZ ID of a capacity block usable in *region*, reusing or buying one, else None."""
+    ec2_client = boto3.client("ec2", region_name=region)
+    reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
+    if reservation:
+        return _wait_for_capacity_block_active(
+            ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
+        )
+    return _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours)
+
+
+def _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count):
+    """Return an already-owned capacity block the tests can run on, or None.
+
+    Such a block has been paid for already, so it is worth using no matter how little of it is left:
+    at worst the tests run out of time, which is still better than buying a second block. A block
+    bought ahead of time is still `scheduled` rather than `active`, and is taken as well: the caller
+    waits for it to start. Its instance count is read from ``TotalInstanceCount``, because EC2 only
+    reports instances as available once the block is active.
+    """
+    now = datetime.now(timezone.utc)
+    try:
+        for page in ec2_client.get_paginator("describe_capacity_reservations").paginate():
+            for reservation in page.get("CapacityReservations", []):
+                if (
+                    reservation.get("ReservationType") == "capacity-block"
+                    and reservation.get("InstanceType") == instance_type
+                    and reservation.get("InstancePlatform") == os_platform
+                    and reservation.get("State") in ("active", "scheduled")
+                    and reservation.get("TotalInstanceCount", 0) >= count
+                ):
+                    end_date = reservation.get("EndDate")
+                    remaining = (end_date - now).total_seconds() / 3600 if end_date else float("inf")
+                    logging.info(
+                        "Reusing %s capacity block %s for %s in %s (%.1fh remaining)",
+                        reservation["State"],
+                        reservation["CapacityReservationId"],
+                        instance_type,
+                        reservation.get("AvailabilityZoneId"),
+                        remaining,
+                    )
+                    return reservation
+    except Exception as e:
+        logging.info("Could not list capacity reservations in %s: %s", region, e)
+    return None
+
+
+def _is_usable_instant_offering(offering, min_hours, instance_type, region):
+    """Return True if *offering* is an instant block long enough for the run but no longer than a day."""
+    starts_in = (offering["StartDate"] - datetime.now(timezone.utc)).total_seconds() / 60
+    hours = (offering["EndDate"] - offering["StartDate"]).total_seconds() / 3600
+    # A standard block starts at the next 11:30 UTC boundary, so it would be paid for now and only
+    # become usable tomorrow.
+    if starts_in > INSTANT_CAPACITY_BLOCK_START_MINUTES:
+        return False
+    # Instant offerings also come in multi-day flavours, ending on a later 11:30 UTC boundary. Those
+    # cost a multiple of a single day for capacity the tests cannot use.
+    if hours > MAX_CAPACITY_BLOCK_HOURS:
+        logging.info(
+            "Ignoring %.0fh capacity block offering %s (%s %s): longer than the %dh cap",
+            hours,
+            offering["CapacityBlockOfferingId"],
+            instance_type,
+            region,
+            MAX_CAPACITY_BLOCK_HOURS,
+        )
+        return False
+    return hours >= min_hours
+
+
+def _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours):
+    """Buy the cheapest instant capacity block covering *min_hours*, returning its AZ ID or None.
+
+    Instant blocks start ~30 minutes from now and end at the next capacity-block day boundary
+    (11:30 UTC), so their duration is whatever is left of the current block day and they are priced
+    pro-rata. Picking the cheapest offering therefore buys the shortest block that still fits the
+    run, which is what keeps the cost down.
+    """
+    # The API only accepts whole-day durations, but answers with the partial-day instant offerings
+    # alongside the standard block, which is what we are after. Asking for a single day is enough:
+    # an instant block always ends on a 11:30 UTC boundary, so asking for more days only adds
+    # offerings longer than MAX_CAPACITY_BLOCK_HOURS.
+    try:
+        offerings = ec2_client.describe_capacity_block_offerings(
+            InstanceType=instance_type, InstanceCount=count, CapacityDurationHours=MAX_CAPACITY_BLOCK_HOURS
+        )["CapacityBlockOfferings"]
+    except Exception as e:
+        logging.info("No capacity block offerings for %s in %s: %s", instance_type, region, e)
+        return None
+
+    candidates = [
+        (float(offering["UpfrontFee"]), offering)
+        for offering in offerings
+        if _is_usable_instant_offering(offering, min_hours, instance_type, region)
+    ]
+    if not candidates:
+        logging.info(
+            "No instant capacity block offering for %s (%d-%dh) in %s",
+            instance_type,
+            min_hours,
+            MAX_CAPACITY_BLOCK_HOURS,
+            region,
+        )
+        return None
+
+    fee, offering = min(candidates, key=lambda item: item[0])
+    try:
+        reservation = ec2_client.purchase_capacity_block(
+            CapacityBlockOfferingId=offering["CapacityBlockOfferingId"], InstancePlatform=os_platform
+        )["CapacityReservation"]
+    except ClientError as e:
+        # EC2 rejected the purchase (expired offering, capacity taken meanwhile, ...): nothing was
+        # charged, so another region can safely be tried.
+        logging.warning("Failed to purchase capacity block %s: %s", offering["CapacityBlockOfferingId"], e)
+        return None
+    except Exception as e:
+        # Anything else (timeout, connection reset) leaves the purchase in an unknown state: it may
+        # well have gone through and been charged. Look for the reservation instead of buying again.
+        logging.warning(
+            "Purchase of capacity block %s in %s got no clear answer from EC2 (%s): checking whether it "
+            "went through anyway",
+            offering["CapacityBlockOfferingId"],
+            region,
+            e,
+        )
+        reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
+        if reservation:
+            return _wait_for_capacity_block_active(
+                ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
+            )
+        # Nothing was charged after all, so the other regions can still be tried.
+        logging.warning("Purchase of %s did not go through, moving on", offering["CapacityBlockOfferingId"])
+        return None
+    logging.info(
+        "Purchased capacity block %s: %s x%d on %s in %s, %s -> %s, upfront fee %s %s",
+        reservation["CapacityReservationId"],
+        instance_type,
+        count,
+        os_platform,
+        offering["AvailabilityZone"],
+        offering["StartDate"],
+        offering["EndDate"],
+        fee,
+        offering["CurrencyCode"],
+    )
+    return _wait_for_capacity_block_active(
+        ec2_client, reservation["CapacityReservationId"], offering["StartDate"], offering["EndDate"]
+    )
+
+
+def _wait_for_capacity_block_active(ec2_client, reservation_id, start_date, end_date):
+    """Block until the capacity block is active, then return its AZ ID.
+
+    A freshly bought instant block only starts ~30 minutes later: until then it is `scheduled` and
+    instances cannot be launched against it, so the tests have to wait for it here. The AZ is read
+    back here too, since EC2 does not report one until the block has been allocated.
+
+    The block is paid for whatever happens, so this keeps waiting for as long as the block exists:
+    whatever time is left of it is worth attempting the tests with. The wait ends by itself because
+    EC2 moves the reservation to `expired` once its end date passes.
+
+    Raises if the block never becomes usable.
+    """
+    logging.info(
+        "Waiting for capacity block %s to become active (starts at %s, expires at %s)",
+        reservation_id,
+        start_date,
+        end_date,
+    )
+    while True:
+        try:
+            reservation = ec2_client.describe_capacity_reservations(CapacityReservationIds=[reservation_id])[
+                "CapacityReservations"
+            ][0]
+        except Exception as e:
+            # The reservation can briefly be unreadable right after purchase.
+            logging.info("Could not read state of capacity block %s yet: %s", reservation_id, e)
+            reservation = {"State": "unknown"}
+        state = reservation["State"]
+        if state == "active":
+            az_id = reservation["AvailabilityZoneId"]
+            logging.info("Capacity block %s is active in %s", reservation_id, az_id)
+            return az_id
+        if state in ("cancelled", "expired", "failed", "payment-failed"):
+            raise Exception(
+                f"Capacity block {reservation_id} reached unusable state {state} before the tests could "
+                "run against it."
+            )
+        logging.info("Capacity block %s is %s, checking again in a minute", reservation_id, state)
+        time.sleep(60)
+
+
+def _parse_capacity_block_variable(var):
+    # Example variable:
+    # {{ p6_b200_48xlarge_CAPACITY_BLOCK_2_INSTANCES_6_HOURS_alinux2023 }}
+    pattern = re.compile("(.*)_CAPACITY_BLOCK_(.*)_INSTANCES_(.*)_HOURS_?(.*)?")
+    match = pattern.match(var)
+    instance_type = match.group(1)
+    count = int(match.group(2))
+    hours = int(match.group(3))
+    os = match.group(4) or "alinux2023"
+    return count, hours, instance_type, os
 
 
 def _create_capacity_reservations(az_for_cr, regions, specs, var):  # noqa C901
