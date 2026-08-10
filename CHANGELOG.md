@@ -93,6 +93,7 @@ CHANGELOG
 - Prevent a path traversal when downloading exported cluster and image logs, so a CloudWatch log stream name containing `../`
   segments can no longer cause files to be written outside the export directory.
 - Return a clear error instead of an unexpected fatal exception when the configured AWS profile does not exist.
+- Cache getPolicy API calls to reduce validation time of clusters when using the ParallelCluster API.
 
 **DEPRECATIONS**
 - Amazon Linux 2 is no longer supported.
