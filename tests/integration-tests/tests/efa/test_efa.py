@@ -52,6 +52,9 @@ FABTESTS_BASIC_TESTS = ["rdm_tagged_bw", "rdm_tagged_pingpong"]
 
 FABTESTS_GDRCOPY_TESTS = ["runt"]
 
+# Instance types the gdrcopy tests (GPUDirect RDMA) are run on.
+FABTESTS_GDRCOPY_INSTANCES = ["p4d.24xlarge", "p6-b200.48xlarge"]
+
 
 def _try_reserve_head_node_instance(region, az_id, architecture, os):
     """Try to create a 1-hour capacity reservation for a head node instance in the given AZ.
@@ -238,7 +241,8 @@ def _execute_fabtests(remote_command_executor, test_datadir, instance):
     )
 
     logging.info("Running Fabtests")
-    test_cases = FABTESTS_BASIC_TESTS + FABTESTS_GDRCOPY_TESTS if instance == "p4d.24xlarge" else FABTESTS_BASIC_TESTS
+    gdr_supported = instance in FABTESTS_GDRCOPY_INSTANCES
+    test_cases = FABTESTS_BASIC_TESTS + FABTESTS_GDRCOPY_TESTS if gdr_supported else FABTESTS_BASIC_TESTS
 
     if "g6" in instance:
         test_cases = test_cases + ["not cuda"]
@@ -253,7 +257,7 @@ def _execute_fabtests(remote_command_executor, test_datadir, instance):
             "efa-enabled-st-efa-enabled-i1-1",
             "efa-enabled-st-efa-enabled-i1-2",
             ",".join(test_cases),
-            "enable-gdr" if instance == "p4d.24xlarge" else "skip-gdr",
+            "enable-gdr" if gdr_supported else "skip-gdr",
         ],
         timeout=60,
         pty=False,
