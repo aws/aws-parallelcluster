@@ -285,10 +285,6 @@ test-suites:
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
-        - regions: [{{ p4d_24xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_2 }}]
-          instances: ["p4d.24xlarge"]
-          oss: [{{ OS_X86_2 }}]  # The capacity reservation cannot use RHEL operating system
-          schedulers: ["slurm"]
         - regions: [ "use2-az2" ]  # do not move, unless capacity reservation is moved as well
           instances: [ "p6-b200.48xlarge" ]
           oss: ["alinux2023", "ubuntu2204", "ubuntu2404", "rocky8", "rocky9", "rhel8", "rhel9"]

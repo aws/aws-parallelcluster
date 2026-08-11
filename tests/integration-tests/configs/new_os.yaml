@@ -107,10 +107,6 @@ test-suites:
           instances: ["c5n.9xlarge"]
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
         - regions: ["us-east-1"]
           instances: ["c6gn.16xlarge"]
           oss: {{ NEW_OS }}
