@@ -856,6 +856,9 @@ def _run_parallel(args):
         unmarshalled_region = unmarshal_az_override(az)
         unique_regions.add(unmarshalled_region)
 
+    if args.regions:
+        unique_regions = unique_regions & set(args.regions)
+
     for region in unique_regions:
         p = multiprocessing.Process(target=_run_test_in_region, args=(region, args, OUT_DIR, LOGS_DIR))
         jobs.append(p)
