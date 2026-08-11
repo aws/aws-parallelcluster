@@ -46,6 +46,46 @@ NODE_TYPES = (HEAD_NODE, COMPUTE_NODE, LOGIN_NODE)
 # compute node. Used by multiple tests to validate GPU workloads.
 GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 
+# Default CUDA samples run by run_gpu_workload: deviceQuery validates driver/GPU visibility,
+# matrixMulCUBLAS exercises the CUDA libraries.
+GPU_WORKLOAD_SAMPLES = ["1_Utilities/deviceQuery", "4_CUDA_Libraries/matrixMulCUBLAS"]
+
+
+def run_gpu_workload(scheduler_commands, partition=None, samples=None, timeout=20):
+    """
+    Build and run CUDA samples on a GPU compute node and assert they succeed.
+
+    Submits one job per sample through the scheduler using the shared GPU job script
+    (tests/common/data/gpu_job.sh), which compiles the sample from the /usr/local/cuda-samples-*
+    tree installed on the AMI and runs it on a GPU node. All jobs are submitted upfront, then
+    awaited and asserted successful.
+
+    :param scheduler_commands: SchedulerCommands instance used to submit and check the jobs.
+    :param partition: optional scheduler partition to submit the jobs to.
+    :param samples: CUDA samples to run, as <category>/<sample>. Defaults to GPU_WORKLOAD_SAMPLES.
+    :param timeout: per-job completion timeout, in minutes.
+    :return: the list of completed job ids.
+    """
+    if samples is None:
+        samples = GPU_WORKLOAD_SAMPLES
+    job_ids = []
+    for sample in samples:
+        logging.info("Submitting CUDA sample job for %s", sample)
+        result = scheduler_commands.submit_script(
+            str(GPU_JOB_SCRIPT),
+            script_args=[sample],
+            partition=partition,
+            nodes=1,
+            slots=1,
+        )
+        job_ids.append(scheduler_commands.assert_job_submitted(result.stdout))
+
+    for job_id in job_ids:
+        scheduler_commands.wait_job_completed(job_id, timeout=timeout)
+        scheduler_commands.assert_job_succeeded(job_id)
+    return job_ids
+
+
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {

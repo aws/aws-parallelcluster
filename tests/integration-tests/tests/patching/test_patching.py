@@ -21,12 +21,12 @@ from tests.common.login_nodes_utils import wait_for_login_fleet_stop
 from tests.common.osu_common import PRIVATE_OSES
 from tests.common.utils import (
     COMPUTE_NODE,
-    GPU_JOB_SCRIPT,
     HEAD_NODE,
     LOGIN_NODE,
     NODE_TYPES,
     reboot_head_node,
     retrieve_cluster_head_node_ami,
+    run_gpu_workload,
     wait_node_reachable,
 )
 
@@ -288,17 +288,8 @@ def _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node):
     logging.info("Submitting GPU validation job from the %s", source)
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-    result = scheduler_commands.submit_script(
-        str(GPU_JOB_SCRIPT),
-        script_args=["1_Utilities/deviceQuery"],
-        partition="q1",
-        nodes=1,
-        slots=1,
-    )
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id, timeout=20)
-    scheduler_commands.assert_job_succeeded(job_id)
-    logging.info("GPU validation job %s submitted from the %s succeeded", job_id, source)
+    job_ids = run_gpu_workload(scheduler_commands, partition="q1", samples=["1_Utilities/deviceQuery"])
+    logging.info("GPU validation job %s submitted from the %s succeeded", job_ids[0], source)
 
 
 def _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory, os):

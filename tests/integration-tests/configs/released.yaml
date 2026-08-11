@@ -297,6 +297,14 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2023"]
           schedulers: ["slurm"]
+  tutorials:
+    test_upgrade_nvidia_software.py::test_upgrade_nvidia_software:
+      dimensions:
+        # The NVIDIA upgrade component targets Amazon Linux 2023 x86_64 only.
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }} ]
+          instances: [ "g4dn.2xlarge" ]
+          oss: [ "alinux2023" ]
+          schedulers: [ "slurm" ]
   update:
     test_update.py::test_update_slurm:
       dimensions:

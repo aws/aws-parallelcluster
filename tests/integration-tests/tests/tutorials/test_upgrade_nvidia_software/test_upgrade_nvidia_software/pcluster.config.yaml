@@ -1,0 +1,22 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ custom_ami }}
+HeadNode:
+  InstanceType: {{ head_node_instance_type }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: {{ queue_name }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: {{ compute_resource_name }}
+          InstanceType: {{ instance }}
+          # Keep one static GPU node up so the NVIDIA stack versions can be checked directly on it.
+          MinCount: 1
+          MaxCount: 1
