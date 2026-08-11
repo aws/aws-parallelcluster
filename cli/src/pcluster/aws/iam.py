@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pcluster.aws.common import AWSExceptionHandler, Boto3Client
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client, Cache
 
 
 class IamClient(Boto3Client):
@@ -18,6 +18,7 @@ class IamClient(Boto3Client):
     def __init__(self):
         super().__init__("iam")
 
+    @Cache.cached
     @AWSExceptionHandler.handle_client_exception
     def get_policy(self, iam_policy):
         """Get policy information."""
