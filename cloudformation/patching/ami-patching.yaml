@@ -259,6 +259,9 @@ Resources:
                   commands:
                     - |
                       set -euxo pipefail
+                      # Rocky 8 cloud images mask tmp.mount. Unmask it so the
+                      # fstab-generated mount unit can participate in the boot transaction.
+                      systemctl unmask tmp.mount
                       awk '
                       function add_option(options_list, option, item_count, i, items) {
                           item_count = split(options_list, items, ",")
