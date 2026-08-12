@@ -170,6 +170,7 @@ def _get_instance_type_parameters():  # noqa: C901
             # Get GPU instance details in batches of 100
             all_gpu_list = list(all_gpu_instances)
             gpu_instances = []
+            fractional_gpu_instances = set()
             paginator = ec2_client.get_paginator("describe_instance_types")
             # DescribeInstanceType API Limit of 100 instances
             batch_size = 100
@@ -178,6 +179,9 @@ def _get_instance_type_parameters():  # noqa: C901
                 gpu_instance_type_batch = all_gpu_list[i : i + batch_size]  # noqa: E203
                 for page in paginator.paginate(InstanceTypes=gpu_instance_type_batch):
                     for instance_type in page["InstanceTypes"]:
+                        if _is_fractional_gpu_instance_type(instance_type):
+                            fractional_gpu_instances.add(instance_type["InstanceType"])
+                            continue
                         if _is_nvidia_gpu_instance_type(instance_type):
                             if instance_type.get("GpuInfo").get("Gpus")[0].get(
                                 "Count"
@@ -193,9 +197,14 @@ def _get_instance_type_parameters():  # noqa: C901
                             else:
                                 gpu_instances.append(instance_type["InstanceType"])
 
-            logging.info(f"Selected GPU instance types: {gpu_instances}")
+            xlarge_instances -= fractional_gpu_instances
+
             xlarge_sorted = sorted(xlarge_instances)
             gpu_sorted = sorted(gpu_instances)
+
+            logging.info(f"Selected .xlarge instance types: {xlarge_sorted}")
+            logging.info(f"Selected GPU instance types: {gpu_sorted}")
+
             today_number = (date.today() - date(2020, 1, 1)).days
             for index, _ in enumerate(xlarge_sorted):
                 instance_type = xlarge_sorted[(today_number + index) % len(xlarge_sorted)]
@@ -231,6 +240,17 @@ def _is_nvidia_gpu_instance_type(instance_type):
     """
     gpu = next(iter((instance_type.get("GpuInfo") or {}).get("Gpus") or []), {})
     return gpu.get("Manufacturer") == "NVIDIA" and (gpu.get("Count") or 0) >= 1
+
+
+def _is_fractional_gpu_instance_type(instance_type):
+    """
+    Return True if the instance type exposes a fractional NVIDIA GPU (e.g. g6f, gr6f).
+
+    Fractional-GPU instances report an NVIDIA GPU in GpuInfo with a Count of 0 (a slice of a
+    physical GPU), unlike full-GPU instances which report a Count of 1 or more.
+    """
+    gpu = next(iter((instance_type.get("GpuInfo") or {}).get("Gpus") or []), {})
+    return gpu.get("Manufacturer") == "NVIDIA" and (gpu.get("Count") or 0) < 1
 
 
 def _is_current_instance_type_generation(excluded_instance_type_prefixes, instance_type):
