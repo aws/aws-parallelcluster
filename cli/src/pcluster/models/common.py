@@ -315,7 +315,7 @@ class CloudWatchLogsExporter:
         started_clause = f", started at {to_utc_datetime(created)}" if created else ""
         self._report_progress(
             f"An export task for log group '{self.log_group_name}' is already running (task {task_id}"
-            f"{started_clause}). Attaching to it instead of starting a new one."
+            f"{started_clause}). Tracking it instead of starting a new one."
         )
 
         result_status = self._wait_for_task_completion(task_id, created_epoch_ms=created)

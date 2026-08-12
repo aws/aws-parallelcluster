@@ -364,7 +364,7 @@ class TestCloudWatchLogsExporter:
         assert_that(cw_logs_exporter.bucket).is_equal_to("previous-bucket")
         assert_that(cw_logs_exporter.bucket_prefix).is_equal_to("previous-prefix")
         assert_that(cw_logs_exporter.delete_everything_under_prefix).is_false()
-        assert_that(capsys.readouterr().err).contains("Attaching to it")
+        assert_that(capsys.readouterr().err).contains("Tracking it")
 
     def test_export_logs_to_s3_attached_task_failure_raises(self, cw_logs_exporter, mocker):
         """If the adopted in-progress task ends in a non-COMPLETED state, surface it as an error."""
