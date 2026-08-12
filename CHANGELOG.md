@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.17.0
+------
+
+**ENHANCEMENTS**
+- Improve `export-logs` user experience by parallelizing download to reduce run time, 
+  adding progress reporting, and supporting running on deleted clusters.
+
 3.16.0
 ------
 
