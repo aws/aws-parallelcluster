@@ -490,9 +490,10 @@ class TestCloudWatchLogsExporter:
         assert_that(finished_values[0]).is_greater_than_or_equal_to(300)
 
     def test_download_reports_progress(self, cw_logs_exporter, mocker, tmp_path, capsys):
-        """The download phase reports the object count/size to stderr."""
+        """The download phase reports the object count/size and elapsed time to stderr."""
         mock_aws_api(mocker)
         cw_logs_exporter.bucket_prefix = "test_prefix"
+        cw_logs_exporter._operation_start_time = time.time() - 60  # simulate 60s already elapsed
 
         def fake_download_file(bucket_name, key, output):
             with gzip.open(output, "wb") as gzipped:
@@ -509,6 +510,7 @@ class TestCloudWatchLogsExporter:
         err = capsys.readouterr().err
         assert_that(err).contains("Downloading 1 log object(s)")
         assert_that(err).contains("Downloaded 1 of 1 log object(s)")
+        assert_that(err).contains("elapsed")
 
     def test_download_parallelizes_distinct_objects(self, cw_logs_exporter, mocker, tmp_path, capsys):
         """Distinct objects are downloaded (in parallel) and all counted; every object is fetched once."""
@@ -564,6 +566,36 @@ class TestCloudWatchLogsExporter:
         cw_logs_exporter._download_s3_objects_with_prefix("task_id", str(tmp_path / "cloudwatch-logs"))
 
         assert_that(list(group_calls.values())).is_equal_to([2])
+
+    def test_count_log_streams_paginates(self, cw_logs_exporter, mocker):
+        """_count_log_streams paginates through multiple pages."""
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.describe_log_streams",
+            side_effect=[
+                {"logStreams": [{"logStreamName": f"stream-{i}"} for i in range(3)], "nextToken": "token1"},
+                {"logStreams": [{"logStreamName": f"stream-{i}"} for i in range(3, 5)]},
+            ],
+        )
+
+        count = cw_logs_exporter._count_log_streams("prefix")
+        assert_that(count).is_equal_to(5)
+
+    def test_execute_reports_stream_count(self, cw_logs_exporter, mocker, capsys):
+        """execute() reports the number of log streams before starting the export."""
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.describe_log_streams",
+            return_value={"logStreams": [{"logStreamName": f"stream-{i}"} for i in range(3)]},
+        )
+        mocker.patch("pcluster.models.common.CloudWatchLogsExporter._export_logs_to_s3", return_value="task_id")
+        mocker.patch("pcluster.models.common.CloudWatchLogsExporter._download_s3_objects_with_prefix")
+
+        cw_logs_exporter.execute()
+
+        err = capsys.readouterr().err
+        assert_that(err).contains("Exporting 3 log stream(s)")
+        assert_that(err).contains("groupname")
 
     @pytest.mark.parametrize(
         "path_relative_to_parent, expected",
