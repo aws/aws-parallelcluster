@@ -9,8 +9,11 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import gzip
 import os
+import re
 import time
+from types import SimpleNamespace
 
 import pytest
 from assertpy import assert_that
@@ -21,6 +24,9 @@ from pcluster.models.common import (
     FiltersParserError,
     LogGroupTimeFiltersParser,
     LogsExporterError,
+    export_stack_events,
+    format_bytes,
+    sanitize_path_component,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -327,6 +333,238 @@ class TestCloudWatchLogsExporter:
             task_id = cw_logs_exporter._export_logs_to_s3("log_group_name", "bucket")
             wait_for_completion_mock.assert_called_with(task_id)
 
+    def test_export_logs_to_s3_attaches_to_same_log_group_export_in_progress(self, cw_logs_exporter, mocker, capsys):
+        """A running export for the same log group is adopted and tracked, not restarted."""
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.get_active_export_tasks",
+            return_value=[
+                {
+                    "taskId": "running-task",
+                    "logGroupName": "groupname",
+                    "destination": "previous-bucket",
+                    "destinationPrefix": "previous-prefix",
+                    "executionInfo": {"creationTime": 1700000000000},
+                }
+            ],
+        )
+        create_task_mock = mocker.patch("pcluster.aws.logs.LogsClient.create_export_task")
+        wait_mock = mocker.patch(
+            "pcluster.models.common.CloudWatchLogsExporter._wait_for_task_completion", return_value="COMPLETED"
+        )
+
+        task_id = cw_logs_exporter._export_logs_to_s3()
+
+        # We attach to the existing task rather than starting a new one.
+        create_task_mock.assert_not_called()
+        assert_that(task_id).is_equal_to("running-task")
+        # Elapsed must be measured from the existing task's creation time, so it is passed through.
+        wait_mock.assert_called_with("running-task", created_epoch_ms=1700000000000)
+        # The existing task's S3 destination is adopted so download/cleanup target the right location.
+        assert_that(cw_logs_exporter.bucket).is_equal_to("previous-bucket")
+        assert_that(cw_logs_exporter.bucket_prefix).is_equal_to("previous-prefix")
+        assert_that(cw_logs_exporter.delete_everything_under_prefix).is_false()
+        assert_that(capsys.readouterr().err).contains("Attaching to it")
+
+    def test_export_logs_to_s3_attached_task_failure_raises(self, cw_logs_exporter, mocker):
+        """If the adopted in-progress task ends in a non-COMPLETED state, surface it as an error."""
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.get_active_export_tasks",
+            return_value=[{"taskId": "running-task", "logGroupName": "groupname", "destinationPrefix": "p"}],
+        )
+        mocker.patch("pcluster.models.common.CloudWatchLogsExporter._wait_for_task_completion", return_value="FAILED")
+
+        with pytest.raises(LogsExporterError, match="export task running-task failed with status: FAILED"):
+            cw_logs_exporter._export_logs_to_s3()
+
+    def test_export_logs_to_s3_blocks_when_other_log_group_export_in_progress(self, cw_logs_exporter, mocker):
+        """A running export for a different log group (account-wide limit) yields a clear message."""
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.get_active_export_tasks",
+            return_value=[{"taskId": "other-task", "logGroupName": "another-cluster-group"}],
+        )
+        create_task_mock = mocker.patch("pcluster.aws.logs.LogsClient.create_export_task")
+
+        with pytest.raises(LogsExporterError) as exc_info:
+            cw_logs_exporter._export_logs_to_s3()
+
+        message = str(exc_info.value)
+        assert_that(message).contains("account")
+        assert_that(message).contains("another-cluster-group")
+        create_task_mock.assert_not_called()
+
+    def test_export_logs_to_s3_translates_limit_exceeded_error(self, cw_logs_exporter, mocker):
+        """A LimitExceededException from create_export_task becomes a friendly 'already running' message."""
+        mock_aws_api(mocker)
+        # No task detected at pre-flight (empty), but create_export_task races into the account limit.
+        mocker.patch("pcluster.aws.logs.LogsClient.get_active_export_tasks", return_value=[])
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.create_export_task",
+            side_effect=AWSClientError("create_export_task", "Resource limit exceeded (LimitExceededException)"),
+        )
+
+        with pytest.raises(LogsExporterError) as exc_info:
+            cw_logs_exporter._export_logs_to_s3()
+
+        assert_that(str(exc_info.value)).contains("only one export task at a time")
+
+    def test_wait_for_task_completion_reports_size_progress(self, cw_logs_exporter, mocker, capsys):
+        """While polling, progress lines (with exported size) are written to stderr on each interval."""
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.models.common.time.sleep")
+        # Report on every poll for the test.
+        mocker.patch("pcluster.models.common.EXPORT_LOGS_PROGRESS_INTERVAL_SECONDS", 0)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.get_export_task_status",
+            side_effect=["RUNNING", "RUNNING", "COMPLETED"],
+        )
+        mocker.patch(
+            "pcluster.aws.s3_resource.S3Resource.get_objects",
+            return_value=[SimpleNamespace(key="k1", size=1024), SimpleNamespace(key="k2", size=1024)],
+        )
+
+        status = cw_logs_exporter._wait_for_task_completion("task_id")
+
+        assert_that(status).is_equal_to("COMPLETED")
+        err = capsys.readouterr().err
+        assert_that(err).contains("Started CloudWatch Logs export task task_id")
+        assert_that(err).contains("exported so far")
+        assert_that(err).contains("2.0 KB")
+        assert_that(err).contains("finished")
+
+    def test_wait_for_task_completion_falls_back_to_elapsed_when_size_unavailable(
+        self, cw_logs_exporter, mocker, capsys
+    ):
+        """When the exported size can't be read, progress still shows an elapsed-time heartbeat."""
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.models.common.time.sleep")
+        mocker.patch("pcluster.models.common.EXPORT_LOGS_PROGRESS_INTERVAL_SECONDS", 0)
+        mocker.patch("pcluster.aws.logs.LogsClient.get_export_task_status", side_effect=["RUNNING", "COMPLETED"])
+        mocker.patch(
+            "pcluster.aws.s3_resource.S3Resource.get_objects",
+            side_effect=AWSClientError("get_objects", "denied"),
+        )
+
+        cw_logs_exporter._wait_for_task_completion("task_id")
+
+        assert_that(capsys.readouterr().err).contains("no data written to S3 yet")
+
+    def test_wait_for_task_completion_shows_waiting_until_first_bytes(self, cw_logs_exporter, mocker, capsys):
+        """Before CloudWatch writes anything to S3, show a waiting heartbeat rather than a misleading '0 B'."""
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.models.common.time.sleep")
+        mocker.patch("pcluster.models.common.EXPORT_LOGS_PROGRESS_INTERVAL_SECONDS", 0)
+        mocker.patch("pcluster.aws.logs.LogsClient.get_export_task_status", side_effect=["RUNNING", "COMPLETED"])
+        # CloudWatch has not flushed any objects yet -> 0 bytes exported.
+        mocker.patch("pcluster.aws.s3_resource.S3Resource.get_objects", return_value=[])
+
+        cw_logs_exporter._wait_for_task_completion("task_id")
+
+        err = capsys.readouterr().err
+        assert_that(err).contains("no data written to S3 yet")
+        assert_that(err).does_not_contain("0 B")
+
+    def test_wait_for_task_completion_measures_elapsed_from_creation_time(self, cw_logs_exporter, mocker, capsys):
+        """When a task's creation time is supplied, elapsed reflects the task's true age, not our wait time."""
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.models.common.time.sleep")
+        mocker.patch("pcluster.models.common.EXPORT_LOGS_PROGRESS_INTERVAL_SECONDS", 0)
+        mocker.patch("pcluster.aws.logs.LogsClient.get_export_task_status", side_effect=["RUNNING", "COMPLETED"])
+        mocker.patch(
+            "pcluster.aws.s3_resource.S3Resource.get_objects",
+            return_value=[SimpleNamespace(key="k", size=1024)],
+        )
+        # Task was created 300 seconds ago.
+        created_epoch_ms = int((time.time() - 300) * 1000)
+
+        cw_logs_exporter._wait_for_task_completion("task_id", created_epoch_ms=created_epoch_ms)
+
+        err = capsys.readouterr().err
+        elapsed_values = [int(match) for match in re.findall(r"elapsed (\d+)s", err)]
+        assert_that(elapsed_values).is_not_empty()
+        # Every reported elapsed reflects the ~300s task age rather than the near-zero local wait.
+        assert_that(min(elapsed_values)).is_greater_than_or_equal_to(300)
+        finished_values = [int(match) for match in re.findall(r"finished after (\d+)s", err)]
+        assert_that(finished_values[0]).is_greater_than_or_equal_to(300)
+
+    def test_download_reports_progress(self, cw_logs_exporter, mocker, tmp_path, capsys):
+        """The download phase reports the object count/size to stderr."""
+        mock_aws_api(mocker)
+        cw_logs_exporter.bucket_prefix = "test_prefix"
+
+        def fake_download_file(bucket_name, key, output):
+            with gzip.open(output, "wb") as gzipped:
+                gzipped.write(b"log data")
+
+        mocker.patch(
+            "pcluster.aws.s3_resource.S3Resource.get_objects",
+            return_value=[SimpleNamespace(key="test_prefix/task_id/ip-10-0-0-1/000000.gz", size=8)],
+        )
+        mocker.patch("pcluster.aws.s3_resource.S3Resource.download_file", side_effect=fake_download_file)
+
+        cw_logs_exporter._download_s3_objects_with_prefix("task_id", str(tmp_path / "cloudwatch-logs"))
+
+        err = capsys.readouterr().err
+        assert_that(err).contains("Downloading 1 log object(s)")
+        assert_that(err).contains("Downloaded 1 of 1 log object(s)")
+
+    def test_download_parallelizes_distinct_objects(self, cw_logs_exporter, mocker, tmp_path, capsys):
+        """Distinct objects are downloaded (in parallel) and all counted; every object is fetched once."""
+        mock_aws_api(mocker)
+        cw_logs_exporter.bucket_prefix = "test_prefix"
+
+        def fake_download_file(bucket_name, key, output):
+            with gzip.open(output, "wb") as gzipped:
+                gzipped.write(b"log data")
+
+        objects = [SimpleNamespace(key=f"test_prefix/task_id/ip-10-0-0-{i}/000000.gz", size=8) for i in range(1, 4)]
+        mocker.patch("pcluster.aws.s3_resource.S3Resource.get_objects", return_value=objects)
+        download_mock = mocker.patch(
+            "pcluster.aws.s3_resource.S3Resource.download_file", side_effect=fake_download_file
+        )
+
+        destdir = str(tmp_path / "cloudwatch-logs")
+        cw_logs_exporter._download_s3_objects_with_prefix("task_id", destdir)
+
+        assert_that(download_mock.call_count).is_equal_to(3)
+        assert_that(capsys.readouterr().err).contains("Downloaded 3 of 3 log object(s)")
+        # Each distinct stream produced its own local file.
+        for i in range(1, 4):
+            assert_that(os.path.isfile(os.path.join(destdir, f"ip-10-0-0-{i}"))).is_true()
+
+    def test_download_groups_objects_mapping_to_same_file(self, cw_logs_exporter, mocker, tmp_path):
+        """Objects resolving to the same local path are handled in one group (no concurrent writes)."""
+        mock_aws_api(mocker)
+        cw_logs_exporter.bucket_prefix = "test_prefix"
+
+        group_calls = {}
+
+        original = CloudWatchLogsExporter._download_object_group
+
+        def tracking_group(self, decompressed_path, archive_objects):
+            group_calls[decompressed_path] = len(archive_objects)
+            return original(self, decompressed_path, archive_objects)
+
+        mocker.patch.object(CloudWatchLogsExporter, "_download_object_group", tracking_group)
+
+        def fake_download_file(bucket_name, key, output):
+            with gzip.open(output, "wb") as gzipped:
+                gzipped.write(b"log data")
+
+        # Two objects for the same stream must land in a single group of size 2.
+        objects = [
+            SimpleNamespace(key="test_prefix/task_id/ip-10-0-0-1/000000.gz", size=8),
+            SimpleNamespace(key="test_prefix/task_id/ip-10-0-0-1/000001.gz", size=8),
+        ]
+        mocker.patch("pcluster.aws.s3_resource.S3Resource.get_objects", return_value=objects)
+        mocker.patch("pcluster.aws.s3_resource.S3Resource.download_file", side_effect=fake_download_file)
+
+        cw_logs_exporter._download_s3_objects_with_prefix("task_id", str(tmp_path / "cloudwatch-logs"))
+
+        assert_that(list(group_calls.values())).is_equal_to([2])
+
     @pytest.mark.parametrize(
         "path_relative_to_parent, expected",
         [
@@ -343,3 +581,49 @@ class TestCloudWatchLogsExporter:
         parent_dir = str(tmp_path)
         candidate = os.path.join(parent_dir, path_relative_to_parent)
         assert_that(CloudWatchLogsExporter._is_path_contained(candidate, parent_dir)).is_equal_to(expected)
+
+
+@pytest.mark.parametrize(
+    "num_bytes, expected",
+    [
+        (0, "0 B"),
+        (512, "512 B"),
+        (1024, "1.0 KB"),
+        (1536, "1.5 KB"),
+        (1024 * 1024, "1.0 MB"),
+        (5 * 1024 * 1024 * 1024, "5.0 GB"),
+        (3 * 1024 * 1024 * 1024 * 1024, "3.0 TB"),
+    ],
+)
+def test_format_bytes(num_bytes, expected):
+    assert_that(format_bytes(num_bytes)).is_equal_to(expected)
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("my-cluster", "my-cluster"),  # ordinary name is unchanged
+        ("cluster_1.2", "cluster_1.2"),  # dots and underscores are preserved
+        (
+            "arn:aws:cloudformation:us-east-1:447714826191:stack/integ-tests-x/c8ea7a80",
+            "arn_aws_cloudformation_us-east-1_447714826191_stack_integ-tests-x_c8ea7a80",
+        ),  # ARN separators become safe underscores
+    ],
+)
+def test_sanitize_path_component(name, expected):
+    result = sanitize_path_component(name)
+    assert_that(result).is_equal_to(expected)
+    # The result never contains path separators or drive/colon markers.
+    assert_that(result).does_not_contain("/")
+    assert_that(result).does_not_contain(os.sep)
+    assert_that(result).does_not_contain(":")
+
+
+def test_export_stack_events_creates_missing_parent_dirs(mocker, tmp_path):
+    """export_stack_events must create the parent directory before writing (defends against odd paths)."""
+    mocker.patch("pcluster.models.common.get_all_stack_events", return_value=[{"event": 1}])
+    output_file = str(tmp_path / "does" / "not" / "exist" / "events.json")
+
+    export_stack_events("stack-name", output_file)
+
+    assert_that(os.path.isfile(output_file)).is_true()
