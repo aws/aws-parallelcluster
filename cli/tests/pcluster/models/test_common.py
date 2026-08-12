@@ -250,6 +250,7 @@ class TestCloudWatchLogsExporter:
         cw_logs_exporter = CloudWatchLogsExporter(**kwargs)
 
         mocker.patch("pcluster.models.common.CloudWatchLogsExporter._export_logs_to_s3", return_value="task_id")
+        mocker.patch("pcluster.models.common.CloudWatchLogsExporter._count_log_streams", return_value=0)
         download_objects_mock = mocker.patch(
             "pcluster.models.common.CloudWatchLogsExporter._download_s3_objects_with_prefix"
         )
@@ -516,6 +517,7 @@ class TestCloudWatchLogsExporter:
         """Distinct objects are downloaded (in parallel) and all counted; every object is fetched once."""
         mock_aws_api(mocker)
         cw_logs_exporter.bucket_prefix = "test_prefix"
+        cw_logs_exporter._operation_start_time = time.time()
 
         def fake_download_file(bucket_name, key, output):
             with gzip.open(output, "wb") as gzipped:
@@ -540,6 +542,7 @@ class TestCloudWatchLogsExporter:
         """Objects resolving to the same local path are handled in one group (no concurrent writes)."""
         mock_aws_api(mocker)
         cw_logs_exporter.bucket_prefix = "test_prefix"
+        cw_logs_exporter._operation_start_time = time.time()
 
         group_calls = {}
 
@@ -590,6 +593,7 @@ class TestCloudWatchLogsExporter:
         )
         mocker.patch("pcluster.models.common.CloudWatchLogsExporter._export_logs_to_s3", return_value="task_id")
         mocker.patch("pcluster.models.common.CloudWatchLogsExporter._download_s3_objects_with_prefix")
+        mocker.patch("pcluster.aws.s3_resource.S3Resource.delete_objects")
 
         cw_logs_exporter.execute()
 

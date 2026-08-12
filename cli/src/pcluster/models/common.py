@@ -189,9 +189,7 @@ class CloudWatchLogsExporter:
         self._operation_start_time = time.time()
         # Count and report the number of log streams to be exported
         stream_count = self._count_log_streams(log_stream_prefix)
-        self._report_progress(
-            f"Exporting {stream_count} log stream(s) from log group {self.log_group_name}..."
-        )
+        self._report_progress(f"Exporting {stream_count} log stream(s) from log group {self.log_group_name}...")
         # Export logs to S3
         task_id = self._export_logs_to_s3(log_stream_prefix=log_stream_prefix, start_time=start_time, end_time=end_time)
         LOGGER.info("Log export task id: %s", task_id)
