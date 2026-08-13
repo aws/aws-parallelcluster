@@ -882,8 +882,8 @@ test-suites:
   proxy:
     test_proxy.py::test_proxy:
       dimensions:
-        - regions: ["ap-southeast-5"] # c5 instance type is not available in ap-southeast-5
-          instances: ["m6i.xlarge"]
+        - regions: [{{ c5_xlarge_CAPACITY_RESERVATION_4_INSTANCES_2_HOURS_NOPG_OS_X86_6 }}]
+          instances: ["c5.xlarge"]
           oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
   pyxis:
