@@ -308,6 +308,8 @@ class CloudWatchLogsExporter:
             self.bucket_prefix = destination_prefix
             # We did not create this prefix, so only clean up what belongs to this task, not the whole prefix.
             self.delete_everything_under_prefix = False
+        # Do not delete S3 objects from an adopted task — they belong to the earlier invocation.
+        self.keep_s3_objects = True
 
         created = task.get("executionInfo", {}).get("creationTime")
         started_clause = f", started at {to_utc_datetime(created)}" if created else ""
@@ -470,8 +472,8 @@ class CloudWatchLogsExporter:
         os.makedirs(os.path.dirname(compressed_path), exist_ok=True)
         for archive_object in archive_objects:
             LOGGER.debug("Downloading object with key=%s to %s", archive_object.key, compressed_path)
-            AWSApi.instance().s3_resource.download_file(
-                bucket_name=self.bucket, key=archive_object.key, output=compressed_path
+            AWSApi.instance().s3.download_file(
+                bucket_name=self.bucket, object_name=archive_object.key, file_name=compressed_path
             )
             # Create a decompressed copy of the downloaded archive.
             LOGGER.debug("Extracting object at %s to %s", compressed_path, decompressed_path)

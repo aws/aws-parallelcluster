@@ -365,6 +365,7 @@ class TestCloudWatchLogsExporter:
         assert_that(cw_logs_exporter.bucket).is_equal_to("previous-bucket")
         assert_that(cw_logs_exporter.bucket_prefix).is_equal_to("previous-prefix")
         assert_that(cw_logs_exporter.delete_everything_under_prefix).is_false()
+        assert_that(cw_logs_exporter.keep_s3_objects).is_true()
         assert_that(capsys.readouterr().err).contains("Tracking it")
 
     def test_export_logs_to_s3_attached_task_failure_raises(self, cw_logs_exporter, mocker):
@@ -496,15 +497,15 @@ class TestCloudWatchLogsExporter:
         cw_logs_exporter.bucket_prefix = "test_prefix"
         cw_logs_exporter._operation_start_time = time.time() - 60  # simulate 60s already elapsed
 
-        def fake_download_file(bucket_name, key, output):
-            with gzip.open(output, "wb") as gzipped:
+        def fake_download_file(bucket_name, object_name, file_name):
+            with gzip.open(file_name, "wb") as gzipped:
                 gzipped.write(b"log data")
 
         mocker.patch(
             "pcluster.aws.s3_resource.S3Resource.get_objects",
             return_value=[SimpleNamespace(key="test_prefix/task_id/ip-10-0-0-1/000000.gz", size=8)],
         )
-        mocker.patch("pcluster.aws.s3_resource.S3Resource.download_file", side_effect=fake_download_file)
+        mocker.patch("pcluster.aws.s3.S3Client.download_file", side_effect=fake_download_file)
 
         cw_logs_exporter._download_s3_objects_with_prefix("task_id", str(tmp_path / "cloudwatch-logs"))
 
@@ -519,15 +520,13 @@ class TestCloudWatchLogsExporter:
         cw_logs_exporter.bucket_prefix = "test_prefix"
         cw_logs_exporter._operation_start_time = time.time()
 
-        def fake_download_file(bucket_name, key, output):
-            with gzip.open(output, "wb") as gzipped:
+        def fake_download_file(bucket_name, object_name, file_name):
+            with gzip.open(file_name, "wb") as gzipped:
                 gzipped.write(b"log data")
 
         objects = [SimpleNamespace(key=f"test_prefix/task_id/ip-10-0-0-{i}/000000.gz", size=8) for i in range(1, 4)]
         mocker.patch("pcluster.aws.s3_resource.S3Resource.get_objects", return_value=objects)
-        download_mock = mocker.patch(
-            "pcluster.aws.s3_resource.S3Resource.download_file", side_effect=fake_download_file
-        )
+        download_mock = mocker.patch("pcluster.aws.s3.S3Client.download_file", side_effect=fake_download_file)
 
         destdir = str(tmp_path / "cloudwatch-logs")
         cw_logs_exporter._download_s3_objects_with_prefix("task_id", destdir)
@@ -554,8 +553,8 @@ class TestCloudWatchLogsExporter:
 
         mocker.patch.object(CloudWatchLogsExporter, "_download_object_group", tracking_group)
 
-        def fake_download_file(bucket_name, key, output):
-            with gzip.open(output, "wb") as gzipped:
+        def fake_download_file(bucket_name, object_name, file_name):
+            with gzip.open(file_name, "wb") as gzipped:
                 gzipped.write(b"log data")
 
         # Two objects for the same stream must land in a single group of size 2.
@@ -564,7 +563,7 @@ class TestCloudWatchLogsExporter:
             SimpleNamespace(key="test_prefix/task_id/ip-10-0-0-1/000001.gz", size=8),
         ]
         mocker.patch("pcluster.aws.s3_resource.S3Resource.get_objects", return_value=objects)
-        mocker.patch("pcluster.aws.s3_resource.S3Resource.download_file", side_effect=fake_download_file)
+        mocker.patch("pcluster.aws.s3.S3Client.download_file", side_effect=fake_download_file)
 
         cw_logs_exporter._download_s3_objects_with_prefix("task_id", str(tmp_path / "cloudwatch-logs"))
 
