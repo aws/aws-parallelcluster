@@ -20,10 +20,8 @@ EOF
   apt-get install aws-neuronx-collectives=2.* -y
   info "Install Neuron Runtime"
   apt-get install aws-neuronx-runtime-lib=2.* -y
-  # neuron-bench in aws-neuronx-tools 2.31 segfaults in finalizeRuntimeTracing after the run;
-  # 2.30 is the last good line. Remove the pin once the upstream crash is fixed.
   info "Install Neuron Tools"
-  apt-get install aws-neuronx-tools=2.30.* -y
+  apt-get install aws-neuronx-tools=2.* -y
   info "Add neuron in PATH"
   export PATH=/opt/aws/neuron/bin:$PATH
   info "Install Python venv"
@@ -50,10 +48,8 @@ EOF
   yum install aws-neuronx-collectives-2.* -y
   info "Install Neuron Runtime"
   yum install aws-neuronx-runtime-lib-2.* -y
-  # neuron-bench in aws-neuronx-tools 2.31 segfaults in finalizeRuntimeTracing after the run;
-  # 2.30 is the last good line. Remove the pin once the upstream crash is fixed.
   info " Install Neuron Tools"
-  yum install aws-neuronx-tools-2.30.* -y
+  yum install aws-neuronx-tools-2.* -y
   info "Add neuron in PATH"
   export PATH=/opt/aws/neuron/bin:$PATH
   info "Create Python venv"
