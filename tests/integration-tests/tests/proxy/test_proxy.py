@@ -37,7 +37,7 @@ def proxy_stack_factory(region, request, cfn_stacks_factory, az_id):
     """
     proxy_stack_template_path = "../../cloudformation/proxy/proxy.yaml"
 
-    def _create_proxy_stack(enable_build_image_proxy=False):
+    def _create_proxy_stack(enable_build_image_proxy, instance_type):
         with open(proxy_stack_template_path) as proxy_stack_template:
             template_body = proxy_stack_template.read()
 
@@ -52,7 +52,7 @@ def proxy_stack_factory(region, request, cfn_stacks_factory, az_id):
                 )
             else:
                 stack_name = generate_stack_name("integ-tests-proxy", request.config.getoption("stackname_suffix"))
-                private_subnet_az = (
+                subnet_az = (
                     get_az_id_to_az_name_map(region, request.config.getoption("credential")).get(az_id, "")
                     if az_id
                     else ""
@@ -68,8 +68,8 @@ def proxy_stack_factory(region, request, cfn_stacks_factory, az_id):
                         "ParameterKey": "EnableBuildImageProxy",
                         "ParameterValue": "true" if enable_build_image_proxy else "false",
                     },
-                    {"ParameterKey": "InstanceType", "ParameterValue": "t3.medium"},
-                    {"ParameterKey": "PrivateSubnetAvailabilityZone", "ParameterValue": private_subnet_az},
+                    {"ParameterKey": "InstanceType", "ParameterValue": instance_type},
+                    {"ParameterKey": "AvailabilityZone", "ParameterValue": subnet_az},
                 ]
                 capabilities = ["CAPABILITY_IAM"]
                 tags = [{"Key": "parallelcluster:integ-tests-proxy-stack", "Value": "proxy"}]
@@ -88,8 +88,8 @@ def proxy_stack_factory(region, request, cfn_stacks_factory, az_id):
 
     stacks = []
 
-    def _factory(enable_build_image_proxy=False):
-        stack = _create_proxy_stack(enable_build_image_proxy)
+    def _factory(enable_build_image_proxy=False, instance_type="c5.xlarge"):
+        stack = _create_proxy_stack(enable_build_image_proxy, instance_type)
         stacks.append(stack)
         return stack
 
@@ -107,8 +107,8 @@ def get_instance_public_ip(instance_id, region):
     return instance.get("PublicIpAddress")
 
 
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_proxy(pcluster_config_reader, proxy_stack_factory, clusters_factory, scheduler_commands_factory):
+@pytest.mark.usefixtures("region", "os", "scheduler")
+def test_proxy(instance, pcluster_config_reader, proxy_stack_factory, clusters_factory, scheduler_commands_factory):
     """
     Test the creation and functionality of a Cluster using a proxy environment.
 
@@ -118,7 +118,7 @@ def test_proxy(pcluster_config_reader, proxy_stack_factory, clusters_factory, sc
     3. Submit a sleep job to the cluster and verify it completes successfully.
     4. Check Internet access by trying to access google.com
     """
-    proxy_stack = proxy_stack_factory()
+    proxy_stack = proxy_stack_factory(instance_type=instance)
     proxy_address = proxy_stack.cfn_outputs["ProxyAddress"]
     subnet_with_proxy = proxy_stack.cfn_outputs["PrivateSubnet"]
     proxy_instance_id = proxy_stack.cfn_resources.get("Proxy")
