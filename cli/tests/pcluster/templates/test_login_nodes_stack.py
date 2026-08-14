@@ -116,19 +116,23 @@ def test_login_nodes_cw_logging_disabled(mocker):
         },
         "Scheduling": {
             "Scheduler": "slurm",
-            "SlurmQueues": [{
-                "Name": "queue1",
-                "ComputeResources": [{"Name": "cr1", "InstanceType": "c4.xlarge", "MinCount": 0, "MaxCount": 10}],
-                "Networking": {"SubnetIds": ["subnet-12345678"]},
-            }],
+            "SlurmQueues": [
+                {
+                    "Name": "queue1",
+                    "ComputeResources": [{"Name": "cr1", "InstanceType": "c4.xlarge", "MinCount": 0, "MaxCount": 10}],
+                    "Networking": {"SubnetIds": ["subnet-12345678"]},
+                }
+            ],
         },
         "LoginNodes": {
-            "Pools": [{
-                "Name": "login",
-                "InstanceType": "t3.micro",
-                "Count": 1,
-                "Networking": {"SubnetIds": ["subnet-12345678"]},
-            }]
+            "Pools": [
+                {
+                    "Name": "login",
+                    "InstanceType": "t3.micro",
+                    "Count": 1,
+                    "Networking": {"SubnetIds": ["subnet-12345678"]},
+                }
+            ]
         },
         "Monitoring": {"Logs": {"CloudWatch": {"Enabled": False}}},
     }
