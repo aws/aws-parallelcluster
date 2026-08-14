@@ -20,6 +20,7 @@ from tests.pcluster.utils import get_asset_content_with_resource_name
     [
         ("config-1.yaml", "dna-1.json", "extra-1.json"),
         ("config-2.yaml", "dna-2.json", "extra-2.json"),
+        ("config-3.yaml", "dna-3.json", "extra-3.json"),
     ],
 )
 def test_login_nodes_dna_json(
