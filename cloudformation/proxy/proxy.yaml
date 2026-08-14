@@ -459,6 +459,17 @@ Resources:
             ^d1uj6qtbmh3dt5\.cloudfront\.net
             \.aws\.ce\.redhat\.com
             FILTER
+
+              # EPEL mirrors rotate per request and can't be pinned statically, so resolve
+              # the mirrorlist here and allowlist every host it returns.
+              for RELEASEVER in 8 9; do
+                for ARCH in x86_64 aarch64; do
+                  curl -s --retry 5 "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=$ARCH" \
+                    | awk -F/ '/^https?:/ {print $3}'
+                done
+              done | sort -u | while read -r EPEL_HOST; do
+                echo "^$(echo "$EPEL_HOST" | sed 's/\./\\./g')\$" >> /etc/tinyproxy/filter
+              done
             fi
 
             /etc/init.d/tinyproxy restart
@@ -595,6 +606,33 @@ Resources:
               echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
               https_proxy="http://${ProxyPrivateIp}:${ProxyPort}" curl -v -o /dev/null https://api.snapcraft.io/v2/snaps/info/core 2>&1 || exit 1
               echo "==> HTTPS transparent proxy test passed"
+
+              # Verify the proxy allowlisted every EPEL mirror the mirrorlist returns.
+              # Fail only on a proxy denial (allowlist gap), not on a mirror being down.
+              echo "==> Validating EPEL mirror allowlisting through the proxy"
+              PROXY="http://${ProxyPrivateIp}:${ProxyPort}"
+              DENIED=""
+              for RELEASEVER in 8 9; do
+                MIRRORS=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -s --retry 5 \
+                  "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=x86_64")
+                for URL in $MIRRORS; do
+                  case "$URL" in http*) ;; *) continue ;; esac
+                  BASE=$(echo "$URL" | sed 's#/*$#/#')
+                  RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v --retry 2 -o /dev/null "$BASE"repodata/repomd.xml 2>&1 || true)
+                  if echo "$RESP" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'; then
+                    echo "==> DENIED by proxy (EPEL $RELEASEVER mirror not allowlisted): $URL"
+                    DENIED="$DENIED $URL"
+                  else
+                    echo "==> Allowed by proxy (EPEL $RELEASEVER): $URL"
+                  fi
+                done
+              done
+              if [ -n "$DENIED" ]; then
+                echo "==> ERROR: the proxy denied EPEL mirrors that should have been allowlisted:$DENIED"
+                exit 1
+              fi
+              echo "==> EPEL mirror allowlisting validated for all mirrors"
+
               echo "==> Signaling success"
               signal SUCCESS "Proxy verification passed"
             else
