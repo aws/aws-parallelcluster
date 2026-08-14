@@ -42,7 +42,12 @@ from utils import (
     wait_for_computefleet_changed,
 )
 
-from tests.common.assertions import assert_instance_config_version_on_ddb, assert_lines_in_logs, assert_no_msg_in_logs
+from tests.common.assertions import (
+    assert_instance_config_version_on_ddb,
+    assert_lines_in_logs,
+    assert_no_msg_in_logs,
+    wait_instance_replaced_or_terminating,
+)
 from tests.common.hit_common import (
     assert_compute_node_states,
     assert_initial_conditions,
@@ -888,6 +893,10 @@ def _test_update_queue_strategy_with_running_job(
     scheduler_commands.wait_job_running(queue2_job_id)
     logging.info(f"Job {queue2_job_id} is running on queue2")
 
+    # Ask Slurm exactly which instance the queue2 job is running on, so that after a TERMINATE update
+    # we can assert that exact instance was terminated (the job's node was replaced).
+    queue2_instance_id = scheduler_commands.get_job_instance_id(queue2_job_id)
+
     logging.info(f"Updating cluster with strategy {queue_update_strategy} with running jobs")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update_with_running_job.yaml",
@@ -913,8 +922,14 @@ def _test_update_queue_strategy_with_running_job(
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=["mixed", "allocated"])
     if queue_update_strategy == "TERMINATE":
-        time.sleep(10)
-        scheduler_commands.assert_job_state(queue2_job_id, "CONFIGURING")
+        # TERMINATE forcibly terminates queue2's compute nodes and requeues the running job onto
+        # freshly launched replacement nodes. Assert the deterministic outcome (the job was requeued
+        # and is running again on the replaced instances) rather than snapshotting the transient
+        # CONFIGURING state, which can close before we sample it when replacement nodes boot quickly
+        # (the whole swap can finish inside the update-cluster --wait window).
+        scheduler_commands.wait_job_requeued(queue2_job_id)
+        wait_instance_replaced_or_terminating(queue2_instance_id, region)
+        scheduler_commands.wait_job_running(queue2_job_id)
     # check queue1 AMIs are not replaced
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
 
