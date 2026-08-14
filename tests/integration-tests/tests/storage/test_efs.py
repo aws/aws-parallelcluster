@@ -17,6 +17,8 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnVpcStack
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
 from utils import get_arn_partition, get_compute_nodes_instance_ips
 
 from tests.common.utils import get_sts_endpoint, reboot_head_node
@@ -350,12 +352,22 @@ def _check_efs_correctly_mounted_and_shared(
     all_mount_dirs, remote_command_executor, scheduler_commands, iam_authorizations, encryption_in_transits
 ):
     for i, mount_dir in enumerate(all_mount_dirs):
-        test_efs_correctly_mounted(
-            remote_command_executor,
-            mount_dir,
-            encryption_in_transits[i],
-            iam_authorizations[i],
-        )
+        if iam_authorizations[i]:
+            # An EFS with IAM authorization can be transiently slower to mount because the mount depends on
+            # IAM policy evaluation. As such, we retry the assertion to prevent flaky test failures.
+            retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))(test_efs_correctly_mounted)(
+                remote_command_executor,
+                mount_dir,
+                encryption_in_transits[i],
+                iam_authorizations[i],
+            )
+        else:
+            test_efs_correctly_mounted(
+                remote_command_executor,
+                mount_dir,
+                encryption_in_transits[i],
+                iam_authorizations[i],
+            )
         _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
