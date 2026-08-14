@@ -12,6 +12,9 @@ Build:
     Iam:
         AdditionalIamPolicies:
             - Policy: arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess
+    Installation:
+        NvidiaSoftware:
+            Enabled: {{ enable_nvidia }}
 
 DevSettings:
     TerminateInstanceOnFailure: True
