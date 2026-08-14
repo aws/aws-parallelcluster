@@ -24,6 +24,7 @@ the validator fails with a clear error message instead of a generic `NoneType` e
 - Move all ParallelCluster-managed bootstrap files off `/tmp` into a dedicated `/opt/parallelcluster/tmp`
   directory, so that image builds, cluster creations, and updates work on custom AMIs that mount `/tmp` with noexec.
   Image builds work on the custom AMIs only if GDRcopy installation is skipped.
+- Disable `fwupd-refresh.timer` to improve performance for tightly coupled workloads at scale.
 
 **CHANGES**
 - The validator `ClusterNameValidator` now limits cluster names to 40 characters when using `ExternalSlurmdbd`,
