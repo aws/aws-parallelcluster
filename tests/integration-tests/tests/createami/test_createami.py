@@ -62,7 +62,7 @@ def _get_base_ami(region, os, architecture):
     Returns (base_ami, feature_flags) where feature_flags is a dict with keys:
       enable_nvidia, update_os_packages, enable_lustre_client.
     """
-    enable_nvidia = os not in ["ubuntu2404"]
+    enable_nvidia = True
     update_os_packages = os in ["alinux2023", "rocky9"]
     enable_lustre_client = True
 
@@ -102,7 +102,11 @@ def test_build_image_no_internet(
     request,
 ):
     """Test build image in a private subnet with no internet access, only VPC endpoints and a proxy for OS repos."""
-    base_ami, _ = _get_base_ami(region, os, architecture)
+    base_ami, feature_flags = _get_base_ami(region, os, architecture)
+    # Enable NVIDIA installation so the offline NVIDIA/imex install path is exercised through the
+    # proxy. It is disabled for the Deep Learning AMI parent, which already ships the driver (the
+    # nvidia_install recipe skips the whole stack when the driver is already present).
+    enable_nvidia = feature_flags["enable_nvidia"]
 
     # Create proxy stack with build-image mode enabled
     no_internet_proxy_stack = proxy_stack_factory(enable_build_image_proxy=True)
@@ -124,6 +128,7 @@ def test_build_image_no_internet(
         chef_cookbook=s3_artifacts["chef_cookbook"],
         node_package=s3_artifacts["node_package"],
         install_http_proxy_address=install_http_proxy_address,
+        enable_nvidia=str(enable_nvidia).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
