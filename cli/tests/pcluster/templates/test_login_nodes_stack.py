@@ -99,3 +99,43 @@ def render_join(elem: dict):
         else:
             raise ValueError("Found unsupported item type while rendering Fn::Join")
     return sep.join(rendered_body)
+
+
+def test_login_nodes_cw_logging_disabled(mocker):
+    """Verify login nodes template renders when CloudWatch logging is disabled."""
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = {
+        "Region": "us-east-1",
+        "Image": {"Os": "alinux2023"},
+        "HeadNode": {
+            "InstanceType": "t3.micro",
+            "Networking": {"SubnetId": "subnet-12345678"},
+            "Ssh": {"KeyName": "ec2-key-name"},
+        },
+        "Scheduling": {
+            "Scheduler": "slurm",
+            "SlurmQueues": [{
+                "Name": "queue1",
+                "ComputeResources": [{"Name": "cr1", "InstanceType": "c4.xlarge", "MinCount": 0, "MaxCount": 10}],
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+            }],
+        },
+        "LoginNodes": {
+            "Pools": [{
+                "Name": "login",
+                "InstanceType": "t3.micro",
+                "Count": 1,
+                "Networking": {"SubnetIds": ["subnet-12345678"]},
+            }]
+        },
+        "Monitoring": {"Logs": {"CloudWatch": {"Enabled": False}}},
+    }
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    # This would raise AttributeError: 'NoneType' object has no attribute 'log_group_name'
+    # if the guard in login_nodes_stack.py is missing.
+    CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )

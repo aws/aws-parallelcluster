@@ -65,6 +65,7 @@ CHANGELOG
   Amazon FSx service limit.
 
 **BUG FIXES**
+- Fix cluster creation failure when login nodes are used and CloudWatch logging is disabled.
 - Fix sporadic S3 bucket creation failure (for buckets named `parallelcluster-*-v1-do-not-delete`) when multiple
   create-cluster commands run simultaneously in the same region.
 - Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden
