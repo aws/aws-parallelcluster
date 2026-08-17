@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
+import statistics
 
 import pytest
 from assertpy import assert_that
@@ -29,6 +30,11 @@ from tests.common.utils import (
 
 # We collected OSU benchmarks results for these instance types
 OSU_BENCHMARKS_INSTANCES = ["c5n.18xlarge", "p5en.48xlarge", "p6-b200.48xlarge"]
+
+# Collectives have a sparse transient tail: on nodes that are otherwise healthy a single measurement
+# occasionally spikes by an order of magnitude at the small packet sizes and is clean again straight
+# after, so a persistent regression still fails while a one-off spike does not.
+CONFIRMATION_REPETITIONS = 2
 
 
 @pytest.mark.flaky(reruns=0)
@@ -204,7 +210,8 @@ def _test_osu_benchmarks_collective(
         # All to all benchmark has time complexity of O(n^2) where n is the number of instances.
         # We run it for small clusters.
         benchmark_names.append("osu_alltoall")
-    for benchmark_name in benchmark_names:
+
+    def measure(benchmark_name, repetitions=1):
         _, output = run_individual_osu_benchmark(
             mpi_version,
             benchmark_group,
@@ -216,12 +223,23 @@ def _test_osu_benchmarks_collective(
             slots_per_instance,
             network_interfaces_count,
             test_datadir,
-            timeout=24 + num_instances * 0.1,
+            repetitions=repetitions,
+            timeout=24 + repetitions * num_instances * 0.1,
         )
-        failure_mask = _check_osu_benchmarks_results(
-            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
+        return output
+
+    def check(benchmark_name, output, report=True):
+        return _check_osu_benchmarks_results(
+            test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output, report
         )
-        if _has_failure_cluster(failure_mask):
+
+    for benchmark_name in benchmark_names:
+        output = measure(benchmark_name)
+        if _has_failure_cluster(check(benchmark_name, output, report=False)):
+            logging.info(f"{mpi_version} - {benchmark_name} exceeded the baseline, measuring again to confirm")
+            output += measure(benchmark_name, repetitions=CONFIRMATION_REPETITIONS)
+            _warn_on_missing_repetitions(benchmark_name, output, 1 + CONFIRMATION_REPETITIONS)
+        if _has_failure_cluster(check(benchmark_name, output)):
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
     return failed_benchmarks
@@ -298,68 +316,101 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
+def _measurements_per_packet_size(benchmark_name, output):
+    """Group the measurements found in the output by packet size, keeping every repetition."""
+    if benchmark_name == "osu_barrier":
+        # osu_barrier outputs only a single latency value without packet size
+        return {None: [float(match) for match in re.findall(r"^\s+(\d+\.\d+)\s*$", output, re.MULTILINE)]}
+    by_size = {}
+    for packet_size, value in re.findall(r"(\d+)\s+(\d+)\.", output):
+        by_size.setdefault(packet_size, []).append(int(value))
+    return by_size
+
+
+def _reduce_osu_output(benchmark_name, output):
+    """Parse the benchmark output, reducing repeated measurements of the same packet size to their median."""
+    by_size = _measurements_per_packet_size(benchmark_name, output)
+    if benchmark_name == "osu_barrier":
+        return str(statistics.median(by_size[None])) if by_size[None] else None
+    return [(packet_size, str(int(statistics.median(values)))) for packet_size, values in by_size.items()]
+
+
+def _warn_on_missing_repetitions(benchmark_name, output, expected):
+    """A missing repetition would silently weaken the median the verdict is taken on."""
+    counts = {len(values) for values in _measurements_per_packet_size(benchmark_name, output).values()}
+    if counts != {expected}:
+        logging.warning(
+            f"{benchmark_name} was expected to report {expected} measurements per packet size, got {sorted(counts)}"
+        )
+
+
 def _check_osu_benchmarks_results(
-    test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output
+    test_datadir, output_dir, os, instance, mpi_version, benchmark_name, num_instances, output, report=True
 ):
-    logging.info(output)
-    write_file(
-        dirname=f"{output_dir}/osu-results",
-        filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}.out",
-        content=output,
-    )
+    """Evaluate the measurement against the baseline.
+
+    A benchmark that is measured again is evaluated twice, so report=False suppresses everything
+    but the verdict and only the output the verdict is finally taken from gets reported.
+    """
+    if report:
+        logging.info(output)
+        write_file(
+            dirname=f"{output_dir}/osu-results",
+            filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}.out",
+            content=output,
+        )
     # Check avg latency for all packet sizes
     failure_mask = []
     evaluation_output = ""
-    if benchmark_name == "osu_barrier":
-        # osu_barrier outputs only a single latency value without packet size
-        match = re.search(r"^\s+(\d+\.\d+)\s*$", output, re.MULTILINE)
-        result = match.group(1)
-    else:
-        result = re.findall(r"(\d+)\s+(\d+)\.", output)
-    push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version, num_instances)
+    result = _reduce_osu_output(benchmark_name, output)
+    if report:
+        push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version, num_instances)
     baseline_file_path = test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name
     if baseline_file_path.exists():
+        with open(str(baseline_file_path), encoding="utf-8") as baseline_file:
+            baseline = baseline_file.read()
         for packet_size, value in result:
-            with open(str(baseline_file_path), encoding="utf-8") as result:
-                previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", result.read())
-                previous_result = previous_result_match.group(1) if previous_result_match else None
+            previous_result_match = re.search(rf"{packet_size}\s+(\d+)\.", baseline)
+            previous_result = previous_result_match.group(1) if previous_result_match else None
 
-                if previous_result is None:
-                    logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
-                    continue
+            if previous_result is None:
+                logging.warning(f"Previous result for {benchmark_name} with packet size {packet_size} not found")
+                continue
 
-                if benchmark_name == "osu_bibw":
-                    # Invert logic because osu_bibw is in MB/s
-                    tolerated_value = float(previous_result) - (float(previous_result) * 0.2)
-                    is_failure = int(value) < tolerated_value
-                else:
-                    multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
-                    tolerated_value = float(previous_result) + max(float(previous_result) * multiplier, 10)
+            if benchmark_name == "osu_bibw":
+                # Invert logic because osu_bibw is in MB/s
+                tolerated_value = float(previous_result) - (float(previous_result) * 0.2)
+                is_failure = int(value) < tolerated_value
+            else:
+                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                tolerated_value = float(previous_result) + max(float(previous_result) * multiplier, 10)
 
-                    is_failure = int(value) > tolerated_value
+                is_failure = int(value) > tolerated_value
 
-                percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
+            percentage_diff = (float(value) - float(tolerated_value)) / float(tolerated_value) * 100
 
-                outcome = "DEGRADATION" if is_failure else "IMPROVEMENT"
+            outcome = "DEGRADATION" if is_failure else "IMPROVEMENT"
 
-                message = (
-                    f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "
-                    f"tolerated: {tolerated_value}, current: {value}, percentage_diff: {percentage_diff}%"
-                )
+            message = (
+                f"{outcome} : {mpi_version} - {benchmark_name} - packet size {packet_size}: "
+                f"tolerated: {tolerated_value}, current: {value}, percentage_diff: {percentage_diff}%"
+            )
 
-                evaluation_output += f"\n{message}"
+            evaluation_output += f"\n{message}"
 
-                failure_mask.append(is_failure)
+            failure_mask.append(is_failure)
 
+            if report:
                 if is_failure:
                     logging.error(message)
                 else:
                     logging.info(message)
-        write_file(
-            dirname=f"{output_dir}/osu-results",
-            filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}-evaluation.out",
-            content=evaluation_output,
-        )
+        if report:
+            write_file(
+                dirname=f"{output_dir}/osu-results",
+                filename=f"{os}-{instance}-{mpi_version}-{benchmark_name}-evaluation.out",
+                content=evaluation_output,
+            )
 
     return failure_mask
 
