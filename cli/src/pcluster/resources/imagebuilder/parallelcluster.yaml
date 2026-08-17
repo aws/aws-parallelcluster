@@ -143,10 +143,7 @@ phases:
                 # Refresh the package index first: the index inherited from the base AMI can still
                 # reference package versions already rotated out of the pool, which fails the fetch.
                 apt-get -y update
-                if ! apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r); then
-                  echo "ERROR: failed to install kernel packages for $(uname -r)"
-                  exit {{ FailExitCode }}
-                fi
+                apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
                 apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
               fi
               echo "Kernel version is $(uname -a)"
