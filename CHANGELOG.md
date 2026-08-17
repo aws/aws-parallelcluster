@@ -1,11 +1,12 @@
 CHANGELOG
 =========
 
-3.16.1
+3.17.0
 ------
 
-**CHANGES**
-- Upgrade Slurm to version 25.11.8 (from 25.11.6).
+**ENHANCEMENTS**
+- Improve `export-logs` user experience by parallelizing download to reduce run time, 
+  adding progress reporting, and supporting running on deleted clusters.
 
 3.16.0
 ------
@@ -19,7 +20,6 @@ CHANGELOG
 - Move all ParallelCluster-managed bootstrap files off `/tmp` into a dedicated `/opt/parallelcluster/tmp`
   directory, so that image builds, cluster creations, and updates work on custom AMIs that mount `/tmp` with noexec.
   Image builds work on the custom AMIs only if GDRcopy installation is skipped.
-- Disable `fwupd-refresh.timer` to improve performance for tightly coupled workloads at scale.
 
 **CHANGES**
 - The validator `ClusterNameValidator` now limits cluster names to 40 characters when using `ExternalSlurmdbd`,
@@ -52,7 +52,6 @@ CHANGELOG
 - Install amazon-efs-utils from the official EFS endpoint instead of building from source.
   Users must now allowlist the CloudFront domain `amazon-efs-utils.aws.com` in their proxy/egress configuration
   when using `build-image` with isolated subnets.
-- Upgrade amazon-efs-utils to version 3.1.3 (from 2.4.0).
 - Upgrade Cinc Client to version 19.3.14 (from 18.8.54).
 - Upgrade GDRCopy to version 2.6 (from 2.5.2).
 - Upgrade PMIx to version 5.0.11 (from 5.0.10).
@@ -73,7 +72,6 @@ CHANGELOG
   Amazon FSx service limit.
 
 **BUG FIXES**
-- Fix cluster creation failure when login nodes are used and CloudWatch logging is disabled.
 - Fix sporadic S3 bucket creation failure (for buckets named `parallelcluster-*-v1-do-not-delete`) when multiple
   create-cluster commands run simultaneously in the same region.
 - Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden

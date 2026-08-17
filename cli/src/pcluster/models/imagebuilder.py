@@ -61,6 +61,7 @@ from pcluster.models.common import (
     create_logs_archive,
     export_stack_events,
     parse_config,
+    sanitize_path_component,
     upload_archive,
 )
 from pcluster.models.imagebuilder_resources import (
@@ -696,8 +697,9 @@ class ImageBuilder:
 
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
-                # Create root folder for the archive
-                archive_name = f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                # Create root folder for the archive. Sanitize the identifier so it is always a single,
+                # safe local path component (defends against separators in the identifier).
+                archive_name = f"{sanitize_path_component(self.image_id)}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
                 root_archive_dir = os.path.join(output_tempdir, archive_name)
                 os.makedirs(root_archive_dir, exist_ok=True)
 
@@ -721,8 +723,10 @@ class ImageBuilder:
                     )
 
                 if stack_exists:
-                    # Get stack events and write them into a file
-                    stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
+                    # Get stack events and write them into a file (sanitize the stream name for use as a path).
+                    stack_events_file = os.path.join(
+                        root_archive_dir, sanitize_path_component(self._stack_events_stream_name)
+                    )
                     export_stack_events(self.stack.name, stack_events_file)
                 archive_path = create_logs_archive(root_archive_dir, output_file)
                 if output_file:
