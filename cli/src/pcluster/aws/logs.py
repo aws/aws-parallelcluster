@@ -122,6 +122,28 @@ class LogsClient(Boto3Client):
         return tasks[0].get("status").get("code")
 
     @AWSExceptionHandler.handle_client_exception
+    def get_active_export_tasks(self):
+        """Return the CloudWatch Logs export tasks that are currently active (PENDING or RUNNING).
+
+        CloudWatch Logs allows only one active export task per account at a time, so this is used to give
+        a clear "an export is already running, please wait" message instead of a raw LimitExceededException
+        when a second export is attempted (e.g. after the user interrupts and reruns the command).
+        """
+        active_tasks = []
+        for status_code in ("PENDING", "PENDING_CANCEL", "RUNNING"):
+            next_token = None
+            while True:
+                kwargs = {"statusCode": status_code}
+                if next_token:
+                    kwargs["nextToken"] = next_token
+                response = self._client.describe_export_tasks(**kwargs)
+                active_tasks.extend(response.get("exportTasks", []))
+                next_token = response.get("nextToken")
+                if not next_token:
+                    break
+        return active_tasks
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_log_streams(self, log_group_name, log_stream_name_prefix=None, next_token=None):
         """Return a list of log streams in the given log group, filtered by the given prefix."""
         kwargs = {"logGroupName": log_group_name}
