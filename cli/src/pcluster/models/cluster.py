@@ -55,6 +55,7 @@ from pcluster.models.common import (
     create_logs_archive,
     export_stack_events,
     parse_config,
+    sanitize_path_component,
     upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
@@ -970,8 +971,9 @@ class Cluster:
 
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
-                # Create root folder for the archive
-                archive_name = f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                # Create root folder for the archive. Sanitize the identifier: it may be an ARN (deleted
+                # clusters can only be referenced by ARN), whose '/' and ':' would break local paths.
+                archive_name = f"{sanitize_path_component(self.name)}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
                 root_archive_dir = os.path.join(output_tempdir, archive_name)
                 os.makedirs(root_archive_dir, exist_ok=True)
 
@@ -997,8 +999,11 @@ class Cluster:
                         {self.name},
                     )
 
-                # Get stack events and write them into a file
-                stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
+                # Get stack events and write them into a file (sanitize: the stream name embeds the
+                # stack identifier, which may be an ARN containing path separators).
+                stack_events_file = os.path.join(
+                    root_archive_dir, sanitize_path_component(self._stack_events_stream_name)
+                )
                 export_stack_events(self.stack_name, stack_events_file)
 
                 archive_path = create_logs_archive(root_archive_dir, output_file)
