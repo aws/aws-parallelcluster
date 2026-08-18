@@ -12,6 +12,7 @@
 import logging
 import re
 import statistics
+from operator import itemgetter
 
 import pytest
 from assertpy import assert_that
@@ -327,12 +328,35 @@ def _measurements_per_packet_size(benchmark_name, output):
     return by_size
 
 
+def _osu_result(benchmark_name, by_size, select):
+    """Shape the selected measurement of each packet size the way a single run reports it."""
+    if benchmark_name == "osu_barrier":
+        return str(select(by_size[None])) if by_size[None] else None
+    return [(packet_size, str(int(select(values)))) for packet_size, values in by_size.items()]
+
+
 def _reduce_osu_output(benchmark_name, output):
     """Parse the benchmark output, reducing repeated measurements of the same packet size to their median."""
     by_size = _measurements_per_packet_size(benchmark_name, output)
-    if benchmark_name == "osu_barrier":
-        return str(statistics.median(by_size[None])) if by_size[None] else None
-    return [(packet_size, str(int(statistics.median(values)))) for packet_size, values in by_size.items()]
+    return _osu_result(benchmark_name, by_size, statistics.median)
+
+
+def _push_osu_measurements(benchmark_name, output, instance, os, mpi_version, num_instances):
+    """Record every repetition, not only the median the verdict is taken on.
+
+    The spike that caused the re-measurement only exists in the repetition it happened in, so
+    recording just the median would drop the one signal a later investigation needs.
+    """
+    by_size = _measurements_per_packet_size(benchmark_name, output)
+    repetitions = {len(values) for values in by_size.values()}
+    count = next(iter(repetitions)) if len(repetitions) == 1 else 0
+    if count:
+        results = [_osu_result(benchmark_name, by_size, itemgetter(repetition)) for repetition in range(count)]
+    else:
+        # Nothing was measured, or the repetitions are ragged and cannot be told apart.
+        results = [_osu_result(benchmark_name, by_size, statistics.median)]
+    for result in results:
+        push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version, num_instances)
 
 
 def _warn_on_missing_repetitions(benchmark_name, output, expected):
@@ -364,7 +388,7 @@ def _check_osu_benchmarks_results(
     evaluation_output = ""
     result = _reduce_osu_output(benchmark_name, output)
     if report:
-        push_result_to_dynamodb(f"OSU_{benchmark_name}", result, instance, os, mpi_version, num_instances)
+        _push_osu_measurements(benchmark_name, output, instance, os, mpi_version, num_instances)
     baseline_file_path = test_datadir / "osu_benchmarks" / "results" / os / instance / mpi_version / benchmark_name
     if baseline_file_path.exists():
         with open(str(baseline_file_path), encoding="utf-8") as baseline_file:
