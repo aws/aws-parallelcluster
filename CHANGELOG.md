@@ -8,6 +8,10 @@ CHANGELOG
 - Improve `export-logs` user experience by parallelizing download to reduce run time, 
   adding progress reporting, and supporting running on deleted clusters.
 
+**BUG FIXES**
+- Fixed issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
+the validator fails with a clear error message instead of a generic `NoneType` error.
+
 3.16.0
 ------
 

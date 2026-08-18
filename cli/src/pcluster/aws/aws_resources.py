@@ -391,7 +391,7 @@ class FsxStorageInfo:
     @property
     def network_interface_ids(self):
         """Return network interface ids of the file system."""
-        return self.file_storage_info.get("NetworkInterfaceIds")
+        return self.file_storage_info.get("NetworkInterfaceIds", [])
 
     @property
     def subnet_ids(self):
