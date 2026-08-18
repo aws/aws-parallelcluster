@@ -93,9 +93,7 @@ Scheduling:
         - InstanceType: {{ non_gpu_instance }}
     Networking:
       SubnetIds:
-        {% for private_subnet_id in private_subnet_ids %}
         - {{ private_subnet_id }}
-        {% endfor %}
   - Name: queue-2
     ComputeResources:
     - Name: compute-resource-1
@@ -112,7 +110,5 @@ Scheduling:
           Enabled: true
     Networking:
       SubnetIds:
-        {% for private_subnet_id in private_subnet_ids %}
         - {{ private_subnet_id }}
-        {% endfor %}
 {% endif %}
