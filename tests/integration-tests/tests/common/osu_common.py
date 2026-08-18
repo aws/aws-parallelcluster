@@ -53,6 +53,7 @@ def run_individual_osu_benchmark(  # noqa C901
     submission_script_template_path=None,
     rendered_template_path=None,
     timeout=None,
+    repetitions=1,
 ):
     """
     Run the given OSU benchmark.
@@ -71,6 +72,8 @@ def run_individual_osu_benchmark(  # noqa C901
     :param submission_script_template_path: string, override default path for source submission script template
     :param rendered_template_path: string, override destination path when rendering submission script template
     :param timeout: int, maximum number of minutes to wait for job to complete
+    :param repetitions: int, how many times to run the benchmark inside the same job. The caller reduces the
+                        repetitions to their median per packet size
     :return: string, stdout of the benchmark job
     """
     logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
@@ -94,6 +97,7 @@ def run_individual_osu_benchmark(  # noqa C901
         num_of_processes=slots,
         num_of_processes_per_node=slots_per_instance,
         network_interfaces_count=network_interfaces_count,
+        repetitions=repetitions,
     )
 
     def submit_job():
