@@ -55,37 +55,37 @@ LOGIN_NODE_INSTANCE = "c5.xlarge"
 # Maintained per OS and per node type. Keep module names alphabetically sorted.
 LAZY_KERNEL_MODULES = {
     "alinux2023": {
-        HEAD_NODE: ["tls"],
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "rhel8": {
-        HEAD_NODE: ["af_packet_diag", "inet_diag", "tcp_diag", "tls", "udp_diag"],
+        HEAD_NODE: ["af_packet_diag", "crc32_generic", "inet_diag", "tcp_diag", "tls", "udp_diag"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "rhel9": {
-        HEAD_NODE: ["tls"],
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "rocky8": {
-        HEAD_NODE: ["af_packet_diag", "inet_diag", "tcp_diag", "tls", "udp_diag"],
+        HEAD_NODE: ["af_packet_diag", "crc32_generic", "inet_diag", "tcp_diag", "tls", "udp_diag"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "rocky9": {
-        HEAD_NODE: ["tls"],
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "ubuntu2204": {
-        HEAD_NODE: ["tls"],
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "ubuntu2404": {
-        HEAD_NODE: ["tls"],
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
