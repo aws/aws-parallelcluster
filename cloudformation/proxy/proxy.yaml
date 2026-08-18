@@ -623,11 +623,11 @@ Resources:
   ProxyVerificationWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
     DependsOn:
-      - Proxy
+      - ProxyClient
     Properties:
       Count: 1
       Handle: !Ref ProxyVerificationWaitConditionHandle
-      Timeout: 600
+      Timeout: 900
 
 
 Outputs:
