@@ -53,11 +53,9 @@ LOGIN_NODE_INSTANCE = "c5.xlarge"
 # may or may not have run by the time we snapshot). We force-load these after patching so that
 # the before/after comparison does not flag them as missing.
 # Maintained per OS and per node type. Keep module names alphabetically sorted.
-# Modules tolerated on the head node across all OSes.
-COMMON_HEAD_NODE_LAZY_MODULES = ["crc32_generic", "tls"]
 LAZY_KERNEL_MODULES = {
     "alinux2023": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
@@ -67,7 +65,7 @@ LAZY_KERNEL_MODULES = {
         LOGIN_NODE: ["tls"],
     },
     "rhel9": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
@@ -77,17 +75,17 @@ LAZY_KERNEL_MODULES = {
         LOGIN_NODE: ["tls"],
     },
     "rocky9": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "ubuntu2204": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
     "ubuntu2404": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
+        HEAD_NODE: ["crc32_generic", "tls"],
         COMPUTE_NODE: ["tls"],
         LOGIN_NODE: ["tls"],
     },
