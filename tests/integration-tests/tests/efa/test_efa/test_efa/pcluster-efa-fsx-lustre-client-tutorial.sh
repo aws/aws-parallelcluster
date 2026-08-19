@@ -26,10 +26,8 @@ curl -O https://docs.aws.amazon.com/fsx/latest/LustreGuide/samples/configure-efa
 unzip -o configure-efa-fsx-lustre-client.zip
 cd configure-efa-fsx-lustre-client
 
-# setup.sh sets the libcfs `cpu_npartitions` module option, which only applies at module insert time, so it
-# has to be the one that inserts libcfs. The AMI loads lnet at boot, leaving libcfs resident with its
-# default 2 partitions, and setup.sh then binds only 2 EFA devices. See V2331124295.
-# Safe here: OnNodeStart runs before any shared storage is mounted, and setup.sh reinserts the stack.
+# libcfs applies setup.sh's `cpu_npartitions` only at insert time, so unless setup.sh does the insert only
+# 2 EFA devices bind (V2331124295). Safe: nothing is mounted yet and setup.sh reinserts the stack.
 # TODO: Revert the unloading of modules once configure-efa-fsx-lustre-client.zip handles module loading
 echo "Unloading the boot-loaded Lustre/LNet stack so setup.sh owns the libcfs module insert"
 sudo lnetctl lnet unconfigure || true
