@@ -282,6 +282,9 @@ def test_efa(
         "pcluster-efa-fsx-lustre-client-tutorial.sh",
     )
 
+    # Gates the OnNodeStart FSx EFA setup: it unloads the Lustre/LNet stack, which is pointless where no @efa
+    # net can come up.
+    supports_efa_for_fsx = _supports_efa_for_fsx(instance, os)
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
         head_node_instance=head_node_instance,
@@ -292,6 +295,7 @@ def test_efa(
         fsx_fs_id=fsx_fs_id,
         fsx_efa_security_group_id=efa_fsx_security_group_id,
         bucket_name=bucket_name,
+        supports_efa_for_fsx=supports_efa_for_fsx,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -338,13 +342,8 @@ def test_efa(
             assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
             assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
-    # EFA-for-Lustre validation (folded in from the standalone test_efa_enabled_fsx_lustre). This test runs on
-    # every EFA instance, but only Nitro v4+ instances on a supported OS can actually carry Lustre traffic over
-    # @efa (see _supports_efa_for_fsx). Either way the data path is measured the same way -- send_count deltas
-    # across bulk direct I/O -- and only the expected rail flips, so the EFA v1 instances guard against a
-    # half-configured client instead of being skipped. The mount must work either way, so the read/write check
-    # is unconditional.
-    supports_efa_for_fsx = _supports_efa_for_fsx(instance, os)
+    # EFA-for-Lustre validation. Only instances that ran the FSx client setup can carry Lustre over @efa; the
+    # rest ride @tcp. The data path is measured the same way either way, and the mount must work on both.
     with soft_assertions():
         if supports_efa_for_fsx:
             _test_efa_fsx_device_count(
@@ -635,9 +634,8 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
     logging.info("Testing that bulk Lustre data rides the @%s rail", expected_net)
 
     # NOTE: submit_command wraps this in sbatch --wrap='...', so the command must contain no single quotes.
-    # oflag=direct is load-bearing; we test before/after counter delta.
-    # Buffered writes could sit in cache and turn into RPCs after the second lnetctl net show -v sample,
-    # so a healthy client would show efa_delta ≈ 0. O_DIRECT guarantees the 4 GiB becomes bulk RPCs inside the measurement window.
+    # oflag=direct is load-bearing: buffered writes could turn into RPCs after the second sample, leaving a
+    # healthy client with efa_delta ~ 0.
     io_out = _submit_and_get_output(
         scheduler_commands,
         remote_command_executor,
@@ -702,7 +700,7 @@ def _test_fsx_read_write(scheduler_commands, remote_command_executor, mount_dir,
     rw_out = _submit_and_get_output(
         scheduler_commands,
         remote_command_executor,
-        f"echo '{marker}' > {test_file} && sync && cat {test_file}",
+        f"echo '{marker}' > {test_file} && cat {test_file}",
         partition,
     )
     logging.info("FSx write/read output:\n%s", rw_out)

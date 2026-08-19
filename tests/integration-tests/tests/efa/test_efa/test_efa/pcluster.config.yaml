@@ -36,9 +36,12 @@ Scheduling:
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
+      {% if supports_efa_for_fsx %}
+      # Unsupported instances/OSes skip the FSx EFA setup and mount the same file system over @tcp.
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket_name }}/pcluster-efa-fsx-lustre-client-tutorial.sh
+      {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket_name }}
