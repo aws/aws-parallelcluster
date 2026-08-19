@@ -692,7 +692,13 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
 
 
 def _test_fsx_read_write(scheduler_commands, remote_command_executor, mount_dir, partition=None):
-    """Assert a basic write/read round-trip to the mounted FSx file system succeeds."""
+    """Assert a write to the mounted FSx file system is visible to a subsequent read.
+
+    This is POSIX read-after-write visibility, not proof the bytes reached the servers: the write is
+    buffered and a marker this small is far below any writeback trigger, so the read may well be served
+    from the client page cache. Deliberate -- _test_lustre_data_rail is what exercises the wire. What
+    this catches is a mount that is present but unusable: EIO, read-only, out of space, bad permissions.
+    """
     logging.info("Testing basic write/read to the mounted FSx file system")
 
     marker = "hello-efa-fsx-lustre"
