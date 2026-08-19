@@ -83,11 +83,11 @@ class TestLogGrouptimeFiltersParser:
             assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))  # noqa: B038
 
     @pytest.mark.parametrize(
-        "attrs, event_in_window, log_stream_prefix, expected_error",
+        "attrs, events, log_stream_prefix, expected_error",
         [
             (
                 {"end_time": datetime.datetime(2020, 6, 2, tzinfo=datetime.timezone.utc)},
-                True,
+                {"events": [{"message": "event"}]},
                 "test",
                 "Start time must be earlier than end time",
             ),
@@ -96,28 +96,26 @@ class TestLogGrouptimeFiltersParser:
                     "start_time": datetime.datetime(2020, 6, 7, tzinfo=datetime.timezone.utc),
                     "end_time": datetime.datetime(2020, 6, 2, tzinfo=datetime.timezone.utc),
                 },
-                True,
+                {"events": [{"message": "event"}]},
                 "test",
                 "Start time must be earlier than end time",
             ),
             (
                 {"end_time": datetime.datetime(2021, 7, 9, 22, 45, 22, tzinfo=datetime.timezone.utc)},
-                False,
+                {"events": []},
                 None,
                 "No log events in the log group",
             ),
         ],
     )
-    def test_validate(self, mocker, attrs, event_in_window, log_stream_prefix, expected_error):
+    def test_validate(self, mocker, attrs, events, log_stream_prefix, expected_error):
         log_group_name = "log_group_name"
         creation_time_mock = 1623061001000
         mock_aws_api(mocker)
         describe_log_group_mock = mocker.patch(
             "pcluster.aws.logs.LogsClient.describe_log_group", return_value={"creationTime": creation_time_mock}
         )
-        filter_log_events_mock = mocker.patch(
-            "pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window
-        )
+        filter_log_events_mock = mocker.patch("pcluster.aws.logs.LogsClient.filter_log_events", return_value=events)
 
         export_logs_filters = LogGroupTimeFiltersParser(
             log_group_name, attrs.get("start_time", None), attrs.get("end_time", None)
@@ -138,6 +136,28 @@ class TestLogGrouptimeFiltersParser:
             if "start_time" not in attrs:
                 describe_log_group_mock.assert_called_with(log_group_name)
                 assert_that(export_logs_filters.start_time).is_equal_to(creation_time_mock)
+
+    @pytest.mark.parametrize(
+        "filter_log_events_response",
+        [
+            {"events": [{"message": "event"}], "nextToken": "token"},
+            {"events": [], "nextToken": "token"},
+            {"nextToken": "token"},
+        ],
+        ids=["events_in_page", "empty_page_with_next_token", "page_without_events_key"],
+    )
+    def test_validate_accepts_incomplete_pagination(self, mocker, filter_log_events_response):
+        """An empty FilterLogEvents page is conclusive only when it comes back without a nextToken."""
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.logs.LogsClient.filter_log_events", return_value=filter_log_events_response)
+
+        time_parser = LogGroupTimeFiltersParser(
+            "log_group_name",
+            datetime.datetime(2021, 7, 1, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2021, 7, 9, tzinfo=datetime.timezone.utc),
+        )
+
+        time_parser.validate()
 
 
 class TestLogGroupTimeFiltersParser:
