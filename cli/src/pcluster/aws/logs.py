@@ -49,7 +49,7 @@ class LogsClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def filter_log_events(self, log_group_name, start_time=None, end_time=None, log_stream_name_prefix=None):
-        """Return the list of events included in a specific time window for a given group name."""
+        """Return the FilterLogEvents response for a specific time window for a given group name."""
         kwargs = {"logGroupName": log_group_name, "limit": 1}
         if start_time:
             kwargs["startTime"] = start_time
@@ -57,7 +57,7 @@ class LogsClient(Boto3Client):
             kwargs["endTime"] = end_time
         if log_stream_name_prefix:
             kwargs["logStreamNamePrefix"] = log_stream_name_prefix
-        return self._client.filter_log_events(**kwargs).get("events")
+        return self._client.filter_log_events(**kwargs)
 
     @AWSExceptionHandler.handle_client_exception
     def get_log_events(
