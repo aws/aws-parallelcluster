@@ -41,8 +41,8 @@ FSX_MOUNT_DIR = "/fsx"
 FSX_EFA_COUNTER_TEST_MIB = 4096
 FSX_EFA_MIN_SEND_COUNT = FSX_EFA_COUNTER_TEST_MIB // 2
 
-# EFA interfaces the FSx setup binds, for the families where filter_efa_non_gds() drops the GDS-reserved
-# devices (p5.48xlarge exposes 32, binds 8). Instances absent from this map bind all of them.
+# EFA interfaces the FSx setup binds on the families where it binds only a subset (p5.48xlarge exposes 32,
+# binds 8). Instances absent from this map bind all of them.
 # https://docs.aws.amazon.com/fsx/latest/LustreGuide/configure-efa-clients.html#add-efa-interfaces
 FSX_EFA_BOUND_DEVICES_BY_INSTANCE_TYPE = {
     "p6-b300.48xlarge": 16,
@@ -162,18 +162,13 @@ def _supports_efa_for_fsx(instance, os):
 def _expected_efa_bound_devices(instance, region):
     """Return the number of EFA interfaces the FSx-for-Lustre setup is expected to bind on ``instance``.
 
-    Instance types listed in FSX_EFA_BOUND_DEVICES_BY_INSTANCE_TYPE bind the curated (lower) count,
-    because the setup script's filter_efa_non_gds() reserves some devices for GDS. For every other
-    instance type that filter is a no-op -- it returns the full EFA device list -- so the setup binds
-    every EFA interface the instance has, which EC2 reports as NetworkInfo.EfaInfo.MaximumEfaInterfaces
-    (8 on trn1.32xlarge, 1 on single-EFA-interface types).
+    Instance types listed in FSX_EFA_BOUND_DEVICES_BY_INSTANCE_TYPE bind that (lower) count; every other
+    instance type binds all the EFA interfaces it has, which EC2 reports as
+    NetworkInfo.EfaInfo.MaximumEfaInterfaces (1 on single-EFA-interface types).
 
     NOTE: the FSx doc's prose says instances outside its table bind "2 for other instances with multiple
-    network cards", which contradicts the script's own filter_efa_non_gds(). We assert what the script
-    does; the contradiction is raised with the FSx team separately.
-
-    EFA-for-Lustre is not p-family specific; any EFA-capable instance binds at least one interface, so
-    this returns a value for every EFA instance.
+    network cards", which does not match what the setup script actually binds. We assert the observed
+    behaviour; the contradiction is raised with the FSx team separately.
     """
     curated = FSX_EFA_BOUND_DEVICES_BY_INSTANCE_TYPE.get(instance)
     if curated is not None:
@@ -518,9 +513,9 @@ def _submit_and_get_output(scheduler_commands, remote_command_executor, command,
 def _test_efa_fsx_device_count(scheduler_commands, remote_command_executor, region, instance, partition=None):
     """Assert LNet binds the expected number of EFA devices (regression guard for the under-bind bug).
 
-    The expected count is what the setup script binds by design, not the hardware EFA-device count: the
-    curated FSX_EFA_BOUND_DEVICES_BY_INSTANCE_TYPE value for the GDS-filtered p-families, otherwise EC2's
-    MaximumEfaInterfaces. Lustre silently falls back to TCP on any unbound device.
+    The expected count is what the setup binds by design, not the hardware EFA-device count -- see
+    _expected_efa_bound_devices. An unbound device carries no Lustre traffic, so an under-bind costs
+    bandwidth without failing anything visibly.
     """
     logging.info("Testing that LNet binds the expected number of EFA devices for FSx")
 
@@ -618,14 +613,18 @@ def _sum_send_counts_by_net(lnet_verbose_out):
 def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_dir, expect_efa, partition=None):
     """Assert which LNet rail carries bulk Lustre data: @efa when ``expect_efa``, else @tcp.
 
-    Sums per-NI `send_count` per LNet net type, writes FSX_EFA_COUNTER_TEST_MIB of direct I/O, sums again,
-    and asserts on the deltas. The measurement is identical either way; only the expectation flips:
+    Sums per-NI `send_count` per LNet net type, writes FSX_EFA_COUNTER_TEST_MIB, sums again, and asserts on
+    the deltas. The measurement is identical either way; only the expectation flips:
 
     * ``expect_efa``: @efa must gain at least FSX_EFA_MIN_SEND_COUNT sends and gain more than @tcp. Metadata
       RPCs and pings ride @tcp by design, so this is an ordering, not `tcp_delta == 0`.
     * otherwise: @tcp must gain at least FSX_EFA_MIN_SEND_COUNT sends and @efa must gain exactly none. No
       @efa net comes up on these nodes, so there is no efa NI to accumulate sends -- an exact assertion is
       available here, unlike in the @efa direction.
+
+    A plain buffered write is enough, and neither oflag=direct nor a trailing sync is needed: Lustre's
+    per-OSC dirty budget (~3.4 MB grant, 1 MiB max_brw_size) is far below this size, so the data flushes as
+    it goes. Measured on c6gn.16xlarge/alinux2023: buffered efa=4098 vs direct efa=4097.
 
     Counters rather than the import: the import's connection nid does not reliably tell us which transport
     carries the data, so do not assert on `osc.*.import`.
@@ -634,15 +633,13 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
     logging.info("Testing that bulk Lustre data rides the @%s rail", expected_net)
 
     # NOTE: submit_command wraps this in sbatch --wrap='...', so the command must contain no single quotes.
-    # oflag=direct is load-bearing: buffered writes could turn into RPCs after the second sample, leaving a
-    # healthy client with efa_delta ~ 0.
     io_out = _submit_and_get_output(
         scheduler_commands,
         remote_command_executor,
         (
             "sudo lnetctl net show -v; echo ===IO_BOUNDARY===; "
             f"dd if=/dev/zero of={mount_dir}/efa_counter_test.$(hostname) "
-            f"bs=1M count={FSX_EFA_COUNTER_TEST_MIB} oflag=direct; sync; "
+            f"bs=1M count={FSX_EFA_COUNTER_TEST_MIB}; "
             "sudo lnetctl net show -v"
         ),
         partition,
@@ -654,7 +651,7 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
     efa_delta = after.get("efa", 0) - before.get("efa", 0)
     tcp_delta = after.get("tcp", 0) - before.get("tcp", 0)
     logging.info(
-        "LNet send_count deltas over %s MiB of direct I/O: efa=%s tcp=%s (before=%s, after=%s)",
+        "LNet send_count deltas over %s MiB: efa=%s tcp=%s (before=%s, after=%s)",
         FSX_EFA_COUNTER_TEST_MIB,
         efa_delta,
         tcp_delta,
@@ -667,7 +664,7 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
         expected_delta,
         description=(
             f"only {expected_delta} LNet sends landed on @{expected_net} over {FSX_EFA_COUNTER_TEST_MIB} MiB "
-            f"of direct I/O (efa={efa_delta}, tcp={tcp_delta}); bulk Lustre data is not riding the "
+            f"of I/O (efa={efa_delta}, tcp={tcp_delta}); bulk Lustre data is not riding the "
             f"@{expected_net} rail"
         ),
     ).is_greater_than_or_equal_to(FSX_EFA_MIN_SEND_COUNT)
