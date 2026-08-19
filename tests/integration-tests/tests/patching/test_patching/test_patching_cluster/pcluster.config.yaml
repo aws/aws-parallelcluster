@@ -40,12 +40,7 @@ Scheduling:
           Enabled: true
       Networking:
         PlacementGroup:
-          {% if capacity_reservation_framework_placement_group %}
-          Enabled: true
-          Name: {{ capacity_reservation_framework_placement_group }}
-          {% else %}
           Enabled: false
-          {% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
