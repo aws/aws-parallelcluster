@@ -66,7 +66,7 @@ class TestClusterLogsFiltersParser:
         assert_that(expected_filters_size).is_equal_to(len(logs_filters.filters_list))
 
     @pytest.mark.parametrize(
-        "filters, event_in_window, expected_error",
+        "filters, events, expected_error",
         [
             (
                 ["Name=private-dns-name,Values=ip-10-10-10-10", "Name=node-type,Values=HeadNode"],
@@ -80,7 +80,7 @@ class TestClusterLogsFiltersParser:
             ),
         ],
     )
-    def test_validate(self, mock_head_node, filters, event_in_window, expected_error):
+    def test_validate(self, mock_head_node, filters, events, expected_error):
         logs_filters = ClusterLogsFiltersParser(mock_head_node, filters)
 
         if expected_error:
@@ -152,11 +152,11 @@ class TestExportClusterLogsFiltersParser:
             assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))  # noqa: B038
 
     @pytest.mark.parametrize(
-        "attrs, event_in_window, expected_error",
+        "attrs, events, expected_error",
         [
             (
                 {"end_time": datetime.datetime(2020, 6, 2, tzinfo=datetime.timezone.utc)},
-                True,
+                {"events": [{"message": "event"}]},
                 "Start time must be earlier than end time",
             ),
             (
@@ -164,26 +164,24 @@ class TestExportClusterLogsFiltersParser:
                     "start_time": datetime.datetime(2021, 6, 7, tzinfo=datetime.timezone.utc),
                     "end_time": datetime.datetime(2021, 6, 2, tzinfo=datetime.timezone.utc),
                 },
-                True,
+                {"events": [{"message": "event"}]},
                 "Start time must be earlier than end time",
             ),
             (
                 {"end_time": datetime.datetime(2021, 7, 9, 22, 45, 22, tzinfo=datetime.timezone.utc)},
-                False,
+                {"events": []},
                 "No log events in the log group",
             ),
         ],
     )
-    def test_validate(self, mocker, mock_head_node, attrs, event_in_window, expected_error):
+    def test_validate(self, mocker, mock_head_node, attrs, events, expected_error):
         log_group_name = "log_group_name"
         creation_time_mock = 1623061001000
         mock_aws_api(mocker)
         describe_log_group_mock = mocker.patch(
             "pcluster.aws.logs.LogsClient.describe_log_group", return_value={"creationTime": creation_time_mock}
         )
-        filter_log_events_mock = mocker.patch(
-            "pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window
-        )
+        filter_log_events_mock = mocker.patch("pcluster.aws.logs.LogsClient.filter_log_events", return_value=events)
 
         export_logs_filters = ExportClusterLogsFiltersParser(
             mock_head_node,

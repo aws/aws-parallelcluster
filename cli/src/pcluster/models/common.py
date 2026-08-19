@@ -137,13 +137,13 @@ class LogGroupTimeFiltersParser:
         if self.start_time >= self.end_time:
             raise FiltersParserError("Start time must be earlier than end time.")
 
-        event_in_window = AWSApi.instance().logs.filter_log_events(
+        response = AWSApi.instance().logs.filter_log_events(
             log_group_name=self._log_group_name,
             log_stream_name_prefix=log_stream_prefix,
             start_time=datetime_to_epoch(self.start_time),
             end_time=datetime_to_epoch(self.end_time),
         )
-        if not event_in_window:
+        if not response.get("events") and not response.get("nextToken"):
             raise FiltersParserError(
                 f"No log events in the log group {self._log_group_name} in interval starting "
                 f"at {self.start_time} and ending at {self.end_time}"
