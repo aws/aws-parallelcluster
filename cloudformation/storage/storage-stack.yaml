@@ -233,13 +233,7 @@ Resources:
         - !Ref SubnetOne
     Type: 'AWS::FSx::FileSystem'
 
-  # EFA-enabled FSxLustre
-  # Per the FSx EFA-enabled security groups doc, EFA-enabled FSx Lustre uses TWO security groups that
-  # authorize traffic BY SECURITY-GROUP ID (a 0.0.0.0/0 CIDR rule does NOT satisfy EFA):
-  #   - File-system SG: all traffic to/from the client SG AND to/from itself (self-referencing).
-  #   - Client SG:      all traffic to/from the file-system SG (no self-referencing rule required).
-  # A group cannot reference another (or itself) inline at creation, so the rules are separate
-  # AWS::EC2::SecurityGroup{Ingress,Egress} resources.
+  # EFA-enabled FSxLustre: client and file-system SGs authorizing each other by security-group ID, per
   # https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html#fsx-vpc-security-groups
   EfaFsxLustreClientSecurityGroup:
     Condition: CreateEfaFsxLustre
