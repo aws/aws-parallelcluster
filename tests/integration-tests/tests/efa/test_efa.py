@@ -33,13 +33,14 @@ from tests.common.utils import (
     run_system_analyzer,
     wait_process_completion,
 )
+from tests.storage.storage_common import verify_directory_correctly_shared
 
 FSX_MOUNT_DIR = "/fsx"
 
-# Lustre's max_brw_size is 1 MiB, so a 4 GiB direct write is ~4096 bulk RPCs; require half on @efa to leave
-# headroom for RPC coalescing.
-FSX_EFA_COUNTER_TEST_MIB = 4096
-FSX_EFA_MIN_SEND_COUNT = FSX_EFA_COUNTER_TEST_MIB // 2
+# Lustre's max_brw_size is 1 MiB, so a 4 GiB write is ~4096 bulk RPCs; where bulk of data goes through
+# the rail under test.
+FSX_IO_TEST_MIB = 4096
+FSX_MIN_SEND_COUNT = FSX_IO_TEST_MIB // 2
 
 # EFA interfaces the FSx setup binds on the families where it binds only a subset (p5.48xlarge exposes 32,
 # binds 8). Instances absent from this map bind all of them.
@@ -56,7 +57,7 @@ FSX_EFA_BOUND_DEVICES_BY_INSTANCE_TYPE = {
 # EFA for FSx for Lustre needs more than plain EFA support: the client must be a Nitro v4 (or later)
 # instance -- the generation that introduced RDMA over EFA -- and the trn2 family is explicitly excluded.
 # Nitro v3 (EFA v1) instances still get an EFA device and pass every other EFA check in this test, but
-# LNet cannot bring up an @efa network on them, so their Lustre traffic stays on @tcp. EC2 exposes no
+# LNet cannot bring up an efa network on them, so their Lustre traffic stays on tcp. EC2 exposes no
 # Nitro-version field, so this has to be a hand-maintained list; enumerating the *unsupported* families is
 # far shorter (and less churn-prone) than listing every Nitro v4+ EFA type.
 # https://docs.aws.amazon.com/fsx/latest/LustreGuide/configure-efa-clients.html
@@ -84,7 +85,7 @@ EFA_V1_NITRO_V3_FAMILIES = {
 EFA_FSX_UNSUPPORTED_FAMILIES = EFA_V1_NITRO_V3_FAMILIES | {"trn2", "trn2u"}
 
 # EFA for FSx for Lustre is only supported on these client OSes: AL2023, RHEL 9.5+, and Ubuntu 22.04+
-# on kernel 6.8+. RHEL 8 and Rocky are not supported, so on those the client stays on @tcp even on an
+# on kernel 6.8+. RHEL 8 and Rocky are not supported, so on those the client stays on tcp even on an
 # otherwise-capable instance. See "Configuring EFA clients" in the FSx for Lustre guide.
 EFA_FSX_SUPPORTED_OSES = {"alinux2023", "rhel9", "ubuntu2204", "ubuntu2404"}
 
@@ -150,10 +151,10 @@ def _try_reserve_head_node_instance(region, az_id, architecture, os):
 
 
 def _supports_efa_for_fsx(instance, os):
-    """Return True if ``instance``/``os`` can carry FSx for Lustre traffic over @efa.
+    """Return True if ``instance``/``os`` can carry FSx for Lustre traffic over efa.
 
     Requires a Nitro v4+ instance (RDMA over EFA, excluding trn2) AND a supported client OS. Anything
-    else keeps its EFA device -- and passes the plain EFA checks -- but its Lustre mount rides @tcp.
+    else keeps its EFA device -- and passes the plain EFA checks -- but its Lustre mount rides tcp.
     """
     family = instance.split(".")[0]
     return family not in EFA_FSX_UNSUPPORTED_FAMILIES and os in EFA_FSX_SUPPORTED_OSES
@@ -262,13 +263,10 @@ def test_efa(
             logging.warn(message)
             pytest.skip(message)
 
-    # Provision the EFA-enabled FSx Lustre file system and its two cross-referencing EFA security groups
-    # (client + file system) via the shared external-shared-storage CloudFormation stack. EFA for Lustre
-    # works on any EFA-capable instance (the setup binds a per-instance-type number of EFA interfaces --
-    # see _expected_efa_bound_devices), so this runs for every EFA instance, not just p*. The cluster
-    # attaches the client SG, which cross-references the file-system SG, so EFA's SRD path (authorized by
-    # SG membership) is permitted between compute nodes and the file system. The OnNodeStart script (staged
-    # in S3) runs the official FSx EFA-Lustre client setup on each node.
+    # EFA-enabled FSx Lustre plus the two cross-referencing EFA security groups (client + file system),
+    # provisioned via the shared storage stack. The OnNodeStart script staged in S3 runs the official FSx
+    # EFA client setup on each node, per the tutorial:
+    # https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorial-efa-enabled-fsx-lustre.html
     fsx_fs_id, efa_fsx_security_group_id = _provision_efa_fsx_stack(region, request, vpc_stack, cfn_stacks_factory)
 
     bucket_name = request.getfixturevalue("s3_bucket_factory")()
@@ -277,7 +275,7 @@ def test_efa(
         "pcluster-efa-fsx-lustre-client-tutorial.sh",
     )
 
-    # Gates the OnNodeStart FSx EFA setup: it unloads the Lustre/LNet stack, which is pointless where no @efa
+    # Gates the OnNodeStart FSx EFA setup: it unloads the Lustre/LNet stack, which is pointless where no efa
     # net can come up.
     supports_efa_for_fsx = _supports_efa_for_fsx(instance, os)
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
@@ -337,8 +335,8 @@ def test_efa(
             assert_that(num_errors, description=f"{num_errors}/{num_tests} libfabric tests got errors").is_equal_to(0)
             assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
 
-    # EFA-for-Lustre validation. Only instances that ran the FSx client setup can carry Lustre over @efa; the
-    # rest ride @tcp. The data path is measured the same way either way, and the mount must work on both.
+    # EFA-for-Lustre validation. Only instances that ran the FSx client setup can carry Lustre over efa; the
+    # rest ride tcp. The data path is measured the same way either way, and the mount must work on both.
     with soft_assertions():
         if supports_efa_for_fsx:
             _test_efa_fsx_device_count(
@@ -360,7 +358,9 @@ def test_efa(
             expect_efa=supports_efa_for_fsx,
             partition="efa-enabled",
         )
-        _test_fsx_read_write(scheduler_commands, remote_command_executor, FSX_MOUNT_DIR, partition="efa-enabled")
+        verify_directory_correctly_shared(
+            remote_command_executor, FSX_MOUNT_DIR, scheduler_commands, partitions=["efa-enabled"]
+        )
 
 
 def _test_efa_eni_configuration(cluster, region):
@@ -543,7 +543,7 @@ def _test_efa_fsx_device_count(scheduler_commands, remote_command_executor, regi
 # Read-only LNet state commands, as (label, command) pairs. Between them they show every NID the node knows:
 # the local NIs and their bound devices, the peer table with each peer's rails, the mount target NID, and the
 # PCI address of each EFA device -- enough to tell which peer NIDs are served by something and how a real
-# @efa NID is derived from its device (<host IP octet 3>.<octet 4>.<PCI bus>.<PCI devfn>@efa).
+# efa NID is derived from its device (<host IP octet 3>.<octet 4>.<PCI bus>.<PCI devfn>, on net efa).
 # The osc imports are captured for diagnostics only: an import's connection nid does not reliably tell us
 # which transport carries the data (under Multi-Rail, ptlrpc connects to the peer's primary nid and LNet
 # picks the rail beneath it), so nothing asserts on it -- _test_lustre_data_rail measures the rail instead.
@@ -611,16 +611,16 @@ def _sum_send_counts_by_net(lnet_verbose_out):
 
 
 def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_dir, expect_efa, partition=None):
-    """Assert which LNet rail carries bulk Lustre data: @efa when ``expect_efa``, else @tcp.
+    """Assert which LNet rail carries bulk Lustre data: efa when ``expect_efa``, else tcp.
 
-    Sums per-NI `send_count` per LNet net type, writes FSX_EFA_COUNTER_TEST_MIB, sums again, and asserts on
+    Sums per-NI `send_count` per LNet net type, writes FSX_IO_TEST_MIB, sums again, and asserts on
     the deltas. The measurement is identical either way; only the expectation flips:
 
-    * ``expect_efa``: @efa must gain at least FSX_EFA_MIN_SEND_COUNT sends and gain more than @tcp. Metadata
-      RPCs and pings ride @tcp by design, so this is an ordering, not `tcp_delta == 0`.
-    * otherwise: @tcp must gain at least FSX_EFA_MIN_SEND_COUNT sends and @efa must gain exactly none. No
-      @efa net comes up on these nodes, so there is no efa NI to accumulate sends -- an exact assertion is
-      available here, unlike in the @efa direction.
+    * ``expect_efa``: efa must gain at least FSX_MIN_SEND_COUNT sends and gain more than tcp. Metadata
+      RPCs and pings ride tcp by design, so this is an ordering, not `tcp_delta == 0`.
+    * otherwise: tcp must gain at least FSX_MIN_SEND_COUNT sends and efa must gain exactly none. No
+      efa net comes up on these nodes, so there is no efa NI to accumulate sends -- an exact assertion is
+      available here, unlike in the efa direction.
 
     A plain buffered write is enough, and neither oflag=direct nor a trailing sync is needed: Lustre's
     per-OSC dirty budget (~3.4 MB grant, 1 MiB max_brw_size) is far below this size, so the data flushes as
@@ -639,7 +639,7 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
         (
             "sudo lnetctl net show -v; echo ===IO_BOUNDARY===; "
             f"dd if=/dev/zero of={mount_dir}/efa_counter_test.$(hostname) "
-            f"bs=1M count={FSX_EFA_COUNTER_TEST_MIB}; "
+            f"bs=1M count={FSX_IO_TEST_MIB}; "
             "sudo lnetctl net show -v"
         ),
         partition,
@@ -652,7 +652,7 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
     tcp_delta = after.get("tcp", 0) - before.get("tcp", 0)
     logging.info(
         "LNet send_count deltas over %s MiB: efa=%s tcp=%s (before=%s, after=%s)",
-        FSX_EFA_COUNTER_TEST_MIB,
+        FSX_IO_TEST_MIB,
         efa_delta,
         tcp_delta,
         before,
@@ -663,11 +663,11 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
     assert_that(
         expected_delta,
         description=(
-            f"only {expected_delta} LNet sends landed on @{expected_net} over {FSX_EFA_COUNTER_TEST_MIB} MiB "
+            f"only {expected_delta} LNet sends landed on @{expected_net} over {FSX_IO_TEST_MIB} MiB "
             f"of I/O (efa={efa_delta}, tcp={tcp_delta}); bulk Lustre data is not riding the "
             f"@{expected_net} rail"
         ),
-    ).is_greater_than_or_equal_to(FSX_EFA_MIN_SEND_COUNT)
+    ).is_greater_than_or_equal_to(FSX_MIN_SEND_COUNT)
 
     if expect_efa:
         assert_that(
@@ -678,7 +678,7 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
             ),
         ).is_greater_than(tcp_delta)
     else:
-        # No @efa net comes up on these nodes, so any send on it means LNet configured a rail it cannot use.
+        # No efa net comes up on these nodes, so any send on it means LNet configured a rail it cannot use.
         assert_that(
             efa_delta,
             description=(
@@ -686,25 +686,3 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
                 "over EFA; an @efa rail was configured and used unexpectedly"
             ),
         ).is_equal_to(0)
-
-
-def _test_fsx_read_write(scheduler_commands, remote_command_executor, mount_dir, partition=None):
-    """Assert a write to the mounted FSx file system is visible to a subsequent read.
-
-    This is POSIX read-after-write visibility, not proof the bytes reached the servers: the write is
-    buffered and a marker this small is far below any writeback trigger, so the read may well be served
-    from the client page cache. Deliberate -- _test_lustre_data_rail is what exercises the wire. What
-    this catches is a mount that is present but unusable: EIO, read-only, out of space, bad permissions.
-    """
-    logging.info("Testing basic write/read to the mounted FSx file system")
-
-    marker = "hello-efa-fsx-lustre"
-    test_file = f"{mount_dir}/efa_fsx_lustre_test.txt"
-    rw_out = _submit_and_get_output(
-        scheduler_commands,
-        remote_command_executor,
-        f"echo '{marker}' > {test_file} && cat {test_file}",
-        partition,
-    )
-    logging.info("FSx write/read output:\n%s", rw_out)
-    assert_that(rw_out).contains(marker)
