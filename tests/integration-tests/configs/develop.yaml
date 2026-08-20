@@ -139,11 +139,11 @@ test-suites:
           oss: [{{ OS_X86_3 }}]
     test_createami.py::test_build_image:
       dimensions:
-        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_4_INSTANCES_3_HOURS_NOPG_rhel9 }}]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_6_INSTANCES_3_HOURS_NOPG_rhel9 }}] # Each test requires 3 instances (1 head node + 2 compute nodes)
           instances: ["g4dn.2xlarge"]
           oss: {{ RHEL_OS_X86 }}
           schedulers: ["slurm"]
-        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_10_INSTANCES_3_HOURS_NOPG_ubuntu2404 }}]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_15_INSTANCES_3_HOURS_NOPG_ubuntu2404 }}]
           instances: ["g4dn.2xlarge"]
           oss: {{ NO_RHEL_OS_X86 }}
           schedulers: ["slurm"]
