@@ -269,15 +269,15 @@ def test_efa(
     # https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorial-efa-enabled-fsx-lustre.html
     fsx_fs_id, efa_fsx_security_group_id = _provision_efa_fsx_stack(region, request, vpc_stack, cfn_stacks_factory)
 
-    bucket_name = request.getfixturevalue("s3_bucket_factory")()
-    boto3.resource("s3", region_name=region).Bucket(bucket_name).upload_file(
-        str(test_datadir / "pcluster-efa-fsx-lustre-client-tutorial.sh"),
-        "pcluster-efa-fsx-lustre-client-tutorial.sh",
-    )
-
-    # Gates the OnNodeStart FSx EFA setup: it unloads the Lustre/LNet stack, which is pointless where no efa
-    # net can come up.
     supports_efa_for_fsx = _supports_efa_for_fsx(instance, os)
+    bucket_name = None
+    if supports_efa_for_fsx:
+        bucket_name = request.getfixturevalue("s3_bucket_factory")()
+        boto3.resource("s3", region_name=region).Bucket(bucket_name).upload_file(
+            str(test_datadir / "pcluster-efa-fsx-lustre-client-tutorial.sh"),
+            "pcluster-efa-fsx-lustre-client-tutorial.sh",
+        )
+
     slots_per_instance = fetch_instance_slots(region, instance, multithreading_disabled=True)
     cluster_config = pcluster_config_reader(
         head_node_instance=head_node_instance,
@@ -339,9 +339,7 @@ def test_efa(
     # rest ride tcp. The data path is measured the same way either way, and the mount must work on both.
     with soft_assertions():
         if supports_efa_for_fsx:
-            _test_efa_fsx_device_count(
-                scheduler_commands, remote_command_executor, region, instance, partition="efa-enabled"
-            )
+            _test_efa_fsx_device_count(scheduler_commands, region, instance, partition="efa-enabled")
         else:
             logging.info(
                 "Instance %s on %s does not support EFA for FSx for Lustre (needs Nitro v4+ and one of %s); "
@@ -350,13 +348,9 @@ def test_efa(
                 os,
                 sorted(EFA_FSX_SUPPORTED_OSES),
             )
-        _log_lnet_state(scheduler_commands, remote_command_executor, partition="efa-enabled")
+        _log_lnet_state(scheduler_commands, partition="efa-enabled")
         _test_lustre_data_rail(
-            scheduler_commands,
-            remote_command_executor,
-            FSX_MOUNT_DIR,
-            expect_efa=supports_efa_for_fsx,
-            partition="efa-enabled",
+            scheduler_commands, FSX_MOUNT_DIR, expect_efa=supports_efa_for_fsx, partition="efa-enabled"
         )
         verify_directory_correctly_shared(
             remote_command_executor, FSX_MOUNT_DIR, scheduler_commands, partitions=["efa-enabled"]
@@ -495,22 +489,7 @@ def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, p
     assert_that(result.stdout).does_not_contain("SHM transfer will be disabled because of ptrace protection")
 
 
-def _submit_and_get_output(scheduler_commands, remote_command_executor, command, partition):
-    """Submit a command on an EFA compute node, wait for it, and return the job's captured stdout.
-
-    The command runs as a Slurm job on ``partition`` (the EFA-enabled compute queue), so all EFA/Lustre
-    probing happens on a compute node, not the head node. The job's stdout is written by Slurm to
-    ``slurm-<job_id>.out`` in the submitting user's home (shared with the head node), which we then read
-    from the head node.
-    """
-    result = scheduler_commands.submit_command(command, partition=partition)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    return remote_command_executor.run_remote_command(f"cat slurm-{job_id}.out").stdout
-
-
-def _test_efa_fsx_device_count(scheduler_commands, remote_command_executor, region, instance, partition=None):
+def _test_efa_fsx_device_count(scheduler_commands, region, instance, partition=None):
     """Assert LNet binds the expected number of EFA devices (regression guard for the under-bind bug).
 
     The expected count is what the setup binds by design, not the hardware EFA-device count -- see
@@ -522,11 +501,8 @@ def _test_efa_fsx_device_count(scheduler_commands, remote_command_executor, regi
     expected_efa_devices = _expected_efa_bound_devices(instance, region)
     logging.info("Instance type %s is expected to bind %s EFA interface(s) for FSx", instance, expected_efa_devices)
 
-    lnet_out = _submit_and_get_output(
-        scheduler_commands,
-        remote_command_executor,
-        "sudo lnetctl net show --net efa",
-        partition,
+    lnet_out = scheduler_commands.submit_command_and_get_output(
+        {"command": "sudo lnetctl net show --net efa", "partition": partition}
     )
     logging.info("lnetctl net show --net efa output:\n%s", lnet_out)
     # Each bound EFA interface appears as an "interfaces:" entry in the lnetctl output.
@@ -574,7 +550,7 @@ def _lnet_diagnostic_script():
     return "; ".join(f"echo ==== {label} ====; {command} || true" for label, command in _LNET_DIAGNOSTIC_COMMANDS)
 
 
-def _log_lnet_state(scheduler_commands, remote_command_executor, partition=None):
+def _log_lnet_state(scheduler_commands, partition=None):
     """Log the compute node's LNet/NID state. Pure observability: makes no assertions and changes no state.
 
     Runs as its own job rather than being folded into another test's job, because _LNET_DIAGNOSTIC_COMMANDS
@@ -585,11 +561,8 @@ def _log_lnet_state(scheduler_commands, remote_command_executor, partition=None)
 
     # NOTE: submit_command wraps this in sbatch --wrap='...', so the commands must contain no single quotes
     # (a nested single quote would close the wrap early).
-    lnet_state = _submit_and_get_output(
-        scheduler_commands,
-        remote_command_executor,
-        _lnet_diagnostic_script(),
-        partition,
+    lnet_state = scheduler_commands.submit_command_and_get_output(
+        {"command": _lnet_diagnostic_script(), "partition": partition}
     )
     logging.info("LNet state:\n%s", lnet_state)
 
@@ -610,7 +583,7 @@ def _sum_send_counts_by_net(lnet_verbose_out):
     return totals
 
 
-def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_dir, expect_efa, partition=None):
+def _test_lustre_data_rail(scheduler_commands, mount_dir, expect_efa, partition=None):
     """Assert which LNet rail carries bulk Lustre data: efa when ``expect_efa``, else tcp.
 
     Sums per-NI `send_count` per LNet net type, writes FSX_IO_TEST_MIB, sums again, and asserts on
@@ -633,16 +606,16 @@ def _test_lustre_data_rail(scheduler_commands, remote_command_executor, mount_di
     logging.info("Testing that bulk Lustre data rides the @%s rail", expected_net)
 
     # NOTE: submit_command wraps this in sbatch --wrap='...', so the command must contain no single quotes.
-    io_out = _submit_and_get_output(
-        scheduler_commands,
-        remote_command_executor,
-        (
-            "sudo lnetctl net show -v; echo ===IO_BOUNDARY===; "
-            f"dd if=/dev/zero of={mount_dir}/efa_counter_test.$(hostname) "
-            f"bs=1M count={FSX_IO_TEST_MIB}; "
-            "sudo lnetctl net show -v"
-        ),
-        partition,
+    io_out = scheduler_commands.submit_command_and_get_output(
+        {
+            "command": (
+                "sudo lnetctl net show -v; echo ===IO_BOUNDARY===; "
+                f"dd if=/dev/zero of={mount_dir}/efa_counter_test.$(hostname) "
+                f"bs=1M count={FSX_IO_TEST_MIB}; "
+                "sudo lnetctl net show -v"
+            ),
+            "partition": partition,
+        }
     )
     logging.info(f"Output of bulk Lustre data on efa {io_out}")
     before_out, _, after_out = io_out.partition("===IO_BOUNDARY===")
