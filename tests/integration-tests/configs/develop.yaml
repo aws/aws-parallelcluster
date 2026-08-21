@@ -322,7 +322,7 @@ test-suites:
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
-        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_OS_X86_5 }}]
+        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_4_INSTANCES_2_HOURS_NOPG_OS_X86_5 }}]
           instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}]
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
@@ -370,11 +370,11 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_1_HOURS_NOPG_rhel9 }}]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_4_INSTANCES_1_HOURS_NOPG_rhel9 }}]
           instances: ["c6in.32xlarge"]
           oss: {{ RHEL_OS_X86 }}
           schedulers: ["slurm"]
-        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_8_INSTANCES_1_HOURS_NOPG_ubuntu2404 }}]
+        - regions: [{{ c6in_32xlarge_CAPACITY_RESERVATION_10_INSTANCES_1_HOURS_NOPG_ubuntu2404 }}]
           instances: ["c6in.32xlarge"]
           oss: {{ NO_RHEL_OS_X86 }}
           schedulers: ["slurm"]
