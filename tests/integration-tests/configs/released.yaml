@@ -11,7 +11,7 @@ test-suites:
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
-        - regions: ["af-south-1"]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_rhel8 }}]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
@@ -132,7 +132,7 @@ test-suites:
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_rhel8 }}]
           instances: ["g4dn.2xlarge"]
           oss: ["rhel8"]
           schedulers: ["slurm"]
