@@ -508,6 +508,17 @@ class SlurmCommands(SchedulerCommands):
         self.wait_job_completed(job_id)
         self.assert_job_succeeded(job_id)
 
+    def submit_command_and_get_output(self, job_command_args):
+        """Submit a command, assert the job succeeded, and return the job's stdout.
+
+        Reads back `slurm-<job_id>.out`, which sbatch writes to the job's submit directory.
+        """
+        result = self.submit_command(**job_command_args)
+        job_id = self.assert_job_submitted(result.stdout)
+        self.wait_job_completed(job_id)
+        self.assert_job_succeeded(job_id)
+        return self._remote_command_executor.run_remote_command(f"cat slurm-{job_id}.out").stdout
+
     def get_partition_state(self, partition):
         """Get the state of the partition."""
         return self._remote_command_executor.run_remote_command(
