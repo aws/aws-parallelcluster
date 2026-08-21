@@ -322,7 +322,7 @@ test-suites:
   health_checks:
     test_gpu_health_checks.py::test_cluster_with_gpu_health_checks:
       dimensions:
-        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_4_INSTANCES_2_HOURS_NOPG_OS_X86_5__c5_xlarge_CAPACITY_RESERVATION_5_INSTANCES_2_HOURS_NOPG_OS_X86_5 }}]
+        - regions: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0_CAPACITY_RESERVATION_4_INSTANCES_2_HOURS_NOPG_OS_X86_5 }}]
           instances: [{{ US_WEST_2_GPU_INSTANCE_TYPE_0 }}]
           oss: [{{ OS_X86_5 }}]
           schedulers: ["slurm"]
@@ -882,8 +882,8 @@ test-suites:
   proxy:
     test_proxy.py::test_proxy:
       dimensions:
-        - regions: [{{ c5_xlarge_CAPACITY_RESERVATION_4_INSTANCES_2_HOURS_NOPG_OS_X86_6 }}]
-          instances: ["c5.xlarge"]
+        - regions: ["ap-southeast-5"] # c5 instance type is not available in ap-southeast-5
+          instances: ["m6i.xlarge"]
           oss: [{{ OS_X86_6 }}]
           schedulers: ["slurm"]
   pyxis:
