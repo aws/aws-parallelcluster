@@ -41,10 +41,10 @@ Scheduling:
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket_name }}/pcluster-efa-fsx-lustre-client-tutorial.sh
-      {% endif %}
       Iam:
         S3Access:
           - BucketName: {{ bucket_name }}
+      {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: name1
