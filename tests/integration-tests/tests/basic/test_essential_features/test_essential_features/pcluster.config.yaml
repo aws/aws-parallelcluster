@@ -22,6 +22,7 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
   Imds:
     Secured: {{ imds_secured }}
   {% if dcv_enabled %}

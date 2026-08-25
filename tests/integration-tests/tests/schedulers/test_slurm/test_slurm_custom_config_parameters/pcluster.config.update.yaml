@@ -10,6 +10,7 @@ HeadNode:
     S3Access:
       - BucketName: {{ bucket }}
         EnableWriteAccess: true
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

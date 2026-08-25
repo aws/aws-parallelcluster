@@ -13,6 +13,7 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:

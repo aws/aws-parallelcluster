@@ -7,6 +7,8 @@ HeadNode:
     AdditionalSecurityGroups:
       - {{ database_client_security_group }}
   Iam:
+    S3Access:
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
     AdditionalIamPolicies:
       - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
   Ssh:

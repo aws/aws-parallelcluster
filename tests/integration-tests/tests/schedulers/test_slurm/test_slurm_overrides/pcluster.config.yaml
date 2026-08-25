@@ -9,6 +9,7 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
   CustomActions:
     OnNodeConfigured:
       Script: s3://{{ bucket_name }}/launch_override.sh

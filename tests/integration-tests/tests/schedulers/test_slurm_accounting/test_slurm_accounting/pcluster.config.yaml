@@ -7,6 +7,8 @@ HeadNode:
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore
+    S3Access:
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
   Ssh:
     KeyName: {{ key_name }}
   Imds:

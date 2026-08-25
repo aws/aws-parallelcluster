@@ -6,6 +6,9 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

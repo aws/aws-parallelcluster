@@ -16,6 +16,9 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
     AllowedIps: 0.0.0.0/0
+  Iam:
+    S3Access:
+      - BucketName: "aws-parallelcluster-dev-build-dependencies"
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
