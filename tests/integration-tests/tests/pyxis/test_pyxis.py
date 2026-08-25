@@ -17,7 +17,10 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.software_installer import assert_slurm_controller_healthy, install_test_software
+from tests.common.software_installer import (
+    assert_slurm_controller_healthy,
+    install_test_software_with_stopped_consumers,
+)
 
 
 @pytest.mark.parametrize("scale_up_fleet", [False])
@@ -57,7 +60,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     )
     _run_pyxis_job(remote_command_executor, slurm_commands, nodes=3, job_description="second")
 
-    install_test_software(remote_command_executor, region)
+    install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
 
     remote_command_executor = RemoteCommandExecutor(cluster)

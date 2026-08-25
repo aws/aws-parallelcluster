@@ -14,12 +14,13 @@ import logging
 import os
 import tempfile
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 import boto3
 from assertpy import assert_that
 from retrying import retry
-from time_utils import seconds
+from time_utils import minutes, seconds
 
 from utils import get_arn_partition
 
@@ -36,6 +37,15 @@ _ARTIFACTS_BY_PARTITION = {
 }
 _DOWNLOAD_CACHE = {}
 _DOWNLOAD_CACHE_LOCK = threading.Lock()
+_COMPUTE_INSTANCE_STATES = ["pending", "running", "shutting-down", "stopping", "stopped"]
+_COMPUTE_FLEET_TERMINAL_STATES = {"RUNNING", "STOPPED", "PROTECTED"}
+_COMPUTE_FLEET_START_TRANSITIONS = {"START_REQUESTED", "STARTING"}
+_COMPUTE_FLEET_STOP_TRANSITIONS = {"STOP_REQUESTED", "STOPPING"}
+_CAPACITY_WAIT_MINUTES = 15
+
+
+class _UnexpectedComputeFleetStatusError(RuntimeError):
+    pass
 
 
 def _sha256(path):
@@ -143,10 +153,364 @@ def _download_software_installer_script(region):
         return downloaded_path
 
 
+def _deduplicate_clusters(clusters):
+    unique_clusters = []
+    seen = set()
+    for cluster in clusters:
+        key = (cluster.name, cluster.region)
+        if key not in seen:
+            seen.add(key)
+            unique_clusters.append(cluster)
+    return unique_clusters
+
+
+def _get_compute_instance_ids(snapshot):
+    filters = [
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [snapshot["cluster"].cfn_name]},
+        {"Name": "tag:parallelcluster:node-type", "Values": ["Compute"]},
+        {"Name": "instance-state-name", "Values": _COMPUTE_INSTANCE_STATES},
+    ]
+    instance_ids = set()
+    paginator = snapshot["ec2"].get_paginator("describe_instances")
+    for page in paginator.paginate(Filters=filters):
+        for reservation in page.get("Reservations", []):
+            instance_ids.update(instance["InstanceId"] for instance in reservation.get("Instances", []))
+    return instance_ids
+
+
+def _describe_login_asg(snapshot, asg_name, pool_name):
+    groups = snapshot["autoscaling"].describe_auto_scaling_groups(
+        AutoScalingGroupNames=[asg_name]
+    ).get("AutoScalingGroups", [])
+    if len(groups) != 1 or groups[0].get("AutoScalingGroupName") != asg_name:
+        raise RuntimeError(
+            f"Expected exactly one login-node Auto Scaling group named {asg_name}, found {len(groups)}"
+        )
+
+    group = groups[0]
+    tag_values = [
+        tag.get("Value")
+        for tag in group.get("Tags", [])
+        if tag.get("Key") == "parallelcluster:login-nodes-pool"
+    ]
+    if tag_values != [pool_name]:
+        raise RuntimeError(
+            f"Auto Scaling group {asg_name} has unexpected parallelcluster:login-nodes-pool tag values "
+            f"{tag_values}; expected [{pool_name}]"
+        )
+    return group
+
+
+def _snapshot_cluster(cluster):
+    snapshot = {
+        "cluster": cluster,
+        "ec2": boto3.client("ec2", region_name=cluster.region),
+        "autoscaling": boto3.client("autoscaling", region_name=cluster.region),
+        "login_asgs": [],
+        "instance_ids": set(),
+    }
+    compute_status = cluster.describe_compute_fleet()["status"]
+    if compute_status not in _COMPUTE_FLEET_TERMINAL_STATES:
+        raise RuntimeError(
+            f"Cluster {cluster.name} compute fleet must be in RUNNING, STOPPED, or PROTECTED state before maintenance; "
+            f"found {compute_status}"
+        )
+    snapshot["compute_status"] = compute_status
+    snapshot["instance_ids"].update(_get_compute_instance_ids(snapshot))
+
+    for pool in cluster.config.get("LoginNodes", {}).get("Pools", []):
+        pool_name = pool["Name"]
+        asg_name = f"{cluster.name}-{pool_name}-AutoScalingGroup"
+        group = _describe_login_asg(snapshot, asg_name, pool_name)
+        asg_snapshot = {
+            "pool_name": pool_name,
+            "AutoScalingGroupName": group["AutoScalingGroupName"],
+            "MinSize": group["MinSize"],
+            "MaxSize": group["MaxSize"],
+            "DesiredCapacity": group["DesiredCapacity"],
+            "instance_ids": {instance["InstanceId"] for instance in group.get("Instances", [])},
+        }
+        snapshot["instance_ids"].update(asg_snapshot["instance_ids"])
+        snapshot["login_asgs"].append(asg_snapshot)
+
+    logging.info(
+        "Snapshotted cluster %s in %s: compute fleet %s, %d compute/login instances, %d login pools",
+        cluster.name,
+        cluster.region,
+        compute_status,
+        len(snapshot["instance_ids"]),
+        len(snapshot["login_asgs"]),
+    )
+    return snapshot
+
+
+def _wait_for_compute_status(snapshot, expected_status):
+    cluster = snapshot["cluster"]
+
+    @retry(
+        wait_fixed=seconds(15),
+        stop_max_delay=minutes(_CAPACITY_WAIT_MINUTES),
+        retry_on_result=lambda status: status != expected_status,
+    )
+    def _poll():
+        status = cluster.describe_compute_fleet()["status"]
+        logging.info("Cluster %s compute fleet status is %s; waiting for %s", cluster.name, status, expected_status)
+        return status
+
+    return _poll()
+
+
+def _wait_for_consumers_terminated(snapshots):
+    @retry(
+        wait_fixed=seconds(15),
+        stop_max_delay=minutes(_CAPACITY_WAIT_MINUTES),
+        retry_on_result=lambda consumers_remain: consumers_remain,
+    )
+    def _poll():
+        consumers_remain = False
+        for snapshot in snapshots:
+            cluster = snapshot["cluster"]
+            compute_instance_ids = _get_compute_instance_ids(snapshot)
+            snapshot["instance_ids"].update(compute_instance_ids)
+            if compute_instance_ids:
+                consumers_remain = True
+                logging.info(
+                    "Waiting for cluster %s compute instances to terminate: %s",
+                    cluster.name,
+                    sorted(compute_instance_ids),
+                )
+
+            for asg_snapshot in snapshot["login_asgs"]:
+                group = _describe_login_asg(
+                    snapshot, asg_snapshot["AutoScalingGroupName"], asg_snapshot["pool_name"]
+                )
+                login_instance_ids = {instance["InstanceId"] for instance in group.get("Instances", [])}
+                asg_snapshot["instance_ids"].update(login_instance_ids)
+                snapshot["instance_ids"].update(login_instance_ids)
+                if login_instance_ids:
+                    consumers_remain = True
+                    logging.info(
+                        "Waiting for login Auto Scaling group %s instances to terminate: %s",
+                        asg_snapshot["AutoScalingGroupName"],
+                        sorted(login_instance_ids),
+                    )
+        return consumers_remain
+
+    _poll()
+
+    for snapshot in snapshots:
+        instance_ids = sorted(snapshot["instance_ids"])
+        if not instance_ids:
+            continue
+        logging.info("Verifying captured compute/login instances terminated for cluster %s", snapshot["cluster"].name)
+        for offset in range(0, len(instance_ids), 1000):
+            snapshot["ec2"].get_waiter("instance_terminated").wait(
+                InstanceIds=instance_ids[offset : offset + 1000],
+                WaiterConfig={"Delay": 15, "MaxAttempts": 40},
+            )
+
+
+def _pause_consumers(snapshots):
+    for snapshot in snapshots:
+        cluster = snapshot["cluster"]
+        if snapshot["compute_status"] == "RUNNING":
+            logging.info("Requesting compute fleet stop for cluster %s", cluster.name)
+            cluster.stop(wait_stopped=False)
+
+    for snapshot in snapshots:
+        for asg_snapshot in snapshot["login_asgs"]:
+            logging.info("Scaling login Auto Scaling group %s to zero", asg_snapshot["AutoScalingGroupName"])
+            snapshot["autoscaling"].update_auto_scaling_group(
+                AutoScalingGroupName=asg_snapshot["AutoScalingGroupName"],
+                MinSize=0,
+                DesiredCapacity=0,
+            )
+
+    for snapshot in snapshots:
+        if snapshot["compute_status"] == "RUNNING":
+            _wait_for_compute_status(snapshot, "STOPPED")
+    _wait_for_consumers_terminated(snapshots)
+    logging.info("All non-head-node consumers are stopped")
+
+
+def _login_asg_capacity_matches(group, asg_snapshot):
+    return (
+        group["MinSize"] == asg_snapshot["MinSize"]
+        and group["MaxSize"] == asg_snapshot["MaxSize"]
+        and group["DesiredCapacity"] == asg_snapshot["DesiredCapacity"]
+    )
+
+
+def _restore_login_asg_capacity(snapshot, asg_snapshot):
+    @retry(
+        wait_fixed=seconds(15),
+        stop_max_delay=minutes(_CAPACITY_WAIT_MINUTES),
+        retry_on_exception=lambda error: True,
+        retry_on_result=lambda restored: not restored,
+    )
+    def _request():
+        group = _describe_login_asg(snapshot, asg_snapshot["AutoScalingGroupName"], asg_snapshot["pool_name"])
+        if _login_asg_capacity_matches(group, asg_snapshot):
+            return True
+
+        logging.info(
+            "Restoring login Auto Scaling group %s capacity to min=%d max=%d desired=%d",
+            asg_snapshot["AutoScalingGroupName"],
+            asg_snapshot["MinSize"],
+            asg_snapshot["MaxSize"],
+            asg_snapshot["DesiredCapacity"],
+        )
+        snapshot["autoscaling"].update_auto_scaling_group(
+            AutoScalingGroupName=asg_snapshot["AutoScalingGroupName"],
+            MinSize=asg_snapshot["MinSize"],
+            MaxSize=asg_snapshot["MaxSize"],
+            DesiredCapacity=asg_snapshot["DesiredCapacity"],
+        )
+        group = _describe_login_asg(snapshot, asg_snapshot["AutoScalingGroupName"], asg_snapshot["pool_name"])
+        return _login_asg_capacity_matches(group, asg_snapshot)
+
+    return _request()
+
+
+def _request_compute_running(snapshot):
+    cluster = snapshot["cluster"]
+
+    @retry(
+        wait_fixed=seconds(15),
+        stop_max_delay=minutes(_CAPACITY_WAIT_MINUTES),
+        retry_on_exception=lambda error: not isinstance(error, _UnexpectedComputeFleetStatusError),
+        retry_on_result=lambda requested: not requested,
+    )
+    def _request():
+        status = cluster.describe_compute_fleet()["status"]
+        logging.info("Cluster %s compute fleet status is %s while requesting RUNNING", cluster.name, status)
+        if status == "RUNNING" or status in _COMPUTE_FLEET_START_TRANSITIONS:
+            return True
+        if status == "STOPPED":
+            logging.info("Requesting compute fleet start for cluster %s", cluster.name)
+            cluster.start(wait_running=False)
+            return True
+        if status in _COMPUTE_FLEET_STOP_TRANSITIONS:
+            return False
+        raise _UnexpectedComputeFleetStatusError(
+            f"Cannot restore cluster {cluster.name} compute fleet to RUNNING from {status}"
+        )
+
+    return _request()
+
+
+def _wait_for_login_asg_restored(snapshot, asg_snapshot):
+    desired_capacity = asg_snapshot["DesiredCapacity"]
+
+    @retry(
+        wait_fixed=seconds(15),
+        stop_max_delay=minutes(_CAPACITY_WAIT_MINUTES),
+        retry_on_result=lambda instance_ids: instance_ids is None,
+    )
+    def _poll():
+        group = _describe_login_asg(snapshot, asg_snapshot["AutoScalingGroupName"], asg_snapshot["pool_name"])
+        instances = group.get("Instances", [])
+        ready = (
+            _login_asg_capacity_matches(group, asg_snapshot)
+            and len(instances) == desired_capacity
+            and all(
+                instance.get("LifecycleState") == "InService" and instance.get("HealthStatus") == "Healthy"
+                for instance in instances
+            )
+        )
+        logging.info(
+            "Login Auto Scaling group %s has %d/%d ready instances",
+            asg_snapshot["AutoScalingGroupName"],
+            len(instances) if ready else 0,
+            desired_capacity,
+        )
+        return [instance["InstanceId"] for instance in instances] if ready else None
+
+    instance_ids = _poll()
+    if not instance_ids:
+        logging.info("Login Auto Scaling group %s capacity is restored", asg_snapshot["AutoScalingGroupName"])
+        return
+
+    logging.info("Waiting for restored login instances to pass EC2 status checks: %s", instance_ids)
+    snapshot["ec2"].get_waiter("instance_status_ok").wait(
+        InstanceIds=instance_ids,
+        WaiterConfig={"Delay": 30, "MaxAttempts": 30},
+    )
+
+
+def _restore_consumers(snapshots):
+    errors = []
+
+    for snapshot in snapshots:
+        for asg_snapshot in snapshot["login_asgs"]:
+            try:
+                _restore_login_asg_capacity(snapshot, asg_snapshot)
+            except Exception as error:
+                errors.append((f"restore login Auto Scaling group {asg_snapshot['AutoScalingGroupName']}", error))
+
+        if snapshot["compute_status"] == "RUNNING":
+            try:
+                _request_compute_running(snapshot)
+            except Exception as error:
+                errors.append((f"start compute fleet for cluster {snapshot['cluster'].name}", error))
+
+    for snapshot in snapshots:
+        if snapshot["compute_status"] == "RUNNING":
+            try:
+                _wait_for_compute_status(snapshot, "RUNNING")
+            except Exception as error:
+                errors.append((f"wait for cluster {snapshot['cluster'].name} compute fleet RUNNING", error))
+
+        for asg_snapshot in snapshot["login_asgs"]:
+            try:
+                _wait_for_login_asg_restored(snapshot, asg_snapshot)
+            except Exception as error:
+                errors.append((f"wait for login Auto Scaling group {asg_snapshot['AutoScalingGroupName']}", error))
+
+    return errors
+
+
+def _restore_error_message(errors):
+    details = "\n".join(f"- {operation}: {error}" for operation, error in errors)
+    return f"Failed to fully restore cluster consumers:\n{details}"
+
+
+@contextmanager
+def stopped_shared_slurm_consumers(*clusters):
+    """Temporarily stop all compute fleets and login pools shared by a maintenance operation."""
+    snapshots = []
+    mutation_started = False
+    primary_error = None
+    try:
+        unique_clusters = _deduplicate_clusters(clusters)
+        snapshots = [_snapshot_cluster(cluster) for cluster in unique_clusters]
+        mutation_started = True
+        _pause_consumers(snapshots)
+        yield
+    except BaseException as error:
+        primary_error = error
+        raise
+    finally:
+        if mutation_started:
+            restoration_errors = _restore_consumers(snapshots)
+            if restoration_errors:
+                message = _restore_error_message(restoration_errors)
+                if primary_error is not None:
+                    logging.error("%s; preserving the original failure: %s", message, primary_error)
+                else:
+                    raise RuntimeError(message)
+
+
 def install_test_software(executor, region):
     """Download and run the test software installer on the target host."""
     script_path = _download_software_installer_script(region)
     return executor.run_remote_script(script_path, run_as_root=True, timeout=3600, pty=False)
+
+
+def install_test_software_with_stopped_consumers(executor, region, *clusters):
+    """Run the test software installer while the clusters have no compute or login consumers."""
+    with stopped_shared_slurm_consumers(*clusters):
+        return install_test_software(executor, region)
 
 
 def assert_slurm_controller_healthy(executor):

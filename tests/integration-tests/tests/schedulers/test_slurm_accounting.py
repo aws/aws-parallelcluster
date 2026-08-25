@@ -12,7 +12,12 @@ from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.assertions import assert_no_defunct_slurm_config_params
-from tests.common.software_installer import assert_slurm_controller_healthy, install_test_software
+from tests.common.software_installer import (
+    assert_slurm_controller_healthy,
+    install_test_software,
+    install_test_software_with_stopped_consumers,
+    stopped_shared_slurm_consumers,
+)
 from tests.common.utils import get_aws_domain
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
@@ -275,7 +280,7 @@ def test_slurm_accounting(
     assert_no_defunct_slurm_config_params(remote_command_executor)
     _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
 
-    install_test_software(remote_command_executor, region)
+    install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -332,12 +337,10 @@ def test_slurm_accounting_external_dbd(
     headnode_remote_command_executor_1 = RemoteCommandExecutor(cluster)
     headnode_remote_command_executor_2 = RemoteCommandExecutor(cluster_2)
 
-    for remote_command_executor in (
-        slurmdbd_node_remote_command_executor,
-        headnode_remote_command_executor_1,
-        headnode_remote_command_executor_2,
-    ):
-        install_test_software(remote_command_executor, region)
+    with stopped_shared_slurm_consumers(cluster, cluster_2):
+        install_test_software(slurmdbd_node_remote_command_executor, region)
+        install_test_software(headnode_remote_command_executor_1, region)
+        install_test_software(headnode_remote_command_executor_2, region)
 
     assert_slurm_controller_healthy(headnode_remote_command_executor_1)
     assert_slurm_controller_healthy(headnode_remote_command_executor_2)

@@ -27,7 +27,10 @@ from tests.common.assertions import (
     wait_instance_replaced_or_terminating,
 )
 from tests.common.mpi_common import _test_mpi
-from tests.common.software_installer import assert_slurm_controller_healthy, install_test_software
+from tests.common.software_installer import (
+    assert_slurm_controller_healthy,
+    install_test_software_with_stopped_consumers,
+)
 from tests.common.utils import GPU_JOB_SCRIPT, fetch_instance_slots, run_system_analyzer
 
 
@@ -96,7 +99,7 @@ def test_essential_features(
     _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
-    install_test_software(remote_command_executor, region)
+    install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
