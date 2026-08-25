@@ -65,6 +65,17 @@ from tests.common.scaling_common import (
     setup_ec2_launch_override_to_emulate_ice,
 )
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.software_installer import (
+    assert_slurm_controller_healthy,
+    install_test_software,
+    run_scheduler_smoke_test,
+)
+
+
+def _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands, job_ids):
+    for job_id in job_ids:
+        remote_command_executor.run_remote_command(f"scancel {job_id}", raise_on_error=False)
+    scheduler_commands.wait_job_queue_empty()
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -134,7 +145,7 @@ def test_slurm(
     assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
     # Test compute node bootstrap timeout
     clustermgtd_conf_path = retrieve_clustermgtd_conf_path(head_node_command_executor)
-    _test_compute_node_bootstrap_timeout(
+    bootstrap_timeout_job_id = _test_compute_node_bootstrap_timeout(
         cluster,
         pcluster_config_reader,
         remote_command_executor,
@@ -147,6 +158,10 @@ def test_slurm(
         use_login_node,
         head_node_command_executor,
     )
+    _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands, [bootstrap_timeout_job_id])
+    install_test_software(head_node_command_executor, region)
+    assert_slurm_controller_healthy(head_node_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="ondemand")
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -191,6 +206,9 @@ def test_slurm_ticket_17399(
             f"--cpus-per-task={cpus_per_instance // gpus_per_instance + 1}",
         }
     )
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="gpu")
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -249,6 +267,9 @@ def test_slurm_from_login_nodes_in_private_network(
     )
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
+    install_test_software(head_node_command_executor, region)
+    assert_slurm_controller_healthy(head_node_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="ondemand")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -314,6 +335,9 @@ def test_slurm_scaling(
         stop_max_delay_secs=stop_max_delay_secs,
     )
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -395,6 +419,10 @@ def test_slurm_custom_partitions(
             expected_state = "UP"
         assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(expected_state)
 
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
+
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_error_handling
@@ -431,7 +459,7 @@ def test_error_handling(
     )
     # Next test will introduce error in logs, assert no error now
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
-    _test_clustermgtd_down_logic(
+    leftover_job_ids = _test_clustermgtd_down_logic(
         remote_command_executor,
         scheduler_commands,
         cluster.cfn_name,
@@ -443,6 +471,12 @@ def test_error_handling(
         num_dynamic_nodes=1,
         dynamic_instance_type=instance,
     )
+    remote_command_executor.run_remote_command("sudo systemctl restart supervisord slurmctld")
+    assert_slurm_controller_healthy(remote_command_executor)
+    _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands, leftover_job_ids)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -526,6 +560,9 @@ def test_clustermgtd_instance_id_matching(
         scheduler_commands, [target_node], expected_states=["idle", "mixed", "allocated"]
     )
     assert_that(get_compute_nodes_instance_ids(cluster.cfn_name, region)).contains(target_instance_id)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="queue1")
 
 
 def _assert_slurm_nodes_have_instance_id(scheduler_commands, nodes, expected_instance_ids):
@@ -610,6 +647,9 @@ def test_slurm_maintenance_reservation(
     scheduler_commands.assert_job_succeeded(dynamic_job_id)
 
     assert_no_errors_in_logs(remote_command_executor, "slurm", skip_ice=True)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="queue1")
 
 
 def _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node):
@@ -778,6 +818,9 @@ def test_slurm_protected_mode(
     _test_recover_from_protected_mode(
         pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands, scaling_strategy
     )
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="normal")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -808,6 +851,9 @@ def test_slurm_protected_mode_on_cluster_create(
         ],
     )
     _test_cluster_creation_failure(cluster)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    _test_compute_fleet_status(remote_command_executor, expected_status="PROTECTED")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -909,6 +955,8 @@ def test_fast_capacity_failover(
         target_compute_resource="exception-cr-multiple",
         expected_error_code="InvalidParameter" if "us-iso" in region else "InvalidParameterValue",
     )
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
 
 
 def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
@@ -1018,6 +1066,7 @@ def test_expedited_requeue(
     clusters_factory,
     scheduler_commands_factory,
     vpc_stack,
+    region,
 ):
     """
     Test Slurm 25.11+ expedited requeue behavior with recoverable ICE simulation.
@@ -1077,6 +1126,9 @@ def test_expedited_requeue(
     logging.info("Start epochs: %s", dict(zip([j["label"] for j in jobs], start_epochs)))
     assert_that(start_epochs[0]).is_less_than_or_equal_to(start_epochs[1])  # job1 (expedited) before job2 (normal)
     logging.info("Verified: expedited job (job1) ran before normal job (job2) after requeue")
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="queue")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1086,6 +1138,7 @@ def test_slurm_config_update(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -1099,6 +1152,10 @@ def test_slurm_config_update(
         remote_command_executor,
         config_file="pcluster.config.update_scheduling.yaml",
     )
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="queue1")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1185,6 +1242,9 @@ def test_slurm_custom_config_parameters(
     # ComputeResource 2
     assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
     assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="q1")
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
@@ -1228,12 +1288,16 @@ def test_slurm_memory_based_scheduling(
 
     _test_memory_based_scheduling_with_multiple_instance_types(slurm_commands)
 
-    _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
+    memory_job_id = _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
         remote_command_executor,
         slurm_commands,
         pcluster_config_reader,
         cluster,
     )
+    _cancel_jobs_and_wait_for_queue(remote_command_executor, slurm_commands, [memory_job_id])
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1243,6 +1307,7 @@ def test_scontrol_reboot(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -1289,7 +1354,7 @@ def test_scontrol_reboot(
     )
 
     # Check that node in REBOOT_REQUESTED state can be powered down
-    _test_scontrol_reboot_powerdown_reboot_requested_node(
+    reboot_requested_job_id = _test_scontrol_reboot_powerdown_reboot_requested_node(
         remote_command_executor,
         slurm_commands,
         "queue1-st-cr1-1",
@@ -1304,6 +1369,14 @@ def test_scontrol_reboot(
         slurm_commands,
         "queue1-st-cr1-2",
     )
+    _cancel_jobs_and_wait_for_queue(
+        remote_command_executor, slurm_commands, [job_id_1, reboot_requested_job_id]
+    )
+    queue_nodes = slurm_commands.get_compute_nodes("queue1", all_nodes=True)
+    wait_for_compute_nodes_states(slurm_commands, queue_nodes, expected_states=["idle"], stop_max_delay_secs=600)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1313,6 +1386,7 @@ def test_scontrol_reboot_ec2_health_checks(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     """
     Test that scontrol reboot does not trigger node replacements due to EC2 health check failures.
@@ -1410,6 +1484,10 @@ def test_scontrol_reboot_ec2_health_checks(
         remote_command_executor.clear_slurmctld_log()
         remote_command_executor.clear_clustermgtd_log()
 
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="queue1")
+
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_scontrol_update_nodelist_sorting(
@@ -1417,6 +1495,7 @@ def test_scontrol_update_nodelist_sorting(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     """
     Test that scontrol update node follows the order of the nodelist provided by the user.
@@ -1461,6 +1540,12 @@ def test_scontrol_update_nodelist_sorting(
 
     assert_that(slurm_commands.get_node_attribute(nodes_in_queue1[0], "NodeAddr")).is_equal_to(nodes_in_queue1[0])
     assert_that(slurm_commands.get_node_attribute(nodes_in_queue2[0], "NodeAddr")).is_equal_to(nodes_in_queue2[0])
+
+    remote_command_executor.run_remote_command("sudo systemctl restart supervisord")
+    assert_slurm_controller_healthy(remote_command_executor)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -1511,6 +1596,10 @@ def test_slurm_overrides(
         assert_msg_in_log(remote_command_executor, slurm_resume_log, f"Found {api} parameters override")
 
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(scheduler_commands, partition="fleet")
+    run_scheduler_smoke_test(scheduler_commands, partition="single")
 
 
 def _assert_cluster_initial_conditions(
@@ -1826,7 +1915,7 @@ def _test_clustermgtd_down_logic(
 ):
     """Test that computemgtd is able to shut nodes down when clustermgtd and slurmctld are offline."""
     logging.info("Testing cluster protection logic when clustermgtd is down.")
-    submit_initial_job(
+    first_job_id = submit_initial_job(
         scheduler_commands,
         "sleep infinity",
         partition,
@@ -1857,7 +1946,7 @@ def _test_clustermgtd_down_logic(
     wait_for_num_instances_in_cluster(cluster_name, region, num_static_nodes - 1)
 
     logging.info("Testing that ResumeProgram launches no instance when clustermgtd is down")
-    submit_initial_job(
+    second_job_id = submit_initial_job(
         scheduler_commands,
         "sleep infinity",
         partition,
@@ -1878,6 +1967,7 @@ def _test_clustermgtd_down_logic(
         ["/var/log/parallelcluster/slurm_resume.log"],
         ["No valid clustermgtd heartbeat detected"],
     )
+    return [first_job_id, second_job_id]
 
 
 def _wait_for_node_reset(
@@ -2565,7 +2655,7 @@ def _test_compute_node_bootstrap_timeout(
     assert_that(clustermgtd_conf).contains(f"node_replacement_timeout = {update_compute_node_bootstrap_timeout}")
     assert_that(clustermgtd_conf).does_not_contain(f"node_replacement_timeout = {compute_node_bootstrap_timeout}")
 
-    slurm_commands.submit_command_and_assert_job_accepted(
+    timeout_probe_job_id = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 1",
             "partition": "ondemand",
@@ -2574,6 +2664,7 @@ def _test_compute_node_bootstrap_timeout(
         }
     )
     test_cluster_health_metric(["InstanceBootstrapTimeoutErrors"], cluster.cfn_name, cluster.region)
+    return timeout_probe_job_id
 
 
 def _retrieve_slurm_root_path(remote_command_executor):
@@ -3079,6 +3170,7 @@ def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_j
     except Exception as e:
         logging.warning("Job %s did not complete as expected", job_id_1)
         logging.warning(e)
+    return job_id_1
 
 
 def _test_scontrol_reboot_nodes(
@@ -3154,6 +3246,7 @@ def test_slurm_reconfigure_race_condition(
     clusters_factory,
     test_datadir,
     scheduler_commands_factory,
+    region,
 ):
     """
     Test race condition between restart of slurmctld and scontrol reconfigure.
@@ -3196,6 +3289,9 @@ def test_slurm_reconfigure_race_condition(
         wait_fixed_secs=30,
         stop_max_delay_secs=5 * scale_down_idle_time_mins * 60,
     )
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
 def _test_scontrol_reboot_powerdown_reboot_requested_node(
@@ -3243,6 +3339,7 @@ def _test_scontrol_reboot_powerdown_reboot_requested_node(
         ["/var/log/parallelcluster/clustermgtd"],
         ["Found the following unhealthy static nodes"],
     )
+    return job_id
 
 
 def _test_scontrol_reboot_powerdown_reboot_issued_node(

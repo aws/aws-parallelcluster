@@ -12,6 +12,7 @@ from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.assertions import assert_no_defunct_slurm_config_params
+from tests.common.software_installer import assert_slurm_controller_healthy, install_test_software
 from tests.common.utils import get_aws_domain
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
@@ -127,10 +128,12 @@ def _test_jobs_get_recorded(scheduler_commands):
     retry(stop_max_attempt_number=5, wait_fixed=seconds(5))(_assert_job_completion_recorded_in_accounting)(
         job_id, scheduler_commands
     )
+    return job_id
 
 
 def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
     results = scheduler_commands.get_accounting_job_records(job_id, clusters=clusters)
+    assert_that(results).is_not_empty()
     for row in results:
         logging.info(" Result: %s", row)
         assert_that(row.get("state")).is_equal_to("COMPLETED")
@@ -272,6 +275,19 @@ def test_slurm_accounting(
     assert_no_defunct_slurm_config_params(remote_command_executor)
     _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
 
+    install_test_software(remote_command_executor, region)
+    assert_slurm_controller_healthy(remote_command_executor)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    _test_that_slurmdbd_is_running(remote_command_executor)
+    _test_successful_startup_in_log(remote_command_executor)
+    _test_jobs_get_recorded(scheduler_commands)
+    _test_slurm_accounting_password(remote_command_executor)
+    _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
+    _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+    assert_no_defunct_slurm_config_params(remote_command_executor)
+
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_slurm_accounting_external_dbd(
@@ -309,6 +325,40 @@ def test_slurm_accounting_external_dbd(
 
     logging.info("Testing the inter-clusters slurm accounting information")
     _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory)
+
+    slurmdbd_node_remote_command_executor = retry(
+        stop_max_attempt_number=30, wait_fixed=seconds(20)
+    )(RemoteCommandExecutor)(cluster, compute_node_ip=config_params["slurmdbd_private_ip"])
+    headnode_remote_command_executor_1 = RemoteCommandExecutor(cluster)
+    headnode_remote_command_executor_2 = RemoteCommandExecutor(cluster_2)
+
+    for remote_command_executor in (
+        slurmdbd_node_remote_command_executor,
+        headnode_remote_command_executor_1,
+        headnode_remote_command_executor_2,
+    ):
+        install_test_software(remote_command_executor, region)
+
+    assert_slurm_controller_healthy(headnode_remote_command_executor_1)
+    assert_slurm_controller_healthy(headnode_remote_command_executor_2)
+    scheduler_commands_1 = scheduler_commands_factory(headnode_remote_command_executor_1)
+    scheduler_commands_2 = scheduler_commands_factory(headnode_remote_command_executor_2)
+
+    _test_successful_startup_in_log(slurmdbd_node_remote_command_executor)
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_test_that_slurmdbd_is_running)(
+        headnode_remote_command_executor_1
+    )
+    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_test_that_slurmdbd_is_running)(
+        headnode_remote_command_executor_2
+    )
+    job_id_1 = _test_jobs_get_recorded(scheduler_commands_1)
+    job_id_2 = _test_jobs_get_recorded(scheduler_commands_2)
+    retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
+        job_id_1, scheduler_commands_2, clusters=cluster.name
+    )
+    retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
+        job_id_2, scheduler_commands_1, clusters=cluster_2.name
+    )
 
 
 def _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir):
