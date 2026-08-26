@@ -13,12 +13,29 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import FsxStorageInfo
 from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.aws.common.boto3"
+
+
+@pytest.mark.parametrize(
+    "file_storage_info, expected_network_interface_ids",
+    [
+        # NetworkInterfaceIds present: return them as-is.
+        ({"NetworkInterfaceIds": ["eni-12345678", "eni-23456789"]}, ["eni-12345678", "eni-23456789"]),
+        # NetworkInterfaceIds explicitly empty: return the empty list.
+        ({"NetworkInterfaceIds": []}, []),
+        # NetworkInterfaceIds omitted (e.g. storage not yet AVAILABLE): must default to [] rather than None,
+        # otherwise callers iterating/extending over it fail with a generic "NoneType is not iterable" error.
+        ({}, []),
+    ],
+)
+def test_fsx_storage_info_network_interface_ids(file_storage_info, expected_network_interface_ids):
+    assert_that(FsxStorageInfo(file_storage_info).network_interface_ids).is_equal_to(expected_network_interface_ids)
 
 
 def get_describe_file_systems_mocked_request(fsxs, lifecycle):
