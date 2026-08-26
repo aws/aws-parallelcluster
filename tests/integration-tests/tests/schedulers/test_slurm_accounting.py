@@ -11,7 +11,7 @@ from time_utils import seconds
 from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
-from tests.common.assertions import assert_no_defunct_slurm_config_params
+from tests.common.assertions import assert_no_defunct_slurm_config_params, known_defunct_slurm_config_params
 from tests.common.software_installer import (
     assert_slurm_controller_healthy,
     assert_slurm_state_preserved,
@@ -20,7 +20,7 @@ from tests.common.software_installer import (
     snapshot_slurm_state,
     stopped_shared_slurm_consumers,
 )
-from tests.common.utils import get_aws_domain
+from tests.common.utils import get_aws_domain, installed_parallelcluster_version_is_at_least
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
 SLURMDBD_LOG_FILE = "/var/log/slurmdbd.log"
@@ -108,9 +108,10 @@ def _read_slurmdbd_log(remote_command_executor, since_line=0):
 
 def _get_slurmdbd_log_line_count(remote_command_executor):
     """Return the current length of the slurmdbd log, to scope later assertions to newly appended lines."""
-    line_count = int(
-        remote_command_executor.run_remote_command(f"sudo wc -l < {SLURMDBD_LOG_FILE}", hide=True).stdout.strip()
-    )
+    # The file must be passed as an argument rather than redirected in: the shell opens a redirection as the
+    # unprivileged login user, so `sudo wc -l < file` fails on a root-owned 0600 log.
+    result = remote_command_executor.run_remote_command(f"sudo wc -l {SLURMDBD_LOG_FILE}", hide=True)
+    line_count = int(result.stdout.split()[0])
     logging.info("%s currently has %s lines", SLURMDBD_LOG_FILE, line_count)
     return line_count
 
@@ -198,13 +199,32 @@ def _test_that_slurmdbd_is_running(remote_command_executor):
     assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
 
 
+def _get_registered_accounting_clusters(remote_command_executor):
+    """Return the cluster names currently registered in Slurm accounting."""
+    result = remote_command_executor.run_remote_command("sacctmgr show clusters -nP format=cluster").stdout
+    registered_clusters = [line.strip() for line in result.splitlines() if line.strip()]
+    logging.info("Registered accounting clusters: %s", registered_clusters)
+    return registered_clusters
+
+
 def _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name):
     """Verify the cluster is registered in Slurm accounting under the expected custom name (lowercased by Slurm)."""
     expected_name = custom_cluster_name.lower()
-    result = remote_command_executor.run_remote_command("sacctmgr show clusters -nP format=cluster").stdout
-    registered_clusters = [line.strip() for line in result.splitlines() if line.strip()]
-    logging.info("Registered accounting clusters: %s (expecting: %s)", registered_clusters, expected_name)
+    registered_clusters = _get_registered_accounting_clusters(remote_command_executor)
+    logging.info("Expecting registered cluster: %s", expected_name)
     assert_that(registered_clusters).contains(expected_name)
+
+
+def _assert_registered_clusters_preserved(remote_command_executor, expected_clusters):
+    """Verify the accounting cluster registrations survived the Slurm upgrade.
+
+    This is the version-independent counterpart of _test_cluster_registered_with_custom_name: whatever names the
+    cluster was registered under before the upgrade must still be there after the database conversion.
+    """
+    registered_clusters = _get_registered_accounting_clusters(remote_command_executor)
+    assert_that(registered_clusters).described_as("accounting clusters registered after the upgrade").contains(
+        *expected_clusters
+    )
 
 
 def _test_slurm_accounting_password(remote_command_executor):
@@ -298,39 +318,55 @@ def test_slurm_accounting(
     _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
 
-    # Update the queues to check that bug with the Slurm Accounting database server password
-    # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
-    # Re-use the same update to test the modification of DatabaseName.
-    custom_database_name = "test_custom_dbname"
-    updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update2.yaml",
-        public_subnet_id=public_subnet_id,
-        private_subnet_id=private_subnet_id,
-        custom_database_name=custom_database_name,
-        custom_cluster_name=custom_cluster_name,
-        **config_params,
-    )
+    # Accounting bootstrap with an overridden or mixed-case ClusterName only works from ParallelCluster 3.16.0
+    # ("Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden
+    # via custom Slurm settings or when the cluster name contains uppercase letters"). On older releases this
+    # update rolls the stack back, which would abort the test before the upgrade below and leave the accounting
+    # database conversion — the reason this test is in the upgrade suite at all — completely unexercised.
+    custom_names_supported = installed_parallelcluster_version_is_at_least("3.16.0")
+    custom_database_name = None
+    if custom_names_supported:
+        # Update the queues to check that bug with the Slurm Accounting database server password
+        # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
+        # Re-use the same update to test the modification of DatabaseName.
+        custom_database_name = "test_custom_dbname"
+        updated_config_file = pcluster_config_reader(
+            config_file="pcluster.config.update2.yaml",
+            public_subnet_id=public_subnet_id,
+            private_subnet_id=private_subnet_id,
+            custom_database_name=custom_database_name,
+            custom_cluster_name=custom_cluster_name,
+            **config_params,
+        )
 
-    # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
-    # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
-    # and refuses to start if the configured ClusterName doesn't match.
-    # Removing this file allows the transition to a custom name.
-    logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
-    remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
+        # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
+        # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
+        # and refuses to start if the configured ClusterName doesn't match.
+        # Removing this file allows the transition to a custom name.
+        logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
+        remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
 
-    # Force update because update is not support unless the compute fleet is stopped
-    cluster.update(str(updated_config_file), force_update="true")
-    _test_slurm_accounting_password(remote_command_executor)
-    _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
-    _test_that_slurmdbd_is_running(remote_command_executor)
-    assert_no_defunct_slurm_config_params(remote_command_executor)
-    _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+        # Force update because update is not support unless the compute fleet is stopped
+        cluster.update(str(updated_config_file), force_update="true")
+        _test_slurm_accounting_password(remote_command_executor)
+        _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
+        _test_that_slurmdbd_is_running(remote_command_executor)
+        assert_no_defunct_slurm_config_params(
+            remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
+        )
+        _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+    else:
+        logging.warning(
+            "Skipping the custom DatabaseName/ClusterName update: the accounting bootstrap only supports it from "
+            "ParallelCluster 3.16.0. The upgrade coverage below still runs against the default names."
+        )
 
     # Record a job against the final database and cluster name, so that the check after the upgrade below
     # verifies the database migration rather than the DatabaseName/ClusterName changes done above.
     pre_upgrade_job_id = _test_jobs_get_recorded(scheduler_commands)
     slurm_state_snapshot = snapshot_slurm_state(remote_command_executor, scheduler_commands)
     slurmdbd_log_line_count = _get_slurmdbd_log_line_count(remote_command_executor)
+    registered_clusters = _get_registered_accounting_clusters(remote_command_executor)
 
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
@@ -344,9 +380,11 @@ def test_slurm_accounting(
     _assert_preexisting_job_records_readable(scheduler_commands, [pre_upgrade_job_id])
     _test_jobs_get_recorded(scheduler_commands)
     _test_slurm_accounting_password(remote_command_executor)
-    _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
-    _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
-    assert_no_defunct_slurm_config_params(remote_command_executor)
+    _assert_registered_clusters_preserved(remote_command_executor, registered_clusters)
+    if custom_names_supported:
+        _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
+        _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+    assert_no_defunct_slurm_config_params(remote_command_executor, ignore_patterns=known_defunct_slurm_config_params())
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -462,7 +500,9 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
         headnode_remote_command_executor,
     )
     job_id = _test_jobs_get_recorded(scheduler_commands)
-    assert_no_defunct_slurm_config_params(headnode_remote_command_executor)
+    assert_no_defunct_slurm_config_params(
+        headnode_remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
+    )
     return job_id
 
 

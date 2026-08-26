@@ -30,7 +30,7 @@ from utils import (
 )
 
 from tests.common.scaling_common import get_compute_nodes_allocation
-from tests.common.utils import get_ddb_item, read_remote_file
+from tests.common.utils import get_ddb_item, installed_parallelcluster_version_is_at_least, read_remote_file
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(6))
@@ -105,12 +105,33 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
             assert_that(log).does_not_contain(error_level)
 
 
-def assert_no_errors_in_service_log(remote_command_executor: RemoteCommandExecutor, service_name: str):
-    """Assert that the systemd journal for a given service contains no error-level entries."""
+def known_defunct_slurm_config_params():
+    """Return the slurm.conf parameters the installed ParallelCluster emits but the tested Slurm rejects.
+
+    ParallelCluster 3.16.0 removed AccountingStorageUser ("Remove the deprecated AccountingStorageUser parameter
+    from the Slurm configuration, which was causing harmless error messages"). Older releases still write it, so
+    Slurm 25.11 logs it as defunct both before the upgrade on 3.15.x and after the upgrade on 3.14.x and below.
+    That noise comes from the release under test, not from the upgrade, so allow it rather than fail on it.
+    """
+    if installed_parallelcluster_version_is_at_least("3.16.0"):
+        return []
+    return ["AccountingStorageUser"]
+
+
+def assert_no_errors_in_service_log(
+    remote_command_executor: RemoteCommandExecutor, service_name: str, ignore_patterns=None
+):
+    """Assert that the systemd journal for a given service contains no error-level entries.
+
+    Lines containing any of ignore_patterns are excluded, to allow known-harmless messages such as the defunct
+    slurm.conf parameters reported by known_defunct_slurm_config_params.
+    """
     __tracebackhide__ = True
     logging.info("Checking %s journal for error-level entries", service_name)
     log = remote_command_executor.run_remote_command(f"sudo journalctl -u {service_name} --no-pager", hide=True).stdout
     error_lines = [line for line in log.splitlines() if re.search(r"fail|error|critical", line, re.IGNORECASE)]
+    if ignore_patterns:
+        error_lines = [line for line in error_lines if not any(pattern in line for pattern in ignore_patterns)]
     assert_that(error_lines).described_as(f"Found error-level entries in {service_name} journal logs").is_empty()
 
 

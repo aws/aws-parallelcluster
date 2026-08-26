@@ -19,6 +19,7 @@ import uuid
 from importlib.metadata import version as get_package_version
 
 import boto3
+import pytest
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
@@ -305,6 +306,26 @@ def get_installed_parallelcluster_version():
 
 def get_installed_parallelcluster_base_version():
     return packaging_version.parse(get_installed_parallelcluster_version()).base_version
+
+
+def installed_parallelcluster_version_is_at_least(min_version):
+    """Return whether the installed pcluster CLI is min_version or newer."""
+    installed = packaging_version.parse(get_installed_parallelcluster_base_version())
+    return installed >= packaging_version.parse(min_version)
+
+
+def skip_if_parallelcluster_version_below(min_version, feature):
+    """Skip the running test when the installed pcluster is too old to provide the feature under test.
+
+    The Slurm upgrade suite runs the current test code against older ParallelCluster releases, so a test that
+    asserts behaviour introduced in a later release has to opt out explicitly rather than report a failure that
+    says nothing about the upgrade.
+    """
+    if not installed_parallelcluster_version_is_at_least(min_version):
+        pytest.skip(
+            f"{feature} requires ParallelCluster {min_version} or later, "
+            f"but {get_installed_parallelcluster_version()} is installed"
+        )
 
 
 CLASSIC_AWS_DOMAIN = "amazonaws.com"

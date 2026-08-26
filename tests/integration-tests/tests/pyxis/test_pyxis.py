@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import re
 
 import boto3
 import pytest
@@ -19,6 +20,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.software_installer import (
     assert_slurm_controller_healthy,
+    get_slurm_version,
     install_test_software_with_stopped_consumers,
 )
 
@@ -60,12 +62,52 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     )
     _run_pyxis_job(remote_command_executor, slurm_commands, nodes=3, job_description="second")
 
+    slurm_version_before = get_slurm_version(remote_command_executor)
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
+    _rebuild_pyxis_if_slurm_major_changed(
+        remote_command_executor, test_datadir, slurm_version_before, get_slurm_version(remote_command_executor)
+    )
     _run_pyxis_job(remote_command_executor, slurm_commands, nodes=3, job_description="post-install")
+
+
+def _slurm_major_version(version):
+    """Return the major.minor Slurm release of a version string such as "slurm 24.11.6", or None."""
+    match = re.search(r"(\d+)\.(\d+)", version or "")
+    return match.group(0) if match else None
+
+
+def _rebuild_pyxis_if_slurm_major_changed(remote_command_executor, test_datadir, version_before, version_after):
+    """Rebuild the Pyxis SPANK plugin when the upgrade crossed a Slurm major release.
+
+    Slurm refuses to load a plugin stamped with a different major version, and because that aborts plugin stack
+    initialisation it breaks every srun and sbatch, not only containerised ones. Nothing in the cluster rebuilds
+    the plugin: it ships prebuilt in the AMI and install_software.sh only warns about it. So this is the step a
+    customer has to perform too, and running it here is what validates the procedure the wiki documents.
+
+    Within a major release the plugin the AMI shipped stays loadable, so it is deliberately left alone: that
+    keeps the same-major runs covering the case where no rebuild is needed.
+    """
+    major_before = _slurm_major_version(version_before)
+    major_after = _slurm_major_version(version_after)
+    if major_before is not None and major_before == major_after:
+        logging.info(
+            "Slurm stayed on major release %s (%s -> %s), so the Pyxis plugin from the AMI is still loadable",
+            major_after,
+            version_before,
+            version_after,
+        )
+        return
+
+    logging.info(
+        "Slurm crossed a major release (%s -> %s), rebuilding the Pyxis SPANK plugin", version_before, version_after
+    )
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "rebuild_pyxis.sh"), run_as_root=True, timeout=1800, pty=False
+    )
 
 
 def _run_pyxis_job(remote_command_executor, slurm_commands, nodes, job_description, timeout=None):

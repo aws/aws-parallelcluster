@@ -19,7 +19,11 @@ from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from utils import to_snake_case
 
-from tests.common.assertions import assert_no_errors_in_service_log, assert_systemd_service_running
+from tests.common.assertions import (
+    assert_no_errors_in_service_log,
+    assert_systemd_service_running,
+    known_defunct_slurm_config_params,
+)
 from tests.common.software_installer import (
     assert_slurm_controller_healthy,
     install_test_software_with_stopped_consumers,
@@ -76,7 +80,7 @@ def test_slurm_rest_api(
     with soft_assertions():
         assert_systemd_service_running(rce, "slurmrestd")
         _assert_slurmrestd_endpoint_responsive(rce, "ping")
-        assert_no_errors_in_service_log(rce, "slurmrestd")
+        assert_no_errors_in_service_log(rce, "slurmrestd", ignore_patterns=known_defunct_slurm_config_params())
 
     # The installer recompiles Slurm with --enable-slurmrestd against /opt/libjwt and restarts the daemon, so the
     # REST API has to be exercised again: a unit that comes back up is no proof that token authentication and the

@@ -73,6 +73,10 @@ from tests.common.software_installer import (
     run_scheduler_smoke_test,
     snapshot_slurm_state,
 )
+from tests.common.utils import (
+    installed_parallelcluster_version_is_at_least,
+    skip_if_parallelcluster_version_below,
+)
 
 
 def _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands):
@@ -510,6 +514,11 @@ def test_clustermgtd_instance_id_matching(
     clustermgtd must keep the instance, match it by InstanceId and leave the healthy node in place,
     instead of replacing the node by IP matching.
     """
+    # Instance-ID matching arrived in ParallelCluster 3.16.0 ("Fix an issue where compute nodes are replaced when
+    # launching a large number of nodes due to eventual consistency"). Older clustermgtd matches by private IP and
+    # replaces the node, so every assertion below is inverted rather than merely unsupported.
+    skip_if_parallelcluster_version_below("3.16.0", "clustermgtd instance-ID matching for incomplete EC2 info")
+
     num_static_nodes = 2
     cluster_config = pcluster_config_reader(num_static_nodes=num_static_nodes)
     cluster = clusters_factory(cluster_config)
@@ -642,7 +651,17 @@ def test_slurm_maintenance_reservation(
     )
     static_job_id = _submit_job_pinned_to_node(scheduler_commands, static_node, partition)
     _assert_job_stays_pending(scheduler_commands, static_job_id)
-    _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node)
+    # Replacing an unhealthy reserved static node only works from ParallelCluster 3.16.0 ("Fix an issue where static
+    # nodes in a maintenance reservation enter a terminate/relaunch loop when being replaced"). Gate just this
+    # sub-check rather than the whole test: the reservation semantics below are plain Slurm behaviour that older
+    # releases handle correctly, and skipping the test outright would also drop one cross-major upgrade exercise.
+    if installed_parallelcluster_version_is_at_least("3.16.0"):
+        _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node)
+    else:
+        logging.warning(
+            "Skipping the unhealthy reserved static node replacement check: it loops terminate/relaunch before "
+            "ParallelCluster 3.16.0. The rest of the reservation coverage still runs."
+        )
     _delete_slurm_reservation(remote_command_executor, "usermaint_st")
     _assert_reservation_cleared(scheduler_commands, static_node)
     scheduler_commands.wait_job_completed(static_job_id)
@@ -1097,6 +1116,11 @@ def test_expedited_requeue(
     With --exclusive, only job1 gets allocated and requeued during ICE.
     After ICE recovery, verifies job1 retains highest priority and executes before job2.
     """
+    # sbatch --requeue=expedite only exists from Slurm 25.11, first shipped in ParallelCluster 3.15.0. On older
+    # releases the option is boolean and submission fails outright, so there is nothing to exercise: the feature
+    # under test is absent both before the upgrade and, for the requeue path, in the jobs submitted before it.
+    skip_if_parallelcluster_version_below("3.15.0", "Slurm expedited requeue (sbatch --requeue=expedite)")
+
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
