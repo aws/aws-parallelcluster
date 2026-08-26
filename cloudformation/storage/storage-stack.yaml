@@ -30,6 +30,10 @@ Metadata:
           - FsxLustreImportPath
           - FsxLustreExportPath
       - Label:
+          default: EFA-enabled FSx Lustre
+        Parameters:
+          - CreateEfaFsxLustre
+      - Label:
           default: FSx ONTAP
         Parameters:
           - CreateFsxOntap
@@ -97,6 +101,15 @@ Parameters:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
+  CreateEfaFsxLustre:
+    Description: >-
+      True to create an EFA-enabled FSx Lustre file system (PERSISTENT_2 with EfaEnabled and a
+      self-referencing security group required by EFA's SRD data plane); False otherwise. Defaults to
+      False because EFA-enabled FSx Lustre requires a much larger minimum capacity than the plain
+      FSx Lustre resource and is only needed by the EFA-for-Lustre tests.
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
   CreateFsxOntap:
     Description: True to create the FSx ONTAP resources; False otherwise.
     Type: String
@@ -123,6 +136,7 @@ Conditions:
     - !Equals [!Ref CreateEfs, 'true']
     - !Not [!Equals [!Ref SubnetThree, '']]
   CreateFsxLustre: !Equals [!Ref CreateFsxLustre, 'true']
+  CreateEfaFsxLustre: !Equals [!Ref CreateEfaFsxLustre, 'true']
   HasFsxLustreImportPath: !Not [!Equals [!Ref FsxLustreImportPath, '']]
   HasFsxLustreExportPath: !Not [!Equals [!Ref FsxLustreExportPath, '']]
   CreateFsxOntap: !Equals [!Ref CreateFsxOntap, 'true']
@@ -132,6 +146,7 @@ Conditions:
     - !Not [!Equals [!Ref CreateEbs, 'true']]
     - !Not [!Equals [!Ref CreateEfs, 'true']]
     - !Not [!Equals [!Ref CreateFsxLustre, 'true']]
+    - !Not [!Equals [!Ref CreateEfaFsxLustre, 'true']]
     - !Not [!Equals [!Ref CreateFsxOntap, 'true']]
     - !Not [!Equals [!Ref CreateFsxOpenZfs, 'true']]
     - !Not [!Equals [!Ref CreateFileCache, 'true']]
@@ -217,6 +232,85 @@ Resources:
       SubnetIds:
         - !Ref SubnetOne
     Type: 'AWS::FSx::FileSystem'
+
+  # EFA-enabled FSxLustre: client and file-system SGs authorizing each other by security-group ID, per
+  # https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html#fsx-vpc-security-groups
+  EfaFsxLustreClientSecurityGroup:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow traffic for the EFA-enabled FSx Lustre client
+      VpcId: !Ref Vpc
+  EfaFsxLustreFileSystemSecurityGroup:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow traffic for the EFA-enabled FSx Lustre file system
+      VpcId: !Ref Vpc
+  # Client SG: admit all traffic to/from the file-system SG (self-referencing not required for the client).
+  EfaFsxLustreClientSecurityGroupIngress:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !GetAtt EfaFsxLustreClientSecurityGroup.GroupId
+      IpProtocol: '-1'
+      SourceSecurityGroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+  EfaFsxLustreClientSecurityGroupEgress:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !GetAtt EfaFsxLustreClientSecurityGroup.GroupId
+      IpProtocol: '-1'
+      DestinationSecurityGroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+  # File-system SG: admit all traffic from BOTH the client SG and itself (self-referencing), ingress and egress.
+  EfaFsxLustreFileSystemSecurityGroupIngress:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+      IpProtocol: '-1'
+      SourceSecurityGroupId: !GetAtt EfaFsxLustreClientSecurityGroup.GroupId
+  EfaFsxLustreFileSystemSecurityGroupSelfIngress:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+      IpProtocol: '-1'
+      SourceSecurityGroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+  EfaFsxLustreFileSystemSecurityGroupEgress:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+      IpProtocol: '-1'
+      DestinationSecurityGroupId: !GetAtt EfaFsxLustreClientSecurityGroup.GroupId
+  EfaFsxLustreFileSystemSecurityGroupSelfEgress:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+      IpProtocol: '-1'
+      DestinationSecurityGroupId: !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId
+  EfaFsxLustreFileSystem:
+    Condition: CreateEfaFsxLustre
+    Type: 'AWS::FSx::FileSystem'
+    Properties:
+      FileSystemType: LUSTRE
+      # EFA-enabled FSx Lustre requires PERSISTENT_2. We use the highest throughput tier (1000 MB/s/TiB),
+      # whose EFA-enabled minimum capacity is 4800 GiB, to keep the file system as small (and cheap) as
+      # possible. AUTOMATIC metadata keeps the metadata server FSx-managed (it stays on TCP by design; only
+      # the data/OSS targets ride EFA).
+      LustreConfiguration:
+        DeploymentType: PERSISTENT_2
+        PerUnitStorageThroughput: 1000
+        EfaEnabled: true
+        MetadataConfiguration:
+          Mode: AUTOMATIC
+      SecurityGroupIds:
+        - !Ref EfaFsxLustreFileSystemSecurityGroup
+      StorageCapacity: 4800
+      SubnetIds:
+        - !Ref SubnetOne
 
   # FSx ONTAP
   FsxOntapFileSystem:
@@ -581,6 +675,12 @@ Outputs:
     Value: !If [ CreateEfs, !Ref EfsFileSystem, '' ]
   FsxLustreFsId:
     Value: !If [ CreateFsxLustre, !Ref FsxLustreFileSystem, '']
+  EfaFsxLustreFsId:
+    Value: !If [ CreateEfaFsxLustre, !Ref EfaFsxLustreFileSystem, '']
+  EfaFsxLustreClientSecurityGroupId:
+    Value: !If [ CreateEfaFsxLustre, !GetAtt EfaFsxLustreClientSecurityGroup.GroupId, '']
+  EfaFsxLustreFileSystemSecurityGroupId:
+    Value: !If [ CreateEfaFsxLustre, !GetAtt EfaFsxLustreFileSystemSecurityGroup.GroupId, '']
   FsxOntapVolumeId:
     Value: !If [ CreateFsxOntap, !Ref StorageVirtualMachineVolume, '']
   FsxOpenZfsVolumeId:
