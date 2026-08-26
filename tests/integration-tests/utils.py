@@ -30,7 +30,29 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
-from pcluster.constants import EXCLUDED_INSTANCE_TYPE_PREFIXES
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "i2",
+    "i3",
+    "f1",
+    "g3",
+    "p2",
+    "p3",
+)
 
 DEFAULT_PARTITION = "aws"
 PARTITION_MAP = {

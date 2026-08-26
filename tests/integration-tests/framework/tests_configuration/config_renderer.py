@@ -25,7 +25,6 @@ from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
 
 from pcluster.constants import (
-    EXCLUDED_INSTANCE_TYPE_PREFIXES,
     SUPPORTED_OSES,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
@@ -33,6 +32,29 @@ from pcluster.constants import (
     UNSUPPORTED_OSES_FOR_NON_GPU_DCV,
 )
 
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "i2",
+    "i3",
+    "f1",
+    "g3",
+    "p2",
+    "p3",
+)
 # An instant capacity block starts ~30 minutes after the request; allow some slack when telling
 # instant offerings apart from standard ones (which start at the next 11:30 UTC boundary).
 INSTANT_CAPACITY_BLOCK_START_MINUTES = 45
