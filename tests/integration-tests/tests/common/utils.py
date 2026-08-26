@@ -49,6 +49,7 @@ GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
+    "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
     "ubuntu2204": {
@@ -77,6 +78,13 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
+    # Using a patched DLAMI which has uninstalled openssl11-devel, openssl11-libs and openssl11-pkcs
+    # so that it will not conflict with pcluster build image.
+    "alinux2": {
+        "name": "Deep Learning OSS Nvidia Driver AMI (Amazon Linux 2) Version 83.9 for ParallelCluster*",
+        # If you are running in your personal account, then you must have this patched AMI
+        "owners": ["self"],
+    },
     "alinux2023": {
         "name": {
             "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
@@ -113,6 +121,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
 PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
+    "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "alinux2023": {"name": "amzn2023-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2204": {"name": "ubuntu-2204-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2404": {"name": "ubuntu-2404-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
@@ -124,6 +133,7 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
 
 FIRST_STAGE_AMI_OWNERS = ["self", "447714826191"]
 OS_TO_FIRST_STAGE_AMI_NAME_MAP = {
+    "alinux2": {"name": "first-stage-aws-parallelcluster-*-amzn2-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "alinux2023": {"name": "first-stage-aws-parallelcluster-*-amzn2023-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2204": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2204-*", "owners": FIRST_STAGE_AMI_OWNERS},
     "ubuntu2404": {"name": "first-stage-aws-parallelcluster-*-ubuntu-2404-*", "owners": FIRST_STAGE_AMI_OWNERS},
