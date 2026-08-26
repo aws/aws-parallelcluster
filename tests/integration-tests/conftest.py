@@ -473,7 +473,7 @@ def clusters_factory(request, region):
         if cluster.create_complete and post_cluster_setup:
             post_cluster_setup(cluster)
         # Run pcluster-diag after every successful cluster creation
-        _run_pcluster_diag(request, cluster)
+        # _run_pcluster_diag(request, cluster)
         return cluster
 
     yield _cluster_factory
