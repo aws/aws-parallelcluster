@@ -311,8 +311,9 @@ def _scale_up_and_down(
         target_cluster_size=scaling_target,
     )
 
-    test_job = {"command": "srun sleep 5", "nodes": scaling_target}
-    scheduler_commands.submit_command_and_assert_job_succeeded(test_job)
+    # From the head node: at these node counts a batch host of this test's cheap instance type cannot take
+    # every slurmstepd's stdio, and the step fails for reasons unrelated to scaling.
+    scheduler_commands.run_command_and_assert_job_succeeded("sleep 5", nodes=scaling_target)
 
     get_bootstrap_errors(remote_command_executor, cluster.name, request.config.getoption("output_dir"), region)
 
@@ -332,12 +333,8 @@ def _scale_up_and_down(
 
     # Scale down cluster
     if is_static:
-        # Check that a simple job succeeds
-        scaling_job = {
-            "command": "srun sleep 10",
-            "nodes": scaling_target,
-        }
-        scheduler_commands.submit_command_and_assert_job_succeeded(scaling_job)
+        # Check that a simple job succeeds. Run it from the head node for the same reason as above.
+        scheduler_commands.run_command_and_assert_job_succeeded("sleep 10", nodes=scaling_target)
 
         # Scale down the cluster
         cluster.update(str(downscale_cluster_config), force_update="true", wait=False, raise_on_error=False)
