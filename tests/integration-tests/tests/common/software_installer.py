@@ -39,6 +39,9 @@ _STATE_CHECK_RESERVATION = "pcluster-upgrade-state-check"
 # an active maintenance reservation would take nodes out of the scheduler for the rest of the test.
 _STATE_CHECK_RESERVATION_START = "now+7days"
 _SLURM_VERSION_COMMANDS = ("sinfo --version", "/opt/slurm/sbin/slurmdbd -V", "sacctmgr --version")
+_SLURM_CONF = "/opt/slurm/etc/slurm.conf"
+_INSTALL_BACKUP_GLOB = "/opt/slurm_backup_*.tar.gz"
+_STATE_BACKUP_GLOB = "/opt/slurm_state_backup_*.tar.gz"
 
 
 class _UnexpectedComputeFleetStatusError(RuntimeError):
@@ -479,6 +482,44 @@ def get_slurm_version(executor):
     return None
 
 
+def _assert_backup_archive_readable(executor, pattern):
+    """Assert the newest archive matching a glob exists and can be listed by tar."""
+    newest = executor.run_remote_command(f"ls -1t {pattern} | head -n 1", raise_on_error=False, hide=True)
+    assert_that(newest.return_code).described_as(
+        f"the installer left no backup archive matching {pattern}: {newest.stderr}"
+    ).is_equal_to(0)
+    archive = newest.stdout.strip()
+    assert_that(archive).described_as(f"newest backup archive matching {pattern}").is_not_empty()
+
+    # Listing the archive proves it is a valid gzip stream with contents, which "the file exists" does not: a
+    # backup truncated by a full disk looks identical until someone actually needs to restore it.
+    listing = executor.run_remote_command(f"sudo tar -tzf {archive} | head -n 5", raise_on_error=False, hide=True)
+    assert_that(listing.stdout.strip()).described_as(
+        f"contents of backup archive {archive}: {listing.stderr}"
+    ).is_not_empty()
+    logging.info("Verified upgrade backup archive %s is readable", archive)
+
+
+def assert_upgrade_backups_readable(executor):
+    """Assert the installer left a readable backup of everything it converts in place.
+
+    These archives are the only way back from an upgrade: one holds the previous /opt/slurm build, the other the
+    pre-conversion StateSaveLocation. Cross-major the accounting database conversion cannot be undone at all, so
+    an unusable backup turns a recoverable upgrade into an unrecoverable one.
+    """
+    patterns = [_INSTALL_BACKUP_GLOB]
+    # The installer only backs up StateSaveLocation when slurm.conf declares one, which excludes an external
+    # slurmdbd node.
+    state_save_location = executor.run_remote_command(
+        f"grep -iE '^[[:space:]]*StateSaveLocation[[:space:]]*=' {_SLURM_CONF}", raise_on_error=False, hide=True
+    )
+    if state_save_location.return_code == 0:
+        patterns.append(_STATE_BACKUP_GLOB)
+
+    for pattern in patterns:
+        _assert_backup_archive_readable(executor, pattern)
+
+
 def install_test_software(executor, region):
     """Download the installer from us-east-1 and run it on the target host."""
     script_path = _download_software_installer_script()
@@ -486,6 +527,10 @@ def install_test_software(executor, region):
     result = executor.run_remote_script(script_path, run_as_root=True, timeout=3600, pty=False)
     version_after = get_slurm_version(executor)
     logging.info("Slurm version after the install: %s (was %s before)", version_after, version_before)
+    if version_after != version_before:
+        # Only when the installer actually replaced something: it skips the backups, and everything else, when
+        # the target version is already installed.
+        assert_upgrade_backups_readable(executor)
     return result
 
 

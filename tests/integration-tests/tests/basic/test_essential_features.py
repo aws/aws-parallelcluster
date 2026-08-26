@@ -113,6 +113,17 @@ def test_essential_features(
         default_threads_per_core=default_threads_per_core,
     )
     _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir)
+    # The installer recompiles Slurm against /opt/pmix, so PMIx has to be verified again: a controller that
+    # answers scontrol ping is no proof that srun can still launch a multi-node MPI job, which is the most
+    # common workload on these clusters. verify_pmix also asserts the pmix plugin is still listed by srun.
+    _test_mpi(
+        remote_command_executor,
+        fetch_instance_slots(region, instance),
+        scheduler,
+        scheduler_commands,
+        num_computes=max_queue_size,
+        verify_pmix=True,
+    )
 
 
 def _test_mpi_job(

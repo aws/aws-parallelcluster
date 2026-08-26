@@ -20,6 +20,10 @@ from remote_command_executor import RemoteCommandExecutor
 from utils import to_snake_case
 
 from tests.common.assertions import assert_no_errors_in_service_log, assert_systemd_service_running
+from tests.common.software_installer import (
+    assert_slurm_controller_healthy,
+    install_test_software_with_stopped_consumers,
+)
 
 # slurmrestd listens on this unix socket when configured via the upstream postinstall script
 # (aws-samples/aws-parallelcluster-post-install-scripts/rest-api).
@@ -73,6 +77,19 @@ def test_slurm_rest_api(
         assert_systemd_service_running(rce, "slurmrestd")
         _assert_slurmrestd_endpoint_responsive(rce, "ping")
         assert_no_errors_in_service_log(rce, "slurmrestd")
+
+    # The installer recompiles Slurm with --enable-slurmrestd against /opt/libjwt and restarts the daemon, so the
+    # REST API has to be exercised again: a unit that comes back up is no proof that token authentication and the
+    # OpenAPI plugins survived the upgrade. The API version is rediscovered from /openapi/v3, which also covers
+    # the plugin set changing across the upgrade.
+    install_test_software_with_stopped_consumers(rce, region, cluster)
+    assert_slurm_controller_healthy(rce)
+    rce = RemoteCommandExecutor(cluster)
+    with soft_assertions():
+        assert_systemd_service_running(rce, "slurmrestd")
+        _assert_slurmrestd_endpoint_responsive(rce, "ping")
+        # The journal is cumulative, so it is deliberately not re-checked here: it still holds whatever the
+        # pre-upgrade daemon logged, and the check above already covered that.
 
 
 def _slurmrestd_request(rce, url_path, raise_on_error=True):
