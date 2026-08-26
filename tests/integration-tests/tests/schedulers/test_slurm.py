@@ -67,14 +67,19 @@ from tests.common.scaling_common import (
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.software_installer import (
     assert_slurm_controller_healthy,
+    install_test_software,
     install_test_software_with_stopped_consumers,
     run_scheduler_smoke_test,
 )
 
 
-def _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands, job_ids):
-    for job_id in job_ids:
-        remote_command_executor.run_remote_command(f"scancel {job_id}", raise_on_error=False)
+def _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands):
+    """Cancel every job of the current user and wait for the queue to drain.
+
+    Tests leave behind jobs that are never meant to run (for example jobs submitted only to check that
+    the scheduler accepts them), so cancelling a known subset of job IDs is not enough to empty the queue.
+    """
+    remote_command_executor.run_remote_command("scancel --user=$(id -un)", raise_on_error=False)
     scheduler_commands.wait_job_queue_empty()
 
 
@@ -143,9 +148,19 @@ def test_slurm(
     # Tests below must run on HeadNode or need HeadNode participate.
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
+
+    # Install the test software while the cluster is still healthy: the compute node bootstrap timeout test below
+    # reconfigures the cluster with a 10 seconds bootstrap timeout, so no compute node can join after that point.
+    _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands)
+    install_test_software_with_stopped_consumers(head_node_command_executor, region, cluster)
+    assert_slurm_controller_healthy(head_node_command_executor)
+    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+    slurm_commands = scheduler_commands_factory(remote_command_executor)
+    run_scheduler_smoke_test(slurm_commands, partition="ondemand")
+
     # Test compute node bootstrap timeout
     clustermgtd_conf_path = retrieve_clustermgtd_conf_path(head_node_command_executor)
-    bootstrap_timeout_job_id = _test_compute_node_bootstrap_timeout(
+    _test_compute_node_bootstrap_timeout(
         cluster,
         pcluster_config_reader,
         remote_command_executor,
@@ -158,12 +173,6 @@ def test_slurm(
         use_login_node,
         head_node_command_executor,
     )
-    _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands, [bootstrap_timeout_job_id])
-    install_test_software_with_stopped_consumers(head_node_command_executor, region, cluster)
-    assert_slurm_controller_healthy(head_node_command_executor)
-    remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
-    slurm_commands = scheduler_commands_factory(remote_command_executor)
-    run_scheduler_smoke_test(slurm_commands, partition="ondemand")
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -463,7 +472,7 @@ def test_error_handling(
     )
     # Next test will introduce error in logs, assert no error now
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
-    leftover_job_ids = _test_clustermgtd_down_logic(
+    _test_clustermgtd_down_logic(
         remote_command_executor,
         scheduler_commands,
         cluster.cfn_name,
@@ -477,7 +486,7 @@ def test_error_handling(
     )
     remote_command_executor.run_remote_command("sudo systemctl restart supervisord slurmctld")
     assert_slurm_controller_healthy(remote_command_executor)
-    _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands, leftover_job_ids)
+    _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands)
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
     run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
@@ -855,7 +864,9 @@ def test_slurm_protected_mode_on_cluster_create(
         ],
     )
     _test_cluster_creation_failure(cluster)
-    install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
+    # The cluster creation failed, so the compute fleet status is not readable (UNKNOWN) and there is nothing
+    # to stop: protected mode already terminated the compute nodes and the cluster has no login nodes.
+    install_test_software(remote_command_executor, region)
     assert_slurm_controller_healthy(remote_command_executor)
     _test_compute_fleet_status(remote_command_executor, expected_status="PROTECTED")
 
@@ -1292,13 +1303,13 @@ def test_slurm_memory_based_scheduling(
 
     _test_memory_based_scheduling_with_multiple_instance_types(slurm_commands)
 
-    memory_job_id = _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
+    _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_jobs(
         remote_command_executor,
         slurm_commands,
         pcluster_config_reader,
         cluster,
     )
-    _cancel_jobs_and_wait_for_queue(remote_command_executor, slurm_commands, [memory_job_id])
+    _cancel_jobs_and_wait_for_queue(remote_command_executor, slurm_commands)
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
@@ -1358,7 +1369,7 @@ def test_scontrol_reboot(
     )
 
     # Check that node in REBOOT_REQUESTED state can be powered down
-    reboot_requested_job_id = _test_scontrol_reboot_powerdown_reboot_requested_node(
+    _test_scontrol_reboot_powerdown_reboot_requested_node(
         remote_command_executor,
         slurm_commands,
         "queue1-st-cr1-1",
@@ -1373,9 +1384,7 @@ def test_scontrol_reboot(
         slurm_commands,
         "queue1-st-cr1-2",
     )
-    _cancel_jobs_and_wait_for_queue(
-        remote_command_executor, slurm_commands, [job_id_1, reboot_requested_job_id]
-    )
+    _cancel_jobs_and_wait_for_queue(remote_command_executor, slurm_commands)
     queue_nodes = slurm_commands.get_compute_nodes("queue1", all_nodes=True)
     wait_for_compute_nodes_states(slurm_commands, queue_nodes, expected_states=["idle"], stop_max_delay_secs=600)
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)

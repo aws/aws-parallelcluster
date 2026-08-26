@@ -6,7 +6,7 @@
 # http://aws.amazon.com/apache2.0/
 #
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
-# OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and
+# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import atexit
 import hashlib
@@ -32,6 +32,7 @@ _COMPUTE_FLEET_TERMINAL_STATES = {"RUNNING", "STOPPED", "PROTECTED"}
 _COMPUTE_FLEET_START_TRANSITIONS = {"START_REQUESTED", "STARTING"}
 _COMPUTE_FLEET_STOP_TRANSITIONS = {"STOP_REQUESTED", "STOPPING"}
 _CAPACITY_WAIT_MINUTES = 15
+_PARTITION_WAIT_MINUTES = 10
 
 
 class _UnexpectedComputeFleetStatusError(RuntimeError):
@@ -486,6 +487,34 @@ def assert_slurm_controller_healthy(executor):
     return _assert_controller_healthy()
 
 
+def wait_for_partitions_up(scheduler_commands, partitions=None):
+    """Wait until the requested partitions (all of them by default) leave the INACTIVE state.
+
+    The compute fleet API reports RUNNING as soon as the status is persisted, but clustermgtd needs
+    another iteration to bring the Slurm partitions back UP. Submitting before that happens fails
+    with "Requested partition configuration not available now".
+    """
+
+    @retry(
+        wait_fixed=seconds(15),
+        stop_max_delay=minutes(_PARTITION_WAIT_MINUTES),
+        retry_on_result=lambda unavailable_partitions: bool(unavailable_partitions),
+    )
+    def _poll():
+        target_partitions = partitions if partitions is not None else scheduler_commands.get_partitions()
+        partition_states = {
+            partition: scheduler_commands.get_partition_state(partition).strip() for partition in target_partitions
+        }
+        unavailable_partitions = {
+            partition: state for partition, state in partition_states.items() if state.upper() != "UP"
+        }
+        if unavailable_partitions:
+            logging.info("Waiting for Slurm partitions to be UP: %s", unavailable_partitions)
+        return unavailable_partitions
+
+    _poll()
+
+
 def run_scheduler_smoke_test(
     scheduler_commands,
     partition=None,
@@ -496,6 +525,7 @@ def run_scheduler_smoke_test(
     timeout=None,
 ):
     """Submit a short scheduler job, wait for completion, assert success, and return its job ID."""
+    wait_for_partitions_up(scheduler_commands, [partition] if partition is not None else None)
     submit_command_args = {
         "command": command,
         "nodes": nodes,

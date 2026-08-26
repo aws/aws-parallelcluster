@@ -137,7 +137,7 @@ def _test_jobs_get_recorded(scheduler_commands):
 
 
 def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
-    results = scheduler_commands.get_accounting_job_records(job_id, clusters=clusters)
+    results = list(scheduler_commands.get_accounting_job_records(job_id, clusters=clusters))
     assert_that(results).is_not_empty()
     for row in results:
         logging.info(" Result: %s", row)
