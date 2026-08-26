@@ -12,6 +12,7 @@ import atexit
 import hashlib
 import logging
 import os
+import re
 import tempfile
 import threading
 from contextlib import contextmanager
@@ -33,6 +34,11 @@ _COMPUTE_FLEET_START_TRANSITIONS = {"START_REQUESTED", "STARTING"}
 _COMPUTE_FLEET_STOP_TRANSITIONS = {"STOP_REQUESTED", "STOPPING"}
 _CAPACITY_WAIT_MINUTES = 15
 _PARTITION_WAIT_MINUTES = 10
+_STATE_CHECK_RESERVATION = "pcluster-upgrade-state-check"
+# The reservation only has to be persisted in StateSaveLocation, so keep it far in the future:
+# an active maintenance reservation would take nodes out of the scheduler for the rest of the test.
+_STATE_CHECK_RESERVATION_START = "now+7days"
+_SLURM_VERSION_COMMANDS = ("sinfo --version", "/opt/slurm/sbin/slurmdbd -V", "sacctmgr --version")
 
 
 class _UnexpectedComputeFleetStatusError(RuntimeError):
@@ -460,10 +466,27 @@ def stopped_shared_slurm_consumers(*clusters):
                     raise RuntimeError(message)
 
 
+def get_slurm_version(executor):
+    """Return the Slurm version reported by the target host, or None when no Slurm binary answers.
+
+    The installer is opaque, so without this the test logs never record which Slurm versions a run
+    actually exercised, and a cross-major upgrade is indistinguishable from a no-op reinstall.
+    """
+    for command in _SLURM_VERSION_COMMANDS:
+        result = executor.run_remote_command(command, raise_on_error=False, hide=True)
+        if result.return_code == 0 and result.stdout.strip():
+            return result.stdout.strip().splitlines()[0]
+    return None
+
+
 def install_test_software(executor, region):
     """Download the installer from us-east-1 and run it on the target host."""
     script_path = _download_software_installer_script()
-    return executor.run_remote_script(script_path, run_as_root=True, timeout=3600, pty=False)
+    version_before = get_slurm_version(executor)
+    result = executor.run_remote_script(script_path, run_as_root=True, timeout=3600, pty=False)
+    version_after = get_slurm_version(executor)
+    logging.info("Slurm version after the install: %s (was %s before)", version_after, version_before)
+    return result
 
 
 def install_test_software_with_stopped_consumers(executor, region, *clusters):
@@ -513,6 +536,113 @@ def wait_for_partitions_up(scheduler_commands, partitions=None):
         return unavailable_partitions
 
     _poll()
+
+
+def _scontrol_field(text, field):
+    """Return the value of a `Key=Value` field of a scontrol one-line output, or None when absent."""
+    match = re.search(rf"\b{field}=(\S+)", text)
+    return match.group(1) if match else None
+
+
+def _read_batch_script(remote_command_executor, job_id):
+    """Return the batch script slurmctld stored for a job, read back from StateSaveLocation."""
+    script_path = f"/tmp/{_STATE_CHECK_RESERVATION}-{job_id}.sh"
+    remote_command_executor.run_remote_command(
+        f"rm -f {script_path} && scontrol write batch_script {job_id} {script_path}"
+    )
+    return remote_command_executor.run_remote_command(f"cat {script_path}", hide=True).stdout
+
+
+def snapshot_slurm_state(remote_command_executor, scheduler_commands):
+    """Create Slurm state that a subsequent upgrade must preserve, and return a snapshot describing it.
+
+    The accounting database is not the only thing a Slurm upgrade converts: slurmctld rewrites the contents
+    of StateSaveLocation, which holds the queued jobs, their batch scripts and the reservations. Submitting a
+    job after the upgrade only proves the controller is up; the state captured here is what proves the upgrade
+    converted the state it inherited instead of discarding it.
+
+    Note this deliberately covers pending state only. Running jobs cannot be covered by this harness because
+    the installer scales the compute fleet to zero, so verifying that running jobs survive an upgrade needs a
+    dedicated test that keeps the fleet up and follows the documented daemon upgrade order.
+    """
+    held_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        {"command": "hostname", "nodes": 1, "slots": 1, "other_options": "--hold"}
+    )
+    job_details = remote_command_executor.run_remote_command(f"scontrol --oneliner show job {held_job_id}").stdout
+    snapshot = {
+        "held_job_id": held_job_id,
+        "held_job_submit_time": _scontrol_field(job_details, "SubmitTime"),
+        "held_job_batch_script": _read_batch_script(remote_command_executor, held_job_id),
+        "reservation": None,
+    }
+
+    nodes = scheduler_commands.get_compute_nodes(all_nodes=True)
+    if nodes:
+        # Best effort: the reservation widens the coverage to another StateSaveLocation record type, but it is
+        # not worth failing a test over, for example if the chosen node cannot be reserved right now.
+        remote_command_executor.run_remote_command(
+            f"sudo -i scontrol delete ReservationName={_STATE_CHECK_RESERVATION}", raise_on_error=False
+        )
+        created = remote_command_executor.run_remote_command(
+            f"sudo -i scontrol create reservation ReservationName={_STATE_CHECK_RESERVATION} "
+            f"user=$(id -un) starttime={_STATE_CHECK_RESERVATION_START} duration=1:00:00 "
+            f"flags=maint,ignore_jobs nodes={nodes[0]}",
+            raise_on_error=False,
+        )
+        if created.return_code == 0:
+            reservation_details = remote_command_executor.run_remote_command(
+                f"scontrol --oneliner show ReservationName={_STATE_CHECK_RESERVATION}"
+            ).stdout
+            snapshot["reservation"] = {
+                "nodes": _scontrol_field(reservation_details, "Nodes"),
+                "start_time": _scontrol_field(reservation_details, "StartTime"),
+            }
+        else:
+            logging.warning("Unable to reserve node %s, skipping the reservation check: %s", nodes[0], created.stderr)
+    else:
+        logging.info("No compute node is configured, skipping the reservation part of the Slurm state snapshot")
+
+    logging.info("Captured Slurm state to verify across the upgrade: %s", snapshot)
+    return snapshot
+
+
+def assert_slurm_state_preserved(remote_command_executor, scheduler_commands, snapshot):
+    """Verify the state captured by snapshot_slurm_state survived the upgrade, then clean it up."""
+    held_job_id = snapshot["held_job_id"]
+    logging.info("Verifying the Slurm state captured before the upgrade is intact")
+
+    job_details = remote_command_executor.run_remote_command(
+        f"scontrol --oneliner show job {held_job_id}", raise_on_error=False
+    )
+    assert_that(job_details.return_code).described_as(
+        f"job {held_job_id} is unknown to slurmctld after the upgrade: {job_details.stderr}"
+    ).is_equal_to(0)
+    scheduler_commands.assert_job_state(held_job_id, "PENDING")
+    # A converted record keeps its original submission time; a recreated or defaulted one does not.
+    assert_that(_scontrol_field(job_details.stdout, "SubmitTime")).described_as(
+        f"submit time of job {held_job_id}"
+    ).is_equal_to(snapshot["held_job_submit_time"])
+    assert_that(_read_batch_script(remote_command_executor, held_job_id)).described_as(
+        f"batch script of job {held_job_id}"
+    ).is_equal_to(snapshot["held_job_batch_script"])
+
+    expected_reservation = snapshot["reservation"]
+    if expected_reservation:
+        reservation_details = remote_command_executor.run_remote_command(
+            f"scontrol --oneliner show ReservationName={_STATE_CHECK_RESERVATION}", raise_on_error=False
+        )
+        assert_that(reservation_details.return_code).described_as(
+            f"reservation {_STATE_CHECK_RESERVATION} is gone after the upgrade: {reservation_details.stderr}"
+        ).is_equal_to(0)
+        for field, expected_value in (("Nodes", "nodes"), ("StartTime", "start_time")):
+            assert_that(_scontrol_field(reservation_details.stdout, field)).described_as(
+                f"{field} of reservation {_STATE_CHECK_RESERVATION}"
+            ).is_equal_to(expected_reservation[expected_value])
+        remote_command_executor.run_remote_command(
+            f"sudo -i scontrol delete ReservationName={_STATE_CHECK_RESERVATION}", raise_on_error=False
+        )
+
+    remote_command_executor.run_remote_command(f"scancel {held_job_id}", raise_on_error=False)
 
 
 def run_scheduler_smoke_test(

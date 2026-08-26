@@ -67,9 +67,11 @@ from tests.common.scaling_common import (
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.software_installer import (
     assert_slurm_controller_healthy,
+    assert_slurm_state_preserved,
     install_test_software,
     install_test_software_with_stopped_consumers,
     run_scheduler_smoke_test,
+    snapshot_slurm_state,
 )
 
 
@@ -152,8 +154,11 @@ def test_slurm(
     # Install the test software while the cluster is still healthy: the compute node bootstrap timeout test below
     # reconfigures the cluster with a 10 seconds bootstrap timeout, so no compute node can join after that point.
     _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands)
+    # Capture the state after draining the queue, so that the cancellation above cannot discard it.
+    slurm_state_snapshot = snapshot_slurm_state(head_node_command_executor, slurm_commands)
     install_test_software_with_stopped_consumers(head_node_command_executor, region, cluster)
     assert_slurm_controller_healthy(head_node_command_executor)
+    assert_slurm_state_preserved(head_node_command_executor, slurm_commands, slurm_state_snapshot)
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
     run_scheduler_smoke_test(slurm_commands, partition="ondemand")
