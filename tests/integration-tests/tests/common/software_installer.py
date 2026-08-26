@@ -606,8 +606,13 @@ def snapshot_slurm_state(remote_command_executor, scheduler_commands):
     return snapshot
 
 
-def assert_slurm_state_preserved(remote_command_executor, scheduler_commands, snapshot):
-    """Verify the state captured by snapshot_slurm_state survived the upgrade, then clean it up."""
+def assert_slurm_state_preserved(remote_command_executor, snapshot):
+    """Verify the state captured by snapshot_slurm_state survived the upgrade, then clean it up.
+
+    Every command here runs through the given executor, which must target the head node: the installer scales
+    the login pools to zero and back, so any executor bound to a login node before the upgrade now points at a
+    terminated instance.
+    """
     held_job_id = snapshot["held_job_id"]
     logging.info("Verifying the Slurm state captured before the upgrade is intact")
 
@@ -617,7 +622,9 @@ def assert_slurm_state_preserved(remote_command_executor, scheduler_commands, sn
     assert_that(job_details.return_code).described_as(
         f"job {held_job_id} is unknown to slurmctld after the upgrade: {job_details.stderr}"
     ).is_equal_to(0)
-    scheduler_commands.assert_job_state(held_job_id, "PENDING")
+    assert_that(_scontrol_field(job_details.stdout, "JobState")).described_as(
+        f"state of job {held_job_id}"
+    ).is_equal_to("PENDING")
     # A converted record keeps its original submission time; a recreated or defaulted one does not.
     assert_that(_scontrol_field(job_details.stdout, "SubmitTime")).described_as(
         f"submit time of job {held_job_id}"

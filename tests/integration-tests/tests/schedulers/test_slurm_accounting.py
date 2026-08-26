@@ -340,7 +340,7 @@ def test_slurm_accounting(
     _test_that_slurmdbd_is_running(remote_command_executor)
     _test_successful_startup_in_log(remote_command_executor, since_line=slurmdbd_log_line_count)
     _assert_no_upgrade_failures_in_slurmdbd_log(remote_command_executor, slurmdbd_log_line_count)
-    assert_slurm_state_preserved(remote_command_executor, scheduler_commands, slurm_state_snapshot)
+    assert_slurm_state_preserved(remote_command_executor, slurm_state_snapshot)
     _assert_preexisting_job_records_readable(scheduler_commands, [pre_upgrade_job_id])
     _test_jobs_get_recorded(scheduler_commands)
     _test_slurm_accounting_password(remote_command_executor)
@@ -424,8 +424,8 @@ def test_slurm_accounting_external_dbd(
     retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_test_that_slurmdbd_is_running)(
         headnode_remote_command_executor_2
     )
-    assert_slurm_state_preserved(headnode_remote_command_executor_1, scheduler_commands_1, slurm_state_snapshot_1)
-    assert_slurm_state_preserved(headnode_remote_command_executor_2, scheduler_commands_2, slurm_state_snapshot_2)
+    assert_slurm_state_preserved(headnode_remote_command_executor_1, slurm_state_snapshot_1)
+    assert_slurm_state_preserved(headnode_remote_command_executor_2, slurm_state_snapshot_2)
     # The upgraded slurmdbd must still serve the job records written before the upgrade, both to the cluster
     # that submitted them and to the other cluster sharing the same external slurmdbd.
     _assert_preexisting_job_records_readable(

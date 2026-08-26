@@ -158,7 +158,8 @@ def test_slurm(
     slurm_state_snapshot = snapshot_slurm_state(head_node_command_executor, slurm_commands)
     install_test_software_with_stopped_consumers(head_node_command_executor, region, cluster)
     assert_slurm_controller_healthy(head_node_command_executor)
-    assert_slurm_state_preserved(head_node_command_executor, slurm_commands, slurm_state_snapshot)
+    assert_slurm_state_preserved(head_node_command_executor, slurm_state_snapshot)
+    # The installer recycled the login pool, so the pre-upgrade login-node executor points at a gone instance.
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
     run_scheduler_smoke_test(slurm_commands, partition="ondemand")
@@ -1263,8 +1264,11 @@ def test_slurm_custom_config_parameters(
     assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
     assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
+    # No smoke test here: q1 sets MaxMemPerNode below the RealMemory of both compute resources on purpose, so
+    # with memory-based scheduling disabled every job asks for more memory than the partition allows and is
+    # rejected with "Requested partition configuration not available now". This cluster is only meant to prove
+    # that the custom settings reach slurm.conf.
     assert_slurm_controller_healthy(remote_command_executor)
-    run_scheduler_smoke_test(slurm_commands, partition="q1")
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
@@ -2901,6 +2905,15 @@ def _test_update_with_queue_params(
     )
 
 
+def _resume_drained_nodes(slurm_commands, compute_nodes):
+    """Resume the given nodes if a previous check left them in a DRAIN state."""
+    node_states = slurm_commands.get_nodes_status(filter_by_nodes=compute_nodes)
+    drained_nodes = [node for node, state in node_states.items() if "drain" in state.lower()]
+    if drained_nodes:
+        logging.info("Resuming nodes left in a DRAIN state: %s", {node: node_states[node] for node in drained_nodes})
+        slurm_commands.set_nodes_state(drained_nodes, "resume")
+
+
 def _test_memory_based_scheduling_enabled_false(
     remote_command_executor,
     slurm_commands,
@@ -3048,6 +3061,11 @@ def _test_memory_based_scheduling_enabled_true(
         raise_on_error=False,
     )
     assert_that(result.stdout).is_equal_to("allocation failure: Requested node configuration is not available")
+
+    # The previous sub-test deliberately makes two jobs contend for memory on queue1-st-ondemand1-i1-1, which can
+    # leave the node DRAINED (for example when Slurm fails to kill the out-of-memory step). A drained static node
+    # is never resumed by clustermgtd, so it would stay `drained~` forever and the wait below would time out.
+    _resume_drained_nodes(slurm_commands, ["queue1-st-ondemand1-i1-1"])
 
     wait_for_compute_nodes_states(slurm_commands, ["queue1-st-ondemand1-i1-1"], ["idle"])
 
