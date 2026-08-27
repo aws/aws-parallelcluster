@@ -35,12 +35,15 @@ DOMAIN_NAME_ERROR_MESSAGE = (
         ("DC=corp,DC=example,DC=com", None),
         ("dc=corp,dc=example,dc=com", None),
         ("dc=corp,DC=example,dc=com", None),
+        ("O=org,dc=corp,dc=example,dc=com", None),
+        ("o=org,dc=corp,dc=example,dc=com", None),
         ("", DOMAIN_NAME_ERROR_MESSAGE),
         ("   ", DOMAIN_NAME_ERROR_MESSAGE),
         ("corp.", DOMAIN_NAME_ERROR_MESSAGE),
         ("DC=corp,", DOMAIN_NAME_ERROR_MESSAGE),
         ("corp.examp/e.com", DOMAIN_NAME_ERROR_MESSAGE),
         ("DC=corp,DC=examp/e,DC=com", DOMAIN_NAME_ERROR_MESSAGE),
+        ("o=or/g,dc=corp,dc=example,dc=com", DOMAIN_NAME_ERROR_MESSAGE),
     ],
 )
 def test_domain_name(domain_name, expected_message):
