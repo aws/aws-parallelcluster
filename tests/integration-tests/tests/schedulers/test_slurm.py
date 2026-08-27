@@ -319,7 +319,13 @@ def test_slurm_scaling(
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 @pytest.mark.slurm_scaling
 def test_slurm_custom_partitions(
-    region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir, scheduler_commands_factory
+    region,
+    instance,
+    pcluster_config_reader,
+    s3_bucket_factory,
+    clusters_factory,
+    test_datadir,
+    scheduler_commands_factory,
 ):
     """Test ParallelCluster node deamons manage only Slurm partitions specified in cluster configuration file."""
     bucket_name = s3_bucket_factory()
@@ -356,6 +362,7 @@ def test_slurm_custom_partitions(
         remote_command_executor,
         running_partition=custom_partitions[0],
         failing_partition=failing_partition,
+        running_instance_type=instance,
     )
     _check_protected_mode_message_in_log(remote_command_executor)
     check_status(cluster, compute_fleet_status="PROTECTED")
@@ -770,7 +777,11 @@ def test_slurm_protected_mode(
 
     partition = "half-broken"
     pending_job_id = _test_active_job_running(
-        scheduler_commands, remote_command_executor, running_partition=partition, failing_partition=partition
+        scheduler_commands,
+        remote_command_executor,
+        running_partition=partition,
+        failing_partition=partition,
+        running_instance_type="c5.xlarge",
     )
     _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
     test_cluster_health_metric(["NoCorrespondingInstanceErrors", "OnNodeStartRunErrors"], cluster.cfn_name, region)
@@ -2400,7 +2411,9 @@ def _test_disable_protected_mode(
     )
 
 
-def _test_active_job_running(scheduler_commands, remote_command_executor, running_partition, failing_partition):
+def _test_active_job_running(
+    scheduler_commands, remote_command_executor, running_partition, failing_partition, running_instance_type
+):
     """
     Test cluster is not placed into protected mode when there is an active job running even reach threshold.
 
@@ -2415,7 +2428,7 @@ def _test_active_job_running(scheduler_commands, remote_command_executor, runnin
             "command": "sleep 3000",
             "nodes": 1,
             "partition": running_partition,
-            "constraint": "c5.xlarge",
+            "constraint": running_instance_type,
         }
     )
     # Wait for the job to run
