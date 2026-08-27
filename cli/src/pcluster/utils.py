@@ -312,7 +312,8 @@ def error(message) -> NoReturn:
 
 
 def get_cli_log_file():
-    default_log_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    log_timestamp = to_iso_timestr(datetime.datetime.now())
+    default_log_file = os.path.expanduser(os.path.join("~", ".parallelcluster", f"pcluster-cli-{log_timestamp}.log"))
     return os.environ.get("PCLUSTER_LOG_FILE", default=default_log_file)
 
 
