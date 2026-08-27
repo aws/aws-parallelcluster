@@ -11,6 +11,7 @@ HeadNode:
       - Policy: arn:{{ partition }}:iam::aws:policy/SecretsManagerReadWrite # Required to read/write the JWT token from Secrets Manager
     S3Access:
       - BucketName: {{ bucket_name }} # Required to download custom actions
+      - BucketName: "aws-parallelcluster-dev-build-dependencies" # Required to download the Slurm source archive
   Ssh:
     KeyName: {{ key_name }}
   CustomActions:

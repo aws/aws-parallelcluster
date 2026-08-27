@@ -40,6 +40,7 @@ _STATE_CHECK_RESERVATION = "pcluster-upgrade-state-check"
 _STATE_CHECK_RESERVATION_START = "now+7days"
 _SLURM_VERSION_COMMANDS = ("sinfo --version", "/opt/slurm/sbin/slurmdbd -V", "sacctmgr --version")
 _SLURM_CONF = "/opt/slurm/etc/slurm.conf"
+_SLURMCTLD_LOG = "/var/log/slurmctld.log"
 _INSTALL_BACKUP_GLOB = "/opt/slurm_backup_*.tar.gz"
 _STATE_BACKUP_GLOB = "/opt/slurm_state_backup_*.tar.gz"
 
@@ -77,9 +78,10 @@ def _cleanup_cached_downloads():
 atexit.register(_cleanup_cached_downloads)
 
 
-def _download_software_installer_script():
+def _download_artifact(key, suffix, mode):
+    """Download an artifact bucket object once per session and return the local path it was cached at."""
     with _DOWNLOAD_CACHE_LOCK:
-        cached_path = _DOWNLOAD_CACHE.get(_INSTALLER_REGION)
+        cached_path = _DOWNLOAD_CACHE.get(key)
         if cached_path:
             path = Path(cached_path)
             if path.is_file() and os.access(path, os.R_OK):
@@ -88,37 +90,73 @@ def _download_software_installer_script():
                 except OSError:
                     pass
                 else:
-                    logging.info(
-                        "Using cached s3://%s/%s (SHA-256: %s)", _INSTALLER_BUCKET, _INSTALLER_KEY, digest
-                    )
+                    logging.info("Using cached s3://%s/%s (SHA-256: %s)", _INSTALLER_BUCKET, key, digest)
                     return cached_path
-            _DOWNLOAD_CACHE.pop(_INSTALLER_REGION, None)
+            _DOWNLOAD_CACHE.pop(key, None)
             _remove_file(cached_path)
 
-        file_descriptor, downloaded_path = tempfile.mkstemp(prefix="pcluster-software-installer-", suffix=".sh")
+        file_descriptor, downloaded_path = tempfile.mkstemp(prefix="pcluster-software-installer-", suffix=suffix)
         os.close(file_descriptor)
         try:
-            logging.info(
-                "Downloading software installer script from s3://%s/%s in region %s",
-                _INSTALLER_BUCKET,
-                _INSTALLER_KEY,
-                _INSTALLER_REGION,
-            )
-            boto3.client("s3", region_name=_INSTALLER_REGION).download_file(
-                _INSTALLER_BUCKET, _INSTALLER_KEY, downloaded_path
-            )
-            os.chmod(downloaded_path, 0o700)
+            logging.info("Downloading s3://%s/%s in region %s", _INSTALLER_BUCKET, key, _INSTALLER_REGION)
+            boto3.client("s3", region_name=_INSTALLER_REGION).download_file(_INSTALLER_BUCKET, key, downloaded_path)
+            os.chmod(downloaded_path, mode)
             digest = _sha256(Path(downloaded_path))
-            logging.info("Downloaded s3://%s/%s (SHA-256: %s)", _INSTALLER_BUCKET, _INSTALLER_KEY, digest)
+            logging.info("Downloaded s3://%s/%s (SHA-256: %s)", _INSTALLER_BUCKET, key, digest)
         except Exception as error:
             _remove_file(downloaded_path)
             raise RuntimeError(
-                "Failed to download software installer script from "
-                f"s3://{_INSTALLER_BUCKET}/{_INSTALLER_KEY} in region {_INSTALLER_REGION}: {error}"
+                f"Failed to download s3://{_INSTALLER_BUCKET}/{key} in region {_INSTALLER_REGION}: {error}"
             ) from error
 
-        _DOWNLOAD_CACHE[_INSTALLER_REGION] = downloaded_path
+        _DOWNLOAD_CACHE[key] = downloaded_path
         return downloaded_path
+
+
+def _download_software_installer_script():
+    return _download_artifact(_INSTALLER_KEY, ".sh", 0o700)
+
+
+def _installer_constant(script_text, name, substitutions=None):
+    """Return a constant declared by the installer script, so that the tests never restate its values."""
+    match = re.search(rf'^(?:readonly\s+)?{name}="([^"]*)"', script_text, re.MULTILINE)
+    assert_that(match).described_as(f"declaration of {name} in the software installer script").is_not_none()
+    value = match.group(1)
+    for variable, replacement in (substitutions or {}).items():
+        value = value.replace(f"${{{variable}}}", replacement)
+    return value
+
+
+def _source_archive_location(script_path):
+    """Return the S3 key of the Slurm source archive and the path the installer expects it at on the host."""
+    script_text = Path(script_path).read_text(encoding="utf-8")
+    source_name = _installer_constant(script_text, "TARGET_SOURCE_NAME")
+    cache_dir = _installer_constant(script_text, "CACHE_DIR")
+    key = _installer_constant(script_text, "DEFAULT_ARCHIVE_KEY", {"TARGET_SOURCE_NAME": source_name})
+    path = _installer_constant(
+        script_text, "ARCHIVE_PATH", {"CACHE_DIR": cache_dir, "TARGET_SOURCE_NAME": source_name}
+    )
+    return key, path
+
+
+def _stage_source_archive(executor, script_path):
+    """Upload the Slurm source archive to a host that has no read access to the artifact bucket.
+
+    The installer downloads the archive itself, which every cluster node can do because the cluster configuration
+    grants it. An external slurmdbd instance is not a cluster node: its instance role comes from the customer-facing
+    CloudFormation template, which grants S3 access to its own bucket only and takes no parameter to extend that. So
+    the archive travels over the same SSH connection as the installer, on the test runner's credentials, and the
+    installer picks up an archive that is already in place instead of downloading one.
+    """
+    archive_key, remote_path = _source_archive_location(script_path)
+    local_path = _download_artifact(archive_key, ".tar.gz", 0o600)
+    remote_name = os.path.basename(remote_path)
+    logging.info("Staging s3://%s/%s at %s on the target host", _INSTALLER_BUCKET, archive_key, remote_path)
+    executor.run_remote_command(
+        f"sudo install -o root -g root -m 644 {remote_name} {remote_path} && rm -f {remote_name}",
+        additional_files={local_path: remote_name},
+        hide=True,
+    )
 
 
 def _deduplicate_clusters(clusters):
@@ -520,9 +558,14 @@ def assert_upgrade_backups_readable(executor):
         _assert_backup_archive_readable(executor, pattern)
 
 
-def install_test_software(executor, region):
-    """Download the installer from us-east-1 and run it on the target host."""
+def install_test_software(executor, region, stage_source_archive=False):
+    """Download the installer from us-east-1 and run it on the target host.
+
+    Set stage_source_archive when the target host cannot read the artifact bucket itself, see _stage_source_archive.
+    """
     script_path = _download_software_installer_script()
+    if stage_source_archive:
+        _stage_source_archive(executor, script_path)
     version_before = get_slurm_version(executor)
     result = executor.run_remote_script(script_path, run_as_root=True, timeout=3600, pty=False)
     version_after = get_slurm_version(executor)
@@ -651,6 +694,36 @@ def snapshot_slurm_state(remote_command_executor, scheduler_commands):
     return snapshot
 
 
+def _failed_command_output(result):
+    """Return the output that explains a failed remote command.
+
+    Remote commands run over a pty by default, which merges stderr into stdout, so an assertion message built out
+    of stderr alone is empty for most of the commands here.
+    """
+    return result.stderr.strip() or result.stdout.strip()
+
+
+def _reservation_diagnostics(remote_command_executor):
+    """Describe what the controller knows about reservations, for when the state check finds one missing.
+
+    A reservation can disappear for two very different reasons: the upgrade failed to convert the record, or
+    something in the cluster deleted the reservation deliberately. Which reservations survived and what slurmctld
+    logged about them is what separates the two, and neither is recoverable from the test's own commands.
+    """
+    reservations = remote_command_executor.run_remote_command(
+        "scontrol show reservation", raise_on_error=False, hide=True
+    )
+    controller_log = remote_command_executor.run_remote_command(
+        f"sudo grep -i -e reservation -e 'recovered state' {_SLURMCTLD_LOG} | tail -n 40",
+        raise_on_error=False,
+        hide=True,
+    )
+    return (
+        f"reservations known to the controller: {reservations.stdout.strip() or '<none>'}. "
+        f"slurmctld log: {controller_log.stdout.strip() or '<nothing about reservations>'}"
+    )
+
+
 def assert_slurm_state_preserved(remote_command_executor, snapshot):
     """Verify the state captured by snapshot_slurm_state survived the upgrade, then clean it up.
 
@@ -665,7 +738,7 @@ def assert_slurm_state_preserved(remote_command_executor, snapshot):
         f"scontrol --oneliner show job {held_job_id}", raise_on_error=False
     )
     assert_that(job_details.return_code).described_as(
-        f"job {held_job_id} is unknown to slurmctld after the upgrade: {job_details.stderr}"
+        f"job {held_job_id} is unknown to slurmctld after the upgrade: {_failed_command_output(job_details)}"
     ).is_equal_to(0)
     assert_that(_scontrol_field(job_details.stdout, "JobState")).described_as(
         f"state of job {held_job_id}"
@@ -683,8 +756,12 @@ def assert_slurm_state_preserved(remote_command_executor, snapshot):
         reservation_details = remote_command_executor.run_remote_command(
             f"scontrol --oneliner show ReservationName={_STATE_CHECK_RESERVATION}", raise_on_error=False
         )
+        diagnostics = (
+            "" if reservation_details.return_code == 0 else f" {_reservation_diagnostics(remote_command_executor)}"
+        )
         assert_that(reservation_details.return_code).described_as(
-            f"reservation {_STATE_CHECK_RESERVATION} is gone after the upgrade: {reservation_details.stderr}"
+            f"reservation {_STATE_CHECK_RESERVATION} is gone after the upgrade: "
+            f"{_failed_command_output(reservation_details)}.{diagnostics}"
         ).is_equal_to(0)
         for field, expected_value in (("Nodes", "nodes"), ("StartTime", "start_time")):
             assert_that(_scontrol_field(reservation_details.stdout, field)).described_as(

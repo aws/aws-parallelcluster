@@ -44,7 +44,11 @@ else
     exit 2
 fi
 
-WORKDIR=$(sudo -n mktemp -d "/opt/parallelcluster/tmp/pcluster-cuda-samples.XXXXXX")
+# /opt/parallelcluster/tmp is the node-local scratch area with room for a CUDA sample build, but it is not
+# guaranteed to exist on every OS/architecture combination, so create it rather than assume it.
+BUILD_BASE=/opt/parallelcluster/tmp
+sudo -n mkdir -p "$BUILD_BASE"
+WORKDIR=$(sudo -n mktemp -d "${BUILD_BASE}/pcluster-cuda-samples.XXXXXX")
 sudo -n chown "$(id -u):$(id -g)" "$WORKDIR"
 export TMPDIR="$WORKDIR"
 trap 'sudo rm -rf "$WORKDIR"' EXIT

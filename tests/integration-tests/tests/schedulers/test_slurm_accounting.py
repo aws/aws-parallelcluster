@@ -22,7 +22,9 @@ from tests.common.software_installer import (
 )
 from tests.common.utils import get_aws_domain, installed_parallelcluster_version_is_at_least
 
-STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
+# The version slurmdbd reports is whatever the build was stamped with, and a pre-release build stamps something
+# like "25.11.8-0pre1", so the version is matched as an opaque token rather than as digits and dots.
+STARTED_PATTERN = re.compile(r".*slurmdbd version \S+ started")
 SLURMDBD_LOG_FILE = "/var/log/slurmdbd.log"
 UPGRADE_FAILURE_PATTERN = re.compile(r"(?i)(fatal:|rolling back|conversion failed|error: *mysql)")
 
@@ -445,7 +447,9 @@ def test_slurm_accounting_external_dbd(
     # slurmdbd first, then the controllers: Slurm requires slurmdbd to be at the same or a higher major
     # release than every slurmctld talking to it.
     with stopped_shared_slurm_consumers(cluster, cluster_2):
-        install_test_software(slurmdbd_node_remote_command_executor, region)
+        # The external slurmdbd instance role cannot read the artifact bucket, so the source archive is uploaded
+        # to it rather than downloaded by the installer.
+        install_test_software(slurmdbd_node_remote_command_executor, region, stage_source_archive=True)
         install_test_software(headnode_remote_command_executor_1, region)
         install_test_software(headnode_remote_command_executor_2, region)
 

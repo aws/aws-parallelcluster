@@ -118,6 +118,20 @@ def known_defunct_slurm_config_params():
     return ["AccountingStorageUser"]
 
 
+def known_harmless_slurm_daemon_errors():
+    """Return error-level Slurm daemon messages that the installed ParallelCluster emits by itself.
+
+    Every Slurm daemon validates slurm.conf when it starts, so a value ParallelCluster writes shows up as an
+    error-level entry in that daemon's journal. ParallelCluster 3.13.x pairs UnkillableStepTimeout=180 with
+    MessageTimeout=60, which Slurm rejects as too close together; later releases no longer do. Like the defunct
+    parameters, this comes from the release under test rather than from the upgrade.
+    """
+    patterns = known_defunct_slurm_config_params()
+    if not installed_parallelcluster_version_is_at_least("3.14.0"):
+        patterns.append("UnkillableStepTimeout must be at least")
+    return patterns
+
+
 def assert_no_errors_in_service_log(
     remote_command_executor: RemoteCommandExecutor, service_name: str, ignore_patterns=None
 ):

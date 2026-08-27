@@ -1426,7 +1426,11 @@ def test_scontrol_reboot(
     )
     _cancel_jobs_and_wait_for_queue(remote_command_executor, slurm_commands)
     queue_nodes = slurm_commands.get_compute_nodes("queue1", all_nodes=True)
-    wait_for_compute_nodes_states(slurm_commands, queue_nodes, expected_states=["idle"], stop_max_delay_secs=600)
+    # all_nodes includes the dynamic nodes, which settle to `idle~` once the reboot checks have released them: both
+    # `idle` and `idle~` mean the node is out of the reboot cycle, which is all the upgrade below requires.
+    wait_for_compute_nodes_states(
+        slurm_commands, queue_nodes, expected_states=["idle", "idle~"], stop_max_delay_secs=600
+    )
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
@@ -2033,11 +2037,13 @@ def _wait_for_node_reset(
     """Wait for static and dynamic nodes to be reset."""
     if static_nodes:
         logging.info("Assert static nodes are placed in DOWN during replacement")
-        # DRAIN+DOWN = drained
+        # DRAIN+DOWN = drained. A node whose job has not finished being killed yet is still allocated, so it reports
+        # draining rather than drained: it has been taken out of service just the same, and the replacement check
+        # below is what proves the node came back.
         wait_for_compute_nodes_states(
             scheduler_commands,
             static_nodes,
-            expected_states=["down", "down*", "drained", "drained*"],
+            expected_states=["down", "down*", "draining", "draining*", "drained", "drained*"],
             wait_fixed_secs=wait_fixed_secs,
             stop_max_delay_secs=stop_max_delay_secs,
         )
@@ -2936,13 +2942,24 @@ def _test_update_with_queue_params(
     )
 
 
-def _resume_drained_nodes(slurm_commands, compute_nodes):
-    """Resume the given nodes if a previous check left them in a DRAIN state."""
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(15))
+def _wait_for_static_nodes_idle(slurm_commands, compute_nodes):
+    """Wait for the given static nodes to be idle, resuming the ones a previous check left unavailable.
+
+    A DRAIN or DOWN static node is resumed on every attempt rather than once up front: the states observed here are
+    `drained~` (Slurm failed to kill a step) and `down~` (the backing instance is gone), and resuming a powered down
+    node only starts the launch of its replacement, which can be marked DOWN again before it registers.
+    """
     node_states = slurm_commands.get_nodes_status(filter_by_nodes=compute_nodes)
-    drained_nodes = [node for node, state in node_states.items() if "drain" in state.lower()]
-    if drained_nodes:
-        logging.info("Resuming nodes left in a DRAIN state: %s", {node: node_states[node] for node in drained_nodes})
-        slurm_commands.set_nodes_state(drained_nodes, "resume")
+    unavailable_nodes = {
+        node: state
+        for node, state in node_states.items()
+        if any(marker in state.lower() for marker in ("drain", "down"))
+    }
+    if unavailable_nodes:
+        logging.info("Resuming nodes left unavailable by a previous check: %s", unavailable_nodes)
+        slurm_commands.set_nodes_state(list(unavailable_nodes), "resume")
+    assert_compute_node_states(slurm_commands, compute_nodes, expected_states=["idle"])
 
 
 def _test_memory_based_scheduling_enabled_false(
@@ -3094,11 +3111,10 @@ def _test_memory_based_scheduling_enabled_true(
     assert_that(result.stdout).is_equal_to("allocation failure: Requested node configuration is not available")
 
     # The previous sub-test deliberately makes two jobs contend for memory on queue1-st-ondemand1-i1-1, which can
-    # leave the node DRAINED (for example when Slurm fails to kill the out-of-memory step). A drained static node
-    # is never resumed by clustermgtd, so it would stay `drained~` forever and the wait below would time out.
-    _resume_drained_nodes(slurm_commands, ["queue1-st-ondemand1-i1-1"])
-
-    wait_for_compute_nodes_states(slurm_commands, ["queue1-st-ondemand1-i1-1"], ["idle"])
+    # leave the node DRAINED (for example when Slurm fails to kill the out-of-memory step) or DOWN once clustermgtd
+    # has terminated the instance behind it. The sub-tests below submit jobs to that exact node, so the node is
+    # brought back into service here, allowing for the time a static node replacement takes to boot and register.
+    _wait_for_static_nodes_idle(slurm_commands, ["queue1-st-ondemand1-i1-1"])
 
     # Check that now `--mem` also defines the amount of memory used by the job
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
