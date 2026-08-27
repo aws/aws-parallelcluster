@@ -27,6 +27,10 @@ from tests.common.utils import get_aws_domain, installed_parallelcluster_version
 STARTED_PATTERN = re.compile(r".*slurmdbd version \S+ started")
 SLURMDBD_LOG_FILE = "/var/log/slurmdbd.log"
 UPGRADE_FAILURE_PATTERN = re.compile(r"(?i)(fatal:|rolling back|conversion failed|error: *mysql)")
+# When slurmdbd converts the schema it checks whether it is talking to a Galera cluster, and neither MySQL nor Aurora
+# MySQL knows the `wsrep_on` variable, so the probe fails with an `error: mysql...` line on every successful cross
+# major version conversion. It says nothing about the conversion itself, so it is excluded from the check below.
+BENIGN_FAILURE_PATTERN = re.compile(r"(?i)wsrep")
 
 
 def _get_slurm_database_config_parameters(database_stack_outputs):
@@ -137,7 +141,11 @@ def _assert_no_upgrade_failures_in_slurmdbd_log(remote_command_executor, since_l
     conversion.
     """
     log = _read_slurmdbd_log(remote_command_executor, since_line)
-    failures = [line for line in log.splitlines() if UPGRADE_FAILURE_PATTERN.search(line) is not None]
+    failures = [
+        line
+        for line in log.splitlines()
+        if UPGRADE_FAILURE_PATTERN.search(line) is not None and BENIGN_FAILURE_PATTERN.search(line) is None
+    ]
     assert_that(failures).described_as("database migration failures reported by slurmdbd").is_empty()
 
 

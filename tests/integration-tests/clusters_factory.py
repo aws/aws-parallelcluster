@@ -46,6 +46,14 @@ TAG_COMPUTE_RESOURCE_NAME = "parallelcluster:compute-resource-name"
 
 LAUNCH_TEMPLATES_CONFIG_FILE = "/opt/parallelcluster/shared/launch-templates-config.json"
 
+# Statuses a cluster cannot leave on its own. Waiting for any other status once one of these is reported only burns the
+# whole timeout and then reports an opaque RetryError instead of the failure the cluster already told us about.
+TERMINAL_CLUSTER_STATUSES = frozenset({"CREATE_FAILED", "DELETE_FAILED"})
+
+
+class ClusterTerminalStatusError(Exception):
+    """Raised when a cluster reaches a status it cannot leave, making a wait for another status pointless."""
+
 
 def suppress_and_log_exception(func):
     @functools.wraps(func)
@@ -231,11 +239,24 @@ class Cluster:
 
     def wait_cluster_status(self, expected_status, stop_max_delay_minute=15):
         """Wait for the cluster to reach the desired status."""
+
+        def _describe_cluster_and_reject_terminal_status():
+            result = self.describe_cluster()
+            status = result["clusterStatus"]
+            if status != expected_status and status in TERMINAL_CLUSTER_STATUSES:
+                raise ClusterTerminalStatusError(
+                    f"Cluster {self.name} is {status} while waiting for {expected_status}. "
+                    f"Reported failures: {result.get('failures')}"
+                )
+            return result
+
         retry(
             wait_fixed=seconds(10),
             stop_max_delay=minutes(stop_max_delay_minute),
             retry_on_result=lambda result: result["clusterStatus"] != expected_status,
-        )(self.describe_cluster)()
+            # describe-cluster failures stay retryable, a terminal cluster status does not.
+            retry_on_exception=lambda error: not isinstance(error, ClusterTerminalStatusError),
+        )(_describe_cluster_and_reject_terminal_status)()
 
     def wait_cluster_stack_status(self, expected_statuses: list, stop_max_delay_minute: int = 15):
         """Wait for the cluster stack to reach the desired status."""

@@ -592,6 +592,7 @@ def get_username_for_os(os):
     usernames = {
         "alinux2": "ec2-user",
         "alinux2023": "ec2-user",
+        "ubuntu2004": "ubuntu",
         "ubuntu2204": "ubuntu",
         "ubuntu2404": "ubuntu",
         "rhel8": "ec2-user",
@@ -599,7 +600,11 @@ def get_username_for_os(os):
         "rhel9": "ec2-user",
         "rocky9": "rocky",
     }
-    return usernames.get(os)
+    # An OS missing from the map used to yield a None username, which only showed up much later as an unexplained
+    # "Authentication failed." from paramiko, so the missing mapping is reported here instead.
+    if os not in usernames:
+        raise Exception(f"No default username known for os {os}; add it to get_username_for_os")
+    return usernames[os]
 
 
 def get_instance_public_ip_by_private_ip(private_ip, region):

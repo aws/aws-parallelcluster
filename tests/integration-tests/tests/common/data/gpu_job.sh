@@ -60,6 +60,13 @@ DST="$WORKDIR/samples/$SAMPLE_REL"
 mkdir -p "$(dirname "$DST")"
 cp -r "$SAMPLE_ROOT/$SAMPLE_REL" "$DST"
 
+# Some AMIs ship the samples tree already configured, and a CMake cache records the absolute path it was generated
+# for, so cmake refuses to reuse the copy ("The current CMakeCache.txt directory ... is different than the directory
+# ..."). Drop every trace of the inherited configuration so the copy is configured from scratch.
+find "$DST" -name CMakeCache.txt -delete
+find "$DST" -name CMakeFiles -type d -prune -exec rm -rf {} +
+rm -rf "$DST/build"
+
 echo "===== Building $SAMPLE_REL ====="
 cmake -S "$DST" -B "$DST/build"
 cmake --build "$DST/build" -j"${SLURM_CPUS_PER_TASK:-2}"

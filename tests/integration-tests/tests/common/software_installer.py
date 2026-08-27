@@ -33,11 +33,20 @@ _COMPUTE_FLEET_TERMINAL_STATES = {"RUNNING", "STOPPED", "PROTECTED"}
 _COMPUTE_FLEET_START_TRANSITIONS = {"START_REQUESTED", "STARTING"}
 _COMPUTE_FLEET_STOP_TRANSITIONS = {"STOP_REQUESTED", "STOPPING"}
 _CAPACITY_WAIT_MINUTES = 15
+# Login nodes are drained before they are terminated, and loginmgtd waits out the pool's grace time period (10 minutes
+# by default) before it lets the Auto Scaling group reclaim them, so a pool routinely takes over 10 minutes and has
+# been measured at more than 15 to disappear. This wait therefore gets a budget of its own.
+_TERMINATION_WAIT_MINUTES = 30
 _PARTITION_WAIT_MINUTES = 10
-_STATE_CHECK_RESERVATION = "pcluster-upgrade-state-check"
+_STATE_CHECK_RESERVATION = "slurm-upgrade-state-check"
 # The reservation only has to be persisted in StateSaveLocation, so keep it far in the future:
 # an active maintenance reservation would take nodes out of the scheduler for the rest of the test.
 _STATE_CHECK_RESERVATION_START = "now+7days"
+# The name above must stay outside the "pcluster-" namespace: clustermgtd's capacity block manager deletes every
+# reservation whose name starts with that prefix and does not belong to a Capacity Block in the cluster
+# configuration, which used to make this reservation disappear a couple of minutes after the compute fleet came
+# back up, without a trace in slurmctld.log.
+_CLUSTERMGTD_LOG = "/var/log/parallelcluster/clustermgtd"
 _SLURM_VERSION_COMMANDS = ("sinfo --version", "/opt/slurm/sbin/slurmdbd -V", "sacctmgr --version")
 _SLURM_CONF = "/opt/slurm/etc/slurm.conf"
 _SLURMCTLD_LOG = "/var/log/slurmctld.log"
@@ -269,7 +278,7 @@ def _wait_for_compute_status(snapshot, expected_status):
 def _wait_for_consumers_terminated(snapshots):
     @retry(
         wait_fixed=seconds(15),
-        stop_max_delay=minutes(_CAPACITY_WAIT_MINUTES),
+        stop_max_delay=minutes(_TERMINATION_WAIT_MINUTES),
         retry_on_result=lambda consumers_remain: consumers_remain,
     )
     def _poll():
@@ -709,6 +718,9 @@ def _reservation_diagnostics(remote_command_executor):
     A reservation can disappear for two very different reasons: the upgrade failed to convert the record, or
     something in the cluster deleted the reservation deliberately. Which reservations survived and what slurmctld
     logged about them is what separates the two, and neither is recoverable from the test's own commands.
+
+    clustermgtd is included because a deletion it performs leaves no trace in slurmctld.log: a successful delete
+    is only logged by slurmctld under DebugFlags=Reservation.
     """
     reservations = remote_command_executor.run_remote_command(
         "scontrol show reservation", raise_on_error=False, hide=True
@@ -718,9 +730,15 @@ def _reservation_diagnostics(remote_command_executor):
         raise_on_error=False,
         hide=True,
     )
+    node_daemon_log = remote_command_executor.run_remote_command(
+        f"sudo grep -i reservation {_CLUSTERMGTD_LOG} | tail -n 20",
+        raise_on_error=False,
+        hide=True,
+    )
     return (
         f"reservations known to the controller: {reservations.stdout.strip() or '<none>'}. "
-        f"slurmctld log: {controller_log.stdout.strip() or '<nothing about reservations>'}"
+        f"slurmctld log: {controller_log.stdout.strip() or '<nothing about reservations>'}. "
+        f"clustermgtd log: {node_daemon_log.stdout.strip() or '<nothing about reservations>'}"
     )
 
 
