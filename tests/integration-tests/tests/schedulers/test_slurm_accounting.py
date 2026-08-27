@@ -7,7 +7,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
-from time_utils import seconds
+from time_utils import minutes, seconds
 from utils import to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
@@ -61,7 +61,12 @@ def _get_expected_users(remote_command_executor, test_resources_dir):
 
 
 def _is_accounting_enabled(remote_command_executor):
-    return remote_command_executor.run_remote_command("sacct", raise_on_error=False).ok
+    result = remote_command_executor.run_remote_command("sacct", raise_on_error=False)
+    if not result.ok:
+        # The message sacct prints is the only explanation available for a slurmdbd the command cannot talk to,
+        # so it is logged here instead of being dropped with the exit code.
+        logging.info("sacct failed: %s", result.stdout.strip())
+    return result.ok
 
 
 def _rds_ca_bundle_url(region):
@@ -89,9 +94,10 @@ def _test_require_server_identity(remote_command_executor, test_resources_dir, r
     # This is reasonable in the short term because the SSL configuration is actually out of scope for ParallelCluster.
     if "us-iso" not in region:
         _require_server_identity(remote_command_executor, test_resources_dir, region)
-    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
-        remote_command_executor,
-    )
+    # Reconfiguring SSL restarts slurmdbd, so accounting has to be working again before the test moves on. The
+    # previous version of this check called _is_accounting_enabled through retry() without a retry_on_result, which
+    # never retried and threw the result away.
+    _test_that_slurmdbd_is_running(remote_command_executor)
 
 
 def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resources_dir):
@@ -205,7 +211,10 @@ def _test_that_slurmdbd_is_not_running(remote_command_executor):
     assert_that(_is_accounting_enabled(remote_command_executor)).is_false()
 
 
+@retry(wait_fixed=seconds(15), stop_max_delay=minutes(5))
 def _test_that_slurmdbd_is_running(remote_command_executor):
+    # slurmdbd is reachable a little after the cluster reports itself created, and it also takes a moment to come
+    # back after the checks that restart it, so the command is given time to succeed instead of being run once.
     assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
 
 
@@ -468,12 +477,8 @@ def test_slurm_accounting_external_dbd(
 
     _test_successful_startup_in_log(slurmdbd_node_remote_command_executor, since_line=slurmdbd_log_line_count)
     _assert_no_upgrade_failures_in_slurmdbd_log(slurmdbd_node_remote_command_executor, slurmdbd_log_line_count)
-    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_test_that_slurmdbd_is_running)(
-        headnode_remote_command_executor_1
-    )
-    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_test_that_slurmdbd_is_running)(
-        headnode_remote_command_executor_2
-    )
+    _test_that_slurmdbd_is_running(headnode_remote_command_executor_1)
+    _test_that_slurmdbd_is_running(headnode_remote_command_executor_2)
     assert_slurm_state_preserved(headnode_remote_command_executor_1, slurm_state_snapshot_1)
     assert_slurm_state_preserved(headnode_remote_command_executor_2, slurm_state_snapshot_2)
     # The upgraded slurmdbd must still serve the job records written before the upgrade, both to the cluster
@@ -508,9 +513,9 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
 
     # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
     _test_require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
-    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
-        headnode_remote_command_executor,
-    )
+    # The check above restarts slurmdbd on its own node, so the head node has to see accounting working again
+    # before jobs are submitted.
+    _test_that_slurmdbd_is_running(headnode_remote_command_executor)
     job_id = _test_jobs_get_recorded(scheduler_commands)
     assert_no_defunct_slurm_config_params(
         headnode_remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()

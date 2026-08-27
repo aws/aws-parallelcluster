@@ -433,14 +433,18 @@ def test_slurm_custom_partitions(
     for partition in custom_partitions:
         scheduler_commands.set_partition_state(partition, "INACTIVE")
     cluster.start()
-    wait_for_num_instances_in_cluster(cluster.name, region, len(static_nodes))
     logging.info("Checking pcluster start does not manage custom partitions...")
+    # The partition states are checked before waiting for the instances, because the failing partition only stays UP
+    # for a short while: it keeps the bootstrap failure count that put the cluster in protected mode earlier, and that
+    # count is only reset when a node of the compute resource that failed comes online, which never happens because
+    # those nodes are dynamic and no job requests them anymore. clustermgtd therefore puts the partition back to
+    # INACTIVE a loop after pcluster start has activated it, well before the static nodes have finished booting.
     for partition in all_partitions:
-        if partition in custom_partitions:
-            expected_state = "INACTIVE"
-        else:
-            expected_state = "UP"
-        assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(expected_state)
+        if partition not in custom_partitions:
+            _wait_for_partition_state_changed(scheduler_commands, partition, "UP")
+    for partition in custom_partitions:
+        assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to("INACTIVE")
+    wait_for_num_instances_in_cluster(cluster.name, region, len(static_nodes))
 
     install_test_software_with_stopped_consumers(remote_command_executor, region, cluster)
     assert_slurm_controller_healthy(remote_command_executor)
@@ -3181,19 +3185,19 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
 ):
     """Test Slurm memory-based scheduling with multimple instance types configured on a compute resource"""
 
-    jiff = 2
     # Here two jobs that require 2G of memory are submitted in an instance with 8000 MiB memory
-
+    # The first job runs long enough to still be there when the second one starts: Slurm can take up to a full
+    # scheduling cycle to allocate the second job, so a shorter job would leave nothing to run alongside it.
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
             "slots": 1,
-            "command": "sleep 30",
+            "command": "sleep 120",
             "other_options": "--mem=2000 -w queue1-st-ondemand1-i2-1",
             "raise_on_error": False,
         }
     )
-    time.sleep(jiff)
+    slurm_commands.wait_job_running(job_id_1)
     job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
@@ -3203,10 +3207,9 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
             "raise_on_error": False,
         }
     )
-    time.sleep(jiff)
-    # Both should be running
+    # Both jobs fit in the memory of the node, so the second one must start while the first one is still running
+    slurm_commands.wait_job_running(job_id_2)
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
-    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("RUNNING")
     # Check that memory appears in the TRES allocated for the job
     assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
     assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
