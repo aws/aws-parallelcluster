@@ -24,6 +24,14 @@ def _wait_file_not_empty(remote_command_executor, file_path, compute_node_ip=Non
         size = remote_command_executor.run_remote_command(f"stat --format=%s {file_path}").stdout
     assert_that(size).is_not_equal_to("0")
 
+def _touch_file(remote_command_executor, file_path, compute_node_ip=None):
+    """Touch a file on head node or compute node."""
+    command = f"touch {file_path}"
+    if compute_node_ip:
+        _run_command_on_node(remote_command_executor, command, compute_node_ip)
+    else:
+        remote_command_executor.run_remote_command(command)
+
 
 def _run_command_on_node(remote_command_executor, command, compute_node_ip=None):
     """Run remote command on head node or compute node."""
@@ -163,10 +171,14 @@ def _test_logs_are_rotated(os, logs, remote_command_executor, before_log_rotatio
 
 def _test_logs_written_to_new_file(logs, remote_command_executor, compute_node_ip=None):
     """Test newly generated logs write to log_file.log instead of log_file.log.1."""
-    # test logs are written to new log files after rotation
+    # test logs are written to new log files after rotation.
+    # For those logs that do not necessarily have new entries,
+    # we touch the file to force the existence for later checks.
     for log in logs:
         if log.get("trigger_new_entries"):
             _wait_file_not_empty(remote_command_executor, log.get("log_path"), compute_node_ip)
+        else:
+            _touch_file(remote_command_executor, log.get("log_path"), compute_node_ip)
 
 
 def _test_logs_uploaded_to_cloudwatch(
