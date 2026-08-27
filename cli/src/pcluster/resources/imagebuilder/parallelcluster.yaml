@@ -140,6 +140,9 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
+                # Refresh the package index first: the index inherited from the base AMI can still
+                # reference package versions already rotated out of the pool, which fails the fetch.
+                apt-get -y update
                 apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
                 apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
               fi

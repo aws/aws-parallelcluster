@@ -31,10 +31,10 @@ Parameters:
       - "true"
       - "false"
 
-  PrivateSubnetAvailabilityZone:
+  AvailabilityZone:
     Description: >-
-      AZ name (e.g. us-east-1c) for the private subnet. 
-      When empty, the private subnet falls back to the Region's "b" AZ.
+      AZ name (e.g. us-east-1c) for both the public and private subnets.
+      When empty, both subnets fall back to the Region's "a" AZ.
     Type: String
     Default: ""
 
@@ -46,7 +46,7 @@ Metadata:
         Parameters:
           - VpcCidr
           - SSHCidr
-          - PrivateSubnetAvailabilityZone
+          - AvailabilityZone
       - Label:
           default: Permissions
         Parameters:
@@ -65,7 +65,7 @@ Conditions:
   IsClusterProxy: !Not [!Condition IsBuildImageProxy]
   # China regions (aws-cn partition) use cn.com.amazonaws prefix for VPC Interface endpoint service names
   IsChinaRegion: !Equals [!Ref "AWS::Partition", "aws-cn"]
-  HasPrivateSubnetAvailabilityZone: !Not [!Equals [!Ref PrivateSubnetAvailabilityZone, ""]]
+  HasAvailabilityZone: !Not [!Equals [!Ref AvailabilityZone, ""]]
 
 Resources:
 
@@ -95,7 +95,7 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}a
+      AvailabilityZone: !If [HasAvailabilityZone, !Ref AvailabilityZone, !Sub "${AWS::Region}a"]
       CidrBlock: !Select [ 0, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
       MapPublicIpOnLaunch: true
       VpcId: !Ref Vpc
@@ -127,7 +127,7 @@ Resources:
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !If [HasPrivateSubnetAvailabilityZone, !Ref PrivateSubnetAvailabilityZone, !Sub "${AWS::Region}b"]
+      AvailabilityZone: !If [HasAvailabilityZone, !Ref AvailabilityZone, !Sub "${AWS::Region}a"]
       CidrBlock: !Select [ 1, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
       MapPublicIpOnLaunch: false
       VpcId: !Ref Vpc
@@ -369,14 +369,14 @@ Resources:
             # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
             APT_RETRY="-o Acquire::Retries=5"
 
-            # Stop Ubuntu's boot-time apt/dpkg jobs so they can't hold the dpkg lock while we install packages. 
-            # Otherwise they race with this UserData and cause locking failures.
-            systemctl mask --now \
-              apt-daily.timer apt-daily-upgrade.timer \
-              apt-daily.service apt-daily-upgrade.service \
-              unattended-upgrades.service packagekit.service || true
+            # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
+            # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service || true
+            sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
+              /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
 
-            # Finish any transaction interrupted by the masking above.
+            # Finish any transaction interrupted before we start installing.
             dpkg --configure -a
 
             # Enable IP forwarding — without this, the kernel drops packets routed from
@@ -459,6 +459,17 @@ Resources:
             ^d1uj6qtbmh3dt5\.cloudfront\.net
             \.aws\.ce\.redhat\.com
             FILTER
+
+              # EPEL mirrors rotate per request and can't be pinned statically, so resolve
+              # the mirrorlist here and allowlist every host it returns.
+              for RELEASEVER in 8 9; do
+                for ARCH in x86_64 aarch64; do
+                  curl -s --retry 5 "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=$ARCH" \
+                    | awk -F/ '/^https?:/ {print $3}'
+                done
+              done | sort -u | while read -r EPEL_HOST; do
+                echo "^$(echo "$EPEL_HOST" | sed 's/\./\\./g')\$" >> /etc/tinyproxy/filter
+              done
             fi
 
             /etc/init.d/tinyproxy restart
@@ -579,14 +590,14 @@ Resources:
             # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
             APT_RETRY="-o Acquire::Retries=5"
 
-            # Stop Ubuntu's boot-time apt/dpkg jobs so they can't hold the dpkg lock while we install packages. 
-            # Otherwise they race with this UserData and cause locking failures.
-            systemctl mask --now \
-              apt-daily.timer apt-daily-upgrade.timer \
-              apt-daily.service apt-daily-upgrade.service \
-              unattended-upgrades.service packagekit.service || true
+            # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
+            # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service || true
+            sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
+              /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
 
-            # Finish any transaction interrupted by the masking above.
+            # Finish any transaction interrupted before we start installing.
             dpkg --configure -a
 
             apt-get $APT_RETRY update -y
@@ -595,6 +606,33 @@ Resources:
               echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
               https_proxy="http://${ProxyPrivateIp}:${ProxyPort}" curl -v -o /dev/null https://api.snapcraft.io/v2/snaps/info/core 2>&1 || exit 1
               echo "==> HTTPS transparent proxy test passed"
+
+              # Verify the proxy allowlisted every EPEL mirror the mirrorlist returns.
+              # Fail only on a proxy denial (allowlist gap), not on a mirror being down.
+              echo "==> Validating EPEL mirror allowlisting through the proxy"
+              PROXY="http://${ProxyPrivateIp}:${ProxyPort}"
+              DENIED=""
+              for RELEASEVER in 8 9; do
+                MIRRORS=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -s --retry 5 \
+                  "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=x86_64")
+                for URL in $MIRRORS; do
+                  case "$URL" in http*) ;; *) continue ;; esac
+                  BASE=$(echo "$URL" | sed 's#/*$#/#')
+                  RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v --retry 2 -o /dev/null "$BASE"repodata/repomd.xml 2>&1 || true)
+                  if echo "$RESP" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'; then
+                    echo "==> DENIED by proxy (EPEL $RELEASEVER mirror not allowlisted): $URL"
+                    DENIED="$DENIED $URL"
+                  else
+                    echo "==> Allowed by proxy (EPEL $RELEASEVER): $URL"
+                  fi
+                done
+              done
+              if [ -n "$DENIED" ]; then
+                echo "==> ERROR: the proxy denied EPEL mirrors that should have been allowlisted:$DENIED"
+                exit 1
+              fi
+              echo "==> EPEL mirror allowlisting validated for all mirrors"
+
               echo "==> Signaling success"
               signal SUCCESS "Proxy verification passed"
             else
