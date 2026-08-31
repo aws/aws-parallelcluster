@@ -496,6 +496,15 @@ class SlurmCommands(SchedulerCommands):
         node_addr = re.search(r"NodeAddr=(.*) NodeHostName", result).group(1)
         return node_addr
 
+    def get_job_instance_id(self, job_id):
+        """Return the id of the EC2 instance the job is running on, as reported by Slurm."""
+        node_name = self._remote_command_executor.run_remote_command(
+            f'scontrol show jobs {job_id} --json | jq -r ".jobs[0].batch_host"'
+        ).stdout.strip()
+        return self._remote_command_executor.run_remote_command(
+            f'scontrol show nodes {node_name} --json | jq -r ".nodes[0].instance_id"'
+        ).stdout.strip()
+
     def submit_command_and_assert_job_accepted(self, submit_command_args):
         """Submit a command and assert the job is accepted by scheduler."""
         result = self.submit_command(**submit_command_args)
@@ -546,6 +555,12 @@ class SlurmCommands(SchedulerCommands):
         """Wait till job starts running."""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         assert_that(result.stdout).contains("JobState=RUNNING")
+
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(13))
+    def wait_job_requeued(self, job_id, times=1):
+        """Wait till the job has been requeued at least `times` times (Restarts>=times)."""
+        restarts = self.get_job_info(job_id, field="Restarts")
+        assert_that(int(restarts)).is_greater_than_or_equal_to(times)
 
     def get_node_info(self, nodename):
         """Get node info."""
