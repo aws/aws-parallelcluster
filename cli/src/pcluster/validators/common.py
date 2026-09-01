@@ -20,6 +20,7 @@ from enum import Enum
 from typing import List
 
 from pcluster.aws.common import AWSClientError
+from pcluster.utils import event_loop
 
 ASYNC_TIMED_VALIDATORS_DEFAULT_TIMEOUT_SEC = 10
 
@@ -84,7 +85,8 @@ class AsyncValidator(Validator):
         super().__init__()
 
     def _validate(self, *arg, **kwargs):
-        asyncio.get_event_loop().run_until_complete(self._validate_async(*arg, **kwargs))
+        with event_loop() as loop:
+            loop.run_until_complete(self._validate_async(*arg, **kwargs))
         return self._failures
 
     async def execute_async(self, *arg, **kwargs) -> List[ValidationResult]:
