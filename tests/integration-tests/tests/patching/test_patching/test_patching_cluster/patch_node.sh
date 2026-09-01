@@ -183,6 +183,9 @@ elif command -v apt-get >/dev/null 2>&1; then
     # DEBIAN_FRONTEND is passed *through* sudo, which resets the environment by default,
     # so an exported var alone would not reach the root apt-get process.
     _envars=(DEBIAN_FRONTEND=noninteractive)
+    # dpkg conffile options: keep locally-modified config files (e.g. efs-utils.conf); without
+    # them dpkg prompts and aborts on EOF (DEBIAN_FRONTEND=noninteractive does not cover this).
+    _dpkg_opts=(-o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef")
     sudo "${_envars[@]}" apt-get update -y
     if [[ "${CAPPED}" == "true" ]]; then
         cap_kernel_debian
@@ -194,7 +197,7 @@ elif command -v apt-get >/dev/null 2>&1; then
         sudo "${_envars[@]}" unattended-upgrade -v
     else
         # Apply all available package updates, including kernel packages.
-        sudo "${_envars[@]}" apt-get upgrade -y
+        sudo "${_envars[@]}" apt-get upgrade -y "${_dpkg_opts[@]}"
     fi
 else
     echo "ERROR: no supported package manager found (dnf/yum/apt-get)" >&2
