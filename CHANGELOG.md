@@ -8,6 +8,9 @@ CHANGELOG
 - Improve `export-logs` user experience by parallelizing download to reduce run time, 
   adding progress reporting, and supporting running on deleted clusters.
 
+**CHANGES**
+- Add support for Python 3.14 in the pcluster CLI.
+
 **BUG FIXES**
 - Fixed issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
