@@ -30,10 +30,7 @@ from pcluster.config.common import (
     DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
-from pcluster.config.common import (
-    Resource,
-    SharedStorageType,
-)
+from pcluster.config.common import Resource, SharedStorageType
 from pcluster.constants import (
     CIDR_ALL_IPS,
     COMPUTE_INSTANCE_INFO_TIMEOUT,
