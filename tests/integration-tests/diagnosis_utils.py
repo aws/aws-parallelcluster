@@ -28,6 +28,8 @@ RCA_LOG_FILES = [
     "/var/log/parallelcluster/slurmctld.log",
 ]
 RCA_HEAD_NODE_CONSOLE_OUTPUT = "HeadNode Console Output"
+RCA_JOURNALCTL = "Journal"
+CMD_JOURNALCTL_ERRORS = "sudo journalctl -b -p err --no-pager"
 PATTERN_GENERIC_FAILURE = r"error|fail|fatal|exception|critical"
 PATTERN_CHEF_ERROR = r"(ERROR|FATAL):"
 PATTERN_ICE_ERROR = r"InsufficientInstanceCapacity.*?sufficient\s+(\S+)\s+capacity"
@@ -43,6 +45,11 @@ PATTERN_CHEF_CLIENT_LOG_BLOCK = re.compile(
     r"[^\n]*BEGIN CHEF-CLIENT\.LOG[^\n]*.*?[^\n]*END CHEF-CLIENT\.LOG[^\n]*",
     re.DOTALL,
 )
+
+
+def system_messages_log(os):
+    """Return the system messages log path for the given OS: syslog on Ubuntu, messages elsewhere."""
+    return "/var/log/syslog" if os.startswith("ubuntu") else "/var/log/messages"
 
 
 def retrieve_console_errors(region, instance_id):
@@ -78,6 +85,26 @@ def retrieve_console_errors(region, instance_id):
     except Exception as e:
         logging.warning("Exception retrieving console output: %s", e)
         return f"Failed to retrieve console output: {e}"
+
+
+def retrieve_journalctl_errors(rce, num_errors=200):
+    """
+    Retrieve error-priority (>= err) lines from the systemd journal for the current boot.
+
+    Bootstrap failures often abort a service before it starts because one of its dependencies
+    failed (e.g. nfs-server.service reporting "A dependency job ... failed"). The reason lives
+    only in the systemd journal, not in any of RCA_LOG_FILES.
+
+    Requires SSH access to the head node and sudo to read the system journal.
+
+    :param rce: Remote command executor instance.
+    :param num_errors: Max journal error lines to keep.
+    :return: Journal error lines, or a message if none found / retrieval failed.
+    """
+    result = rce.run_remote_command(CMD_JOURNALCTL_ERRORS, raise_on_error=True, log_error=False)
+    if not result.stdout.strip():
+        return "No error found"
+    return "\n".join(result.stdout.strip().splitlines()[-num_errors:])
 
 
 def extract_ice_from_rca_details(rca_details):
@@ -121,7 +148,9 @@ def retrieve_rca_details(cluster, num_errors=10):
     rce = RemoteCommandExecutor(cluster)
 
     rca_details["SUMMARY"] = ["No root cause found"]
-    for log_path in RCA_LOG_FILES:
+    # Add the OS-specific system messages log.
+    log_files = RCA_LOG_FILES + [system_messages_log(cluster.os)]
+    for log_path in log_files:
         try:
             if log_path == "/var/log/chef-client.log":
                 matches = find_all_matches_in_log(rce, log_path, PATTERN_CHEF_ERROR, num_errors, case_sensitive=True)
@@ -130,6 +159,10 @@ def retrieve_rca_details(cluster, num_errors=10):
             rca_details[log_path] = "\n".join(matches) if matches else "No error found"
         except Exception as e:
             logging.warning("Failed to retrieve RCA details from log %s: %s", log_path, e)
+    try:
+        rca_details[RCA_JOURNALCTL] = retrieve_journalctl_errors(rce)
+    except Exception as e:
+        logging.warning("Failed to retrieve journalctl RCA details: %s", e)
 
     rce.close_connection()
 
