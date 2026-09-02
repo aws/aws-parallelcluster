@@ -364,7 +364,9 @@ ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
 CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]
 
 # Older generation instance types
+# This constant is only used by test code
 EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "a1",  # a1 is based on Graviton 1 which is not supported by the newer version of Amazon Linux 2023
     "m1",
     "m2",
     "m3",
