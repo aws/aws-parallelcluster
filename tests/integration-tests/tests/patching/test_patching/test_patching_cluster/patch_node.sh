@@ -134,7 +134,7 @@ cap_kernel_dnf() {
     [[ -n "${cap}" ]] || { echo "ERROR: could not determine the max FSx Lustre-supported kernel" >&2; exit 1; }
     echo "Capping kernel to the max FSx Lustre-supported version: ${cap}"
     sudo dnf install -y python3-dnf-plugin-versionlock
-    sudo dnf versionlock add "kernel-${cap}" "kernel-core-${cap}" "kernel-modules-${cap}"
+    sudo dnf versionlock add "kernel-${cap}" "kernel-core-${cap}" "kernel-modules-${cap}" "kernel-modules-core-${cap}" "kernel-tools-${cap}"
 }
 
 echo "===== Starting system ${FLAVOUR} patching on $(hostname) ====="
