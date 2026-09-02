@@ -74,7 +74,7 @@ def _get_base_ami(region, os, architecture):
         # Use official AMIs. First stage AMIs must not be used as parent image in this test.
         base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
         update_os_packages = True
-        if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
+        if os in ["rhel9", "ubuntu2404"]:
             enable_lustre_client = False
     else:
         # Test vanilla AMIs.
