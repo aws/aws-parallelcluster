@@ -49,48 +49,28 @@ FSX_LUSTRE_MOUNT_DIR = "/shared-fsxlustre"
 HEAD_NODE_INSTANCE = "c5.4xlarge"
 LOGIN_NODE_INSTANCE = "c5.xlarge"
 
-# Kernel modules that are loaded lazily (e.g. by ss, systemd-networkd, or other daemons that
-# may or may not have run by the time we snapshot). We force-load these after patching so that
-# the before/after comparison does not flag them as missing.
-# Maintained per OS and per node type. Keep module names alphabetically sorted.
-# Modules tolerated on the head node across all OSes.
-COMMON_HEAD_NODE_LAZY_MODULES = ["crc32_generic", "tls"]
-LAZY_KERNEL_MODULES = {
-    "alinux2023": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
-    "rhel8": {
-        HEAD_NODE: ["af_packet_diag", "crc32_generic", "inet_diag", "tcp_diag", "tls", "udp_diag"],
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
-    "rhel9": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
-    "rocky8": {
-        HEAD_NODE: ["af_packet_diag", "crc32_generic", "inet_diag", "tcp_diag", "tls", "udp_diag"],
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
-    "rocky9": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
-    "ubuntu2204": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
-    "ubuntu2404": {
-        HEAD_NODE: COMMON_HEAD_NODE_LAZY_MODULES,
-        COMPUTE_NODE: ["tls"],
-        LOGIN_NODE: ["tls"],
-    },
+# Kernel modules that must be loaded on every node type, both before and after patching.
+COMMON_MANDATORY_KERNEL_MODULES = [
+    "efa",
+    "ib_core",
+    "ib_umad",
+    "ib_uverbs",
+    "lnet",
+    "lustre",
+    "nfs",
+]
+
+# Kernel modules that must be loaded, both before and after patching, indexed by node type.
+MANDATORY_KERNEL_MODULES = {
+    HEAD_NODE: COMMON_MANDATORY_KERNEL_MODULES,
+    LOGIN_NODE: COMMON_MANDATORY_KERNEL_MODULES,
+    COMPUTE_NODE: COMMON_MANDATORY_KERNEL_MODULES
+    + [
+        "nvidia",
+        "nvidia_drm",
+        "nvidia_modeset",
+        "nvidia_uvm",
+    ],
 }
 
 
@@ -122,12 +102,14 @@ def test_patching_cluster(
       3.  Bake a patched AMI from that AMI.
       4.  Wait for the cluster creation to complete.
       5.  Run a baseline GPU workload from head node and login node
-      6.  Snapshot the loaded kernel modules.
+      6.  Snapshot the loaded kernel modules and require the mandatory ones to be loaded.
       7.  Stop the login nodes.
       8.  Update the cluster to the patched AMI and wait for nodes to be replaced.
       9.  Patch and reboot the head node, then wait for it to be reachable over SSH.
       10. Re-run the GPU workload from head node and login node.
-      11. Assert that every kernel module loaded before patching is still loaded, on each node type.
+      11. On each node type, require the mandatory kernel modules to be loaded after patching.
+          For every other module loaded before patching but not after, skip it if it no longer
+          exists for the patched kernel, or require that it can be loaded again if it does.
     """
     ec2 = boto3.client("ec2", region_name=region)
 
@@ -166,6 +148,10 @@ def test_patching_cluster(
     # patching so we can later assert the same modules remain loaded.
     kernel_modules_before = _collect_loaded_kernel_modules(cluster, scheduler_commands_factory)
     logging.info("Kernel modules loaded before patching: %s", kernel_modules_before)
+
+    # Baseline: the mandatory modules must already be loaded before patching, so a post-patch
+    # failure is unambiguously caused by the patching rather than a pre-existing gap.
+    _assert_mandatory_kernel_modules_loaded(kernel_modules_before, "before")
 
     # GPU workload BEFORE patching, from the head node and login node (baseline).
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=False)
@@ -231,14 +217,29 @@ def test_patching_cluster(
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=False)
     _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node=True)
 
-    # Trigger lazily-loaded modules so that we can compare pre v/s post reboot kernel modules.
-    _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory, os)
+    # Collect the modules loaded after patching. Mandatory modules must be loaded (an absolute
+    # post-patch requirement); for the rest, a module that was loaded before but not after is only
+    # a problem if it still exists for the patched kernel yet fails to load, while a module dropped
+    # by the new kernel is logged and tolerated.
+    # Read the FSx for Lustre mountpoint on the head node so the (lazily-loaded) lustre kernel
+    # module is loaded before we snapshot: lustre is mandatory but only loads on first access.
+    remote_command_executor.run_remote_command(f"ls {FSX_LUSTRE_MOUNT_DIR}")
     kernel_modules_after = _collect_loaded_kernel_modules(cluster, scheduler_commands_factory)
     logging.info("Kernel modules loaded after patching: %s", kernel_modules_after)
     with soft_assertions():
         for node_type in NODE_TYPES:
+            executor = _node_executor(cluster, scheduler_commands_factory, node_type)
+            mandatory = set(MANDATORY_KERNEL_MODULES[node_type])
+            mandatory_missing = mandatory - kernel_modules_after[node_type]
+            assert_that(mandatory_missing).described_as(
+                f"{node_type}: after patching the following mandatory kernel modules are not loaded: "
+                f"{mandatory_missing}"
+            ).is_empty()
             missing = kernel_modules_before[node_type] - kernel_modules_after[node_type]
-            assert_that(missing).described_as(f"kernel modules no longer loaded on the {node_type}").is_empty()
+            failed_to_load = _reload_missing_modules(executor, missing - mandatory, node_type)
+            assert_that(failed_to_load).described_as(
+                f"{node_type}: after patching the following kernel modules fail to load: {failed_to_load}"
+            ).is_empty()
 
 
 @retry(stop_max_delay=minutes(15), wait_fixed=seconds(30), retry_on_result=lambda replaced: not replaced)
@@ -303,20 +304,42 @@ def _run_gpu_workload(cluster, scheduler_commands_factory, use_login_node):
     logging.info("GPU validation job %s submitted from the %s succeeded", job_id, source)
 
 
-def _trigger_lazy_kernel_modules(cluster, scheduler_commands_factory, os):
-    """Ensure on-demand kernel modules are loaded before the post-reboot snapshot.
+def _assert_mandatory_kernel_modules_loaded(kernel_modules, phase):
+    """Assert the mandatory kernel modules for each node type are loaded.
 
-    Some modules load lazily and are absent right after the reboot until something
-    exercises them, which would make the post-reboot snapshot miss them and fail the
-    before/after comparison.
+    `phase` is "before" or "after" and is only used to make the assertion message clear.
     """
-    for node_type in NODE_TYPES:
-        executor = _node_executor(cluster, scheduler_commands_factory, node_type)
-        # Read the FSx for Lustre mountpoint to trigger the loading of lustre kernel module.
-        executor.run_remote_command(f"ls {FSX_LUSTRE_MOUNT_DIR}")
-        # Force-load known lazily-loaded modules for this OS and node type.
-        for module in LAZY_KERNEL_MODULES.get(os, {}).get(node_type, []):
-            executor.run_remote_command(f"sudo modprobe {module}")
+    with soft_assertions():
+        for node_type in NODE_TYPES:
+            missing = set(MANDATORY_KERNEL_MODULES[node_type]) - kernel_modules[node_type]
+            assert_that(missing).described_as(
+                f"{node_type}: {phase} patching the following mandatory kernel modules are not loaded: {missing}"
+            ).is_empty()
+
+
+def _reload_missing_modules(executor, modules, node_type):
+    """Reconcile modules that were loaded before patching but not after.
+
+    Some modules load lazily and are simply absent from the post-reboot snapshot until
+    something exercises them again. For each such module: if it no longer exists for the
+    patched kernel, log and skip it (a module dropped by the new kernel is tolerated);
+    otherwise load it and require that it loads successfully. Returns the set of modules
+    that still exist but failed to load, so the caller can assert on it.
+    """
+    failed_to_load = set()
+    for module in sorted(modules):
+        # `modinfo` succeeds for a module that exists for the running kernel (including
+        # built-in ones) and fails when the patched kernel no longer ships it.
+        if executor.run_remote_command(f"modinfo {module}", raise_on_error=False).failed:
+            logging.warning(
+                f"After patching, the kernel module {module} no longer exists on {node_type}; "
+                f"skipping as the kernel module is not considered mandatory by the test."
+            )
+            continue
+        if executor.run_remote_command(f"sudo modprobe {module}", raise_on_error=False).failed:
+            logging.error(f"After patching, kernel module {module} exists but failed to load on {node_type}")
+            failed_to_load.add(module)
+    return failed_to_load
 
 
 def _collect_loaded_kernel_modules(cluster, scheduler_commands_factory):
