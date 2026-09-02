@@ -39,6 +39,7 @@ SUPPORTED_OSES_FOR_P6E_GB200 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_F
 UNSUPPORTED_OSES_FOR_P6_B300 = []
 SUPPORTED_OSES_FOR_P6_B300 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6_B300))
 UNSUPPORTED_OSES_FOR_DCV = []
+UNSUPPORTED_OSES_FOR_NON_GPU_DCV = ["rocky9", "rhel9"]
 UNSUPPORTED_ARM_OSES_FOR_DCV = []
 UNSUPPORTED_OSES_FOR_LUSTRE = []
 DELETE_POLICY = "Delete"
@@ -155,8 +156,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.16.2",
-    "cookbook": "aws-parallelcluster-cookbook-3.16.2",
+    "parallelcluster": "3.17.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.17.0",
     "chef": "19.3.14",
     "ami": "dev",
 }
@@ -361,3 +362,30 @@ ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
 }
 # Capacity Block states that are considered inactive (cannot check health status)
 CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]
+
+# Older generation instance types
+# This constant is only used by test code
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "a1",  # a1 is based on Graviton 1 which is not supported by the newer version of Amazon Linux 2023
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "i2",
+    "i3",
+    "f1",
+    "g3",
+    "p2",
+    "p3",
+)
