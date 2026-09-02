@@ -46,6 +46,7 @@ CHANGELOG
 - Install amazon-efs-utils from the official EFS endpoint instead of building from source.
   Users must now allowlist the CloudFront domain `amazon-efs-utils.aws.com` in their proxy/egress configuration
   when using `build-image` with isolated subnets.
+- Upgrade amazon-efs-utils to version 3.1.3 (from 2.4.0).
 - Upgrade Cinc Client to version 19.3.14 (from 18.8.54).
 - Upgrade GDRCopy to version 2.6 (from 2.5.2).
 - Upgrade PMIx to version 5.0.11 (from 5.0.10).
