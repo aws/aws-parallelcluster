@@ -95,6 +95,73 @@ phases:
                 fi
               fi
 
+      - name: CreatingJsonFile
+        action: CreateFile
+        inputs:
+          - path: /etc/parallelcluster/image_dna.json
+            content: |
+              ${CfnParamChefDnaJson}
+            overwrite: true
+
+      # Configure the proxy for isolated (no-internet) builds, matching the setup_proxy.rb cookbook
+      # recipe used during the Chef run: same proxy env vars and same no_proxy (regional S3 bypasses
+      # the proxy via the VPC gateway endpoint; IMDS and localhost excluded), plus the snapd proxy on
+      # Ubuntu. Written to a sourceable file (rather than /etc/environment, so nothing leaks into the
+      # built AMI) whose path is emitted as this step's stdout for the repo steps below to source.
+      # No-op (empty output) when the address is unset.
+      - name: ConfigureProxy
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              PROXY_ENV_FILE=/etc/parallelcluster/pcluster_proxy_env.sh
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              REGION=${AWS::Region}
+              # Parse the proxy address without jq (jq is installed later, over the proxy).
+              PROXY=$(sed -n 's/.*"install_http_proxy_address"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /etc/parallelcluster/image_dna.json | head -n1)
+
+              # stdout is consumed as a step output (the env-file path), so every informational
+              # message goes to stderr and only the path is written to stdout.
+              if [ -z "${!PROXY}" ]; then
+                echo "No install_http_proxy_address set; skipping proxy configuration." >&2
+                exit 0
+              fi
+              if ! [[ ${!PROXY} =~ ^https?://[^/:]+:[0-9]+/?$ ]]; then
+                echo "Invalid install_http_proxy_address '${!PROXY}'. Expected format: http(s)://host:port." >&2
+                exit {{ FailExitCode }}
+              fi
+
+              # aws_domain: China / US-ISO / US-ISOB / classic (see setup_proxy.rb).
+              case "${!REGION}" in
+                cn-*)      DOMAIN=amazonaws.com.cn ;;
+                us-iso-*)  DOMAIN=c2s.ic.gov ;;
+                us-isob-*) DOMAIN=sc2s.sgov.gov ;;
+                *)         DOMAIN=amazonaws.com ;;
+              esac
+              NO_PROXY="localhost,127.0.0.1,169.254.169.254,.s3.${!REGION}.${!DOMAIN},s3.${!REGION}.${!DOMAIN},.s3-${!REGION}.${!DOMAIN},s3-${!REGION}.${!DOMAIN},.s3.dualstack.${!REGION}.${!DOMAIN},s3.dualstack.${!REGION}.${!DOMAIN}"
+
+              echo "Configuring proxy: ${!PROXY}" >&2
+              {
+                echo "export http_proxy=${!PROXY}"
+                echo "export https_proxy=${!PROXY}"
+                echo "export HTTP_PROXY=${!PROXY}"
+                echo "export HTTPS_PROXY=${!PROXY}"
+                echo "export no_proxy=${!NO_PROXY}"
+                echo "export NO_PROXY=${!NO_PROXY}"
+              } > ${!PROXY_ENV_FILE}
+
+              # snapd uses its own HTTP client (not the transparent proxy); without this an apt
+              # upgrade that triggers snap (e.g. the Firefox transitional package) holds the dpkg
+              # lock and hangs.
+              if [[ ${!PLATFORM} == DEBIAN ]] && [ -e /run/snapd.socket ]; then
+                snap set system proxy.http="${!PROXY}"
+                snap set system proxy.https="${!PROXY}"
+              fi
+
+              # Emit the env-file path as this step's output.
+              echo "${!PROXY_ENV_FILE}"
+
       - name: DisableUnattendedUpgrades
         action: ExecuteBash
         inputs:
@@ -102,6 +169,8 @@ phases:
             - |
               set -x
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
+              [ -f "${!PROXY_ENV}" ] && . "${!PROXY_ENV}"
 
               if [[ ${!PLATFORM} == DEBIAN ]]; then
                 # wait for completion of os updates performed by cloud-init
@@ -121,6 +190,8 @@ phases:
               set -x
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+              PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
+              [ -f "${!PROXY_ENV}" ] && . "${!PROXY_ENV}"
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y install jq
@@ -136,14 +207,6 @@ phases:
             - |
               set -x
               echo ${AWS::Region}
-
-      - name: CreatingJsonFile
-        action: CreateFile
-        inputs:
-          - path: /etc/parallelcluster/image_dna.json
-            content: |
-              ${CfnParamChefDnaJson}
-            overwrite: true
 
       - name: DisableKernelUpdate
         action: ExecuteBash
@@ -171,6 +234,8 @@ phases:
 
               if [[ ${!DISABLE_KERNEL_UPDATE} == true ]]; then
                 if [[ ${!PLATFORM} == RHEL ]]; then
+                  PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
+                  [ -f "${!PROXY_ENV}" ] && . "${!PROXY_ENV}"
                   yum install -y yum-plugin-versionlock
                   # listing all the packages because wildcard does not work as expected
                   yum versionlock ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
@@ -193,6 +258,8 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
+              PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
+              [ -f "${!PROXY_ENV}" ] && . "${!PROXY_ENV}"
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
@@ -266,6 +333,15 @@ phases:
         maxAttempts: 2
         inputs:
             delaySeconds: 10
+
+      - name: Cleanup
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
+              if [ -n "${!PROXY_ENV}" ]; then rm -f "${!PROXY_ENV}"; fi
 
   - name: validate
     steps:
