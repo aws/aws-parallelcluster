@@ -12,6 +12,7 @@ CHANGELOG
 - Add support for Python 3.14 in the pcluster CLI.
 
 **BUG FIXES**
+- Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
 - Fixed issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
 
