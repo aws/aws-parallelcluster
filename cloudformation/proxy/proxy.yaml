@@ -568,6 +568,14 @@ Resources:
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
+            # Resolve this instance's ID via IMDSv2, for troubleshooting. Never fails: echoes
+            # "unknown" if the metadata lookup does not succeed.
+            function get_instance_id() {
+              local token
+              token=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300" || true)
+              curl -sf -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/instance-id || echo "unknown"
+            }
+
             # Signal the success/failure to the wait condition.
             function signal() {
               curl -X PUT -H "Content-Type:" \
@@ -580,7 +588,8 @@ Resources:
               rc=$?
               trap - EXIT
               if [ "$rc" -ne 0 ]; then
-                signal FAILURE "ProxyClient UserData failed before signaling verification" || true
+                INSTANCE_ID=$(get_instance_id)
+                signal FAILURE "ProxyClient (instance ${!INSTANCE_ID}) UserData failed before signaling verification" || true
               fi
             }
             trap signal_failure EXIT
