@@ -366,13 +366,18 @@ Resources:
 
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
-            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
-            APT_RETRY="-o Acquire::Retries=5"
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches),
+            # plus a lock timeout so apt-get waits for a boot-time apt/unattended-upgrade process
+            # (holding /var/lib/dpkg/lock-frontend) to release, instead of failing immediately.
+            # Acquire::Retries only covers network fetches, not the dpkg lock.
+            APT_RETRY="-o Acquire::Retries=5 -o DPkg::Lock::Timeout=300"
 
             # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
             # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            # unattended-upgrades.service is a separate boot unit (not driven by apt-daily.timer), so it
+            # is disabled explicitly too — otherwise it can hold the dpkg lock during our apt-get install.
             flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
-              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service || true
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service unattended-upgrades.service || true
             sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
               /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
 
@@ -596,13 +601,18 @@ Resources:
 
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
-            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
-            APT_RETRY="-o Acquire::Retries=5"
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches),
+            # plus a lock timeout so apt-get waits for a boot-time apt/unattended-upgrade process
+            # (holding /var/lib/dpkg/lock-frontend) to release, instead of failing immediately.
+            # Acquire::Retries only covers network fetches, not the dpkg lock.
+            APT_RETRY="-o Acquire::Retries=5 -o DPkg::Lock::Timeout=300"
 
             # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
             # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            # unattended-upgrades.service is a separate boot unit (not driven by apt-daily.timer), so it
+            # is disabled explicitly too — otherwise it can hold the dpkg lock during our apt-get install.
             flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
-              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service || true
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service unattended-upgrades.service || true
             sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
               /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
 
