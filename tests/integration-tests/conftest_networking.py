@@ -44,6 +44,8 @@ AVAILABLE_AVAILABILITY_ZONE = {
     "sa-east-1": ["sae1-az1"],
     # m6g.xlarge instances not available in euw1-az3
     "eu-west-1": ["euw1-az1", "euw1-az2"],
+    # c5.xlarge is not supported in eu-west-2d (euw2-az4)
+    "eu-west-2": ["euw2-az1", "euw2-az2", "euw2-az3"],
     # io2 EBS volumes not available in cac1-az4
     "ca-central-1": ["cac1-az1", "cac1-az2"],
     # instance can only be launch in placement group in eun1-az2
@@ -248,8 +250,16 @@ def get_az_setup_for_region(region: str, credential: list):
     if "us-isob-east-1" in region:
         # Removing One of the Az's from Isolated regions
         az_id_to_az_name_map.pop("usibe1-az1", "")
+    # By default all the region's AZs are usable; if the region is in AVAILABLE_AVAILABILITY_ZONE,
+    # keep only the allowlisted AZs.
+    allowlisted_az_ids = AVAILABLE_AVAILABILITY_ZONE.get(region)
+    if allowlisted_az_ids:
+        for az_id in list(az_id_to_az_name_map):
+            if az_id not in allowlisted_az_ids:
+                az_id_to_az_name_map.pop(az_id)
+
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
-    default_az_id = random.choice(AVAILABLE_AVAILABILITY_ZONE.get(region, az_ids))
+    default_az_id = random.choice(az_ids)
     default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     return default_az_id, default_az_name, az_id_to_az_name_map
