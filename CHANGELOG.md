@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.16.1
+------
+
+**CHANGES**
+- Upgrade Slurm to version 25.11.8 (from 25.11.6).
+
 3.16.0
 ------
 
