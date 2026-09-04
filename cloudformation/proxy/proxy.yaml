@@ -347,9 +347,14 @@ Resources:
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
+            # Common curl options, used for every request below: bounded retries for transient
+            # glitches plus connect/total time caps so no single hung endpoint can block the script
+            # past the wait-condition budget.
+            CURL_OPTS="--retry 3 --connect-timeout 5 --max-time 15"
+
             # Signal the success/failure to the wait condition.
             function signal() {
-              curl -X PUT -H "Content-Type:" \
+              curl $CURL_OPTS -X PUT -H "Content-Type:" \
                 --data-binary "{\"Status\":\"$1\",\"Reason\":\"$2\",\"UniqueId\":\"Proxy\",\"Data\":\"$1\"}" \
                 "${ProxyReadyWaitConditionHandle}"
             }
@@ -366,13 +371,18 @@ Resources:
 
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
-            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
-            APT_RETRY="-o Acquire::Retries=5"
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches),
+            # plus a lock timeout so apt-get waits for a boot-time apt/unattended-upgrade process
+            # (holding /var/lib/dpkg/lock-frontend) to release, instead of failing immediately.
+            # Acquire::Retries only covers network fetches, not the dpkg lock.
+            APT_RETRY="-o Acquire::Retries=5 -o DPkg::Lock::Timeout=300"
 
             # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
             # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            # unattended-upgrades.service is a separate boot unit (not driven by apt-daily.timer), so it
+            # is disabled explicitly too — otherwise it can hold the dpkg lock during our apt-get install.
             flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
-              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service || true
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service unattended-upgrades.service || true
             sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
               /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
 
@@ -464,7 +474,7 @@ Resources:
               # the mirrorlist here and allowlist every host it returns.
               for RELEASEVER in 8 9; do
                 for ARCH in x86_64 aarch64; do
-                  curl -s --retry 5 "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=$ARCH" \
+                  curl -s $CURL_OPTS "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=$ARCH" \
                     | awk -F/ '/^https?:/ {print $3}'
                 done
               done | sort -u | while read -r EPEL_HOST; do
@@ -568,9 +578,27 @@ Resources:
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
+            # Common curl options, used for every request below: bounded retries for transient
+            # glitches plus connect/total time caps so no single hung endpoint can block the script
+            # past the wait-condition budget.
+            CURL_OPTS="--retry 3 --connect-timeout 5 --max-time 15"
+
+            # True when $1 (curl -v output) shows the proxy blocked the request.
+            function proxy_denied() {
+              echo "$1" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'
+            }
+
+            # Resolve this instance's ID via IMDSv2, for troubleshooting. Never fails: echoes
+            # "unknown" if the metadata lookup does not succeed.
+            function get_instance_id() {
+              local token
+              token=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300" || true)
+              curl -sf -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/instance-id || echo "unknown"
+            }
+
             # Signal the success/failure to the wait condition.
             function signal() {
-              curl -X PUT -H "Content-Type:" \
+              curl $CURL_OPTS -X PUT -H "Content-Type:" \
                 --data-binary "{\"Status\":\"$1\",\"Reason\":\"$2\",\"UniqueId\":\"ProxyClient\",\"Data\":\"$1\"}" \
                 "${ProxyVerificationWaitConditionHandle}"
             }
@@ -580,20 +608,26 @@ Resources:
               rc=$?
               trap - EXIT
               if [ "$rc" -ne 0 ]; then
-                signal FAILURE "ProxyClient UserData failed before signaling verification" || true
+                INSTANCE_ID=$(get_instance_id)
+                signal FAILURE "ProxyClient (instance ${!INSTANCE_ID}) UserData failed before signaling verification" || true
               fi
             }
             trap signal_failure EXIT
 
             BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
 
-            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches).
-            APT_RETRY="-o Acquire::Retries=5"
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches),
+            # plus a lock timeout so apt-get waits for a boot-time apt/unattended-upgrade process
+            # (holding /var/lib/dpkg/lock-frontend) to release, instead of failing immediately.
+            # Acquire::Retries only covers network fetches, not the dpkg lock.
+            APT_RETRY="-o Acquire::Retries=5 -o DPkg::Lock::Timeout=300"
 
             # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
             # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            # unattended-upgrades.service is a separate boot unit (not driven by apt-daily.timer), so it
+            # is disabled explicitly too — otherwise it can hold the dpkg lock during our apt-get install.
             flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
-              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service || true
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service unattended-upgrades.service || true
             sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
               /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
 
@@ -603,35 +637,34 @@ Resources:
             apt-get $APT_RETRY update -y
 
             if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
-              echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
-              https_proxy="http://${ProxyPrivateIp}:${ProxyPort}" curl -v -o /dev/null https://api.snapcraft.io/v2/snaps/info/core 2>&1 || exit 1
-              echo "==> HTTPS transparent proxy test passed"
-
-              # Verify the proxy allowlisted every EPEL mirror the mirrorlist returns.
-              # Fail only on a proxy denial (allowlist gap), not on a mirror being down.
-              echo "==> Validating EPEL mirror allowlisting through the proxy"
               PROXY="http://${ProxyPrivateIp}:${ProxyPort}"
-              DENIED=""
+
+              # Endpoints the build instance reaches through the proxy
+              ENDPOINTS="https://api.snapcraft.io/v2/snaps/info/core"
               for RELEASEVER in 8 9; do
-                MIRRORS=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -s --retry 5 \
+                MIRRORS=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -s $CURL_OPTS \
                   "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=x86_64")
                 for URL in $MIRRORS; do
                   case "$URL" in http*) ;; *) continue ;; esac
-                  BASE=$(echo "$URL" | sed 's#/*$#/#')
-                  RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v --retry 2 -o /dev/null "$BASE"repodata/repomd.xml 2>&1 || true)
-                  if echo "$RESP" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'; then
-                    echo "==> DENIED by proxy (EPEL $RELEASEVER mirror not allowlisted): $URL"
-                    DENIED="$DENIED $URL"
-                  else
-                    echo "==> Allowed by proxy (EPEL $RELEASEVER): $URL"
-                  fi
+                  ENDPOINTS="$ENDPOINTS $(echo "$URL" | sed 's#/*$#/#')repodata/repomd.xml"
                 done
               done
+
+              # Fail only if the proxy blocks an endpoint, not on a glitch/unresponsive origin.
+              DENIED=""
+              for URL in $ENDPOINTS; do
+                RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v $CURL_OPTS -o /dev/null "$URL" 2>&1 || true)
+                if proxy_denied "$RESP"; then
+                  echo "==> DENIED by proxy: $URL"
+                  DENIED="$DENIED $URL"
+                else
+                  echo "==> Allowed by proxy: $URL"
+                fi
+              done
               if [ -n "$DENIED" ]; then
-                echo "==> ERROR: the proxy denied EPEL mirrors that should have been allowlisted:$DENIED"
+                echo "==> ERROR: the proxy blocked endpoints that should have been allowlisted:$DENIED"
                 exit 1
               fi
-              echo "==> EPEL mirror allowlisting validated for all mirrors"
 
               echo "==> Signaling success"
               signal SUCCESS "Proxy verification passed"
