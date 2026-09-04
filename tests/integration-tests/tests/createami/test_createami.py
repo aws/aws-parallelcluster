@@ -74,7 +74,7 @@ def _get_base_ami(region, os, architecture):
         # Use official AMIs. First stage AMIs must not be used as parent image in this test.
         base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
         update_os_packages = True
-        if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
+        if os in ["rhel9", "ubuntu2404"]:
             enable_lustre_client = False
     else:
         # Test vanilla AMIs.
@@ -128,7 +128,9 @@ def test_build_image_no_internet(
         chef_cookbook=s3_artifacts["chef_cookbook"],
         node_package=s3_artifacts["node_package"],
         install_http_proxy_address=install_http_proxy_address,
+        update_os_packages=str(feature_flags["update_os_packages"]).lower(),
         enable_nvidia=str(enable_nvidia).lower(),
+        enable_lustre_client=str(feature_flags["enable_lustre_client"]).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
