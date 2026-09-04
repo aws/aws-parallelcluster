@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta, timezone
 import boto3
 import yaml
 from botocore.exceptions import ClientError
+from conftest_networking import AVAILABLE_AVAILABILITY_ZONE
 from jinja2 import FileSystemLoader, meta
 from jinja2.sandbox import SandboxedEnvironment
 from utils import InstanceTypesData
@@ -642,10 +643,17 @@ def _create_capacity_reservations(az_for_cr, regions, specs, var):  # noqa C901
     for region in regions:
         try:
             ec2_client = boto3.client("ec2", region_name=region)
+            # Honor the AZ allowlist: the shared test VPC is only built in the allowlisted AZs, so a
+            # reservation placed outside them would pin the test to an AZ with no matching subnet.
+            # No entry for the region means all its available AZs are eligible; an entry restricts
+            # placement to exactly the listed AZs.
+            allowlisted_az_ids = AVAILABLE_AVAILABILITY_ZONE.get(region)
             for az in ec2_client.describe_availability_zones()["AvailabilityZones"]:
                 if az["ZoneType"] != "availability-zone":
                     continue
                 zone_id = az["ZoneId"]
+                if allowlisted_az_ids is not None and zone_id not in allowlisted_az_ids:
+                    continue
                 created_capacity_reservation_ids = []
                 success = True
                 for instance_type, os_platform, count, end_date, enable_placement_group in specs:
