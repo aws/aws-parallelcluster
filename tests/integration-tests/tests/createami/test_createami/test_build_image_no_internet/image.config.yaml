@@ -13,6 +13,8 @@ Build:
         AdditionalIamPolicies:
             - Policy: arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess
     Installation:
+        LustreClient:
+            Enabled: {{ enable_lustre_client }}
         NvidiaSoftware:
             Enabled: {{ enable_nvidia }}
 
