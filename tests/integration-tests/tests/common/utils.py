@@ -71,7 +71,9 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     },  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
-    "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
+    # Pin to the latest RHEL 9.8 as previous minor requires paid Extended Update Support (EUS) repo
+    # to install packages we need, such as kernel packages.
+    "rhel9": {"name": "RHEL-9.8*_HVM*", "owners": RHEL_OWNERS},
     "rocky9": {"name": "Rocky-9-EC2-Base-9.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
