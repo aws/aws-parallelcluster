@@ -129,6 +129,7 @@ def test_build_image_no_internet(
         node_package=s3_artifacts["node_package"],
         install_http_proxy_address=install_http_proxy_address,
         enable_nvidia=str(enable_nvidia).lower(),
+        enable_lustre_client=str(feature_flags["enable_lustre_client"]).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
