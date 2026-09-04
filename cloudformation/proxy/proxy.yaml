@@ -583,6 +583,11 @@ Resources:
             # past the wait-condition budget.
             CURL_OPTS="--retry 3 --connect-timeout 5 --max-time 15"
 
+            # True when $1 (curl -v output) shows the proxy blocked the request.
+            function proxy_denied() {
+              echo "$1" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'
+            }
+
             # Resolve this instance's ID via IMDSv2, for troubleshooting. Never fails: echoes
             # "unknown" if the metadata lookup does not succeed.
             function get_instance_id() {
@@ -632,35 +637,34 @@ Resources:
             apt-get $APT_RETRY update -y
 
             if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
-              echo "==> Testing HTTPS proxy (same as build instance uses via https_proxy env var)"
-              https_proxy="http://${ProxyPrivateIp}:${ProxyPort}" curl -v $CURL_OPTS -o /dev/null https://api.snapcraft.io/v2/snaps/info/core 2>&1 || exit 1
-              echo "==> HTTPS transparent proxy test passed"
-
-              # Verify the proxy allowlisted every EPEL mirror the mirrorlist returns.
-              # Fail only on a proxy denial (allowlist gap), not on a mirror being down.
-              echo "==> Validating EPEL mirror allowlisting through the proxy"
               PROXY="http://${ProxyPrivateIp}:${ProxyPort}"
-              DENIED=""
+
+              # Endpoints the build instance reaches through the proxy
+              ENDPOINTS="https://api.snapcraft.io/v2/snaps/info/core"
               for RELEASEVER in 8 9; do
                 MIRRORS=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -s $CURL_OPTS \
                   "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=x86_64")
                 for URL in $MIRRORS; do
                   case "$URL" in http*) ;; *) continue ;; esac
-                  BASE=$(echo "$URL" | sed 's#/*$#/#')
-                  RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v $CURL_OPTS -o /dev/null "$BASE"repodata/repomd.xml 2>&1 || true)
-                  if echo "$RESP" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'; then
-                    echo "==> DENIED by proxy (EPEL $RELEASEVER mirror not allowlisted): $URL"
-                    DENIED="$DENIED $URL"
-                  else
-                    echo "==> Allowed by proxy (EPEL $RELEASEVER): $URL"
-                  fi
+                  ENDPOINTS="$ENDPOINTS $(echo "$URL" | sed 's#/*$#/#')repodata/repomd.xml"
                 done
               done
+
+              # Fail only if the proxy blocks an endpoint, not on a glitch/unresponsive origin.
+              DENIED=""
+              for URL in $ENDPOINTS; do
+                RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v $CURL_OPTS -o /dev/null "$URL" 2>&1 || true)
+                if proxy_denied "$RESP"; then
+                  echo "==> DENIED by proxy: $URL"
+                  DENIED="$DENIED $URL"
+                else
+                  echo "==> Allowed by proxy: $URL"
+                fi
+              done
               if [ -n "$DENIED" ]; then
-                echo "==> ERROR: the proxy denied EPEL mirrors that should have been allowlisted:$DENIED"
+                echo "==> ERROR: the proxy blocked endpoints that should have been allowlisted:$DENIED"
                 exit 1
               fi
-              echo "==> EPEL mirror allowlisting validated for all mirrors"
 
               echo "==> Signaling success"
               signal SUCCESS "Proxy verification passed"
