@@ -34,26 +34,18 @@ from tests.common.utils import retrieve_latest_ami
 AVAILABLE_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
     "us-east-1": ["use1-az1", "use1-az2", "use1-az4", "use1-az6", "use1-az5"],
-    # c5.xlarge is not supported in apse2-az3
-    "ap-southeast-2": ["apse2-az1", "apse2-az2"],
-    # FSx for Luster is not supported in apne1-az1
-    "ap-northeast-1": ["apne1-az4", "apne1-az2"],
-    # c5.xlarge is not supported in apse1-az3
-    "ap-southeast-1": ["apse1-az2", "apse1-az1"],
-    # NAT Gateway not available in sae1-az2 , c5n.18xlarge is not supported in sae1-az3
-    "sa-east-1": ["sae1-az1"],
-    # m6g.xlarge instances not available in euw1-az3
-    "eu-west-1": ["euw1-az1", "euw1-az2"],
+    "ap-southeast-2": ["apse2-az1", "apse2-az2", "apse2-az3"],
+    "ap-northeast-1": ["apne1-az4", "apne1-az2", "apne1-az1"],
+    "ap-southeast-1": ["apse1-az2", "apse1-az1", "apse1-az3"],
+    "sa-east-1": ["sae1-az1", "sae1-az2", "sae1-az3"],
+    "eu-west-1": ["euw1-az1", "euw1-az2", "euw1-az3"],
     # c5.xlarge is not supported in eu-west-2d (euw2-az4)
     "eu-west-2": ["euw2-az1", "euw2-az2", "euw2-az3"],
-    # io2 EBS volumes not available in cac1-az4
+    # g4dn/g5 are not supported in ca-central-1d (cac1-az4)
     "ca-central-1": ["cac1-az1", "cac1-az2"],
-    # instance can only be launch in placement group in eun1-az2
-    "eu-north-1": ["eun1-az2"],
-    # g3.8xlarge is not supported in euc1-az1
-    "eu-central-1": ["euc1-az2", "euc1-az3"],
-    # FSx not available in cnn1-az4
-    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
+    "eu-north-1": ["eun1-az1", "eun1-az2", "eun1-az3"],
+    "eu-central-1": ["euc1-az2", "euc1-az3", "euc1-az1"],
+    "cn-north-1": ["cnn1-az1", "cnn1-az2", "cnn1-az4"],
     # Should only consider supported AZs
     "us-isob-east-1": ["usibe1-az2", "usibe1-az3"],
     "us-iso-east-1": ["usie1-az1", "usie1-az2"],
