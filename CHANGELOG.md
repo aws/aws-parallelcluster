@@ -13,7 +13,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
-- Fixed issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
+- Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
 
 3.16.1
