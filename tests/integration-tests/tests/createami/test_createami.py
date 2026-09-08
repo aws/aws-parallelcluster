@@ -130,6 +130,7 @@ def test_build_image_no_internet(
         install_http_proxy_address=install_http_proxy_address,
         enable_nvidia=str(enable_nvidia).lower(),
         enable_lustre_client=str(feature_flags["enable_lustre_client"]).lower(),
+        update_os_packages=str(feature_flags["update_os_packages"]).lower(),
     )
 
     image = images_factory(image_id, image_config, region)

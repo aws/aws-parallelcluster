@@ -12,6 +12,8 @@ Build:
     Iam:
         AdditionalIamPolicies:
             - Policy: arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess
+    UpdateOsPackages:
+        Enabled: {{ update_os_packages }}
     Installation:
         LustreClient:
             Enabled: {{ enable_lustre_client }}
