@@ -15,6 +15,12 @@ CHANGELOG
 - Fixed issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
 
+3.16.1
+------
+
+**CHANGES**
+- Upgrade Slurm to version 25.11.8 (from 25.11.6).
+
 3.16.0
 ------
 
