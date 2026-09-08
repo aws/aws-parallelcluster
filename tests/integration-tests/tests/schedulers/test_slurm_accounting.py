@@ -14,7 +14,7 @@ from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.assertions import assert_no_defunct_slurm_config_params
 from tests.common.utils import get_aws_domain
 
-STARTED_PATTERN = re.compile(r".*slurmdbd version [\d.]+ started")
+STARTED_PATTERN = re.compile(r".*slurmdbd version \S+ started")
 
 
 def _get_slurm_database_config_parameters(database_stack_outputs):
