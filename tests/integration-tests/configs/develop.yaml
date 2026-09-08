@@ -813,12 +813,14 @@ test-suites:
       dimensions:
         - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }} ]
           instances: [ "g4dn.2xlarge" ]
-          oss: {{ RHEL_OS_X86 }}
+          oss: ["alinux2023"]
           schedulers: [ "slurm" ]
-        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_ubuntu2404 }} ]
+          flags: ["component"]
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }} ]
           instances: [ "g4dn.2xlarge" ]
-          oss: {{ NO_RHEL_OS_X86 }}
+          oss: ["alinux2023"]
           schedulers: [ "slurm" ]
+          flags: ["devsettings"]
   update:
     test_update.py::test_update_slurm:
       dimensions:
