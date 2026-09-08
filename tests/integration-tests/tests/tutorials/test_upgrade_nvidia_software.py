@@ -31,10 +31,6 @@ from tests.common.utils import (
     run_gpu_workload,
 )
 
-# Instance types: build on a GPU instance so the NVIDIA driver installation is exercised on GPU
-# hardware; the head node validates that the upgraded AMI boots on non-GPU instances too. The GPU
-# compute node type comes from the `instance` dimension.
-BUILD_INSTANCE_TYPE = "g4dn.2xlarge"
 HEAD_NODE_INSTANCE_TYPE = "c5.xlarge"
 
 QUEUE_NAME = "q1"
@@ -44,14 +40,27 @@ COMPUTE_RESOURCE_NAME = "cr1"
 # constants of the component document (placeholder markers in update-nvidia.yaml) and
 # asserts the same versions on the cluster nodes.
 NVIDIA_DRIVER_VERSION = "595.71.05"
+# The CUDA release must be compatible with the installed driver. See NVIDIA's forward compatibility
+# guidance to pick the right CUDA version for a given driver:
+# https://docs.nvidia.com/deploy/cuda-compatibility/latest/forward-compatibility.html#use-the-right-cuda-forward-compatibility-package
 CUDA_VERSION = "13.2.2"
-CUDA_SAMPLES_VERSION = "13.2"
+# Driver version NVIDIA embeds in the CUDA local-repo installer filename for this CUDA release.
 CUDA_RELEASE_NVIDIA_VERSION = "595.71.05"
 CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
+# NVLSM (NVLink Subnet Manager) is versioned independently of the driver and installed at the version
+# bundled in the NVIDIA driver local repo for NVIDIA_DRIVER_VERSION. To determine it, register that
+# local repo (nvidia-driver-local-repo-amzn2023-<NVIDIA_DRIVER_VERSION>) and run
+# `dnf --showduplicates list nvlsm`, then pin the reported version here.
 NVLSM_BUNDLED_VERSION = "2025.10.12"
 
 # Packages whose version must match the NVIDIA driver version exactly.
 DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex", "libnvsdm"]
+
+# Upgrade methods, selected via the test's "flags" dimension. The "devsettings" flag installs the
+# stack via the pcluster cookbook driven by custom chef attributes; otherwise a custom EC2 Image
+# Builder component is used.
+UPGRADE_METHOD_COMPONENT = "component"
+UPGRADE_METHOD_DEVSETTINGS = "devsettings"
 
 
 @pytest.fixture()
@@ -97,17 +106,24 @@ def test_upgrade_nvidia_software(
     clusters_factory,
     scheduler_commands_factory,
     nvidia_stack_component,
+    flags,
     request,
 ):
     """
     Validate the tutorial procedure to upgrade the NVIDIA software stack via a custom AMI.
 
+    The upgrade is exercised in one of two fashions, selected via the "flags" dimension (defaulting
+    to the component method when the "devsettings" flag is absent):
+      - default: a custom EC2 Image Builder component installs driver, NVLink stack and CUDA from the
+        NVIDIA local repositories, with the versions injected into its AWSTOE constants.
+      - "devsettings": the image is built with DevSettings.Cookbook.ExtraChefAttributes overriding
+        the NVIDIA version attributes, so the ParallelCluster cookbook installs the requested
+        versions.
+
     Steps:
-    1. Create an EC2 Image Builder component with the NVIDIA upgrade procedure (driver + CUDA
-       runfiles, NVLink stack from the NVIDIA driver local repository), injecting the expected
-       software versions into the AWSTOE constants of the component document.
-    2. Build a custom AMI with `pcluster build-image` using the official vanilla OS AMI as
-       parent and the component from step 1.
+    1. Build the image config for the selected upgrade method (creating the Image Builder component
+       for the "component" method), using the official vanilla OS AMI as parent.
+    2. Build a custom AMI with `pcluster build-image`.
     3. Wait for the AMI produced by the build to be available in EC2.
     4. Create a cluster using the custom AMI, with a static GPU compute node.
     5. Assert the NVIDIA software versions (driver, CUDA, Fabric Manager, IMEX, libnvsdm, NVLSM)
@@ -116,22 +132,38 @@ def test_upgrade_nvidia_software(
        (tests/common/data/gpu_job.sh), and assert it succeeds.
     7. Teardown is managed by the fixtures (cluster, image and Image Builder component).
     """
-    # Step 1: render the component document, injecting the software versions into its AWSTOE
-    # constants, and create the Image Builder component from it.
-    logging.info("Expecting NVIDIA driver %s and CUDA release %s", NVIDIA_DRIVER_VERSION, CUDA_RELEASE)
-    component_document = _render_component_document(test_datadir, architecture)
-    component_arn = nvidia_stack_component(component_document)
-
-    # Step 2: build the custom AMI with pcluster build-image, using the official vanilla OS AMI
-    # as parent image.
+    # Step 1: build the image config for the selected upgrade method, using the official vanilla OS
+    # AMI as parent image. "component" installs the stack via a custom EC2 Image Builder component;
+    # "devsettings" injects custom chef attributes that drive the pcluster cookbook's NVIDIA install.
+    upgrade_method = UPGRADE_METHOD_DEVSETTINGS if UPGRADE_METHOD_DEVSETTINGS in flags else UPGRADE_METHOD_COMPONENT
+    logging.info(
+        "Installing NVIDIA driver %s and CUDA %s via the '%s' method",
+        NVIDIA_DRIVER_VERSION,
+        CUDA_VERSION,
+        upgrade_method,
+    )
     parent_image = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
     image_id = generate_stack_name("integ-tests-upgrade-nvidia", request.config.getoption("stackname_suffix"))
-    image_config = pcluster_config_reader(
-        config_file="image.config.yaml",
-        parent_image=parent_image,
-        component_arn=component_arn,
-        build_instance_type=BUILD_INSTANCE_TYPE,
-    )
+    if upgrade_method == UPGRADE_METHOD_COMPONENT:
+        component_document = _render_component_document(test_datadir, architecture)
+        component_arn = nvidia_stack_component(component_document)
+        image_config = pcluster_config_reader(
+            config_file="image.config.yaml",
+            parent_image=parent_image,
+            build_instance_type=instance,
+            component_arn=component_arn,
+        )
+    else:
+        image_config = pcluster_config_reader(
+            config_file="devsettings.image.config.yaml",
+            parent_image=parent_image,
+            build_instance_type=instance,
+            nvidia_driver_version=NVIDIA_DRIVER_VERSION,
+            cuda_version=CUDA_VERSION,
+            cuda_release_nvidia_version=CUDA_RELEASE_NVIDIA_VERSION,
+        )
+
+    # Step 2: build the custom AMI with pcluster build-image.
     image = images_factory(image_id, image_config, region)
     _wait_for_build_image_complete(image)
 
@@ -181,7 +213,6 @@ def _render_component_document(test_datadir, architecture):
         # The NVIDIA installers use "aarch64" for arm64.
         "ARCH": {"x86_64": "x86_64", "arm64": "aarch64"}[architecture],
         "CUDA_VERSION": CUDA_VERSION,
-        "CUDA_SAMPLES_VERSION": CUDA_SAMPLES_VERSION,
         "CUDA_RELEASE_NVIDIA_VERSION": CUDA_RELEASE_NVIDIA_VERSION,
     }
     template = SandboxedEnvironment(undefined=DebugUndefined).from_string(
