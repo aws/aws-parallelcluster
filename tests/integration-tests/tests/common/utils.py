@@ -202,8 +202,10 @@ def retrieve_latest_ami(
         images = []
         for page in page_iterator:
             images.extend(page["Images"])
-        image_id = _select_latest_image(images)["ImageId"]
-        logging.info("Retrieved AMI: %s" % image_id)
+        image = _select_latest_image(images)
+        image_id = image["ImageId"]
+        image_name = image["Name"]
+        logging.info("Retrieved AMI: %s (%s)" % (image_id, image_name))
         return image_id
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
