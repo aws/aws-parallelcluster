@@ -39,7 +39,7 @@ COMPUTE_RESOURCE_NAME = "cr1"
 # Software versions installed by the component. The test injects these values into the AWSTOE
 # constants of the component document (placeholder markers in update-nvidia.yaml) and
 # asserts the same versions on the cluster nodes.
-NVIDIA_DRIVER_VERSION = "595.71.05"
+NVIDIA_DRIVER_VERSION = "595.91.07"
 # The CUDA release must be compatible with the installed driver. See NVIDIA's forward compatibility
 # guidance to pick the right CUDA version for a given driver:
 # https://docs.nvidia.com/deploy/cuda-compatibility/latest/forward-compatibility.html#use-the-right-cuda-forward-compatibility-package
@@ -51,7 +51,7 @@ CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
 # bundled in the NVIDIA driver local repo for NVIDIA_DRIVER_VERSION. To determine it, register that
 # local repo (nvidia-driver-local-repo-amzn2023-<NVIDIA_DRIVER_VERSION>) and run
 # `dnf --showduplicates list nvlsm`, then pin the reported version here.
-NVLSM_BUNDLED_VERSION = "2025.10.12"
+NVLSM_BUNDLED_VERSION = "2025.10.14"
 
 # Packages whose version must match the NVIDIA driver version exactly.
 DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex", "libnvsdm"]
