@@ -49,12 +49,18 @@ GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
-# Regexes to extract a version from an AMI name
-#   RHEL: "RHEL-<major>.<minor>[.<patch>]"                 e.g. RHEL-9.6.0_HVM-...
-#   AL2023: "al2023-ami-<year>.<minor>.<build>.<revision>" e.g. al2023-ami-2023.12.20260817.0-kernel-6.1-x86_64
+# Regexes to extract a version from an AMI name, keyed by the name prefix that identifies the naming
+# convention. Within a single query the distro release is fixed, so a trailing build/serial is enough
+# to order candidates and pick the latest.
+#   RHEL:   "RHEL-<major>.<minor>[.<patch>]"                    e.g. RHEL-9.6.0_HVM-...
+#   AL2023: "al2023-ami-<year>.<minor>.<build>.<revision>"      e.g. al2023-ami-2023.12.20260817.0-kernel-6.1-x86_64
+#   Ubuntu: "ubuntu-<codename>-<release>-<arch>-server-<serial>" e.g. ubuntu-noble-24.04-amd64-server-20260904
+#   Rocky:  "Rocky-<major>-EC2-Base-<major>.<minor>-<serial>"   e.g. Rocky-9-EC2-Base-9.6-20250601.0.x86_64
 AMI_NAME_PREFIX_TO_VERSION_REGEX = {
     "RHEL-": re.compile(r"RHEL-(\d+)\.(\d+)(?:\.(\d+))?"),
     "al2023-ami-": re.compile(r"al2023-ami-(\d+)\.(\d+)\.(\d+)\.(\d+)"),
+    "ubuntu/": re.compile(r"ubuntu-\w+-(\d+)\.(\d+)-\w+-server-(\d+)(?:\.(\d+))?"),
+    "Rocky-": re.compile(r"Rocky-\d+-EC2-Base-(\d+)\.(\d+)-(\d+)(?:\.(\d+))?"),
 }
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
