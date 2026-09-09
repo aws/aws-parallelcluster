@@ -49,9 +49,13 @@ GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
-# Matches the Red Hat "RHEL-<major>.<minor>[.<patch>]" AMI naming (e.g. RHEL-9.6.0_HVM-...),
-# used to sort RHEL AMIs by version and select the latest minor.
-RHEL_AMI_VERSION_REGEX = re.compile(r"RHEL-(\d+)\.(\d+)(?:\.(\d+))?")
+# Regexes to extract a version from an AMI name
+#   RHEL: "RHEL-<major>.<minor>[.<patch>]"                 e.g. RHEL-9.6.0_HVM-...
+#   AL2023: "al2023-ami-<year>.<minor>.<build>.<revision>" e.g. al2023-ami-2023.12.20260817.0-kernel-6.1-x86_64
+AMI_NAME_PREFIX_TO_VERSION_REGEX = {
+    "RHEL-": re.compile(r"RHEL-(\d+)\.(\d+)(?:\.(\d+))?"),
+    "al2023-ami-": re.compile(r"al2023-ami-(\d+)\.(\d+)\.(\d+)\.(\d+)"),
+}
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
@@ -233,12 +237,13 @@ def _select_latest_image(images: list):
 
 def _parse_ami_version(ami_name: str):
     """Extract the version tuple (e.g. (9, 6, 0)) from an AMI name, or None if it cannot be parsed."""
-    if ami_name.startswith("RHEL-"):
-        match = RHEL_AMI_VERSION_REGEX.search(ami_name)
-        if match:
-            version = tuple(int(part) for part in match.groups() if part is not None)
-            LOGGER.info("Parsed version from AMI name %s: %s", version, ami_name)
-            return version
+    for prefix, regex in AMI_NAME_PREFIX_TO_VERSION_REGEX.items():
+        if ami_name.startswith(prefix):
+            match = regex.search(ami_name)
+            if match:
+                version = tuple(int(part) for part in match.groups() if part is not None)
+                LOGGER.info("Parsed version from AMI name %s: %s", version, ami_name)
+                return version
     LOGGER.warning("Could not parse version from AMI name %r", ami_name)
     return None
 
