@@ -10,7 +10,6 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import time
 
 import boto3
 import pytest
@@ -26,9 +25,9 @@ from utils import generate_stack_name
 from tests.common.assertions import assert_head_node_is_running
 from tests.common.utils import (
     generate_random_string,
-    get_installed_parallelcluster_base_version,
     retrieve_latest_ami,
     run_gpu_workload,
+    wait_for_build_image_complete,
 )
 
 HEAD_NODE_INSTANCE_TYPE = "c5.xlarge"
@@ -165,7 +164,7 @@ def test_upgrade_nvidia_software(
 
     # Step 2: build the custom AMI with pcluster build-image.
     image = images_factory(image_id, image_config, region)
-    _wait_for_build_image_complete(image)
+    wait_for_build_image_complete(image, request.config.getoption("output_dir"))
 
     # Step 3: the build produced an AMI; wait for it to be available in EC2.
     assert_that(image.ec2_image_id).described_as("EC2 AMI id from the image build").is_not_none()
@@ -227,34 +226,6 @@ def _render_component_document(test_datadir, architecture):
     }
     assert_that(rendered_constants).described_as("rendered component constants").is_equal_to(expected_constants)
     return document
-
-
-def _wait_for_build_image_complete(image):
-    """Wait for the image build to complete and assert it succeeded."""
-    logging.info("Waiting for build of image %s to complete", image.image_id)
-    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS
-        time.sleep(300)
-        logging.info(image.describe())
-    if image.image_status != "BUILD_COMPLETE":
-        _log_recent_image_build_events(image)
-    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
-
-
-def _log_recent_image_build_events(image):
-    """Log the last lines of the image build log to ease troubleshooting of a failed build."""
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
-    nlines = 200
-    try:
-        log_events = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=nlines)
-        log_messages = [event["message"] for event in log_events]
-        logging.error(
-            "Image build failed for %s, the last %d lines of the log are:\n%s",
-            image.image_id,
-            nlines,
-            "\n".join(log_messages),
-        )
-    except Exception as e:  # noqa: BLE001
-        logging.error("Could not retrieve build log events for image %s: %s", image.image_id, e)
 
 
 @retry(

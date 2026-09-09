@@ -385,6 +385,54 @@ def get_installed_parallelcluster_base_version():
     return packaging_version.parse(get_installed_parallelcluster_version()).base_version
 
 
+def wait_for_build_image_complete(image, output_dir):
+    """Poll a build-image until it stops progressing and assert it reached BUILD_COMPLETE.
+
+    Save the full build-log archive to the test output directory whatever the outcome (build logs are
+    useful for troubleshooting post-build assertions too), and tail the most recent log lines to the
+    console on any non-complete outcome.
+    """
+    logging.info("Waiting for build of image %s to complete", image.image_id)
+    logging.info(image.describe())
+    # Poll every 5 minutes so BUILD_COMPLETE is detected close to when it happens: the build-image
+    # stack self-deletes on success, so detecting completion sooner reduces the export-logs race.
+    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
+        time.sleep(300)
+        logging.info(image.describe())
+    export_image_logs(image, output_dir)
+    if image.image_status != "BUILD_COMPLETE":
+        keep_recent_image_logs(image)
+    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
+
+
+def export_image_logs(image, output_dir):
+    """Export the full image build log archive to the test output directory using export-image-logs."""
+    log_dir = os.path.join(output_dir, "image_build_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    output_file = os.path.join(log_dir, f"{image.image_id}-logs.tar.gz")
+    try:
+        ret = image.export_logs(output_file=output_file)
+        logging.info("Full image build log exported to %s", ret.get("path", output_file))
+    except Exception as e:  # noqa: BLE001
+        logging.error("Failed to export image build logs for %s: %s", image.image_id, e)
+
+
+def keep_recent_image_logs(image, nlines=200):
+    """Log the most recent lines of the image build log to the console for troubleshooting."""
+    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    try:
+        log_events = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=nlines)
+        log_messages = [event["message"] for event in log_events]
+        logging.info(
+            "Image build failed for %s, the last %d lines of the log are:\n%s",
+            image.image_id,
+            nlines,
+            "\n".join(log_messages),
+        )
+    except Exception as e:  # noqa: BLE001
+        logging.error("Could not retrieve build log events for image %s: %s", image.image_id, e)
+
+
 CLASSIC_AWS_DOMAIN = "amazonaws.com"
 CHINA_AWS_DOMAIN = "amazonaws.com.cn"
 US_ISO_AWS_DOMAIN = "c2s.ic.gov"
