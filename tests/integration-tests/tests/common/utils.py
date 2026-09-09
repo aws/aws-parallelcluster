@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import random
+import re
 import string
 import time
 import uuid
@@ -48,6 +49,10 @@ GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
 
+# Matches the Red Hat "RHEL-<major>.<minor>[.<patch>]" AMI naming (e.g. RHEL-9.6.0_HVM-...),
+# used to sort RHEL AMIs by version and select the latest minor.
+RHEL_AMI_VERSION_REGEX = re.compile(r"RHEL-(\d+)\.(\d+)(?:\.(\d+))?")
+
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
     # TODO: use marketplace AMI if possible
@@ -71,9 +76,7 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     },  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
-    # Pin to the latest RHEL 9.8 as previous minor requires paid Extended Update Support (EUS) repo
-    # to install packages we need, such as kernel packages.
-    "rhel9": {"name": "RHEL-9.8*_HVM*", "owners": RHEL_OWNERS},
+    "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
     "rocky9": {"name": "Rocky-9-EC2-Base-9.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
 }
 
@@ -195,8 +198,7 @@ def retrieve_latest_ami(
         images = []
         for page in page_iterator:
             images.extend(page["Images"])
-        # Sort on Creation date Desc
-        image_id = sorted(images, key=lambda x: x["CreationDate"], reverse=True)[0]["ImageId"]
+        image_id = _select_latest_image(images)["ImageId"]
         logging.info("Retrieved AMI: %s" % image_id)
         return image_id
     except ClientError as e:
@@ -208,6 +210,37 @@ def retrieve_latest_ami(
     except IndexError as e:
         LOGGER.critical("Error no ami retrieved: {0}".format(e))
         raise
+
+
+def _select_latest_image(images: list):
+    """Return the latest image from the provided list.
+
+    Prefers the highest version parsed from the AMI name, then the newest publish date within it.
+    Falls back to newest publish date alone when any AMI name cannot be parsed into a version.
+
+    We prioritize the latest minor version not only because we want to use fresh software, but also because
+    there are cases where using the latest minor is mandatory. For example, on RHEL older minors require to enable
+    the paid Extended Update Support (EUS) repo.
+    """
+    LOGGER.info("Selecting latest AMI among: %s", [(image["ImageId"], image["Name"]) for image in images])
+    # If the version cannot be parsed from the AMI name, the sorting falls back to creation date only.
+    return sorted(
+        images,
+        key=lambda image: (_parse_ami_version(image["Name"]) or (), image["CreationDate"]),
+        reverse=True,
+    )[0]
+
+
+def _parse_ami_version(ami_name: str):
+    """Extract the version tuple (e.g. (9, 6, 0)) from an AMI name, or None if it cannot be parsed."""
+    if ami_name.startswith("RHEL-"):
+        match = RHEL_AMI_VERSION_REGEX.search(ami_name)
+        if match:
+            version = tuple(int(part) for part in match.groups() if part is not None)
+            LOGGER.info("Parsed version from AMI name %s: %s", version, ami_name)
+            return version
+    LOGGER.warning("Could not parse version from AMI name %r", ami_name)
+    return None
 
 
 def _get_ami_for_os(ami_type, os, architecture="x86_64"):
