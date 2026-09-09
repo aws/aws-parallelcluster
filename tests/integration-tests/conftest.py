@@ -591,6 +591,8 @@ def images_factory(request):
         factory.destroy_all_images()
     else:
         logging.warning("Skipping deletion of CFN image stacks because --no-delete option is set")
+        for image in factory.created_images.values():
+            logging.info("Retaining built EC2 AMI %s (pcluster image %s)", image.ec2_image_id, image.image_id)
 
 
 def _write_config_to_outdir(request, config, config_dir):
