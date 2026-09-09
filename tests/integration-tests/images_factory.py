@@ -191,6 +191,11 @@ class ImagesFactory:
     def __init__(self):
         self.__created_images = {}
 
+    @property
+    def created_images(self):
+        """Images created by this factory, keyed by image id."""
+        return self.__created_images
+
     def create_image(self, image: Image, **kwargs):
         """
         Create an image with a given config.
