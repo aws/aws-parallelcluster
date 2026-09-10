@@ -66,11 +66,24 @@ from tests.common.scaling_common import (
     setup_ec2_launch_override_to_emulate_ice,
 )
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.slurm_upgrade import (
+    assert_slurm_state_preserved,
+    run_scheduler_smoke_test,
+    select_slurm_upgrade_target,
+    snapshot_slurm_state,
+    upgrade_slurm_with_stopped_compute_nodes,
+)
 from tests.common.utils import (
     get_installed_parallelcluster_base_version,
     installed_parallelcluster_version_is_at_least,
     skip_if_parallelcluster_version_below,
 )
+
+
+def _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands):
+    """Cancel every job of the current user, including the ones submitted without being waited on."""
+    remote_command_executor.run_remote_command("scancel --user=$(id -un)", raise_on_error=False)
+    scheduler_commands.wait_job_queue_empty()
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -138,6 +151,19 @@ def test_slurm(
     # Tests below must run on HeadNode or need HeadNode participate.
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
+
+    # Before the bootstrap timeout test below, after which no compute node can join.
+    slurm_upgrade_target = select_slurm_upgrade_target(head_node_command_executor)
+    if slurm_upgrade_target:
+        _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands)
+        slurm_state_snapshot = snapshot_slurm_state(head_node_command_executor, slurm_commands)
+        upgrade_slurm_with_stopped_compute_nodes(head_node_command_executor, cluster, target=slurm_upgrade_target)
+        assert_slurm_state_preserved(head_node_command_executor, slurm_state_snapshot)
+        # A fresh session on the login nodes, which stayed up while /opt/slurm was replaced.
+        remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+        slurm_commands = scheduler_commands_factory(remote_command_executor)
+        run_scheduler_smoke_test(slurm_commands, partition="ondemand")
+
     # Test compute node bootstrap timeout
     clustermgtd_conf_path = retrieve_clustermgtd_conf_path(head_node_command_executor)
     _test_compute_node_bootstrap_timeout(
@@ -1199,6 +1225,12 @@ def test_slurm_custom_config_parameters(
 
     # then we expect updated custom values to be set in slurm config
     _assert_updated_custom_slurm_settings(slurm_commands)
+
+    if upgrade_slurm_with_stopped_compute_nodes(remote_command_executor, cluster):
+        # The upgrade must leave /opt/slurm/etc untouched.
+        _assert_updated_custom_slurm_settings(slurm_commands)
+        # Below the MaxMemPerNode=1500 of q1: without --mem a job asks for the whole node and is rejected.
+        run_scheduler_smoke_test(slurm_commands, partition="q1", other_options="--mem=1000")
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
