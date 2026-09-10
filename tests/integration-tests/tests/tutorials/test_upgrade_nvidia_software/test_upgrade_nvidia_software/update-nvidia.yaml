@@ -56,23 +56,22 @@ phases:
             #!/bin/bash
             set -ex
 
-            # Fabric Manager, IMEX and libnvsdm must match the driver version exactly; NVLSM is
-            # installed at the version bundled in the driver local repo registered by InstallDriver.
+            # Fabric Manager and IMEX must match the driver version exactly; NVLSM is installed at
+            # the version bundled in the driver local repo registered by InstallDriver.
             NVIDIA_DRIVER_VERSION="{{ NVIDIA_DRIVER_VERSION }}"
             LOCAL_REPO_PKG="nvidia-driver-local-repo-amzn2023-${NVIDIA_DRIVER_VERSION}"
 
             # Clear stale version locks so the new versions are not filtered out of the transaction.
-            dnf versionlock delete nvidia-fabricmanager nvidia-imex libnvsdm nvlsm || true
+            dnf versionlock delete nvidia-fabricmanager nvidia-imex nvlsm || true
 
             # --best is required on Amazon Linux 2023 (dnf.conf ships best=False).
             dnf install -y --best \
               "nvidia-fabricmanager-${NVIDIA_DRIVER_VERSION}-1*" \
               "nvidia-imex-${NVIDIA_DRIVER_VERSION}-1*" \
-              "libnvsdm-${NVIDIA_DRIVER_VERSION}-1*" \
               nvlsm \
               infiniband-diags libibumad
 
-            dnf versionlock add nvidia-fabricmanager nvidia-imex libnvsdm nvlsm
+            dnf versionlock add nvidia-fabricmanager nvidia-imex nvlsm
             dnf remove -y "${LOCAL_REPO_PKG}"
 
     - name: InstallCuda
@@ -129,8 +128,8 @@ phases:
             which nvidia-smi
             nvidia-smi
 
-            # Fabric Manager, IMEX and libnvsdm must match the driver version exactly.
-            for pkg in nvidia-fabricmanager nvidia-imex libnvsdm; do
+            # Fabric Manager and IMEX must match the driver version exactly.
+            for pkg in nvidia-fabricmanager nvidia-imex; do
               installed="$(rpm -q --qf '%{VERSION}' "${pkg}")"
               echo "${pkg} version: ${installed} (driver: ${NVIDIA_DRIVER_VERSION})"
               if [ "${installed}" != "${NVIDIA_DRIVER_VERSION}" ]; then

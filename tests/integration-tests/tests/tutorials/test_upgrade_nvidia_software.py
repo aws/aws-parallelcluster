@@ -53,7 +53,7 @@ CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
 NVLSM_BUNDLED_VERSION = "2025.10.14"
 
 # Packages whose version must match the NVIDIA driver version exactly.
-DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex", "libnvsdm"]
+DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex"]
 
 # Upgrade methods, selected via the test's "flags" dimension. The "devsettings" flag installs the
 # stack via the pcluster cookbook driven by custom chef attributes; otherwise a custom EC2 Image
@@ -125,7 +125,7 @@ def test_upgrade_nvidia_software(
     2. Build a custom AMI with `pcluster build-image`.
     3. Wait for the AMI produced by the build to be available in EC2.
     4. Create a cluster using the custom AMI, with a static GPU compute node.
-    5. Assert the NVIDIA software versions (driver, CUDA, Fabric Manager, IMEX, libnvsdm, NVLSM)
+    5. Assert the NVIDIA software versions (driver, CUDA, Fabric Manager, IMEX, NVLSM)
        on the GPU compute node are the ones installed by the component.
     6. Run a GPU workload through the scheduler, reusing the shared CUDA samples job script
        (tests/common/data/gpu_job.sh), and assert it succeeds.
@@ -261,8 +261,8 @@ def _assert_nvidia_stack_versions(remote_command_executor, driver_version, cuda_
             f"release {cuda_release}"
         )
 
-        # NVLink software stack: Fabric Manager, IMEX and libnvsdm must match the driver version
-        # exactly; NVLSM is installed at the version bundled in the driver local repository.
+        # NVLink software stack: Fabric Manager and IMEX must match the driver version exactly;
+        # NVLSM is installed at the version bundled in the driver local repository.
         for package in DRIVER_ALIGNED_PACKAGES:
             assert_that(_run(f"rpm -q --qf '%{{VERSION}}' {package}")).described_as(package).is_equal_to(driver_version)
         assert_that(_run("rpm -q --qf '%{VERSION}' nvlsm")).described_as("nvlsm").is_equal_to(NVLSM_BUNDLED_VERSION)
