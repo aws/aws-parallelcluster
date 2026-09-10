@@ -1093,6 +1093,32 @@ def test_slurm_config_update(
     )
 
 
+def _assert_updated_custom_slurm_settings(slurm_commands):
+    """Assert the custom Slurm settings of pcluster.config.update.yaml are in effect."""
+    # Bulk Settings
+    debug_flags = slurm_commands.get_conf_param("DebugFlags")
+    # must check them individually because they can be reordered
+    assert "Steps" in debug_flags
+    assert "Power" in debug_flags
+    assert "CpuFrequency" in debug_flags
+    assert "BurstBuffer" in debug_flags
+    assert "Network" in debug_flags
+    assert "high" == slurm_commands.get_conf_param("GpuFreqDef")
+    assert "10000" == slurm_commands.get_conf_param("MaxStepCount")
+
+    # Partition
+    assert "15" == slurm_commands.get_partition_info("q1", "GraceTime")
+    assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
+
+    # ComputeResource 1
+    assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
+    assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
+
+    # ComputeResource 2
+    assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
+    assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_custom_config_parameters
 def test_slurm_custom_config_parameters(
@@ -1155,28 +1181,7 @@ def test_slurm_custom_config_parameters(
     wait_for_computefleet_changed(cluster, "RUNNING")
 
     # then we expect updated custom values to be set in slurm config
-    # Bulk Settings
-    debug_flags = slurm_commands.get_conf_param("DebugFlags")
-    # must check them individually because they can be reordered
-    assert "Steps" in debug_flags
-    assert "Power" in debug_flags
-    assert "CpuFrequency" in debug_flags
-    assert "BurstBuffer" in debug_flags
-    assert "Network" in debug_flags
-    assert "high" == slurm_commands.get_conf_param("GpuFreqDef")
-    assert "10000" == slurm_commands.get_conf_param("MaxStepCount")
-
-    # Partition
-    assert "15" == slurm_commands.get_partition_info("q1", "GraceTime")
-    assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
-
-    # ComputeResource 1
-    assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
-    assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
-
-    # ComputeResource 2
-    assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
-    assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
+    _assert_updated_custom_slurm_settings(slurm_commands)
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
