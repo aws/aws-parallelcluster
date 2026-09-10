@@ -23,17 +23,18 @@ from botocore.exceptions import ClientError
 from conftest_networking import AVAILABLE_AVAILABILITY_ZONE
 from jinja2 import FileSystemLoader, meta
 from jinja2.sandbox import SandboxedEnvironment
-from utils import InstanceTypesData
+from utils import EXCLUDED_INSTANCE_TYPE_PREFIXES, InstanceTypesData
 
 from pcluster.constants import (
-    EXCLUDED_INSTANCE_TYPE_PREFIXES,
     SUPPORTED_OSES,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
-    UNSUPPORTED_OSES_FOR_NON_GPU_DCV,
 )
 
+# Declared here rather than imported from pcluster.constants, which does not have it in the older ParallelCluster
+# versions the Slurm upgrade suite runs against.
+UNSUPPORTED_OSES_FOR_NON_GPU_DCV = ["rocky9", "rhel9"]
 # An instant capacity block starts ~30 minutes after the request; allow some slack when telling
 # instant offerings apart from standard ones (which start at the next 11:30 UTC boundary).
 INSTANT_CAPACITY_BLOCK_START_MINUTES = 45
