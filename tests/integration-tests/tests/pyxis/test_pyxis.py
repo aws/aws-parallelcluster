@@ -17,6 +17,11 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.software_installer import (
+    get_slurm_version,
+    install_test_software_with_stopped_consumers,
+    slurm_major_version,
+)
 
 
 @pytest.mark.parametrize("scale_up_fleet", [False])
@@ -81,3 +86,53 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
 
     logging.info("Checking for expected messages in second job output")
     assert_that(slurm_out_2).contains("pyxis: imported docker image: docker://ubuntu:22.04")
+
+    slurm_version_before = get_slurm_version(remote_command_executor)
+    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    slurm_commands = SlurmCommands(remote_command_executor)
+    _rebuild_pyxis_if_slurm_major_changed(
+        remote_command_executor, test_datadir, slurm_version_before, get_slurm_version(remote_command_executor)
+    )
+
+    # Submit the same job once more, to check the upgraded Slurm still runs containerized jobs
+    logging.info("Submitting third containerized job")
+    result = slurm_commands.submit_command(
+        command="srun --container-image docker://ubuntu:22.04 hostname",
+        nodes=3,
+    )
+    job_id = slurm_commands.assert_job_submitted(result.stdout)
+    slurm_commands.wait_job_completed(job_id)
+    slurm_commands.assert_job_succeeded(job_id)
+    slurm_out_3 = remote_command_executor.run_remote_command(f"cat slurm-{job_id}.out").stdout
+    assert_that(slurm_out_3).contains("pyxis: imported docker image: docker://ubuntu:22.04")
+
+
+def _rebuild_pyxis_if_slurm_major_changed(remote_command_executor, test_datadir, version_before, version_after):
+    """Rebuild the Pyxis SPANK plugin when the upgrade crossed a Slurm major release.
+
+    Slurm refuses to load a plugin stamped with a different major version, and because that aborts plugin stack
+    initialisation it breaks every srun and sbatch, not only containerised ones. Nothing in the cluster rebuilds
+    the plugin: it ships prebuilt in the AMI and install_software.sh only warns about it. So this is the step a
+    customer has to perform too, and running it here is what validates the procedure the wiki documents.
+
+    Within a major release the plugin the AMI shipped stays loadable, so it is deliberately left alone: that
+    keeps the same-major runs covering the case where no rebuild is needed.
+    """
+    major_before = slurm_major_version(version_before)
+    major_after = slurm_major_version(version_after)
+    if major_before is not None and major_before == major_after:
+        logging.info(
+            "Slurm stayed on major release %s (%s -> %s), so the Pyxis plugin from the AMI is still loadable",
+            major_after,
+            version_before,
+            version_after,
+        )
+        return
+
+    logging.info(
+        "Slurm crossed a major release (%s -> %s), rebuilding the Pyxis SPANK plugin", version_before, version_after
+    )
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "rebuild_pyxis.sh"), run_as_root=True, timeout=1800, pty=False
+    )
