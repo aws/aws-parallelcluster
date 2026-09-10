@@ -676,13 +676,14 @@ test-suites:
           schedulers: [ "slurm" ]
     # The checks performed in test_efs_same_az is similar to test_multiple_efs.
     # We should consider this when assigning dimensions to each test.
+    # This test must be executed in regions with 3+ AZs allowlisted.
     test_efs.py::test_multiple_efs:
       dimensions:
         - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [{{ OS_X86_2 }}]
           schedulers: ["slurm"]
-        - regions: [ "ca-central-1" ]
+        - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: [{{ OS_ARM_2 }}]
           schedulers: [ "slurm" ]
