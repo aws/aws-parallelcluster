@@ -108,6 +108,7 @@ from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
+    installed_parallelcluster_version_is_at_least,
     retrieve_latest_ami,
     retrieve_pcluster_ami_without_standard_naming,
 )
@@ -626,6 +627,14 @@ def _get_outdir_path(request, output_subdir, extension):
 def _run_pcluster_diag(request, cluster):
     """Run pcluster-diag on the cluster and save the report to the test output directory."""
     if not cluster.create_complete:
+        return
+    # pcluster-diag is only installed in the AMIs of ParallelCluster 3.16.0 and later.
+    if not installed_parallelcluster_version_is_at_least("3.16.0"):
+        logging.info(
+            "Skipping pcluster-diag on cluster %s: it requires ParallelCluster 3.16.0 or later, but %s is installed",
+            cluster.name,
+            get_installed_parallelcluster_version(),
+        )
         return
     bastion = _get_bastion(request, cluster)
     rce = RemoteCommandExecutor(cluster, bastion=bastion)
