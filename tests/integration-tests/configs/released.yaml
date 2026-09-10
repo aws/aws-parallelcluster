@@ -257,9 +257,10 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
+    # This test must be executed in regions with 3+ AZs allowlisted
     test_efs.py::test_multiple_efs:
       dimensions:
-        - regions: [ "ca-central-1" ]
+        - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
