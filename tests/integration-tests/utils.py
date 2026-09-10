@@ -30,7 +30,32 @@ from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
 
-from pcluster.constants import EXCLUDED_INSTANCE_TYPE_PREFIXES
+# Declared here rather than imported from pcluster.constants, which does not have it in the older ParallelCluster
+# versions the Slurm upgrade suite runs against.
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "a1",  # a1 is based on Graviton 1 which is not supported by the newer version of Amazon Linux 2023
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "i2",
+    "i3",
+    "f1",
+    "g3",
+    "p2",
+    "p3",
+)
 
 DEFAULT_PARTITION = "aws"
 PARTITION_MAP = {
