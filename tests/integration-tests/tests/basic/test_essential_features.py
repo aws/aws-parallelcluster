@@ -23,10 +23,19 @@ from tests.basic.structured_log_event_utils import assert_that_event_exists
 from tests.cloudwatch_logging.cloudwatch_logging_boto3_utils import get_cluster_log_groups_from_boto3
 from tests.common.assertions import (
     assert_no_errors_in_logs,
+    wait_for_num_instances_in_cluster,
     wait_for_num_instances_in_queue,
     wait_instance_replaced_or_terminating,
 )
+from tests.common.hit_common import wait_for_num_nodes_in_scheduler
 from tests.common.mpi_common import _test_mpi
+from tests.common.software_installer import (
+    get_slurm_version,
+    install_test_software_with_stopped_consumers,
+    roll_back_test_software_with_stopped_consumers,
+    run_scheduler_smoke_test,
+    wait_for_partitions_up,
+)
 from tests.common.utils import fetch_instance_slots, run_gpu_workload, run_system_analyzer
 
 
@@ -59,6 +68,8 @@ def test_essential_features(
     )
     scaledown_idletime = 3
     max_queue_size = 3
+    # The rotation and ht-disabled queues declare MinCount: 1, so an idle cluster holds exactly two compute nodes.
+    static_nodes = 2
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
@@ -93,6 +104,74 @@ def test_essential_features(
     )
 
     _test_gpu_workload(cluster, scheduler_commands_factory)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    # Recorded before the install, because it is what the rollback at the end of the test has to restore.
+    version_before_install = get_slurm_version(remote_command_executor)
+    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+
+    # Restarting the compute fleet reports RUNNING before clustermgtd has brought the partitions back UP, so a job
+    # submitted right away fails with "Requested partition configuration not available now".
+    wait_for_partitions_up(scheduler_commands_factory(remote_command_executor))
+
+    _cancel_jobs_and_wait_for_idle_cluster(
+        remote_command_executor, scheduler_commands_factory(remote_command_executor), cluster, static_nodes
+    )
+
+    # The checks above are repeated as they are, rather than a hand-picked subset of their internals: the installer
+    # recompiles Slurm against /opt/pmix and replaces /opt/slurm, so a controller that answers scontrol ping is no
+    # proof that srun can still launch a multi-node MPI job or that the hyperthreading settings are still applied.
+    # Reusing them also brings their own assert_no_errors_in_logs and scaling coverage to the upgraded cluster.
+    #
+    # The order matches the first pass: _test_mpi_job asserts an absolute maximum on the cluster capacity, so it
+    # has to run on an idle cluster, which is what the cleanup above restores. The two checks below leave their
+    # nodes up for ScaledownIdletime afterwards, so they cannot run before it.
+    _test_mpi_job(
+        scheduler,
+        region,
+        instance,
+        cluster,
+        test_datadir,
+        scheduler_commands_factory,
+        scaledown_idletime,
+        max_queue_size,
+    )
+    _test_disable_hyperthreading(
+        cluster, region, instance, scheduler, default_threads_per_core, request, scheduler_commands_factory
+    )
+    _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir)
+
+    # Restoring the archives the installer left is the only way back from a Slurm upgrade, so the rollback is
+    # exercised here rather than assumed: it must put the head node back on the version the AMI shipped and return
+    # the cluster to service. It runs last because it leaves the cluster on the previous Slurm version. This cluster
+    # covers the rollback of a cluster with no accounting database; test_slurm_accounting covers the one where the
+    # accounting database has to be restored with the binaries.
+    roll_back_test_software_with_stopped_consumers(
+        remote_command_executor, cluster, expected_version=version_before_install
+    )
+    # A job that has to launch a compute node is what shows the rolled-back cluster still provisions: the node
+    # boots the slurmd of its AMI, which has to talk to the restored controller.
+    run_scheduler_smoke_test(scheduler_commands_factory(remote_command_executor), partition="bootstrap-scripts-args")
+
+
+def _cancel_jobs_and_wait_for_idle_cluster(remote_command_executor, scheduler_commands, cluster, static_nodes):
+    """Cancel every job left behind by the earlier checks and wait until only the static nodes are left.
+
+    The checks that run before the upgrade leave jobs in the queue: _test_logging submits one to
+    broken-post-install, whose nodes always fail their post install script and are therefore replaced for as long
+    as the job stays pending, and one to bootstrap-scripts-args, whose node lives on for ScaledownIdletime.
+    Restarting the compute fleet for the installer clears protected mode, so the replacements start over.
+
+    Cancelling a known set of job IDs would not be enough here, since those jobs are submitted without ever being
+    waited on. Both time series that assert_scaling_worked compares against an absolute maximum count every
+    instance and every node of the cluster, not just the ones the MPI job allocated, so any of this leftover
+    activity overlapping the monitoring window fails the assertion.
+    """
+    logging.info("Cancelling the jobs left behind by the earlier checks")
+    remote_command_executor.run_remote_command("scancel --user=$(id -un)", raise_on_error=False)
+    scheduler_commands.wait_job_queue_empty()
+    wait_for_num_nodes_in_scheduler(scheduler_commands, desired=static_nodes)
+    wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=static_nodes)
 
 
 def _test_mpi_job(
