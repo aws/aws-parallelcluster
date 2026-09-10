@@ -54,6 +54,7 @@ def run_individual_osu_benchmark(  # noqa C901
     rendered_template_path=None,
     timeout=None,
     repetitions=1,
+    max_message_size=None,
 ):
     """
     Run the given OSU benchmark.
@@ -74,6 +75,8 @@ def run_individual_osu_benchmark(  # noqa C901
     :param timeout: int, maximum number of minutes to wait for job to complete
     :param repetitions: int, how many times to run the benchmark inside the same job. The caller reduces the
                         repetitions to their median per packet size
+    :param max_message_size: int, largest message size in bytes the benchmark is run with (OSU -m option).
+                             None keeps the OSU default. Only honored by the collective templates
     :return: string, stdout of the benchmark job
     """
     logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
@@ -98,6 +101,7 @@ def run_individual_osu_benchmark(  # noqa C901
         num_of_processes_per_node=slots_per_instance,
         network_interfaces_count=network_interfaces_count,
         repetitions=repetitions,
+        osu_options=f"-m :{max_message_size}" if max_message_size else "",
     )
 
     def submit_job():
