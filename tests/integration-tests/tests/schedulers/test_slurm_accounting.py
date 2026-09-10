@@ -17,9 +17,12 @@ from tests.common.software_installer import (
     assert_slurm_state_preserved,
     back_up_accounting_database,
     get_slurm_version,
+    install_test_software,
     install_test_software_with_stopped_consumers,
+    roll_back_test_software,
     roll_back_test_software_with_stopped_consumers,
     snapshot_slurm_state,
+    stopped_shared_slurm_consumers,
     wait_for_partitions_up,
 )
 from tests.common.utils import get_aws_domain, installed_parallelcluster_version_is_at_least
@@ -480,14 +483,175 @@ def test_slurm_accounting_external_dbd(
     cluster_2 = clusters_factory(cluster_config, wait=False)
 
     logging.info("Testing the first cluster")
-    _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir)
+    pre_upgrade_job_id_1 = _check_cluster_external_dbd(
+        cluster, config_params, region, scheduler_commands_factory, test_resources_dir
+    )
 
     logging.info("Testing the second cluster")
     cluster_2.wait_cluster_status("CREATE_COMPLETE")
-    _check_cluster_external_dbd(cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir)
+    pre_upgrade_job_id_2 = _check_cluster_external_dbd(
+        cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir
+    )
 
     logging.info("Testing the inter-clusters slurm accounting information")
-    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory, slurm_dbd.name)
+    inter_cluster_job_ids = _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory, slurm_dbd.name)
+
+    slurmdbd_node_remote_command_executor = retry(
+        stop_max_attempt_number=30, wait_fixed=seconds(20)
+    )(RemoteCommandExecutor)(cluster, compute_node_ip=config_params["slurmdbd_private_ip"])
+    headnode_remote_command_executor_1 = RemoteCommandExecutor(cluster)
+    headnode_remote_command_executor_2 = RemoteCommandExecutor(cluster_2)
+
+    slurmdbd_log_line_count = _get_slurmdbd_log_line_count(slurmdbd_node_remote_command_executor)
+    slurm_state_snapshot_1 = snapshot_slurm_state(
+        headnode_remote_command_executor_1, scheduler_commands_factory(headnode_remote_command_executor_1)
+    )
+    slurm_state_snapshot_2 = snapshot_slurm_state(
+        headnode_remote_command_executor_2, scheduler_commands_factory(headnode_remote_command_executor_2)
+    )
+    # Recorded before the install, because they are what the rollback at the end of the test has to restore. The
+    # database dump is taken from the slurmdbd host, the only one of the three that can reach the database, and
+    # before the upgrade, because the schema conversion the new slurmdbd performs cannot be undone any other way.
+    versions_before_install = {
+        executor: get_slurm_version(executor)
+        for executor in (
+            slurmdbd_node_remote_command_executor,
+            headnode_remote_command_executor_1,
+            headnode_remote_command_executor_2,
+        )
+    }
+    accounting_backup = back_up_accounting_database(slurmdbd_node_remote_command_executor)
+
+    # slurmdbd first, then the controllers: Slurm requires slurmdbd to be at the same or a higher major
+    # release than every slurmctld talking to it.
+    with stopped_shared_slurm_consumers(cluster, cluster_2):
+        # There is no slurmctld on the slurmdbd host to check.
+        install_test_software(slurmdbd_node_remote_command_executor, assert_controller=False)
+        # This is the only moment a new slurmdbd serves an old slurmctld, which is the combination Slurm
+        # supports and customers go through, so it is verified before the controllers are upgraded.
+        _test_that_slurmdbd_is_running(headnode_remote_command_executor_1)
+        install_test_software(headnode_remote_command_executor_1)
+        install_test_software(headnode_remote_command_executor_2)
+
+    _test_successful_startup_in_log(slurmdbd_node_remote_command_executor, since_line=slurmdbd_log_line_count)
+    _assert_no_upgrade_failures_in_slurmdbd_log(slurmdbd_node_remote_command_executor, slurmdbd_log_line_count)
+    assert_slurm_state_preserved(headnode_remote_command_executor_1, slurm_state_snapshot_1)
+    assert_slurm_state_preserved(headnode_remote_command_executor_2, slurm_state_snapshot_2)
+
+    # The per-cluster check is re-run as it is rather than a hand-picked subset of it: it verifies slurmdbd is
+    # reachable from the head node, that the TLS server identity check still passes against the recompiled
+    # slurmdbd, that new jobs are recorded and that slurm.conf has no defunct parameters.
+    logging.info("Re-testing both clusters after the upgrade")
+    post_upgrade_job_id_1 = _check_cluster_external_dbd(
+        cluster, config_params, region, scheduler_commands_factory, test_resources_dir
+    )
+    post_upgrade_job_id_2 = _check_cluster_external_dbd(
+        cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir
+    )
+
+    # The upgraded slurmdbd must still serve the job records written before the upgrade, both to the cluster
+    # that submitted them and to the other cluster sharing the same external slurmdbd.
+    scheduler_commands_1 = scheduler_commands_factory(headnode_remote_command_executor_1)
+    scheduler_commands_2 = scheduler_commands_factory(headnode_remote_command_executor_2)
+    for scheduler_commands in (scheduler_commands_1, scheduler_commands_2):
+        _assert_preexisting_job_records_readable(
+            scheduler_commands, [pre_upgrade_job_id_1] + inter_cluster_job_ids, clusters=cluster.name
+        )
+        _assert_preexisting_job_records_readable(scheduler_commands, [pre_upgrade_job_id_2], clusters=cluster_2.name)
+    retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
+        post_upgrade_job_id_1, scheduler_commands_2, clusters=cluster.name
+    )
+    retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
+        post_upgrade_job_id_2, scheduler_commands_1, clusters=cluster_2.name
+    )
+
+    _test_rollback_external_dbd(
+        cluster,
+        cluster_2,
+        slurmdbd_node_remote_command_executor,
+        headnode_remote_command_executor_1,
+        headnode_remote_command_executor_2,
+        versions_before_install,
+        accounting_backup,
+        slurm_state_snapshot_1,
+        slurm_state_snapshot_2,
+        [pre_upgrade_job_id_1] + inter_cluster_job_ids,
+        pre_upgrade_job_id_2,
+        cluster.name,
+        cluster_2.name,
+        scheduler_commands_1,
+        scheduler_commands_2,
+    )
+
+
+def _test_rollback_external_dbd(
+    cluster,
+    cluster_2,
+    slurmdbd_executor,
+    headnode_executor_1,
+    headnode_executor_2,
+    versions_before_install,
+    accounting_backup,
+    slurm_state_snapshot_1,
+    slurm_state_snapshot_2,
+    pre_upgrade_job_ids_1,
+    pre_upgrade_job_id_2,
+    cluster_name_1,
+    cluster_name_2,
+    scheduler_commands_1,
+    scheduler_commands_2,
+):
+    """Verify the upgrade of two clusters sharing an external slurmdbd can be undone, database included.
+
+    Unlike the upgrade, the rollback goes controllers first and slurmdbd last, for the same reason: slurmdbd must
+    never be at a lower major release than a slurmctld talking to it, so the controllers have to come down to the
+    old release while slurmdbd is still on the new one. The accounting database is restored with the slurmdbd host,
+    the only one of the three that can reach it, and only there: an older slurmctld against a newer slurmdbd is a
+    combination Slurm supports, so a head node needs no database restore of its own.
+    """
+    logging.info("Rolling the upgrade of both clusters and of the external slurmdbd back")
+    slurmdbd_log_line_count = _get_slurmdbd_log_line_count(slurmdbd_executor)
+
+    with stopped_shared_slurm_consumers(cluster, cluster_2):
+        for executor in (headnode_executor_1, headnode_executor_2):
+            roll_back_test_software(executor, versions_before_install[executor])
+        # This is the mirror image of the upgrade: a new slurmdbd serving old slurmctlds, verified before the
+        # database goes back, because after it there is nothing left of the new release to be compatible with.
+        _test_that_slurmdbd_is_running(headnode_executor_1)
+        # There is no slurmctld and no StateSaveLocation on the slurmdbd host to restore.
+        roll_back_test_software(
+            slurmdbd_executor,
+            versions_before_install[slurmdbd_executor],
+            accounting_backup=accounting_backup,
+            assert_controller=False,
+        )
+
+    # Scoped to the lines the restored slurmdbd appended: the whole log holds the startup lines of both versions
+    # installed so far, so an unscoped check would pass even if the restored slurmdbd never came up.
+    _test_successful_startup_in_log(slurmdbd_executor, since_line=slurmdbd_log_line_count)
+    _assert_no_upgrade_failures_in_slurmdbd_log(slurmdbd_executor, slurmdbd_log_line_count)
+    # The same snapshots are verified a second time on purpose: the rollback restores the StateSaveLocation
+    # archives they were captured from, so the held jobs and reservations the post-upgrade check consumed have to
+    # be back. Nothing else distinguishes a restored controller state from an empty one that simply starts.
+    assert_slurm_state_preserved(headnode_executor_1, slurm_state_snapshot_1)
+    assert_slurm_state_preserved(headnode_executor_2, slurm_state_snapshot_2)
+
+    # The restored database was dropped and recreated from the dump, so both clusters have to find their own
+    # pre-upgrade records and each other's in it, and both have to be able to record a new job in it.
+    for scheduler_commands in (scheduler_commands_1, scheduler_commands_2):
+        _assert_preexisting_job_records_readable(scheduler_commands, pre_upgrade_job_ids_1, clusters=cluster_name_1)
+        _assert_preexisting_job_records_readable(
+            scheduler_commands, [pre_upgrade_job_id_2], clusters=cluster_name_2
+        )
+    for executor, scheduler_commands in (
+        (headnode_executor_1, scheduler_commands_1),
+        (headnode_executor_2, scheduler_commands_2),
+    ):
+        _test_that_slurmdbd_is_running(executor)
+        # Restarting the compute fleet reports RUNNING before clustermgtd has brought the partitions back UP, so a
+        # job submitted right away fails with "Requested partition configuration not available now".
+        wait_for_partitions_up(scheduler_commands)
+        _test_jobs_get_recorded(scheduler_commands)
 
 
 def _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir):
@@ -503,10 +667,11 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
     # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
     _test_require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
     _test_that_slurmdbd_is_running(headnode_remote_command_executor)
-    _test_jobs_get_recorded(scheduler_commands)
+    job_id = _test_jobs_get_recorded(scheduler_commands)
     assert_no_defunct_slurm_config_params(
         headnode_remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
     )
+    return job_id
 
 
 def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory, slurm_dbd_stack_name):
@@ -547,3 +712,4 @@ def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_
         retry(stop_max_attempt_number=30, wait_fixed=seconds(20))(_assert_job_completion_recorded_in_accounting)(
             job_id, scheduler_commands_2, clusters=cluster_1.name
         )
+    return job_ids
