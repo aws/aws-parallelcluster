@@ -19,7 +19,11 @@ from retrying import retry
 from time_utils import minutes, seconds
 from utils import kebab_case
 
-from tests.common.utils import get_installed_parallelcluster_base_version, wait_for_no_active_export_tasks
+from tests.common.utils import (
+    get_installed_parallelcluster_base_version,
+    serialize_by_region,
+    wait_for_no_active_export_tasks,
+)
 
 
 class Image:
@@ -122,6 +126,8 @@ class Image:
         stop_max_delay=minutes(10),
         retry_on_exception=lambda e: "Resource limit exceeded" in str(e.stderr),
     )
+    # Only one active CloudWatch Logs export task is allowed per region.
+    @serialize_by_region("export-logs")
     def export_logs(self, **args):
         """Export the logs from the image build process."""
         logging.info("Get image %s build log.", self.image_id)
