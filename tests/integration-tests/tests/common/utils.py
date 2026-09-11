@@ -385,6 +385,17 @@ def get_installed_parallelcluster_base_version():
     return packaging_version.parse(get_installed_parallelcluster_version()).base_version
 
 
+@retry(
+    retry_on_result=lambda status: status is None,
+    wait_fixed=seconds(300),
+    stop_max_delay=minutes(150),  # 2.5 hours
+)
+def wait_for_image_build_status(image, statuses: list):
+    """Poll the image until its build status is one of ``statuses``; return that status."""
+    logging.info(image.describe())
+    return image.image_status if image.image_status in statuses else None
+
+
 def wait_for_build_image_complete(image, output_dir):
     """Poll a build-image until it stops progressing and assert it reached BUILD_COMPLETE.
 
@@ -393,16 +404,11 @@ def wait_for_build_image_complete(image, output_dir):
     console on any non-complete outcome.
     """
     logging.info("Waiting for build of image %s to complete", image.image_id)
-    logging.info(image.describe())
-    # Poll every 5 minutes so BUILD_COMPLETE is detected close to when it happens: the build-image
-    # stack self-deletes on success, so detecting completion sooner reduces the export-logs race.
-    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
-        time.sleep(300)
-        logging.info(image.describe())
+    image_status = wait_for_image_build_status(image, ["BUILD_COMPLETE", "BUILD_FAILED"])
     export_image_logs(image, output_dir)
-    if image.image_status != "BUILD_COMPLETE":
+    if image_status != "BUILD_COMPLETE":
         keep_recent_image_logs(image)
-    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
+    assert_that(image_status).is_equal_to("BUILD_COMPLETE")
 
 
 def export_image_logs(image, output_dir):
