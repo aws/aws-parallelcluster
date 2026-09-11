@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
+import inspect
 import json
 import logging
 import os
@@ -15,6 +17,7 @@ import pathlib
 import random
 import re
 import string
+import tempfile
 import time
 import uuid
 from importlib.metadata import version as get_package_version
@@ -23,6 +26,7 @@ import boto3
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from filelock import FileLock
 from framework.framework_constants import METADATA_DEFAULT_REGION, PERFORMANCE_METADATA_TABLE
 from framework.metadata_table_manager import MetadataTableManager
 from packaging import version as packaging_version
@@ -962,3 +966,45 @@ def wait_for_no_active_export_tasks(region):
         time.sleep(poll_interval)
         elapsed += poll_interval
     logging.warning("Timed out waiting for export tasks to complete after %ds", max_wait)
+
+
+REGION_LOCK_TIMEOUT = 12000  # seconds, matches the serial_execution_by_instance file lock
+
+
+def region_lock(name, region):
+    """Return a FileLock, shared by all xdist workers on the host, serializing on (name, region).
+
+    ``name`` scopes the lock so that unrelated operations serialize independently within the same
+    region, while operations sharing a name serialize against each other.
+    """
+    lock_file = os.path.join(tempfile.gettempdir(), f"pcluster-integ-{name}-{region}.lock")
+    return FileLock(lock_file=lock_file)
+
+
+def serialize_by_region(name):
+    """Return a decorator that serializes calls to a function per region on the ``name`` lock.
+
+    The lock (a host-wide file lock shared by all xdist workers) is scoped by ``name``, so pass the
+    same ``name`` to serialize operations against each other and different names to serialize them
+    independently within the same region.
+
+    The region is read from a ``region`` argument when the function declares one, otherwise from the
+    ``region`` attribute of the first positional argument (e.g. ``self`` for an instance method).
+
+    Useful for operations that AWS allows only one of at a time per account per region, such as
+    CloudWatch Logs export tasks (only one active export task per region; see #2042).
+    """
+
+    def decorator(func):
+        signature = inspect.signature(func)
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            bound = signature.bind(*args, **kwargs)
+            region = bound.arguments.get("region") or getattr(args[0] if args else None, "region", None)
+            with region_lock(name, region).acquire(poll_interval=15, timeout=REGION_LOCK_TIMEOUT):
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
