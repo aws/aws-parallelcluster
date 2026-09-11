@@ -17,6 +17,7 @@ import boto3
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
 from clusters_factory import Cluster
+from conftest_networking import AVAILABLE_AVAILABILITY_ZONE
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
@@ -544,9 +545,12 @@ def assert_subnet_az_relations_from_config(
     if expected_in_same_az:
         assert_that(set(cluster_avail_zones)).is_length(1)
     # If caller does not expect same az, we expect more availability zones.
-    elif region == "us-isob-east-1":
-        # us-isob-east-1 provides 2 availability zones.
-        assert_that(len(set(cluster_avail_zones))).is_equal_to(2)
+    elif region in AVAILABLE_AVAILABILITY_ZONE:
+        # This region has a restricted AZ allowlist (see conftest_networking.AVAILABLE_AVAILABILITY_ZONE),
+        # so the cluster config can only span as many AZs as are allowlisted. Expect one distinct AZ per
+        # subnet, capped at the number of allowlisted AZs (e.g. ca-central-1 and us-isob-east-1 allow 2).
+        allowlisted_az_count = len(AVAILABLE_AVAILABILITY_ZONE[region])
+        assert_that(len(set(cluster_avail_zones))).is_equal_to(min(allowlisted_az_count, len(cluster_avail_zones)))
     else:
         # For other regions, we impose a strong check to make sure each subnet is in a different availability zone.
         assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
