@@ -37,7 +37,11 @@ from utils import (
     retry_if_subprocess_error,
 )
 
-from tests.common.utils import read_remote_file, wait_for_no_active_export_tasks
+from tests.common.utils import (
+    read_remote_file,
+    serialize_by_region,
+    wait_for_no_active_export_tasks,
+)
 
 TAG_CLUSTER_NAME = "parallelcluster:cluster-name"
 TAG_NODE_TYPE = "parallelcluster:node-type"
@@ -376,6 +380,8 @@ class Cluster:
         stop_max_delay=minutes(10),
         retry_on_exception=lambda e: "Resource limit exceeded" in str(e.stderr),
     )
+    # Only one active CloudWatch Logs export task is allowed per region.
+    @serialize_by_region("export-logs")
     def export_logs(self, bucket=None, output_file=None, bucket_prefix=None, filters=None):
         """Run pcluster export-cluster-logs and return the result."""
         cmd_args = ["pcluster", "export-cluster-logs", "--cluster-name", self.name]
