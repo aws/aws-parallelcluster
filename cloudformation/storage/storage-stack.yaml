@@ -294,6 +294,11 @@ Resources:
   EfaFsxLustreFileSystem:
     Condition: CreateEfaFsxLustre
     Type: 'AWS::FSx::FileSystem'
+    # FSx validates at CreateFileSystem time that the security group already allows all traffic to and
+    # from itself (self-ingress and self-egress).
+    DependsOn:
+      - EfaFsxLustreFileSystemSecurityGroupSelfIngress
+      - EfaFsxLustreFileSystemSecurityGroupSelfEgress
     Properties:
       FileSystemType: LUSTRE
       # EFA-enabled FSx Lustre requires PERSISTENT_2. We use the highest throughput tier (1000 MB/s/TiB),
