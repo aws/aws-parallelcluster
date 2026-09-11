@@ -12,7 +12,6 @@
 import datetime
 import json
 import logging
-import os
 import re
 import tarfile
 import tempfile
@@ -39,11 +38,15 @@ from tests.common.assertions import (
     assert_no_msg_in_logs,
 )
 from tests.common.utils import (
+    export_image_logs,
     generate_random_string,
     get_installed_parallelcluster_base_version,
     get_installed_parallelcluster_version,
+    keep_recent_image_logs,
     retrieve_latest_ami,
     upload_github_artifacts_to_s3,
+    wait_for_build_image_complete,
+    wait_for_image_build_status,
 )
 from tests.proxy.test_proxy import proxy_stack_factory  # noqa: F401
 
@@ -134,7 +137,7 @@ def test_build_image_no_internet(
     )
 
     image = images_factory(image_id, image_config, region)
-    _test_build_image_success(image, request.config.getoption("output_dir"))
+    wait_for_build_image_complete(image, request.config.getoption("output_dir"))
 
 
 @pytest.mark.usefixtures("instance")
@@ -247,11 +250,11 @@ def test_build_image(
     )
 
     with soft_assertions():
-        _wait_for_build_instance(image, region)
-        _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
-        _test_build_imds_settings(image, "required", region)
+        _wait_for_build_instance(image)
+        _test_build_instances_tags(image, image.config["Build"]["Tags"])
+        _test_build_imds_settings(image, "required")
 
-        _test_build_image_success(image, request.config.getoption("output_dir"))
+        wait_for_build_image_complete(image, request.config.getoption("output_dir"))
 
         # Only validate export-image-logs if the build did NOT complete successfully. On a successful
         # build the build-image stack self-deletes, which races the export command and causes
@@ -347,14 +350,14 @@ def _test_list_image_log_streams(image):
     streams = list_streams_result["logStreams"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
-    expected_log_stream = f"{get_installed_parallelcluster_base_version()}/1"
+    expected_log_stream = image.build_log_stream_name
     assert_that(stream_names).contains(expected_log_stream)
 
 
 def _test_get_image_log_events(image):
     """Test pcluster get-image-log-events functionality."""
     logging.info("Testing that pcluster get-image-log-events is working as expected")
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    log_stream_name = image.build_log_stream_name
 
     # Get the first event to establish time boundary for testing
     initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
@@ -601,81 +604,36 @@ def test_build_image_custom_components(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_success(image, request.config.getoption("output_dir"))
+    wait_for_build_image_complete(image, request.config.getoption("output_dir"))
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(10))
-def _wait_for_build_instance(image, region):
+def _wait_for_build_instance(image):
     """Wait until the ImageBuilder build instance is launched.
 
     The build instance exists only while the image is being built; it is terminated and the build-image
     stack self-deletes once the image reaches BUILD_COMPLETE. Waiting for it here lets the tag and IMDS
     checks run against a live instance instead of racing the teardown or passing vacuously.
     """
-    instance_name = f"Build instance for ParallelClusterImage-{image.image_id}"
-    reservations = (
-        boto3.client("ec2", region_name=region)
-        .describe_instances(
-            Filters=[
-                {"Name": "tag:Name", "Values": [instance_name]},
-                {"Name": "instance-state-name", "Values": ["running"]},
-            ]
-        )
-        .get("Reservations")
-    )
-    return [instance for reservation in reservations for instance in reservation.get("Instances", [])]
+    build_instance_name = f"Build instance for ParallelClusterImage-{image.image_id}"
+    return [
+        instance
+        for instance in image.get_imagebuilder_instances()
+        if instance.get("State", {}).get("Name") == "running"
+        and {"Key": "Name", "Value": build_instance_name} in instance.get("Tags", [])
+    ]
 
 
-def _test_build_imds_settings(image, status, region):
+def _test_build_imds_settings(image, status):
     logging.info(f"Checking that the ImageBuilder instances have IMDSv2 {status}")
-
-    instance_names = [
-        f"Build instance for ParallelClusterImage-{image.image_id}",
-        f"Test instance for ParallelClusterImage-{image.image_id}",
-    ]
-
-    describe_response = boto3.client("ec2", region_name=region).describe_instances(
-        Filters=[{"Name": "tag:Name", "Values": instance_names}]
-    )
-
-    for reservations in describe_response.get("Reservations"):
-        for instance in reservations.get("Instances"):
-            assert_instance_has_desired_imds_v2_setting(instance, status)
+    for instance in image.get_imagebuilder_instances():
+        assert_instance_has_desired_imds_v2_setting(instance, status)
 
 
-def _test_build_instances_tags(image, build_tags, region):
+def _test_build_instances_tags(image, build_tags):
     logging.info("Checking that the ImageBuilder instances have the build tags")
-
-    instance_names = [
-        f"Build instance for ParallelClusterImage-{image.image_id}",
-        f"Test instance for ParallelClusterImage-{image.image_id}",
-    ]
-
-    describe_response = boto3.client("ec2", region_name=region).describe_instances(
-        Filters=[{"Name": "tag:Name", "Values": instance_names}]
-    )
-
-    for reservations in describe_response.get("Reservations"):
-        for instance in reservations.get("Instances"):
-            assert_instance_has_desired_tags(instance, build_tags)
-
-
-def _test_build_image_success(image, output_dir):
-    logging.info("Test build image process for image %s.", image.image_id)
-
-    pcluster_describe_image_result = image.describe()
-    logging.info(pcluster_describe_image_result)
-
-    # Poll every 5 minutes so BUILD_COMPLETE is detected close to when it happens. The build-image stack
-    # self-deletes on build success, so detecting completion sooner reduces the export-image-logs race window.
-    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
-        time.sleep(300)
-        pcluster_describe_image_result = image.describe()
-        logging.info(pcluster_describe_image_result)
-    if image.image_status != "BUILD_COMPLETE":
-        _export_image_logs(image, output_dir)
-        _keep_recent_logs(image)
-    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
+    for instance in image.get_imagebuilder_instances():
+        assert_instance_has_desired_tags(instance, build_tags)
 
 
 @pytest.mark.usefixtures("os")
@@ -718,46 +676,15 @@ def test_build_image_wrong_pcluster_version(
     _test_export_logs(s3_bucket_factory, image, region)
     _test_export_logs(s3_bucket_factory, image, region, True)
 
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    log_stream_name = image.build_log_stream_name
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
 def _test_build_image_failed(image, output_dir):
     logging.info("Test build image process for image %s.", image.image_id)
-
-    pcluster_describe_image_result = image.describe()
-    logging.info(pcluster_describe_image_result)
-
-    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
-        time.sleep(600)
-        pcluster_describe_image_result = image.describe()
-        logging.info(pcluster_describe_image_result)
-
+    wait_for_image_build_status(image, ["BUILD_COMPLETE", "BUILD_FAILED"])
     if image.image_status == "BUILD_FAILED":
-        _export_image_logs(image, output_dir)
-        _keep_recent_logs(image)
+        export_image_logs(image, output_dir)
+        keep_recent_image_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_FAILED")
-
-
-def _export_image_logs(image, output_dir):
-    """Export the full image build log archive to the test output directory using pcluster export-image-logs."""
-    log_dir = os.path.join(output_dir, "image_build_logs")
-    os.makedirs(log_dir, exist_ok=True)
-    output_file = os.path.join(log_dir, f"{image.image_id}-logs.tar.gz")
-    try:
-        ret = image.export_logs(output_file=output_file)
-        logging.info(f"Full image build log exported to {ret.get('path', output_file)}")
-    except Exception as e:
-        logging.error(f"Failed to export image build logs for {image.image_id}: {e}")
-
-
-def _keep_recent_logs(image):
-    """Keep several lines of recent log to the console when creating an image fails."""
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
-    nlines = 200
-    log_events = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=nlines)
-    log_messages = [event["message"] for event in log_events]
-    logging.info(
-        f"Image built failed for {image.image_id}, the last {nlines} lines of the log are:\n" + "\n".join(log_messages)
-    )
