@@ -293,7 +293,7 @@ test-suites:
           instances: ["c6gn.16xlarge"]
           oss: [{{ OS_ARM_0 }}]
           schedulers: ["slurm"]
-        - regions: ["use2-az2"]  # do not move, unless instance type support is moved as well
+        - regions: [{{ hpc6id_32xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_4 }}]
           instances: ["hpc6id.32xlarge"]
           oss: [{{ OS_X86_4 }}]
           schedulers: [ "slurm" ]
