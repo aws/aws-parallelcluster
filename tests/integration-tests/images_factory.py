@@ -12,13 +12,14 @@
 import json
 import logging
 
+import boto3
 import yaml
 from framework.credential_providers import run_pcluster_command
 from retrying import retry
 from time_utils import minutes, seconds
 from utils import kebab_case
 
-from tests.common.utils import wait_for_no_active_export_tasks
+from tests.common.utils import get_installed_parallelcluster_base_version, wait_for_no_active_export_tasks
 
 
 class Image:
@@ -173,6 +174,24 @@ class Image:
         result = run_pcluster_command(command).stdout
         response = json.loads(result)
         return response
+
+    @property
+    def build_log_stream_name(self):
+        """Return the CloudWatch log stream name of this image build, e.g. '<pcluster-base-version>/1'."""
+        return f"{get_installed_parallelcluster_base_version()}/1"
+
+    def get_imagebuilder_instances(self):
+        """Return the ImageBuilder build and test EC2 instances for this image."""
+        instance_names = [
+            f"Build instance for ParallelClusterImage-{self.image_id}",
+            f"Test instance for ParallelClusterImage-{self.image_id}",
+        ]
+        reservations = (
+            boto3.client("ec2", region_name=self.region)
+            .describe_instances(Filters=[{"Name": "tag:Name", "Values": instance_names}])
+            .get("Reservations")
+        )
+        return [instance for reservation in reservations for instance in reservation.get("Instances", [])]
 
     def _update_image_info(self, image_info):
         ec2_ami_info = image_info.get("ec2AmiInfo")
