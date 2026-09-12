@@ -1002,7 +1002,9 @@ def serialize_by_region(name):
         def wrapper(*args, **kwargs):
             bound = signature.bind(*args, **kwargs)
             region = bound.arguments.get("region") or getattr(args[0] if args else None, "region", None)
+            logging.info("Attempting to acquire lock '%s' for region %s", name, region)
             with region_lock(name, region).acquire(poll_interval=15, timeout=REGION_LOCK_TIMEOUT):
+                logging.info("Acquired lock '%s' for region %s", name, region)
                 return func(*args, **kwargs)
 
         return wrapper
