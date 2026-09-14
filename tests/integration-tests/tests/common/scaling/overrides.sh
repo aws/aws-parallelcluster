@@ -60,28 +60,26 @@ def run_instances(region, boto3_config, **run_instances_kwargs):
     ec2_client = boto3.client("ec2", region_name=region, config=boto3_config)
     return ec2_client.run_instances(**run_instances_kwargs)
 
-def update_lt_instance_overrides(overrides):
-    updated_overrides = []
-    for ov in overrides:
-        if 'InstanceType' in ov:
-            # mutate t3.large into t3-large to force an Error in CreateFleet request
-            mispelled_instance_type = ov['InstanceType'].replace(".", "-")
-            ov['InstanceType'] = mispelled_instance_type
-            updated_overrides.append(ov)
-        else:
-            updated_overrides.append(ov)
-
-    return updated_overrides
-
 def create_fleet(region, boto3_config, **create_fleet_kwargs):
     configs = create_fleet_kwargs.get("LaunchTemplateConfigs", [])
     if len(configs) >= 1 and configs[0]:
         lt_config = configs[0]
 
         if "${INSTANCE_TYPES_ICE_CR}" and "${INSTANCE_TYPES_ICE_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
-            # CreateFleet will return an Error and an empty list of instances
-            lt_config['Overrides'] = update_lt_instance_overrides(lt_config['Overrides'])
-            logger.info("Updated Instance Overrides for CreateFleet args: %s", create_fleet_kwargs)
+            # Emulate a real InsufficientInstanceCapacity error by returning a mocked response, so the node
+            # reports InsufficientInstanceCapacity and triggers fast capacity failover
+            logger.info("Emulating InsufficientInstanceCapacity for CreateFleet args: %s", create_fleet_kwargs)
+            return {
+                "Instances": [],
+                "Errors": [
+                    {
+                        "LaunchTemplateAndOverrides": lt_config,
+                        "Lifecycle": "on-demand",
+                        "ErrorCode": "InsufficientInstanceCapacity",
+                        "ErrorMessage": "We currently do not have sufficient capacity for the requested instance type."
+                    },
+                ],
+            }
         elif "${INSTANCE_TYPES_EXCEPTION_CR}" and "${INSTANCE_TYPES_EXCEPTION_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
             # force CreateFleet to raise an exception since "inf*" instance types have Inferentia accelerators
             # that are manufactured by AWS, and we are also requesting Manufacturer=nvidia
