@@ -1924,6 +1924,7 @@ def _log_ami_patching_build_output(region, stack_name):
     retrieve the logs is swallowed so it never fails the test.
     """
     log_group_name = f"/aws/imagebuilder/pcluster-ami-patching-recipe-{stack_name}"
+    logging.info("Retrieving AMI patching Image Builder logs from log group %s", log_group_name)
     logs_client = boto3.client("logs", region_name=region)
     try:
         messages = []
