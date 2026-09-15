@@ -425,6 +425,14 @@ def remove_none_values(original_dictionary):
     return {key: value for key, value in original_dictionary.items() if value is not None}
 
 
+def compute_retry_delay(
+    attempt: int, backoff_multiplier_seconds: float, backoff_max_seconds: float, jitter_max_seconds: float
+) -> float:
+    """Return the number of seconds to wait before reissuing a call that failed at the given attempt."""
+    jitter_seconds = random.SystemRandom().uniform(0, jitter_max_seconds)
+    return min(backoff_multiplier_seconds * 2**attempt, backoff_max_seconds) + jitter_seconds
+
+
 def get_chunks(input_lst, desired_size=20):
     """Get a list of lists splitting the input list in chunks with a specific length."""
     for i in range(0, len(input_lst), desired_size):
