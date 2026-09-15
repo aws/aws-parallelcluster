@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from urllib.parse import urlparse
 
 import boto3
 import pytest
@@ -8,13 +9,18 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import to_snake_case
+from utils import get_arn_partition, to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.assertions import assert_no_defunct_slurm_config_params
 from tests.common.utils import get_aws_domain
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version \S+ started")
+RDS_TRUSTSTORE_ENDPOINTS = {
+    "aws": "https://truststore.pki.rds.amazonaws.com",
+    "aws-us-gov": "https://truststore.pki.us-gov-west-1.rds.amazonaws.com",
+    "aws-cn": "https://rds-truststore.s3.cn-north-1.amazonaws.com.cn",
+}
 
 
 def _get_slurm_database_config_parameters(database_stack_outputs):
@@ -52,7 +58,7 @@ def _rds_ca_bundle_url(region):
     if "us-iso" in region:
         return f"https://s3.{region}.{get_aws_domain(region)}/rds-downloads/rds-combined-ca-bundle.pem"
     else:
-        return f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+        return f"{RDS_TRUSTSTORE_ENDPOINTS.get(get_arn_partition(region))}/{region}/{region}-bundle.pem"
 
 
 def _require_server_identity(remote_command_executor, test_resources_dir, region):
@@ -61,7 +67,7 @@ def _require_server_identity(remote_command_executor, test_resources_dir, region
         os.path.join(str(test_resources_dir), "require_server_identity.sh"),
         args=[
             ca_url,
-            f"{region}-bundle.pem",
+            os.path.basename(urlparse(ca_url).path),
         ],
         run_as_root=True,
     )
