@@ -19,6 +19,12 @@ constants:
   - CUDA_RELEASE_NVIDIA_VERSION:
       type: string
       value: "{{ cuda_release_nvidia_version }}"
+  - GDRCOPY_VERSION:
+      type: string
+      value: "{{ gdrcopy_version }}"
+  - DCGM_VERSION:
+      type: string
+      value: "{{ dcgm_version }}"
 
 phases:
   - name: build
@@ -111,6 +117,60 @@ phases:
             echo "export LD_LIBRARY_PATH=${CUDA_PATH}/lib64:\${LD_LIBRARY_PATH}" >> /etc/profile.d/pcluster_cuda.sh
             chmod +x /etc/profile.d/pcluster_cuda.sh
 
+    - name: InstallGdrcopy
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            GDRCOPY_VERSION="{{ GDRCOPY_VERSION }}"
+            ARCH="{{ ARCH }}"
+            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
+
+            # GDRCopy is not distributed in any package repo; build the RPMs from the release
+            # tarball and install them (mirrors the ParallelCluster cookbook's gdrcopy resource).
+            dnf install -y dkms rpm-build make check check-devel chkconfig
+            wget -P "${TMP_DIR}" "https://github.com/NVIDIA/gdrcopy/archive/refs/tags/v${GDRCOPY_VERSION}.tar.gz"
+            tar xf "${TMP_DIR}/v${GDRCOPY_VERSION}.tar.gz" --directory "${TMP_DIR}"
+            cd "${TMP_DIR}/gdrcopy-${GDRCOPY_VERSION}/packages"
+            CUDA=/usr/local/cuda ./build-rpm-packages.sh
+            rpm -Uvh "gdrcopy-kmod-${GDRCOPY_VERSION}-1dkms."*.noarch.rpm
+            rpm -Uvh "gdrcopy-${GDRCOPY_VERSION}-1."*".${ARCH}.rpm"
+            rpm -Uvh "gdrcopy-devel-${GDRCOPY_VERSION}-1."*.noarch.rpm
+
+            cd /
+            rm -rf "${TMP_DIR}"
+
+    - name: InstallDcgm
+      action: ExecuteBash
+      inputs:
+        commands:
+          - |
+            #!/bin/bash
+            set -ex
+
+            DCGM_VERSION="{{ DCGM_VERSION }}"
+            CUDA_VERSION="{{ CUDA_VERSION }}"
+            ARCH="{{ ARCH }}"
+            TMP_DIR="/pcluster-tmp/$(date +"%Y-%m-%dT%H-%M-%S")"
+
+            # DCGM is not installed from a package repo; download the prebuilt RPMs and install the
+            # files directly (mirrors the ParallelCluster cookbook's nvidia_dcgm resource). DCGM 4.x
+            # ships as a core package plus a CUDA-major variant.
+            # The NVIDIA repo path uses "sbsa" for ARM, while the RPM file name uses "aarch64".
+            if [ "${ARCH}" = "aarch64" ]; then REPO_ARCH="sbsa"; else REPO_ARCH="x86_64"; fi
+            CUDA_MAJOR="$(echo "${CUDA_VERSION}" | cut -d. -f1)"
+            DCGM_REPO_URL="https://developer.download.nvidia.com/compute/cuda/repos/amzn2023/${REPO_ARCH}"
+            for pkg in "datacenter-gpu-manager-4-core" "datacenter-gpu-manager-4-cuda${CUDA_MAJOR}"; do
+              DCGM_RPM="${pkg}-${DCGM_VERSION}.${ARCH}.rpm"
+              wget -P "${TMP_DIR}" "${DCGM_REPO_URL}/${DCGM_RPM}"
+              dnf install -y "${TMP_DIR}/${DCGM_RPM}"
+            done
+
+            rm -rf "${TMP_DIR}"
+
     - name: Validation
       action: ExecuteBash
       inputs:
@@ -138,5 +198,8 @@ phases:
               fi
             done
 
-            ## NVLSM is versioned independently of the driver.
+            ## NVLSM, GDRCopy and DCGM are versioned independently of the driver.
             rpm -q nvlsm
+            rpm -q gdrcopy gdrcopy-kmod
+            rpm -q datacenter-gpu-manager-4-core
+            dcgmi --version
