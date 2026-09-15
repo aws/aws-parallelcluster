@@ -311,6 +311,20 @@ class BaseTag(Resource):
         self.value = Resource.init_param(value)
 
 
+def merge_tags(*tag_lists):
+    """
+    Merge lists of Tag objects, deduplicating by key.
+
+    Later lists take precedence over earlier ones on duplicate keys, mirroring the tag precedence
+    applied at launch time (cluster < queue < compute resource). ``None`` lists are skipped.
+    """
+    merged = {}
+    for tags in tag_lists:
+        for tag in tags or []:
+            merged[tag.key] = tag
+    return list(merged.values())
+
+
 class AdditionalIamPolicy(Resource):
     """Represent the Additional IAM Policy configuration."""
 
