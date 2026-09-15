@@ -20,7 +20,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config.common import CapacityType, SharedStorageType
+from pcluster.config.common import CapacityType, SharedStorageType, merge_tags
 from pcluster.constants import (
     CIDR_ALL_IPS,
     DELETE_POLICY,
@@ -1354,6 +1354,9 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
             placement_group_name = compute_resource_placement_group.assignment
+            # Merge cluster, queue, and compute resource tags to mirror the tags applied at launch time,
+            # so the dry run reflects the tags an actual RunInstances would carry.
+            merged_tags = merge_tags(tags, queue.get_tags(), dry_run_compute_resource.get_tags())
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
                 queue=queue,
@@ -1364,7 +1367,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,
                 placement_group={"GroupName": placement_group_name} if placement_group_name else {},
-                tags=tags,
+                tags=merged_tags,
                 imds_support=imds_support,
             )
         except Exception as e:
