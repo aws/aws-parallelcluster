@@ -15,6 +15,7 @@ CHANGELOG
 - Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
 - Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
+- Reduce IAM role and policy naming collisions by using a more unique name suffix.
 
 3.16.1
 ------
