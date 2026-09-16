@@ -362,16 +362,19 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
         elif "CAPACITY_RESERVATION" in var:
             logging.info("Checking capacity reservation for %s", var)
             specs = []
+            parsed_placeholders = []
             for part in var.split("__"):  # Support multiple instance types separated by __
                 count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(part)
-                resolved_instance_type, os_platform = _resolve_instance_type_and_os(
+                _, os_platform = _resolve_instance_type_and_os(
                     instance_type, instance_type_parameters, os, os_parameters
                 )
-                instance_types = [resolved_instance_type]
-                if "GPU_INSTANCE_TYPE" in instance_type:
-                    instance_types = _get_gpu_instance_type_candidates(instance_type, instance_type_parameters)
+                parsed = _parse_indexed_instance_type_placeholder(instance_type)
+                instance_types = _get_indexed_instance_type_candidates(
+                    parsed, instance_type, instance_type_parameters, os, os_parameters
+                )
                 end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
                 specs.append((instance_types, os_platform, count, end_date, enable_placement_group))
+                parsed_placeholders.append(parsed)
             candidate_regions = [
                 "ap-northeast-2",
                 "ap-southeast-2",
@@ -388,10 +391,13 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 az_for_capacity_reservation, candidate_regions, specs, var
             )
             if successful_specs:
-                for part, successful_spec in zip(var.split("__"), successful_specs):
-                    _, _, _, instance_type, _ = _parse_capacity_reservation_variable(part)
-                    if "GPU_INSTANCE_TYPE" in instance_type:
-                        instance_types_for_capacity_reservation[instance_type] = successful_spec[0]
+                for parsed, successful_spec in zip(parsed_placeholders, successful_specs):
+                    if parsed:
+                        prefix, selected_index, _ = parsed
+                        placeholder_key = f"{prefix}_{selected_index}"
+                        instance_types_for_capacity_reservation[placeholder_key] = _placeholder_render_value(
+                            parsed, successful_spec[0]
+                        )
             else:
                 # If failed to create reservation, use use1-az6 to avoid making the test yaml syntactically wrong.
                 logging.info("Failed to create capacity reservation for %s. Using use1-az6", var)
@@ -745,17 +751,72 @@ def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, o
     return instance_type, os_platform
 
 
-def _get_gpu_instance_type_candidates(gpu_instance_type_parameter, instance_type_parameters):
-    """Return every generated GPU type for a region, with the requested placeholder first."""
-    gpu_instance_type_prefix, selected_index = gpu_instance_type_parameter.rsplit("_", 1)
-    gpu_instance_types = []
+def _parse_indexed_instance_type_placeholder(instance_type_expression):
+    """Return (prefix, selected_index, size_suffix) for an indexed placeholder, else None.
+
+    Handles ``<region>_<group>_INSTANCE_TYPE_<n>`` where ``<group>`` is an optional arbitrary segment (e.g. GPU),
+    with an optional ``_<size>`` suffix. The size suffix (e.g. ``xlarge``) is present when the config appends the
+    size in the variable name instead of the placeholder value.
+
+    Examples:
+        US_WEST_2_GPU_INSTANCE_TYPE_0    -> ("US_WEST_2_GPU_INSTANCE_TYPE", 0, None)
+        US_EAST_1_INSTANCE_TYPE_0        -> ("US_EAST_1_INSTANCE_TYPE", 0, None)
+        US_EAST_1_INSTANCE_TYPE_0_xlarge -> ("US_EAST_1_INSTANCE_TYPE", 0, "xlarge")
+        US_WEST_2_ARM_INSTANCE_TYPE_2    -> ("US_WEST_2_ARM_INSTANCE_TYPE", 2, None)
+        c5_xlarge                        -> None
+    """
+    match = re.fullmatch(r"(.+_INSTANCE_TYPE)_(\d+)(?:_([a-z0-9]+))?", instance_type_expression)
+    if not match:
+        return None
+    return match.group(1), int(match.group(2)), match.group(3)
+
+
+def _get_indexed_instance_type_candidates(
+    parsed_placeholder, instance_type_expression, instance_type_parameters, os, os_parameters
+):
+    """Return resolved instance-type candidates, rotated to start at the requested index.
+
+    ``parsed_placeholder`` is the pre-computed _parse_indexed_instance_type_placeholder result, so parsing happens
+    once in the caller. Candidates are every contiguous index generated for the placeholder group, rotated so the
+    requested index is attempted first with wraparound. Each candidate is resolved to a full instance type so both
+    GPU (full type value) and INSTANCE_TYPE (family value plus appended size) work.
+    """
+    if not parsed_placeholder:
+        resolved, _ = _resolve_instance_type_and_os(
+            instance_type_expression, instance_type_parameters, os, os_parameters
+        )
+        return [resolved]
+
+    prefix, selected_index, size_suffix = parsed_placeholder
+    candidates = []
     index = 0
-    while f"{gpu_instance_type_prefix}_{index}" in instance_type_parameters:
-        gpu_instance_types.append(instance_type_parameters[f"{gpu_instance_type_prefix}_{index}"])
+    while f"{prefix}_{index}" in instance_type_parameters:
+        placeholder = f"{prefix}_{index}" + (f"_{size_suffix}" if size_suffix else "")
+        resolved, _ = _resolve_instance_type_and_os(placeholder, instance_type_parameters, os, os_parameters)
+        candidates.append(resolved)
         index += 1
 
-    selected_index = int(selected_index)
-    return gpu_instance_types[selected_index:] + gpu_instance_types[:selected_index]
+    if not candidates:
+        resolved, _ = _resolve_instance_type_and_os(
+            instance_type_expression, instance_type_parameters, os, os_parameters
+        )
+        return [resolved]
+
+    # Modulo keeps the rotation in range without raising when the config references a larger index.
+    selected_index %= len(candidates)
+    return candidates[selected_index:] + candidates[:selected_index]
+
+
+def _placeholder_render_value(parsed_placeholder, resolved_instance_type):
+    """Return the value to overwrite an indexed placeholder with, matching how the config renders it.
+
+    GPU placeholders render the full instance type. INSTANCE_TYPE placeholders that append the size in the config
+    (e.g. ``{{ ..._INSTANCE_TYPE_0 }}.xlarge``) render only the family, so the appended size is stripped here.
+    """
+    _, _, size_suffix = parsed_placeholder
+    if size_suffix and resolved_instance_type.endswith(f".{size_suffix}"):
+        return resolved_instance_type[: -len(f".{size_suffix}")]
+    return resolved_instance_type
 
 
 def _parse_capacity_reservation_variable(var):
