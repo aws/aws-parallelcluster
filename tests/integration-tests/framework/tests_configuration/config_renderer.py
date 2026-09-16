@@ -355,6 +355,7 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
     """Check/Create capacity reservations for all the instances in the config file."""
     variables = _get_all_jinja_variables(config_file)
     az_for_capacity_reservation = {}
+    instance_types_for_capacity_reservation = {}
     for var in variables:
         if "CAPACITY_BLOCK" in var:
             _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters)
@@ -363,11 +364,14 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
             specs = []
             for part in var.split("__"):  # Support multiple instance types separated by __
                 count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(part)
-                instance_type, os_platform = _resolve_instance_type_and_os(
+                resolved_instance_type, os_platform = _resolve_instance_type_and_os(
                     instance_type, instance_type_parameters, os, os_parameters
                 )
+                instance_types = [resolved_instance_type]
+                if "GPU_INSTANCE_TYPE" in instance_type:
+                    instance_types = _get_gpu_instance_type_candidates(instance_type, instance_type_parameters)
                 end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
-                specs.append((instance_type, os_platform, count, end_date, enable_placement_group))
+                specs.append((instance_types, os_platform, count, end_date, enable_placement_group))
             candidate_regions = [
                 "ap-northeast-2",
                 "ap-southeast-2",
@@ -380,11 +384,19 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 "us-east-1",
             ]
             random.shuffle(candidate_regions)
-            if not _create_capacity_reservations(az_for_capacity_reservation, candidate_regions, specs, var):
+            successful_specs = _create_capacity_reservations(
+                az_for_capacity_reservation, candidate_regions, specs, var
+            )
+            if successful_specs:
+                for part, successful_spec in zip(var.split("__"), successful_specs):
+                    _, _, _, instance_type, _ = _parse_capacity_reservation_variable(part)
+                    if "GPU_INSTANCE_TYPE" in instance_type:
+                        instance_types_for_capacity_reservation[instance_type] = successful_spec[0]
+            else:
                 # If failed to create reservation, use use1-az6 to avoid making the test yaml syntactically wrong.
                 logging.info("Failed to create capacity reservation for %s. Using use1-az6", var)
                 az_for_capacity_reservation[var] = "use1-az6"
-    return az_for_capacity_reservation
+    return {**az_for_capacity_reservation, **instance_types_for_capacity_reservation}
 
 
 def _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters):
@@ -638,8 +650,27 @@ def _parse_capacity_block_variable(var):
     return count, hours, instance_type, os
 
 
-def _create_capacity_reservations(az_for_cr, regions, specs, var):  # noqa C901
-    """Find or create capacity reservations for multiple instance types in the same AZ."""
+def _create_capacity_reservations(az_for_cr, regions, specs, var):
+    """Find or create reservations, trying each GPU candidate across all regions and AZs first."""
+    candidate_count = max(len(instance_types) for instance_types, *_ in specs)
+    for candidate_index in range(candidate_count):
+        candidate_specs = [
+            (
+                instance_types[min(candidate_index, len(instance_types) - 1)],
+                os_platform,
+                count,
+                end_date,
+                enable_placement_group,
+            )
+            for instance_types, os_platform, count, end_date, enable_placement_group in specs
+        ]
+        if _create_capacity_reservations_for_instance_types(az_for_cr, regions, candidate_specs, var):
+            return candidate_specs
+    return False
+
+
+def _create_capacity_reservations_for_instance_types(az_for_cr, regions, specs, var):  # noqa C901
+    """Find or create reservations for a fixed set of instance types in the same AZ."""
     for region in regions:
         try:
             ec2_client = boto3.client("ec2", region_name=region)
@@ -712,6 +743,19 @@ def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, o
         if "rhel" in os.lower():
             os_platform = "Red Hat Enterprise Linux"
     return instance_type, os_platform
+
+
+def _get_gpu_instance_type_candidates(gpu_instance_type_parameter, instance_type_parameters):
+    """Return every generated GPU type for a region, with the requested placeholder first."""
+    gpu_instance_type_prefix, selected_index = gpu_instance_type_parameter.rsplit("_", 1)
+    gpu_instance_types = []
+    index = 0
+    while f"{gpu_instance_type_prefix}_{index}" in instance_type_parameters:
+        gpu_instance_types.append(instance_type_parameters[f"{gpu_instance_type_prefix}_{index}"])
+        index += 1
+
+    selected_index = int(selected_index)
+    return gpu_instance_types[selected_index:] + gpu_instance_types[:selected_index]
 
 
 def _parse_capacity_reservation_variable(var):
