@@ -57,6 +57,7 @@ from tests.common.hit_common import (
     get_partition_nodes,
     submit_initial_job,
     wait_for_compute_nodes_states,
+    wait_for_compute_nodes_to_be_observed_in_states,
     wait_for_num_nodes_in_scheduler,
 )
 from tests.common.scaling_common import (
@@ -1891,7 +1892,7 @@ def _wait_for_node_reset(
     if static_nodes:
         logging.info("Assert static nodes are placed in DOWN during replacement")
         # DRAIN+DOWN = drained
-        wait_for_compute_nodes_states(
+        wait_for_compute_nodes_to_be_observed_in_states(
             scheduler_commands,
             static_nodes,
             expected_states=["down", "down*", "drained", "drained*"],
