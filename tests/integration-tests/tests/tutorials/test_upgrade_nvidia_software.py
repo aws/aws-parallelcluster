@@ -52,7 +52,7 @@ CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
 # `dnf --showduplicates list nvlsm`, then pin the reported version here.
 NVLSM_BUNDLED_VERSION = "2025.10.14"
 GDRCOPY_VERSION = "2.6"
-DCGM_VERSION = "4.6.0-1"
+DCGM_VERSION = "4.6.1-1"
 
 # Packages whose version must match the NVIDIA driver version exactly.
 DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex"]
