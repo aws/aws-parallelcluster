@@ -53,19 +53,6 @@ TOLERATED_CRASH_PATTERNS = [
     re.compile(r".*dcvsession.*SEGV.*g_subprocess_send_signal.*libgio", re.DOTALL),
 ]
 
-# Tolerated crash patterns: list of regex patterns.
-# A crash is tolerated if it is unrelated to DCV and the software stack owned by ParallelCluster.
-# TOLERATED_CRASH_PATTERNS = [
-#     # gnome-software segfaults in libadwaita related to animated scrolling of UI widget, observed on RHEL9/Rocky9
-#     re.compile(r"gnome-software.*scroll_to \(libadwaita", re.DOTALL),
-#     # tracker-miner-fs-3, tracker-extract, and tracker-store crash - GNOME file indexer, unrelated to DCV
-#     re.compile(r"tracker-(miner|extract|store)", re.DOTALL),
-#     # ibus-extension-gtk3 aborts in the GNOME session — GNOME input-method component, unrelated to DCV.
-#     # Observed on ubuntu2404/arm64 (g5g).
-#     re.compile(r"ibus-extension-gtk3", re.DOTALL),
-# ]
-
-
 # Instance-specific tolerations, keyed by instance-type prefix (matched via str.startswith).
 INSTANCE_TOLERATED_CRASH_PATTERNS = {}
 
