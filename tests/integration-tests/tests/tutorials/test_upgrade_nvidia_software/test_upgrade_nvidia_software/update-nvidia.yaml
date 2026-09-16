@@ -1,6 +1,6 @@
 name: update-nvidia
 description: >-
-  Update the NVIDIA software stack: driver, CUDA, Fabric Manager, IMEX and NVLSM.
+  Update the NVIDIA software stack: driver, CUDA, Fabric Manager, IMEX, NVLSM, GDRCopy and DCGM.
 schemaVersion: 1.0
 
 constants:
