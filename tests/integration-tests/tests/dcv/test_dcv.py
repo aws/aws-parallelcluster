@@ -47,6 +47,10 @@ UNTOLERATED_CRASH_PATTERNS = [
 TOLERATED_CRASH_PATTERNS = [
     # nvidia-settings crash is a known issue
     re.compile(r"nvidia-settings", re.IGNORECASE),
+    # dcvsessionlauncher SEGV: intermittent crash caused by a known issue in DCV.
+    # We can tolerate this crash because it only impacts intermittently the first DCV connection
+    # and when it does the test already fails the check specific to the connectivity.
+    re.compile(r".*dcvsession.*SEGV.*g_subprocess_send_signal.*libgio", re.DOTALL),
 ]
 
 # Tolerated crash patterns: list of regex patterns.
@@ -62,17 +66,8 @@ TOLERATED_CRASH_PATTERNS = [
 # ]
 
 
-INSTANCE_TOLERATED_CRASH_PATTERNS = {
-    # dcvsessionlauncher SEGV on g5g: intermittent crash caused by a known issue in DCV.
-    # We can tolerate this crash because it only impacts intermittently the first DCV connection
-    # and when it does the test already fails the check specific to the connectivity.
-    "g5g": [
-        re.compile(
-            r".*dcvsession.*SEGV.*g_subprocess_send_signal.*libgio",
-            re.DOTALL,
-        ),
-    ],
-}
+# Instance-specific tolerations, keyed by instance-type prefix (matched via str.startswith).
+INSTANCE_TOLERATED_CRASH_PATTERNS = {}
 
 DIAGNOSIS_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "common" / "diagnosis"
 
