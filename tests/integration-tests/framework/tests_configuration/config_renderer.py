@@ -297,13 +297,13 @@ def read_config_file(config_file, print_rendered=False, config=None, args=None, 
     logging.info("Parsing config file: %s", config_file)
     os_parameters = _get_os_parameters(config=config, args=args)
     instance_type_parameters = _get_instance_type_parameters()
-    rendered_config = _render_config_file(
-        config_file,
+    render_parameters = {
         **kwargs,
         **os_parameters,
         **instance_type_parameters,
         **_check_or_create_capacity_reservations(config_file, os_parameters, instance_type_parameters),
-    )
+    }
+    rendered_config = _render_config_file(config_file, **render_parameters)
     try:
         return yaml.safe_load(rendered_config)
     except Exception:
