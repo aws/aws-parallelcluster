@@ -51,7 +51,7 @@ UNTOLERATED_CRASH_PATTERNS = [
 TOLERATED_CRASH_PATTERNS = {
     "*": {  # any OS
         "*": [  # any instance type
-            # nvidia-settings crash is a known issue
+            # nvidia-settings crash is a known issue https://github.com/NVIDIA/nvidia-settings/issues/118
             re.compile(r"nvidia-settings", re.IGNORECASE),
             # dcvsessionlauncher SEGV: intermittent crash caused by a known issue in DCV.
             # We can tolerate this crash because it only impacts intermittently the first DCV connection
