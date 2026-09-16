@@ -387,9 +387,7 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
                 "us-east-1",
             ]
             random.shuffle(candidate_regions)
-            successful_specs = _create_capacity_reservations(
-                az_for_capacity_reservation, candidate_regions, specs, var
-            )
+            successful_specs = _create_capacity_reservations(az_for_capacity_reservation, candidate_regions, specs, var)
             if successful_specs:
                 for parsed, successful_spec in zip(parsed_placeholders, successful_specs):
                     if parsed:
