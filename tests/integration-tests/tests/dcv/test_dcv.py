@@ -44,17 +44,22 @@ UNTOLERATED_CRASH_PATTERNS = [
 ]
 
 # Crashes matching these patterns are always tolerated, overriding UNTOLERATED_CRASH_PATTERNS.
-TOLERATED_CRASH_PATTERNS = [
-    # nvidia-settings crash is a known issue
-    re.compile(r"nvidia-settings", re.IGNORECASE),
-    # dcvsessionlauncher SEGV: intermittent crash caused by a known issue in DCV.
-    # We can tolerate this crash because it only impacts intermittently the first DCV connection
-    # and when it does the test already fails the check specific to the connectivity.
-    re.compile(r".*dcvsession.*SEGV.*g_subprocess_send_signal.*libgio", re.DOTALL),
-]
-
-# Instance-specific tolerations, keyed by instance-type prefix (matched via str.startswith).
-INSTANCE_TOLERATED_CRASH_PATTERNS = {}
+# Nested as {os_pattern: {instance_type_pattern: [regex, ...]}} so a toleration can be scoped to a
+# specific OS and/or instance type. Use "*" for either key to match any OS or any instance type.
+# Both keys are matched via str.startswith (e.g. "ubuntu" matches ubuntu2204/ubuntu2404, "g5g"
+# matches g5g.2xlarge).
+TOLERATED_CRASH_PATTERNS = {
+    "*": {  # any OS
+        "*": [  # any instance type
+            # nvidia-settings crash is a known issue
+            re.compile(r"nvidia-settings", re.IGNORECASE),
+            # dcvsessionlauncher SEGV: intermittent crash caused by a known issue in DCV.
+            # We can tolerate this crash because it only impacts intermittently the first DCV connection
+            # and when it does the test already fails the check specific to the connectivity.
+            re.compile(r".*dcvsession.*g_subprocess_send_signal.*libgio", re.DOTALL),
+        ],
+    },
+}
 
 DIAGNOSIS_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "common" / "diagnosis"
 
@@ -137,8 +142,8 @@ def _test_dcv_configuration(
         ),
         ("shared dir (head node)", lambda: _check_shared_dir(head_node_remote_command_executor, shared_dir)),
         ("shared dir (login node)", lambda: _check_shared_dir(login_node_remote_command_executor, shared_dir)),
-        ("no crashes (head node)", lambda: _assert_no_crashes(head_node_remote_command_executor, instance)),
-        ("no crashes (login node)", lambda: _assert_no_crashes(login_node_remote_command_executor, instance)),
+        ("no crashes (head node)", lambda: _assert_no_crashes(head_node_remote_command_executor, os, instance)),
+        ("no crashes (login node)", lambda: _assert_no_crashes(login_node_remote_command_executor, os, instance)),
         (
             "cloudwatch logs",
             lambda: FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
@@ -211,30 +216,35 @@ def _get_crash_report(remote_command_executor):
         ) from e
 
 
-def _is_tolerated_crash(content, instance=None):
+def _key_matches(key, value):
+    """A TOLERATED_CRASH_PATTERNS key element matches if it is the "*" wildcard or a prefix of value."""
+    return key == "*" or (value is not None and value.startswith(key))
+
+
+def _is_tolerated_crash(content, os=None, instance=None):
     """A crash is tolerated unless it matches an UNTOLERATED pattern.
 
-    Instance-specific patterns (INSTANCE_TOLERATED_CRASH_PATTERNS) take precedence over
-    UNTOLERATED_CRASH_PATTERNS for the matching instance type.
+    TOLERATED_CRASH_PATTERNS is nested as {os_pattern: {instance_type_pattern: [regex, ...]}} and
+    takes precedence over UNTOLERATED_CRASH_PATTERNS for the matching OS/instance ("*" matches
+    anything).
     """
-    # Check global tolerated patterns first — these override UNTOLERATED patterns.
-    for pattern in TOLERATED_CRASH_PATTERNS:
-        if pattern.search(content):
-            return True
-    # Check instance-specific tolerations — these override UNTOLERATED patterns.
-    if instance:
-        for prefix, patterns in INSTANCE_TOLERATED_CRASH_PATTERNS.items():
-            if instance.startswith(prefix):
-                for pattern in patterns:
-                    if pattern.search(content):
-                        return True
+    # Check tolerated patterns whose os/instance keys match — these override UNTOLERATED patterns.
+    for os_key, instance_patterns in TOLERATED_CRASH_PATTERNS.items():
+        if not _key_matches(os_key, os):
+            continue
+        for instance_key, patterns in instance_patterns.items():
+            if not _key_matches(instance_key, instance):
+                continue
+            for pattern in patterns:
+                if pattern.search(content):
+                    return True
     for pattern in UNTOLERATED_CRASH_PATTERNS:
         if pattern.search(content):
             return False
     return True
 
 
-def _assert_no_crashes(remote_command_executor, instance=None):
+def _assert_no_crashes(remote_command_executor, os=None, instance=None):
     """Get crash report, log all crashes, and fail only on non-tolerated ones."""
     try:
         crash_report = _get_crash_report(remote_command_executor)
@@ -242,9 +252,9 @@ def _assert_no_crashes(remote_command_executor, instance=None):
         raise AssertionError(f"Crash report could not be determined: {e}") from e
     if crash_report:
         logging.warning("Crash report for %s:\n%s", remote_command_executor.target, json.dumps(crash_report, indent=2))
-    tolerated = {path: content for path, content in crash_report.items() if _is_tolerated_crash(content, instance)}
+    tolerated = {path: content for path, content in crash_report.items() if _is_tolerated_crash(content, os, instance)}
     untolerated = {
-        path: content for path, content in crash_report.items() if not _is_tolerated_crash(content, instance)
+        path: content for path, content in crash_report.items() if not _is_tolerated_crash(content, os, instance)
     }
     if tolerated:
         logging.warning("Tolerated crashes on %s:\n%s", remote_command_executor.target, json.dumps(tolerated, indent=2))
