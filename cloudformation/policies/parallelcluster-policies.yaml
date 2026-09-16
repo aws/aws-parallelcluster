@@ -104,16 +104,20 @@ Conditions:
 Resources:
   ### IAM POLICIES
 
-  # Every policy name comes with a suffix derived from the Stack ID to avoid name collisions.
-  # Given a stack id arn:aws:cloudformation:REGION:ACCOUNT:stack/STACK_NAME/8131d980-7fb5-11ee-9589-0a6424944f95,
-  # the resulting StackIdSuffix will be 8131d980.
+  # Every policy and role name includes a suffix derived from the Stack ID to avoid account-global IAM name collisions.
+  # Given a stack ID arn:aws:cloudformation:REGION:ACCOUNT:stack/STACK_NAME/8131d980-7fb5-11ee-9589-0a6424944f95,
+  # the resulting StackIdSuffix is 8131d98095890a6424944f95 (time_low + clock_seq + node).
   DefaultParallelClusterIamAdminPolicy:
     Type: AWS::IAM::ManagedPolicy
     Condition: EnableIamPolicy
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}DefaultParallelClusterIamAdminPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       Roles:
         - !Ref ParallelClusterLambdaRole
       PolicyDocument:
@@ -174,7 +178,11 @@ Resources:
       PermissionsBoundary: !If [EnablePermissionsBoundary, !Ref PermissionsBoundaryPolicy, !Ref 'AWS::NoValue']
       RoleName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterLambdaRole-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId']]]] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -233,7 +241,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy1-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -353,7 +365,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy2-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -541,7 +557,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterImageManagedPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       Description: Managed policy to execute pcluster build-image, delete-image, list-images and describe-image commands
       PolicyDocument:
         Version: '2012-10-17'
@@ -697,7 +717,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterLogRetrievalPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       Description: Policies needed to retrieve cluster and images logs
       PolicyDocument:
         Version: '2012-10-17'
