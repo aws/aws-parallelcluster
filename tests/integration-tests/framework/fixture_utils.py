@@ -22,8 +22,8 @@ from psutil import STATUS_DEAD, STATUS_ZOMBIE, NoSuchProcess, Process
 from xdist import get_xdist_worker_id
 
 # The owner waits for the other processes to end their last test, so the wait spans the rest of the session
-# rather than a single test: sessions of 7 to 8 hours are normal.
-MAX_WAIT_FOR_RELEASE_HOURS = 12
+# rather than a single test.
+MAX_WAIT_FOR_RELEASE_HOURS = 8
 
 
 @dataclass
