@@ -21,6 +21,10 @@ from filelock import FileLock
 from psutil import STATUS_DEAD, STATUS_ZOMBIE, NoSuchProcess, Process
 from xdist import get_xdist_worker_id
 
+# The owner waits for the other processes to end their last test, so the wait spans the rest of the session
+# rather than a single test.
+MAX_WAIT_FOR_RELEASE_HOURS = 8
+
 
 @dataclass
 class SharedFixtureData:
@@ -111,6 +115,49 @@ class SharedFixture:
             except Exception:
                 return False
 
+    def _last_message_per_process(self):
+        """Return the last line logged by each process, keyed by pid."""
+        last_message_of_each_proc = {}
+        regex = r"^.* \- .* \- (\d+) - .*"
+        with open(self.log_file, "r") as f:
+            for line in f:
+                re_result = re.search(regex, line)
+                if re_result:
+                    last_message_of_each_proc[re_result.group(1)] = line
+        return last_message_of_each_proc
+
+    def _terminate_other_processes(self, data: SharedFixtureData):
+        """Terminate the other processes holding the fixture. Terminating this one would make xdist report a crash."""
+        for worker in data.currently_using_processes:
+            if worker != self.xdist_worker_id_and_pid:
+                self._terminate_process(int(worker.split(" ")[1]))
+
+    def _free_fixture_from_unusable_processes(self) -> SharedFixtureData:
+        """Release the fixture from dead processes and terminate those still holding it after their test ended."""
+        last_message_of_each_proc = self._last_message_per_process()
+        with FileLock(self._lock_file):
+            # Load under the lock, so that a release performed meanwhile is not overwritten below.
+            data = self._load_fixture_data()
+            for worker in data.currently_using_processes.copy():
+                if worker == self.xdist_worker_id_and_pid:
+                    continue
+                pid = int(worker.split(" ")[1])
+                if not self._is_valid_process(pid):
+                    data.remove_xdist_worker(worker)
+                    logging.warning(
+                        "Releasing shared fixture %s from process in bad state (%s). Currently in use by %d processes",
+                        self.name,
+                        worker,
+                        data.counter,
+                    )
+                    self._save_fixture_data(data)
+                elif self._completed_in_the_past(30, last_message_of_each_proc.get(str(pid))):
+                    logging.warning(
+                        "%s is sleeping but the test has been finished. Terminating the process... ", worker
+                    )
+                    self._terminate_process(pid)
+            return data
+
     def release(self):
         """
         Release a shared fixture.
@@ -125,7 +172,7 @@ class SharedFixture:
                 self._save_fixture_data(data)
                 return
 
-        timeout = time.time() + 4 * 60 * 60  # 4 hours from now
+        timeout = time.time() + MAX_WAIT_FOR_RELEASE_HOURS * 60 * 60
         while min(data.counter, len(data.currently_using_processes)) > 1:
             logging.info(
                 "Waiting for all processes to release shared fixture %s, currently in use by %d processes (%s)",
@@ -134,50 +181,20 @@ class SharedFixture:
                 data.currently_using_processes,
             )
             time.sleep(30)
-
-            last_message_of_each_proc = {}
-            with open(self.log_file, "r") as f:
-                lines = f.readlines()
-                for line in lines:
-                    regex = r"^.* \- .* \- (\d+) - .*"
-                    re_result = re.search(regex, line)
-                    if re_result:
-                        pid = re.search(regex, line).group(1)
-                        last_message_of_each_proc[pid] = line
-
-            with FileLock(self._lock_file):
-                for worker in data.currently_using_processes.copy():
-                    pid = int(worker.split(" ")[1])
-                    if not self._is_valid_process(pid):
-                        data.remove_xdist_worker(worker)
-                        logging.warning(
-                            "Releasing shared fixture %s from process in bad state (%s). Currently in use by %d "
-                            "processes",
-                            self.name,
-                            worker,
-                            data.counter,
-                        )
-                        self._save_fixture_data(data)
-                    elif self._completed_in_the_past(30, last_message_of_each_proc.get(str(pid))):
-                        logging.warning(
-                            "%s is sleeping but the test has been finished. Terminating the process... ", worker
-                        )
-                        self._terminate_process(pid)
-                data = self._load_fixture_data()
+            data = self._free_fixture_from_unusable_processes()
 
             if time.time() > timeout:
                 logging.error(
                     (
-                        "Shared fixture %s has not been released in 4 hours, "
+                        "Shared fixture %s has not been released in %d hours, "
                         "currently in use by %d processes (%s), destroying it."
                     ),
                     self.name,
+                    MAX_WAIT_FOR_RELEASE_HOURS,
                     data.counter,
                     data.currently_using_processes,
                 )
-                for worker in data.currently_using_processes.copy():
-                    pid = int(worker.split(" ")[1])
-                    self._terminate_process(pid)
+                self._terminate_other_processes(data)
                 break
 
         self._destroy_fixture()
