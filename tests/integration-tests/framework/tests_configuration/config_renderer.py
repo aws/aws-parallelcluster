@@ -794,12 +794,6 @@ def _get_indexed_instance_type_candidates(
         candidates.append(resolved)
         index += 1
 
-    if not candidates:
-        resolved, _ = _resolve_instance_type_and_os(
-            instance_type_expression, instance_type_parameters, os, os_parameters
-        )
-        return [resolved]
-
     # Modulo keeps the rotation in range without raising when the config references a larger index.
     selected_index %= len(candidates)
     return candidates[selected_index:] + candidates[:selected_index]
