@@ -31,6 +31,7 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_NAME = "cluster-name"
 FAKE_VERSION = "0.0.0"
+MOCKED_JITTER_SECONDS = 0.25
 
 
 @pytest.fixture()
@@ -1198,3 +1199,26 @@ def test_parse_json_string(value, raise_on_error, default, expected, raises):
 )
 def test_get_dictionary_diff(d1, d2, expected):
     assert_that(utils.get_dictionary_diff(d1, d2)).is_equal_to(expected)
+
+
+@pytest.mark.parametrize(
+    "attempt, expected_delay",
+    [
+        pytest.param(1, 1 + MOCKED_JITTER_SECONDS, id="first retry"),
+        pytest.param(2, 2 + MOCKED_JITTER_SECONDS, id="second retry"),
+        pytest.param(3, 4 + MOCKED_JITTER_SECONDS, id="third retry"),
+        pytest.param(4, 8 + MOCKED_JITTER_SECONDS, id="fourth retry"),
+        pytest.param(5, 8 + MOCKED_JITTER_SECONDS, id="delay is capped by backoff_max_seconds"),
+    ],
+)
+def test_compute_retry_delay(mocker, attempt, expected_delay):
+    """The delay doubles at every attempt, is capped and is increased by a random jitter."""
+    mocked_uniform = mocker.patch("pcluster.utils.random.SystemRandom.uniform", return_value=MOCKED_JITTER_SECONDS)
+
+    jitter_max_seconds = 1
+    delay = utils.compute_retry_delay(
+        attempt, backoff_multiplier_seconds=0.5, backoff_max_seconds=8, jitter_max_seconds=jitter_max_seconds
+    )
+
+    assert_that(delay).is_equal_to(expected_delay)
+    mocked_uniform.assert_called_once_with(0, jitter_max_seconds)

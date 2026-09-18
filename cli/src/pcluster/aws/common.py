@@ -126,6 +126,54 @@ class AWSExceptionHandler:
 
         return wrapper
 
+    @staticmethod
+    def retry_on_boto3_error_codes(
+        error_codes,
+        max_attempts=5,
+        backoff_multiplier_seconds=0.5,
+        backoff_max_seconds=8,
+        jitter_max_seconds=1,
+    ):
+        """
+        Return a decorator reissuing the decorated boto3 call when it fails with one of the given error codes.
+
+        By default the call is issued at most 5 times, backing off 1s, 2s, 4s, 8s plus jitter
+        between attempts, so that contending callers do not line up again.
+        """
+        # Imported here because pcluster.utils depends on this module.
+        from pcluster.utils import compute_retry_delay  # pylint: disable=import-outside-toplevel
+
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                attempt = 0
+                while True:
+                    attempt += 1
+                    try:
+                        return func(*args, **kwargs)
+                    except ClientError as client_error:
+                        if (
+                            client_error.response.get("Error", {}).get("Code") not in error_codes
+                            or attempt == max_attempts
+                        ):
+                            raise
+                        delay = compute_retry_delay(
+                            attempt, backoff_multiplier_seconds, backoff_max_seconds, jitter_max_seconds
+                        )
+                        LOGGER.warning(
+                            "Retrying %s in %.2f seconds (attempt %d of %d) after error: %s",
+                            func.__name__,
+                            delay,
+                            attempt,
+                            max_attempts,
+                            client_error,
+                        )
+                        time.sleep(delay)
+
+            return wrapper
+
+        return decorator
+
 
 def _log_boto3_calls(params, **kwargs):
     service = kwargs["event_name"].split(".")[-2]
