@@ -62,7 +62,6 @@ from tests.common.hit_common import (
 )
 from tests.common.scaling_common import (
     recover_create_fleet_override_from_ice,
-    setup_create_fleet_override_to_emulate_ice,
     setup_ec2_launch_override_to_emulate_ice,
 )
 from tests.common.schedulers_common import SlurmCommands
@@ -924,13 +923,9 @@ def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
     target_nodes = common_cluster_details["target_nodes"]
 
     # Set up ICE simulation
-    setup_create_fleet_override_to_emulate_ice(
-        rce,
-        cluster_name=common_cluster_details["cluster_name"],
-        queue=common_cluster_details["partition"],
-        compute_resource=common_cluster_details["ice_compute_res"],
-        instance_types=common_cluster_details["real_instance_types"],
-        subnet_id=common_cluster_details["subnet_id"],
+    setup_ec2_launch_override_to_emulate_ice(
+        common_cluster_details["cluster"],
+        multi_instance_types_ice_cr=common_cluster_details["ice_compute_res"],
     )
 
     # Clear logs for clean state
@@ -973,15 +968,8 @@ def _recover_from_ice_and_wait_for_jobs(common_cluster_details, job_ids):
     scheduler_commands = common_cluster_details["scheduler_commands"]
     target_nodes = common_cluster_details["target_nodes"]
 
-    # Recover from ICE
-    recover_create_fleet_override_from_ice(
-        rce,
-        cluster_name=common_cluster_details["cluster_name"],
-        queue=common_cluster_details["partition"],
-        compute_resource=common_cluster_details["ice_compute_res"],
-        real_instance_types=common_cluster_details["real_instance_types"],
-        subnet_id=common_cluster_details["subnet_id"],
-    )
+    # Recover from ICE by removing the gate so the next CreateFleet passes through to EC2
+    recover_create_fleet_override_from_ice(rce)
 
     # Wait for insufficient_capacity_timeout to expire and nodes to reset
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
@@ -1036,8 +1024,6 @@ def test_expedited_requeue(
 
     partition = "queue"
     ice_compute_res = "ice-cr"
-    real_instance_types = ["t3.medium", "c5.large"]
-    subnet_id = vpc_stack.get_private_subnet()
 
     # Set insufficient_capacity_timeout to 180s for quick reset of iced-ompute resource
     _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
@@ -1053,12 +1039,10 @@ def test_expedited_requeue(
 
     common_cluster_details = {
         "remote_command_executor": remote_command_executor,
-        "cluster_name": cluster.cfn_name,
+        "cluster": cluster,
         "scheduler_commands": scheduler_commands,
         "partition": partition,
         "ice_compute_res": ice_compute_res,
-        "real_instance_types": real_instance_types,
-        "subnet_id": subnet_id,
         "target_nodes": [target_node],
     }
 

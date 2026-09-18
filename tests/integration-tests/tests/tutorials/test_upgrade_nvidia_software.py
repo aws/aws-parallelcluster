@@ -51,6 +51,8 @@ CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
 # local repo (nvidia-driver-local-repo-amzn2023-<NVIDIA_DRIVER_VERSION>) and run
 # `dnf --showduplicates list nvlsm`, then pin the reported version here.
 NVLSM_BUNDLED_VERSION = "2025.10.14"
+GDRCOPY_VERSION = "2.6"
+DCGM_VERSION = "4.6.1-1"
 
 # Packages whose version must match the NVIDIA driver version exactly.
 DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex"]
@@ -160,6 +162,8 @@ def test_upgrade_nvidia_software(
             nvidia_driver_version=NVIDIA_DRIVER_VERSION,
             cuda_version=CUDA_VERSION,
             cuda_release_nvidia_version=CUDA_RELEASE_NVIDIA_VERSION,
+            gdrcopy_version=GDRCOPY_VERSION,
+            dcgm_version=DCGM_VERSION,
         )
 
     # Step 2: build the custom AMI with pcluster build-image.
@@ -213,6 +217,8 @@ def _render_component_document(test_datadir, architecture):
         "ARCH": {"x86_64": "x86_64", "arm64": "aarch64"}[architecture],
         "CUDA_VERSION": CUDA_VERSION,
         "CUDA_RELEASE_NVIDIA_VERSION": CUDA_RELEASE_NVIDIA_VERSION,
+        "GDRCOPY_VERSION": GDRCOPY_VERSION,
+        "DCGM_VERSION": DCGM_VERSION,
     }
     template = SandboxedEnvironment(undefined=DebugUndefined).from_string(
         (test_datadir / "update-nvidia.yaml").read_text()
@@ -242,7 +248,7 @@ def _wait_for_ami_available(region, ec2_image_id):
 
 
 def _assert_nvidia_stack_versions(remote_command_executor, driver_version, cuda_release):
-    """Assert driver, CUDA and NVLink stack versions on the node (must run on a GPU node)."""
+    """Assert driver, CUDA, NVLink stack, GDRCopy and DCGM versions on the node (must run on a GPU node)."""
 
     def _run(command):
         return remote_command_executor.run_remote_command(command).stdout.strip()
@@ -266,3 +272,15 @@ def _assert_nvidia_stack_versions(remote_command_executor, driver_version, cuda_
         for package in DRIVER_ALIGNED_PACKAGES:
             assert_that(_run(f"rpm -q --qf '%{{VERSION}}' {package}")).described_as(package).is_equal_to(driver_version)
         assert_that(_run("rpm -q --qf '%{VERSION}' nvlsm")).described_as("nvlsm").is_equal_to(NVLSM_BUNDLED_VERSION)
+
+        # GDRCopy: the built-from-source RPM and its kernel module package.
+        assert_that(_run("rpm -q --qf '%{VERSION}' gdrcopy")).described_as("gdrcopy").is_equal_to(GDRCOPY_VERSION)
+        assert_that(_run("rpm -q --qf '%{VERSION}' gdrcopy-kmod")).described_as("gdrcopy-kmod").is_equal_to(
+            GDRCOPY_VERSION
+        )
+
+        # DCGM: the dcgmi core package must match the installed version and its CLI must run
+        assert_that(_run("rpm -q --qf '%{VERSION}-%{RELEASE}' datacenter-gpu-manager-4-core")).described_as(
+            "datacenter-gpu-manager-4-core"
+        ).is_equal_to(DCGM_VERSION)
+        assert_that(_run("dcgmi --version")).described_as("dcgmi --version").is_not_empty()
