@@ -344,7 +344,7 @@ def test_slurm_accounting_external_dbd(
     _check_cluster_external_dbd(cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir)
 
     logging.info("Testing the inter-clusters slurm accounting information")
-    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory)
+    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory, slurm_dbd.name)
 
 
 def _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir):
@@ -366,7 +366,7 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
     )
 
 
-def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory):
+def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory, slurm_dbd_stack_name):
     """
     Verify accounting information can be retrieved from another cluster
     and information is not lost after AutoScaling group replaces Slurm DBD instance.
@@ -394,6 +394,7 @@ def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_
                 Filters=[
                     {"Name": "instance-state-name", "Values": ["running"]},
                     {"Name": "tag:aws:cloudformation:logical-id", "Values": ["ExternalSlurmdbdASG"]},
+                    {"Name": "tag:aws:cloudformation:stack-name", "Values": [slurm_dbd_stack_name]},
                 ]
             )["Reservations"][0]["Instances"][0]["InstanceId"]
             ec2_client.terminate_instances(InstanceIds=[slurm_dbd_instance_id])
