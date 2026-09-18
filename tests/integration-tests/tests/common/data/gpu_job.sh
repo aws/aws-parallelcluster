@@ -44,7 +44,10 @@ else
     exit 2
 fi
 
-WORKDIR=$(sudo -n mktemp -d "/opt/parallelcluster/tmp/pcluster-cuda-samples.XXXXXX")
+# /opt/parallelcluster/tmp does not exist in pcluster<3.16.0, so always create it.
+BUILD_BASE=/opt/parallelcluster/tmp
+sudo -n mkdir -p "$BUILD_BASE"
+WORKDIR=$(sudo -n mktemp -d "${BUILD_BASE}/pcluster-cuda-samples.XXXXXX")
 sudo -n chown "$(id -u):$(id -g)" "$WORKDIR"
 export TMPDIR="$WORKDIR"
 trap 'sudo rm -rf "$WORKDIR"' EXIT
@@ -55,6 +58,13 @@ cp -r "$SAMPLES_SRC"/{Common,cmake,CMakeLists.txt} "$WORKDIR"/
 DST="$WORKDIR/samples/$SAMPLE_REL"
 mkdir -p "$(dirname "$DST")"
 cp -r "$SAMPLE_ROOT/$SAMPLE_REL" "$DST"
+
+# Some AMIs ship the samples tree already configured, and a CMake cache records the absolute path it was generated
+# for, so cmake refuses to reuse the copy ("The current CMakeCache.txt directory ... is different than the directory
+# ..."). Drop every trace of the inherited configuration so the copy is configured from scratch.
+find "$DST" -name CMakeCache.txt -delete
+find "$DST" -name CMakeFiles -type d -prune -exec rm -rf {} +
+rm -rf "$DST/build"
 
 echo "===== Building $SAMPLE_REL ====="
 cmake -S "$DST" -B "$DST/build"
