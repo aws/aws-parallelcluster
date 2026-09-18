@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import boto3
 import pytest
 from assertpy import assert_that
+from packaging import version as packaging_version
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
@@ -65,6 +66,7 @@ from tests.common.scaling_common import (
     setup_ec2_launch_override_to_emulate_ice,
 )
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.utils import get_installed_parallelcluster_base_version
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -388,11 +390,16 @@ def test_slurm_custom_partitions(
     cluster.start()
     wait_for_num_instances_in_cluster(cluster.name, region, len(static_nodes))
     logging.info("Checking pcluster start does not manage custom partitions...")
+    # Before aws-parallelcluster-node 3.16.0 (aws/aws-parallelcluster-node#707), there was an intermittent failure,
+    # So skip the check of failing partition start
+    older_than_3_16_0 = packaging_version.parse(get_installed_parallelcluster_base_version()) < (
+        packaging_version.parse("3.16.0")
+    )
     for partition in all_partitions:
-        if partition in custom_partitions:
-            expected_state = "INACTIVE"
-        else:
-            expected_state = "UP"
+        if partition == failing_partition and older_than_3_16_0:
+            logging.info(f"Skipping state check of {partition}: it may be disabled again by protected mode")
+            continue
+        expected_state = "INACTIVE" if partition in custom_partitions else "UP"
         assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(expected_state)
 
 
@@ -1879,7 +1886,7 @@ def _wait_for_node_reset(
         wait_for_compute_nodes_to_be_observed_in_states(
             scheduler_commands,
             static_nodes,
-            expected_states=["down", "down*", "drained", "drained*"],
+            expected_states=["down", "down*", "draining", "draining*", "drained", "drained*"],
             wait_fixed_secs=wait_fixed_secs,
             stop_max_delay_secs=stop_max_delay_secs,
         )
@@ -2925,7 +2932,12 @@ def _test_memory_based_scheduling_enabled_true(
     )
     assert_that(result.stdout).is_equal_to("allocation failure: Requested node configuration is not available")
 
-    wait_for_compute_nodes_states(slurm_commands, ["queue1-st-ondemand1-i1-1"], ["idle"])
+    # The previous sub-test deliberately makes two jobs contend for memory on queue1-st-ondemand1-i1-1, which can
+    # leave the node DRAINED (for example when Slurm fails to kill the out-of-memory step) or DOWN once clustermgtd
+    # has terminated the instance behind it. The sub-tests below submit jobs to that exact node, so the node is
+    # waited for here: clustermgtd replaces an unhealthy static node on its own, which takes a boot and a
+    # registration, hence the longer delay.
+    wait_for_compute_nodes_states(slurm_commands, ["queue1-st-ondemand1-i1-1"], ["idle"], stop_max_delay_secs=15 * 60)
 
     # Check that now `--mem` also defines the amount of memory used by the job
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
@@ -2992,19 +3004,19 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
 ):
     """Test Slurm memory-based scheduling with multimple instance types configured on a compute resource"""
 
-    jiff = 2
     # Here two jobs that require 2G of memory are submitted in an instance with 8000 MiB memory
-
+    # The first job runs long enough to still be there when the second one starts: Slurm can take up to a full
+    # scheduling cycle to allocate the second job, so a shorter job would leave nothing to run alongside it.
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
             "slots": 1,
-            "command": "sleep 30",
+            "command": "sleep 120",
             "other_options": "--mem=2000 -w queue1-st-ondemand1-i2-1",
             "raise_on_error": False,
         }
     )
-    time.sleep(jiff)
+    slurm_commands.wait_job_running(job_id_1)
     job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
@@ -3014,10 +3026,9 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
             "raise_on_error": False,
         }
     )
-    time.sleep(jiff)
-    # Both should be running
+    # Both jobs fit in the memory of the node, so the second one must start while the first one is still running
+    slurm_commands.wait_job_running(job_id_2)
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
-    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("RUNNING")
     # Check that memory appears in the TRES allocated for the job
     assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
     assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
