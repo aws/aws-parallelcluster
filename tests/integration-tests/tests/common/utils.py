@@ -23,6 +23,7 @@ import uuid
 from importlib.metadata import version as get_package_version
 
 import boto3
+import pytest
 import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
@@ -387,6 +388,19 @@ def get_installed_parallelcluster_version():
 
 def get_installed_parallelcluster_base_version():
     return packaging_version.parse(get_installed_parallelcluster_version()).base_version
+
+
+def installed_parallelcluster_version_is_at_least(min_version):
+    installed = packaging_version.parse(get_installed_parallelcluster_base_version())
+    return installed >= packaging_version.parse(min_version)
+
+
+def skip_if_parallelcluster_version_below(min_version, feature):
+    if not installed_parallelcluster_version_is_at_least(min_version):
+        pytest.skip(
+            f"{feature} requires ParallelCluster {min_version} or later, "
+            f"but {get_installed_parallelcluster_version()} is installed"
+        )
 
 
 @retry(
