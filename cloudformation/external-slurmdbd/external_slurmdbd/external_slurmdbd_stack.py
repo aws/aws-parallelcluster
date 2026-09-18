@@ -426,7 +426,7 @@ class ExternalSlurmdbdStack(Stack):
                     Fn.select(4, Fn.split("-", Fn.select(2, Fn.split("/", self.stack_id)))),
                 ],
             ),
-            retention=logs.RetentionDays.ONE_WEEK,
+            retention=logs.RetentionDays.TWO_WEEKS,
         )
 
     def _add_s3_bucket(self):
