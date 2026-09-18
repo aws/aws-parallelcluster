@@ -12,8 +12,8 @@ from time_utils import seconds
 from utils import get_arn_partition, to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
-from tests.common.assertions import assert_no_defunct_slurm_config_params
-from tests.common.utils import get_aws_domain
+from tests.common.assertions import assert_no_defunct_slurm_config_params, known_defunct_slurm_config_params
+from tests.common.utils import get_aws_domain, installed_parallelcluster_version_is_at_least
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version \S+ started")
 SLURMDBD_LOG_FILE = "/var/log/slurmdbd.log"
@@ -269,33 +269,44 @@ def test_slurm_accounting(
     _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
 
-    # Update the queues to check that bug with the Slurm Accounting database server password
-    # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
-    # Re-use the same update to test the modification of DatabaseName.
-    custom_database_name = "test_custom_dbname"
-    updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update2.yaml",
-        public_subnet_id=public_subnet_id,
-        private_subnet_id=private_subnet_id,
-        custom_database_name=custom_database_name,
-        custom_cluster_name=custom_cluster_name,
-        **config_params,
-    )
+    # Accounting bootstrap with an overridden or mixed-case ClusterName only works from ParallelCluster 3.16.0
+    custom_names_supported = installed_parallelcluster_version_is_at_least("3.16.0")
+    custom_database_name = None
+    if custom_names_supported:
+        # Update the queues to check that bug with the Slurm Accounting database server password
+        # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
+        # Re-use the same update to test the modification of DatabaseName.
+        custom_database_name = "test_custom_dbname"
+        updated_config_file = pcluster_config_reader(
+            config_file="pcluster.config.update2.yaml",
+            public_subnet_id=public_subnet_id,
+            private_subnet_id=private_subnet_id,
+            custom_database_name=custom_database_name,
+            custom_cluster_name=custom_cluster_name,
+            **config_params,
+        )
 
-    # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
-    # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
-    # and refuses to start if the configured ClusterName doesn't match.
-    # Removing this file allows the transition to a custom name.
-    logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
-    remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
+        # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
+        # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
+        # and refuses to start if the configured ClusterName doesn't match.
+        # Removing this file allows the transition to a custom name.
+        logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
+        remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
 
-    # Force update because update is not support unless the compute fleet is stopped
-    cluster.update(str(updated_config_file), force_update="true")
-    _test_slurm_accounting_password(remote_command_executor)
-    _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
-    _test_that_slurmdbd_is_running(remote_command_executor)
-    assert_no_defunct_slurm_config_params(remote_command_executor)
-    _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+        # Force update because update is not support unless the compute fleet is stopped
+        cluster.update(str(updated_config_file), force_update="true")
+        _test_slurm_accounting_password(remote_command_executor)
+        _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
+        _test_that_slurmdbd_is_running(remote_command_executor)
+        assert_no_defunct_slurm_config_params(
+            remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
+        )
+        _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+    else:
+        logging.warning(
+            "Skipping the custom DatabaseName/ClusterName update: the accounting bootstrap only supports it from "
+            "ParallelCluster 3.16.0."
+        )
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -350,7 +361,9 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
     _test_require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
     _test_that_slurmdbd_is_running(headnode_remote_command_executor)
     _test_jobs_get_recorded(scheduler_commands)
-    assert_no_defunct_slurm_config_params(headnode_remote_command_executor)
+    assert_no_defunct_slurm_config_params(
+        headnode_remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
+    )
 
 
 def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory):
