@@ -811,12 +811,12 @@ test-suites:
   tutorials:
     test_upgrade_nvidia_software.py::test_upgrade_nvidia_software:
       dimensions:
-        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }} ]
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_4_HOURS_NOPG_alinux2023 }} ]
           instances: [ "g4dn.2xlarge" ]
           oss: ["alinux2023"]
           schedulers: [ "slurm" ]
           flags: ["component"]
-        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }} ]
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_4_HOURS_NOPG_alinux2023 }} ]
           instances: [ "g4dn.2xlarge" ]
           oss: ["alinux2023"]
           schedulers: [ "slurm" ]
