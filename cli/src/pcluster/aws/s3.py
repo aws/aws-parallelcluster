@@ -12,6 +12,12 @@ from botocore.exceptions import ClientError
 
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client
 
+# Transient S3 failures for which reissuing the single call that failed is expected to succeed.
+#  * OperationAborted: returned when another mutating operation is already in flight against the same
+#    bucket. ParallelCluster is exposed to this error because the default bucket is regional; as such,
+#    concurrent create-cluster and build-image operations can all target it with write operations.
+S3_RETRYABLE_ERROR_CODES = {"OperationAborted"}
+
 
 class S3Client(Boto3Client):
     """S3 Boto3 client."""
@@ -91,6 +97,7 @@ class S3Client(Boto3Client):
             )
 
     @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_error_codes(S3_RETRYABLE_ERROR_CODES)
     def create_bucket(self, bucket_name, region):
         """Create S3 bucket."""
         if region != "us-east-1":
@@ -99,11 +106,13 @@ class S3Client(Boto3Client):
             self._client.create_bucket(Bucket=bucket_name)
 
     @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_error_codes(S3_RETRYABLE_ERROR_CODES)
     def put_bucket_versioning(self, bucket_name, configuration):
         """Set bucket versioning property."""
         self._client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration=configuration)
 
     @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_error_codes(S3_RETRYABLE_ERROR_CODES)
     def put_bucket_encryption(self, bucket_name, configuration):
         """Set bucket encryption property."""
         self._client.put_bucket_encryption(
@@ -112,6 +121,7 @@ class S3Client(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_error_codes(S3_RETRYABLE_ERROR_CODES)
     def put_bucket_policy(self, bucket_name, policy):
         """Set bucket policy property."""
         self._client.put_bucket_policy(Bucket=bucket_name, Policy=policy)
