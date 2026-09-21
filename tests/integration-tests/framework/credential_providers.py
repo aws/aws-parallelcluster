@@ -11,17 +11,17 @@ import re
 from contextlib import contextmanager
 
 import boto3
-from time_utils import minutes
 from utils import run_command
 
 cli_credentials = {}
 
 # A pcluster command that never returns must not eat the whole pytest budget (6 hours) and, through the shared
 # fixtures the worker holds, fail the tests of the other workers too. Commands that wait on a stack or an export
-# legitimately run for hours; everything else answers in seconds.
+# legitimately run for hours; everything else answers in seconds. Values are in seconds, as subprocess.run expects
+# (the time_utils helpers return milliseconds for the retrying library).
 LONG_PCLUSTER_COMMAND_MARKERS = ("--wait", "export-cluster-logs", "export-image-logs")
-LONG_PCLUSTER_COMMAND_TIMEOUT = minutes(180)
-PCLUSTER_COMMAND_TIMEOUT = minutes(60)
+LONG_PCLUSTER_COMMAND_TIMEOUT = 3 * 60 * 60
+PCLUSTER_COMMAND_TIMEOUT = 60 * 60
 
 
 def register_cli_credentials_for_region(region, iam_role):
