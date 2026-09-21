@@ -237,10 +237,10 @@ def run_command(
         if raise_on_error:
             raise
     except subprocess.TimeoutExpired:
+        # There is no CompletedProcess to hand back after a timeout, so this is raised regardless of raise_on_error.
         if log_error:
             logging.error("Command {0} timed out after {1} sec".format(log_command, timeout))
-        if raise_on_error:
-            raise
+        raise
 
     return result
 
