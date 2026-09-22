@@ -13,16 +13,16 @@ from utils import get_arn_partition, to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
 from tests.common.assertions import assert_no_defunct_slurm_config_params, known_defunct_slurm_config_params
-from tests.common.software_installer import (
+from tests.common.slurm_upgrade import (
     assert_slurm_state_preserved,
     back_up_accounting_database,
     get_slurm_version,
-    install_test_software,
-    install_test_software_with_stopped_consumers,
-    roll_back_test_software,
-    roll_back_test_software_with_stopped_consumers,
+    roll_back_slurm,
+    roll_back_slurm_with_stopped_consumers,
     snapshot_slurm_state,
     stopped_shared_slurm_consumers,
+    upgrade_slurm,
+    upgrade_slurm_with_stopped_consumers,
     wait_for_partitions_up,
 )
 from tests.common.utils import get_aws_domain, installed_parallelcluster_version_is_at_least
@@ -366,7 +366,7 @@ def test_slurm_accounting(
     version_before_install = get_slurm_version(remote_command_executor)
     accounting_backup = back_up_accounting_database(remote_command_executor)
 
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
@@ -425,7 +425,7 @@ def _test_rollback(
     logging.info("Rolling the upgrade back to Slurm %s", expected_version)
     slurmdbd_log_line_count = _get_slurmdbd_log_line_count(remote_command_executor)
 
-    roll_back_test_software_with_stopped_consumers(
+    roll_back_slurm_with_stopped_consumers(
         remote_command_executor, cluster, expected_version=expected_version, accounting_backup=accounting_backup
     )
 
@@ -494,7 +494,9 @@ def test_slurm_accounting_external_dbd(
     )
 
     logging.info("Testing the inter-clusters slurm accounting information")
-    inter_cluster_job_ids = _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory, slurm_dbd.name)
+    inter_cluster_job_ids = _check_inter_clusters_external_dbd(
+        cluster, cluster_2, scheduler_commands_factory, slurm_dbd.name
+    )
 
     slurmdbd_node_remote_command_executor = retry(
         stop_max_attempt_number=30, wait_fixed=seconds(20)
@@ -526,12 +528,12 @@ def test_slurm_accounting_external_dbd(
     # release than every slurmctld talking to it.
     with stopped_shared_slurm_consumers(cluster, cluster_2):
         # There is no slurmctld on the slurmdbd host to check.
-        install_test_software(slurmdbd_node_remote_command_executor, assert_controller=False)
+        upgrade_slurm(slurmdbd_node_remote_command_executor, assert_controller=False)
         # This is the only moment a new slurmdbd serves an old slurmctld, which is the combination Slurm
         # supports and customers go through, so it is verified before the controllers are upgraded.
         _test_that_slurmdbd_is_running(headnode_remote_command_executor_1)
-        install_test_software(headnode_remote_command_executor_1)
-        install_test_software(headnode_remote_command_executor_2)
+        upgrade_slurm(headnode_remote_command_executor_1)
+        upgrade_slurm(headnode_remote_command_executor_2)
 
     _test_successful_startup_in_log(slurmdbd_node_remote_command_executor, since_line=slurmdbd_log_line_count)
     _assert_no_upgrade_failures_in_slurmdbd_log(slurmdbd_node_remote_command_executor, slurmdbd_log_line_count)
@@ -614,12 +616,12 @@ def _test_rollback_external_dbd(
 
     with stopped_shared_slurm_consumers(cluster, cluster_2):
         for executor in (headnode_executor_1, headnode_executor_2):
-            roll_back_test_software(executor, versions_before_install[executor])
+            roll_back_slurm(executor, versions_before_install[executor])
         # This is the mirror image of the upgrade: a new slurmdbd serving old slurmctlds, verified before the
         # database goes back, because after it there is nothing left of the new release to be compatible with.
         _test_that_slurmdbd_is_running(headnode_executor_1)
         # There is no slurmctld and no StateSaveLocation on the slurmdbd host to restore.
-        roll_back_test_software(
+        roll_back_slurm(
             slurmdbd_executor,
             versions_before_install[slurmdbd_executor],
             accounting_backup=accounting_backup,

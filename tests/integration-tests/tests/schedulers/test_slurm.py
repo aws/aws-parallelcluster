@@ -66,13 +66,13 @@ from tests.common.scaling_common import (
     setup_ec2_launch_override_to_emulate_ice,
 )
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.software_installer import (
+from tests.common.slurm_upgrade import (
     assert_slurm_controller_healthy,
     assert_slurm_state_preserved,
-    install_test_software,
-    install_test_software_with_stopped_consumers,
     run_scheduler_smoke_test,
     snapshot_slurm_state,
+    upgrade_slurm,
+    upgrade_slurm_with_stopped_consumers,
 )
 from tests.common.utils import (
     get_installed_parallelcluster_base_version,
@@ -162,9 +162,10 @@ def test_slurm(
     _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands)
     # Capture the state after draining the queue, so that the cancellation above cannot discard it.
     slurm_state_snapshot = snapshot_slurm_state(head_node_command_executor, slurm_commands)
-    install_test_software_with_stopped_consumers(head_node_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(head_node_command_executor, cluster)
     assert_slurm_state_preserved(head_node_command_executor, slurm_state_snapshot)
-    # The installer recycled the login pool, so the pre-upgrade login-node executor points at a gone instance.
+    # The login nodes stayed up while /opt/slurm was replaced under them (Appendix E is optional, and skipped here on
+    # purpose), so a fresh session is what a user gets after the upgrade.
     remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
     run_scheduler_smoke_test(slurm_commands, partition="ondemand")
@@ -228,7 +229,7 @@ def test_slurm_ticket_17399(
             f"--cpus-per-task={cpus_per_instance // gpus_per_instance + 1}",
         }
     )
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(slurm_commands, partition="gpu")
 
 
@@ -288,7 +289,7 @@ def test_slurm_from_login_nodes_in_private_network(
     )
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
-    install_test_software_with_stopped_consumers(head_node_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(head_node_command_executor, cluster)
     remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion, use_login_node=True)
     slurm_commands = scheduler_commands_factory(remote_command_executor)
     run_scheduler_smoke_test(slurm_commands, partition="ondemand")
@@ -357,7 +358,7 @@ def test_slurm_scaling(
         stop_max_delay_secs=stop_max_delay_secs,
     )
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
 
 
@@ -445,7 +446,7 @@ def test_slurm_custom_partitions(
         expected_state = "INACTIVE" if partition in custom_partitions else "UP"
         assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(expected_state)
 
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
 
 
@@ -499,7 +500,7 @@ def test_error_handling(
     remote_command_executor.run_remote_command("sudo systemctl restart supervisord slurmctld")
     assert_slurm_controller_healthy(remote_command_executor)
     _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="ondemand1")
 
 
@@ -587,7 +588,7 @@ def test_clustermgtd_instance_id_matching(
         scheduler_commands, [target_node], expected_states=["idle", "mixed", "allocated"]
     )
     assert_that(get_compute_nodes_instance_ids(cluster.cfn_name, region)).contains(target_instance_id)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="queue1")
 
 
@@ -680,7 +681,7 @@ def test_slurm_maintenance_reservation(
     scheduler_commands.assert_job_succeeded(dynamic_job_id)
 
     assert_no_errors_in_logs(remote_command_executor, "slurm", skip_ice=True)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="queue1")
 
 
@@ -850,7 +851,7 @@ def test_slurm_protected_mode(
     _test_recover_from_protected_mode(
         pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands, scaling_strategy
     )
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="normal")
 
 
@@ -884,7 +885,7 @@ def test_slurm_protected_mode_on_cluster_create(
     _test_cluster_creation_failure(cluster)
     # The cluster creation failed, so the compute fleet status is not readable (UNKNOWN) and there is nothing
     # to stop: protected mode already terminated the compute nodes and the cluster has no login nodes.
-    install_test_software(remote_command_executor)
+    upgrade_slurm(remote_command_executor)
     _test_compute_fleet_status(remote_command_executor, expected_status="PROTECTED")
 
 
@@ -987,7 +988,7 @@ def test_fast_capacity_failover(
         target_compute_resource="exception-cr-multiple",
         expected_error_code="InvalidParameter" if "us-iso" in region else "InvalidParameterValue",
     )
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
 
 
 def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
@@ -1144,7 +1145,7 @@ def test_expedited_requeue(
     logging.info("Start epochs: %s", dict(zip([j["label"] for j in jobs], start_epochs)))
     assert_that(start_epochs[0]).is_less_than_or_equal_to(start_epochs[1])  # job1 (expedited) before job2 (normal)
     logging.info("Verified: expedited job (job1) ran before normal job (job2) after requeue")
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="queue")
 
 
@@ -1168,7 +1169,7 @@ def test_slurm_config_update(
         remote_command_executor,
         config_file="pcluster.config.update_scheduling.yaml",
     )
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     run_scheduler_smoke_test(scheduler_commands, partition="queue1")
 
@@ -1263,7 +1264,7 @@ def test_slurm_custom_config_parameters(
     # then we expect updated custom values to be set in slurm config
     _assert_updated_custom_slurm_settings(slurm_commands)
 
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     # The upgrade rebuilds /opt/slurm but must leave /opt/slurm/etc untouched, so every custom setting has to
     # still be in effect afterwards.
     _assert_updated_custom_slurm_settings(slurm_commands)
@@ -1320,7 +1321,7 @@ def test_slurm_memory_based_scheduling(
         cluster,
     )
     _cancel_jobs_and_wait_for_queue(remote_command_executor, slurm_commands)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
@@ -1399,7 +1400,7 @@ def test_scontrol_reboot(
     wait_for_compute_nodes_states(
         slurm_commands, queue_nodes, expected_states=["idle", "idle~"], stop_max_delay_secs=600
     )
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
@@ -1507,7 +1508,7 @@ def test_scontrol_reboot_ec2_health_checks(
         remote_command_executor.clear_slurmctld_log()
         remote_command_executor.clear_clustermgtd_log()
 
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
@@ -1564,7 +1565,7 @@ def test_scontrol_update_nodelist_sorting(
 
     remote_command_executor.run_remote_command("sudo systemctl restart supervisord")
     assert_slurm_controller_healthy(remote_command_executor)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 
@@ -1616,7 +1617,7 @@ def test_slurm_overrides(
         assert_msg_in_log(remote_command_executor, slurm_resume_log, f"Found {api} parameters override")
 
     assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=True)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(scheduler_commands, partition="fleet")
     run_scheduler_smoke_test(scheduler_commands, partition="single")
 
@@ -3308,7 +3309,7 @@ def test_slurm_reconfigure_race_condition(
         wait_fixed_secs=30,
         stop_max_delay_secs=5 * scale_down_idle_time_mins * 60,
     )
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    upgrade_slurm_with_stopped_consumers(remote_command_executor, cluster)
     run_scheduler_smoke_test(slurm_commands, partition="queue1")
 
 

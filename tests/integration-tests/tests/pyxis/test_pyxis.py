@@ -17,10 +17,11 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.software_installer import (
+from tests.common.slurm_upgrade import (
     get_slurm_version,
-    install_test_software_with_stopped_consumers,
     slurm_major_version,
+    stopped_shared_slurm_consumers,
+    upgrade_slurm,
 )
 
 
@@ -45,6 +46,7 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     # Pre-upload custom scripts that set up pyxis to S3
     bucket.upload_file(str(test_datadir / "head_node_configure.sh"), "head_node_configure.sh")
     bucket.upload_file(str(test_datadir / "compute_node_start.sh"), "compute_node_start.sh")
+    bucket.upload_file(str(test_datadir / "compute_node_configured.sh"), "compute_node_configured.sh")
 
     cluster_config = pcluster_config_reader(bucket_name=bucket_name, max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
@@ -88,12 +90,18 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     assert_that(slurm_out_2).contains("pyxis: imported docker image: docker://ubuntu:22.04")
 
     slurm_version_before = get_slurm_version(remote_command_executor)
-    install_test_software_with_stopped_consumers(remote_command_executor, cluster)
+    with stopped_shared_slurm_consumers(cluster):
+        upgrade_slurm(remote_command_executor)
+        # Appendix B: right after Step 4, while no compute node is up, so that no node ever loads a stale plugin.
+        _rebuild_pyxis_if_slurm_major_changed(
+            remote_command_executor,
+            test_datadir,
+            bucket,
+            slurm_version_before,
+            get_slurm_version(remote_command_executor),
+        )
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
-    _rebuild_pyxis_if_slurm_major_changed(
-        remote_command_executor, test_datadir, slurm_version_before, get_slurm_version(remote_command_executor)
-    )
 
     # Submit the same job once more, to check the upgraded Slurm still runs containerized jobs
     logging.info("Submitting third containerized job")
@@ -108,13 +116,15 @@ def test_pyxis(pcluster_config_reader, clusters_factory, test_datadir, s3_bucket
     assert_that(slurm_out_3).contains("pyxis: imported docker image: docker://ubuntu:22.04")
 
 
-def _rebuild_pyxis_if_slurm_major_changed(remote_command_executor, test_datadir, version_before, version_after):
-    """Rebuild the Pyxis SPANK plugin when the upgrade crossed a Slurm major release.
+def _rebuild_pyxis_if_slurm_major_changed(remote_command_executor, test_datadir, bucket, version_before, version_after):
+    """Appendix B.2 of the upgrade wiki page: rebuild the Pyxis SPANK plugin when the upgrade crossed a major release.
 
     Slurm refuses to load a plugin stamped with a different major version, and because that aborts plugin stack
-    initialisation it breaks every srun and sbatch, not only containerised ones. Nothing in the cluster rebuilds
-    the plugin: it ships prebuilt in the AMI and install_software.sh only warns about it. So this is the step a
-    customer has to perform too, and running it here is what validates the procedure the wiki documents.
+    initialisation it breaks every srun and sbatch, not only containerised ones. The plugin sits on the root volume of
+    each node, so the page has it rebuilt on the head node right away and on every compute node at boot, from an
+    OnNodeConfigured script. That is what happens here: rebuild_pyxis.sh, which holds the commands of the page, runs
+    on the head node now and replaces the OnNodeConfigured script of the compute queue in S3, so that the nodes the
+    next job launches run it as they come up.
 
     Within a major release the plugin the AMI shipped stays loadable, so it is deliberately left alone: that
     keeps the same-major runs covering the case where no rebuild is needed.
@@ -136,3 +146,4 @@ def _rebuild_pyxis_if_slurm_major_changed(remote_command_executor, test_datadir,
     remote_command_executor.run_remote_script(
         str(test_datadir / "rebuild_pyxis.sh"), run_as_root=True, timeout=1800, pty=False
     )
+    bucket.upload_file(str(test_datadir / "rebuild_pyxis.sh"), "compute_node_configured.sh")

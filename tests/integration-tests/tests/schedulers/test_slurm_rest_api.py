@@ -24,7 +24,7 @@ from tests.common.assertions import (
     assert_systemd_service_running,
     known_harmless_slurm_daemon_errors,
 )
-from tests.common.software_installer import install_test_software_with_stopped_consumers
+from tests.common.slurm_upgrade import upgrade_slurm_with_stopped_consumers
 
 # slurmrestd listens on this unix socket when configured via the upstream postinstall script
 # (aws-samples/aws-parallelcluster-post-install-scripts/rest-api).
@@ -84,7 +84,7 @@ def test_slurm_rest_api(
     # OpenAPI plugins survived the upgrade. The API version is rediscovered from /openapi/v3, which also covers
     # the plugin set changing across the upgrade.
     install_start_time = rce.run_remote_command("date '+%Y-%m-%d %H:%M:%S'", hide=True).stdout.strip()
-    install_test_software_with_stopped_consumers(rce, cluster)
+    upgrade_slurm_with_stopped_consumers(rce, cluster)
     rce = RemoteCommandExecutor(cluster)
     with soft_assertions():
         assert_systemd_service_running(rce, "slurmrestd")
