@@ -10,6 +10,7 @@ CHANGELOG
 
 **CHANGES**
 - Add support for Python 3.14 in the pcluster CLI.
+- Update the default root volume size to 50 GB.
 
 **BUG FIXES**
 - Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
