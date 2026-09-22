@@ -262,10 +262,11 @@ def run_command(
         if raise_on_error:
             raise
     except subprocess.TimeoutExpired:
+        # On timeout subprocess.run raises before `result` is assigned, so there is nothing to return to the caller:
+        # re-raise even when raise_on_error is False.
         if log_error:
             logging.error("Command {0} timed out after {1} sec".format(log_command, timeout))
-        if raise_on_error:
-            raise
+        raise
 
     return result
 
