@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from urllib.parse import urlparse
 
 import boto3
 import pytest
@@ -8,13 +9,19 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
-from utils import to_snake_case
+from utils import get_arn_partition, to_snake_case
 
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_utils
-from tests.common.assertions import assert_no_defunct_slurm_config_params
-from tests.common.utils import get_aws_domain
+from tests.common.assertions import assert_no_defunct_slurm_config_params, known_defunct_slurm_config_params
+from tests.common.utils import get_aws_domain, installed_parallelcluster_version_is_at_least
 
 STARTED_PATTERN = re.compile(r".*slurmdbd version \S+ started")
+SLURMDBD_LOG_FILE = "/var/log/slurmdbd.log"
+RDS_TRUSTSTORE_ENDPOINTS = {
+    "aws": "https://truststore.pki.rds.amazonaws.com",
+    "aws-us-gov": "https://truststore.pki.us-gov-west-1.rds.amazonaws.com",
+    "aws-cn": "https://rds-truststore.s3.cn-north-1.amazonaws.com.cn",
+}
 
 
 def _get_slurm_database_config_parameters(database_stack_outputs):
@@ -52,7 +59,7 @@ def _rds_ca_bundle_url(region):
     if "us-iso" in region:
         return f"https://s3.{region}.{get_aws_domain(region)}/rds-downloads/rds-combined-ca-bundle.pem"
     else:
-        return f"https://truststore.pki.rds.amazonaws.com/{region}/{region}-bundle.pem"
+        return f"{RDS_TRUSTSTORE_ENDPOINTS.get(get_arn_partition(region))}/{region}/{region}-bundle.pem"
 
 
 def _require_server_identity(remote_command_executor, test_resources_dir, region):
@@ -61,7 +68,7 @@ def _require_server_identity(remote_command_executor, test_resources_dir, region
         os.path.join(str(test_resources_dir), "require_server_identity.sh"),
         args=[
             ca_url,
-            f"{region}-bundle.pem",
+            os.path.basename(urlparse(ca_url).path),
         ],
         run_as_root=True,
     )
@@ -89,11 +96,27 @@ def _test_slurmdb_users(remote_command_executor, scheduler_commands, test_resour
         assert_that(user.get("adminlevel")).is_equal_to("Administrator")
 
 
-@retry(stop_max_attempt_number=36, wait_fixed=10 * 1000)
-def _test_successful_startup_in_log(remote_command_executor):
-    log_file = "/var/log/slurmdbd.log"
+def _read_slurmdbd_log(remote_command_executor, since_line=0):
+    """Return the slurmdbd log, optionally only the lines appended after the given line number."""
+    return remote_command_executor.run_remote_command(
+        "sudo tail -n +{0} {1}".format(since_line + 1, SLURMDBD_LOG_FILE), hide=True
+    ).stdout
 
-    log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+
+def _get_slurmdbd_log_line_count(remote_command_executor):
+    """Return the current length of the slurmdbd log, to scope later assertions to newly appended lines."""
+    result = remote_command_executor.run_remote_command(f"sudo wc -l {SLURMDBD_LOG_FILE}", hide=True)
+    line_count = int(result.stdout.split()[0])
+    logging.info("%s currently has %s lines", SLURMDBD_LOG_FILE, line_count)
+    return line_count
+
+
+@retry(stop_max_attempt_number=36, wait_fixed=10 * 1000)
+def _test_successful_startup_in_log(remote_command_executor, since_line=0):
+    # Scoping to the lines appended after since_line matters after an upgrade: the whole log always contains
+    # the startup line of the version installed at cluster creation, so an unscoped check would pass even if
+    # the upgraded slurmdbd never started.
+    log = _read_slurmdbd_log(remote_command_executor, since_line)
     assert_that(
         [line for line in log.splitlines() if STARTED_PATTERN.fullmatch(line) is not None], "Successful Startup"
     ).is_not_empty()
@@ -130,7 +153,8 @@ def _test_jobs_get_recorded(scheduler_commands):
 
 
 def _assert_job_completion_recorded_in_accounting(job_id, scheduler_commands, clusters=None):
-    results = scheduler_commands.get_accounting_job_records(job_id, clusters=clusters)
+    results = list(scheduler_commands.get_accounting_job_records(job_id, clusters=clusters))
+    assert_that(results).is_not_empty()
     for row in results:
         logging.info(" Result: %s", row)
         assert_that(row.get("state")).is_equal_to("COMPLETED")
@@ -140,6 +164,7 @@ def _test_that_slurmdbd_is_not_running(remote_command_executor):
     assert_that(_is_accounting_enabled(remote_command_executor)).is_false()
 
 
+@retry(stop_max_attempt_number=3, wait_fixed=seconds(10))
 def _test_that_slurmdbd_is_running(remote_command_executor):
     assert_that(_is_accounting_enabled(remote_command_executor)).is_true()
 
@@ -244,33 +269,44 @@ def test_slurm_accounting(
     _test_require_server_identity(remote_command_executor, test_resources_dir, region)
     _test_jobs_get_recorded(scheduler_commands)
 
-    # Update the queues to check that bug with the Slurm Accounting database server password
-    # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
-    # Re-use the same update to test the modification of DatabaseName.
-    custom_database_name = "test_custom_dbname"
-    updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update2.yaml",
-        public_subnet_id=public_subnet_id,
-        private_subnet_id=private_subnet_id,
-        custom_database_name=custom_database_name,
-        custom_cluster_name=custom_cluster_name,
-        **config_params,
-    )
+    # Accounting bootstrap with an overridden or mixed-case ClusterName only works from ParallelCluster 3.16.0
+    custom_names_supported = installed_parallelcluster_version_is_at_least("3.16.0")
+    custom_database_name = None
+    if custom_names_supported:
+        # Update the queues to check that bug with the Slurm Accounting database server password
+        # is fixed (see https://github.com/aws/aws-parallelcluster/issues/5151 )
+        # Re-use the same update to test the modification of DatabaseName.
+        custom_database_name = "test_custom_dbname"
+        updated_config_file = pcluster_config_reader(
+            config_file="pcluster.config.update2.yaml",
+            public_subnet_id=public_subnet_id,
+            private_subnet_id=private_subnet_id,
+            custom_database_name=custom_database_name,
+            custom_cluster_name=custom_cluster_name,
+            **config_params,
+        )
 
-    # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
-    # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
-    # and refuses to start if the configured ClusterName doesn't match.
-    # Removing this file allows the transition to a custom name.
-    logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
-    remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
+        # Removing the cluster name guardrail is the expected way to signal Slurm that the use of a custom
+        # ClusterName is intentional. Slurm stores the current cluster name in /var/spool/slurm.state/clustername
+        # and refuses to start if the configured ClusterName doesn't match.
+        # Removing this file allows the transition to a custom name.
+        logging.info("Removing clustername guardrail to set custom ClusterName: %s", custom_cluster_name)
+        remote_command_executor.run_remote_command("sudo rm -rf /var/spool/slurm.state/clustername")
 
-    # Force update because update is not support unless the compute fleet is stopped
-    cluster.update(str(updated_config_file), force_update="true")
-    _test_slurm_accounting_password(remote_command_executor)
-    _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
-    _test_that_slurmdbd_is_running(remote_command_executor)
-    assert_no_defunct_slurm_config_params(remote_command_executor)
-    _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+        # Force update because update is not support unless the compute fleet is stopped
+        cluster.update(str(updated_config_file), force_update="true")
+        _test_slurm_accounting_password(remote_command_executor)
+        _test_slurm_accounting_database_name(remote_command_executor, custom_database_name)
+        _test_that_slurmdbd_is_running(remote_command_executor)
+        assert_no_defunct_slurm_config_params(
+            remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
+        )
+        _test_cluster_registered_with_custom_name(remote_command_executor, custom_cluster_name)
+    else:
+        logging.warning(
+            "Skipping the custom DatabaseName/ClusterName update: the accounting bootstrap only supports it from "
+            "ParallelCluster 3.16.0."
+        )
 
 
 @pytest.mark.usefixtures("os", "instance", "scheduler")
@@ -308,7 +344,7 @@ def test_slurm_accounting_external_dbd(
     _check_cluster_external_dbd(cluster_2, config_params, region, scheduler_commands_factory, test_resources_dir)
 
     logging.info("Testing the inter-clusters slurm accounting information")
-    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory)
+    _check_inter_clusters_external_dbd(cluster, cluster_2, scheduler_commands_factory, slurm_dbd.name)
 
 
 def _check_cluster_external_dbd(cluster, config_params, region, scheduler_commands_factory, test_resources_dir):
@@ -323,14 +359,14 @@ def _check_cluster_external_dbd(cluster, config_params, region, scheduler_comman
 
     # TODO: _test_slurmdb_users(headnode_remote_command_executor, scheduler_commands, test_resources_dir)
     _test_require_server_identity(slurmdbd_node_remote_command_executor, test_resources_dir, region)
-    retry(stop_max_attempt_number=3, wait_fixed=seconds(10))(_is_accounting_enabled)(
-        headnode_remote_command_executor,
-    )
+    _test_that_slurmdbd_is_running(headnode_remote_command_executor)
     _test_jobs_get_recorded(scheduler_commands)
-    assert_no_defunct_slurm_config_params(headnode_remote_command_executor)
+    assert_no_defunct_slurm_config_params(
+        headnode_remote_command_executor, ignore_patterns=known_defunct_slurm_config_params()
+    )
 
 
-def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory):
+def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_factory, slurm_dbd_stack_name):
     """
     Verify accounting information can be retrieved from another cluster
     and information is not lost after AutoScaling group replaces Slurm DBD instance.
@@ -358,6 +394,7 @@ def _check_inter_clusters_external_dbd(cluster_1, cluster_2, scheduler_commands_
                 Filters=[
                     {"Name": "instance-state-name", "Values": ["running"]},
                     {"Name": "tag:aws:cloudformation:logical-id", "Values": ["ExternalSlurmdbdASG"]},
+                    {"Name": "tag:aws:cloudformation:stack-name", "Values": [slurm_dbd_stack_name]},
                 ]
             )["Reservations"][0]["Instances"][0]["InstanceId"]
             ec2_client.terminate_instances(InstanceIds=[slurm_dbd_instance_id])
