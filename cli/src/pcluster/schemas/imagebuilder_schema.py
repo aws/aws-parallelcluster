@@ -171,7 +171,7 @@ class UpdateOsPackagesSchema(BaseSchema):
 
 
 class LustreClientSchema(BaseSchema):
-    """Represent the schema of the ImageBuilder NvidiaSoftware."""
+    """Represent the schema of the ImageBuilder Lustre Client."""
 
     enabled = fields.Bool()
 
