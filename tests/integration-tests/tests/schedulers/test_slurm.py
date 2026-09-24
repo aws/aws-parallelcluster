@@ -3043,7 +3043,7 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
         submit_command_args={
             "nodes": 1,
             "slots": 2,
-            "command": "sleep 10",
+            "command": "sleep 20",
             "other_options": "-c 1 --mem-per-cpu=1000 -w queue1-st-ondemand1-i2-1",
             "raise_on_error": False,
         }
