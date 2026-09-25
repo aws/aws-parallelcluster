@@ -8,7 +8,7 @@ from constructs import Construct
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import SlurmClusterConfig, SlurmComputeResource, SlurmQueue
-from pcluster.config.common import DefaultUserHomeType, SharedStorageType
+from pcluster.config.common import DefaultUserHomeType, SharedStorageType, merge_tags
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
@@ -24,7 +24,6 @@ from pcluster.templates.cdk_builder_utils import (
     create_hash_suffix,
     dict_to_cfn_tags,
     get_common_user_data_env,
-    get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
     get_queue_security_groups_full,
@@ -160,10 +159,8 @@ class QueuesStack(NestedStack):
 
     def _get_custom_compute_resource_tags(self, queue_config, compute_resource_config):
         """Compute resource tags and Queue Tags value on Cluster level tags if there are duplicated keys."""
-        tags = get_custom_tags(self._config, raw_dict=True)
-        queue_tags = get_custom_tags(queue_config, raw_dict=True)
-        compute_resource_tags = get_custom_tags(compute_resource_config, raw_dict=True)
-        return dict_to_cfn_tags({**tags, **queue_tags, **compute_resource_tags})
+        merged = merge_tags(self._config.get_tags(), queue_config.get_tags(), compute_resource_config.get_tags())
+        return dict_to_cfn_tags({tag.key: tag.value for tag in merged})
 
     def _add_compute_resource_launch_template(
         self,
