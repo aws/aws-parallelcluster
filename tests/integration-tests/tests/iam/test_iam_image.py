@@ -18,6 +18,7 @@ from retrying import retry
 from time_utils import minutes
 from utils import generate_stack_name
 
+from pcluster.constants import EBS_ROOT_VOLUME_SIZE_DEFAULT
 from tests.common.utils import retrieve_latest_ami
 
 
@@ -66,6 +67,7 @@ def _build_image(images_factory, instance_profile, lambda_cleanup_role, os, pclu
         parent_image=base_ami,
         instance_profile=instance_profile,
         lambda_cleanup_role=lambda_cleanup_role,
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
     )
     image = images_factory(image_id, image_config, region)
     return image
