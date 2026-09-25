@@ -32,7 +32,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 45
+            Size: {{ root_volume_size }}
       CustomActions:
         OnNodeStart:
           Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh # Updated parameter value
@@ -81,7 +81,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 45
+            Size: {{ root_volume_size }}
       CustomActions: # New section
         OnNodeStart:
           Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
@@ -114,7 +114,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size: 45
+            Size: {{ root_volume_size }}
       CustomActions:
         OnNodeStart:
           Script: s3://{{ resource_bucket }}/scripts/updated_preinstall.sh
