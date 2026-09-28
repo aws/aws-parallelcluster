@@ -42,6 +42,7 @@ from utils import (
     wait_for_computefleet_changed,
 )
 
+from pcluster.constants import EBS_ROOT_VOLUME_SIZE_DEFAULT
 from tests.common.assertions import (
     assert_instance_config_version_on_ddb,
     assert_lines_in_logs,
@@ -91,7 +92,11 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     spot_instance_types = get_similar_instance_types("t3.medium", region, 5)
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, spot_instance_types=spot_instance_types)
+    init_config_file = pcluster_config_reader(
+        resource_bucket=bucket_name,
+        spot_instance_types=spot_instance_types,
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
+    )
     cluster = clusters_factory(init_config_file)
 
     # Verify that compute nodes stored the deployed config version on DDB
@@ -186,6 +191,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         output_file="pcluster.config.update.successful.yaml",
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
         postupdate_script="updated_postupdate.sh",
@@ -343,6 +349,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     failed_update_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         output_file="pcluster.config.update.failed.yaml",
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
         postupdate_script="failed_postupdate.sh",
@@ -717,8 +724,8 @@ def test_queue_parameters_update(
 ):
     """Test update cluster with drain strategy."""
     # Create cluster with initial configuration
-    initial_compute_root_volume_size = 45
-    updated_compute_root_volume_size = 50
+    initial_compute_root_volume_size = EBS_ROOT_VOLUME_SIZE_DEFAULT
+    updated_compute_root_volume_size = EBS_ROOT_VOLUME_SIZE_DEFAULT + 5
     # If you are running this test in your personal account, then you must have
     # ParallelCluster AMIs following the official naming convention
     # and set allow_private_ami to True.
