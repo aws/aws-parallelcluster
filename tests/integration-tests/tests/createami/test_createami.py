@@ -350,13 +350,41 @@ def _test_list_image_log_streams(image):
     assert_that(stream_names).contains(expected_log_stream)
 
 
+def _read_all_log_events(image, log_stream_name, **args):
+    """Read image build log events, following CloudWatch's pagination token to collect the full list.
+
+    ``GetLogEvents`` can return a partially full or even empty page while more events remain reachable
+    via the returned token; an empty page does not mean the stream is empty (see
+    https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_GetLogEvents.html).
+    This is common for a tail read (``start_from_head`` unset), whose first page can come back empty.
+    Follow the token until it stops advancing, so the whole requested window is read and a spurious
+    empty page does not surface as an empty result.
+    """
+    # Forward reads advance via nextToken, backward (tail) reads via prevToken. Either way each page
+    # moves away from where the read started, so the events stay ordered from that starting point.
+    token_key = "nextToken" if args.get("start_from_head") else "prevToken"
+    events = []
+    token = args.get("next_token")
+    while True:
+        response = image.get_log_events(log_stream_name, **{**args, "next_token": token})
+        events.extend(response["events"])
+        next_token = response.get(token_key)
+        if not next_token or next_token == token:
+            break
+        token = next_token
+    return events
+
+
 def _test_get_image_log_events(image):
     """Test pcluster get-image-log-events functionality."""
     logging.info("Testing that pcluster get-image-log-events is working as expected")
     log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
 
-    # Get the first event to establish time boundary for testing
+    # Get the first event to establish time boundary for testing.
     initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
+    assert_that(initial_events["events"]).described_as(
+        f"no log events found in stream {log_stream_name}; cannot establish first event"
+    ).is_not_empty()
     first_event = initial_events["events"][0]
     first_event_time_str = first_event["timestamp"]
     first_event_time = date_parse(first_event_time_str)
@@ -376,7 +404,7 @@ def _test_get_image_log_events(image):
     ]
 
     for args, expect_first, expect_count in test_cases:
-        events = image.get_log_events(log_stream_name, **args)["events"]
+        events = _read_all_log_events(image, log_stream_name, **args)
 
         if expect_count is not None:
             assert_that(events).is_length(expect_count)
