@@ -26,6 +26,7 @@ from pcluster.models.common import (
     LogsExporterError,
     export_stack_events,
     format_bytes,
+    get_all_stack_events,
     sanitize_path_component,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -682,3 +683,18 @@ def test_export_stack_events_creates_missing_parent_dirs(mocker, tmp_path):
     export_stack_events("stack-name", output_file)
 
     assert_that(os.path.isfile(output_file)).is_true()
+
+
+def test_get_all_stack_events_follows_pagination(mocker):
+    mock_aws_api(mocker)
+    pages = [
+        {"StackEvents": [{"EventId": "3"}, {"EventId": "2"}], "NextToken": "token-1"},
+        {"StackEvents": [{"EventId": "1"}]},
+    ]
+    get_stack_events_mock = mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_events", side_effect=pages)
+
+    result = get_all_stack_events("stack-name")
+
+    assert_that(result).is_equal_to([[{"EventId": "3"}, {"EventId": "2"}], [{"EventId": "1"}]])
+    assert_that(get_stack_events_mock.call_count).is_equal_to(2)
+    get_stack_events_mock.assert_called_with("stack-name", next_token="token-1")
