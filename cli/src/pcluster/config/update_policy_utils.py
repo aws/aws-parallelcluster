@@ -16,7 +16,7 @@ class SharedStorageChangeInfo:
         new_value = change.new_value
 
         is_storage_list_change = change.is_list and change.key == "SharedStorage"
-        storage_item = new_value if new_value is not None else old_value
+        storage_item = (new_value if new_value is not None else old_value) if is_storage_list_change else {}
 
         # Storage Action
         self.is_mount = is_storage_list_change and old_value is None and new_value is not None

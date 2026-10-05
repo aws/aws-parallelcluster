@@ -13,6 +13,7 @@ CHANGELOG
 - Update the default root volume size to 50 GB.
 
 **BUG FIXES**
+- Fix `update-cluster` failing with an unhandled exception when changing a shared storage `MountDir` with running nodes.
 - Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
 - Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
