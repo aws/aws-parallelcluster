@@ -500,8 +500,8 @@ def get_all_stack_events(stack_name: str):
     stack_events = []
     chunk = AWSApi.instance().cfn.get_stack_events(stack_name)
     stack_events.append(chunk["StackEvents"])
-    while chunk.get("nextToken"):
-        chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["nextToken"])
+    while chunk.get("NextToken"):
+        chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["NextToken"])
         stack_events.append(chunk["StackEvents"])
     return stack_events
 
