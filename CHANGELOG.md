@@ -17,6 +17,7 @@ CHANGELOG
 - Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
 the validator fails with a clear error message instead of a generic `NoneType` error.
 - Reduce IAM role and policy naming collisions by using a more unique name suffix.
+- Fix `describe-cluster` reporting incomplete events with a large stack event history.
 
 3.16.1
 ------
