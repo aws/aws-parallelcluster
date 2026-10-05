@@ -609,13 +609,14 @@ test-suites:
 #          instances: {{ INSTANCES }}
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
-  pyxis:
-    test_pyxis.py::test_pyxis:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
+# This test has never passed in isolated regions because Docker image registry not available
+#  pyxis:
+#    test_pyxis.py::test_pyxis:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
   ultraserver:
     test_gb200.py::test_gb200:
       dimensions:
