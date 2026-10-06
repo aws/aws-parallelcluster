@@ -10,6 +10,8 @@ CHANGELOG
 
 **CHANGES**
 - Add support for Python 3.14 in the pcluster CLI.
+- Remove support for Python 3.10, which is in end of life.
+- Upgrade the Python runtime of ParallelCluster Lambda functions to Python 3.14.
 - Update the default root volume size to 50 GB.
 
 **BUG FIXES**
