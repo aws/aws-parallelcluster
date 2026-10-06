@@ -1135,7 +1135,7 @@ class PclusterLambdaConstruct(Construct):
             handler=f"{handler_func}.handler",
             memory_size=128,
             role=execution_role,
-            runtime="python3.12",
+            runtime="python3.14",
             timeout=timeout,
             vpc_config=(
                 awslambda.CfnFunction.VpcConfigProperty(

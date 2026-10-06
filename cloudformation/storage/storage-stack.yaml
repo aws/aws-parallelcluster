@@ -499,7 +499,7 @@ Resources:
       Handler: index.handler
       MemorySize: 128
       Role: !GetAtt FileCacheLambdaRole.Arn
-      Runtime: python3.12
+      Runtime: python3.14
       Timeout: 300
       TracingConfig:
         Mode: Active
