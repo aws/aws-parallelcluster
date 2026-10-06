@@ -38,7 +38,7 @@ jobs:
           - Python 3.12 Tests
           - Python 3.13 Tests
           - Python 3.14 Tests
-          - Python 3.10 Tests Coverage
+          - Python 3.14 Tests Coverage
           - Code Checks
           - CLI CloudFormation Templates Checks
           - API CloudFormation Templates Checks
@@ -68,24 +68,24 @@ jobs:
             python: '3.14'
             toxdir: cli
             toxenv: py314-nocov
-          - name: Python 3.10 Tests Coverage
-            python: '3.10'
+          - name: Python 3.14 Tests Coverage
+            python: '3.14'
             toxdir: cli
-            toxenv: py310-cov
+            toxenv: py314-cov
           - name: Code Checks
-            python: '3.10'
+            python: '3.14'
             toxdir: cli
             toxenv: code-linters
           - name: CLI CloudFormation Templates Checks
-            python: '3.10'
+            python: '3.14'
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
           - name: API CloudFormation Templates Checks
-            python: '3.10'
+            python: '3.14'
             toxdir: api
             toxenv: cfn-lint
           - name: Integration Tests Config Checks
-            python: '3.10'
+            python: '3.14'
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
     steps:
@@ -134,7 +134,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - name: Install AWS CDK
         run: |
           pip install typeguard~=2.13
