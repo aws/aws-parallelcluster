@@ -52,6 +52,8 @@ CUDA_RELEASE = ".".join(CUDA_VERSION.split(".")[:2])
 # `dnf --showduplicates list nvlsm`, then pin the reported version here.
 NVLSM_BUNDLED_VERSION = "2025.10.14"
 GDRCOPY_VERSION = "2.6"
+# SHA256 of the GDRCopy release tarball (https://github.com/NVIDIA/gdrcopy/archive/refs/tags/v<GDRCOPY_VERSION>.tar.gz).
+GDRCOPY_SHA256 = "c9eaf0593567ac5765d04c48cf7923dacb2644240b35bb5f025edb3bde1d5b4f"
 DCGM_VERSION = "4.6.1-1"
 
 # Packages whose version must match the NVIDIA driver version exactly.
@@ -60,6 +62,8 @@ DRIVER_ALIGNED_PACKAGES = ["nvidia-fabricmanager", "nvidia-imex"]
 # Upgrade methods, selected via the test's "flags" dimension. The "devsettings" flag installs the
 # stack via the pcluster cookbook driven by custom chef attributes; otherwise a custom EC2 Image
 # Builder component is used.
+# The "devsettings" method is expected to work only on ParallelCluster 3.16.0+, the version that introduced
+# the possibility to customize the URLs the cookbook retrieves the NVIDIA artifacts from.
 UPGRADE_METHOD_COMPONENT = "component"
 UPGRADE_METHOD_DEVSETTINGS = "devsettings"
 
@@ -163,6 +167,7 @@ def test_upgrade_nvidia_software(
             cuda_version=CUDA_VERSION,
             cuda_release_nvidia_version=CUDA_RELEASE_NVIDIA_VERSION,
             gdrcopy_version=GDRCOPY_VERSION,
+            gdrcopy_sha256=GDRCOPY_SHA256,
             dcgm_version=DCGM_VERSION,
         )
 
