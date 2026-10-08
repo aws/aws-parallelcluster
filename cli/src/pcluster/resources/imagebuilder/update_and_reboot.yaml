@@ -195,7 +195,12 @@ phases:
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
-                yum -y update
+                # Newest kernel with PinVersion packages, skip 553.165.1-169.1.el8 (Red Hat KCS 7148472)
+                K=kernel; [[ $(uname -r) == 6.12.* ]] && K=kernel6.12
+                for V in $([[ ${!DISABLE_KERNEL_UPDATE} == true ]] || yum -q repoquery --showduplicates --qf '%{version}-%{release}' $K | sort -urV) ""; do
+                  [[ $V =~ ^4.18.0-553.16[5-9].1.el8 || $(yum -q repoquery --qf %{name} $K-{headers,devel,modules-extra}-$V | sort -u | wc -l) -lt 3 ]] || break
+                done
+                yum -y update -x "$K*"; [[ $V ]] && yum -y install $K-$V
 
                 if [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rhel9" ]] || [[ ${!OS} == "rocky9" ]] || [[ ${!OS} == "alinux2023" ]] ; then
                   # package-cleanup has changed in RHEL8 and it works differently https://access.redhat.com/solutions/1227
