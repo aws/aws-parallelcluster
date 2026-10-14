@@ -60,7 +60,7 @@ class DomainNameValidator(Validator):
     """Domain name validator."""
 
     FQDN_PATTERN = "^([a-zA-Z0-9_-]+)(\\.[a-zA-Z0-9_-]+)*$"
-    LDAP_DN_PATTERN = "^((DC|dc)=[a-zA-Z0-9_-]+)(,(DC|dc)=[a-zA-Z0-9_-]+)*$"
+    LDAP_DN_PATTERN = "^((DC|dc|O|o)=[a-zA-Z0-9_-]+)(,(DC|dc)=[a-zA-Z0-9_-]+)*$"
 
     def _validate(self, domain_name):
         """Validate that domain address is a Fully Qualified Domain Name (FQDN) or a LDAP Distinguished Name (DN)."""
