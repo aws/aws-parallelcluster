@@ -18,6 +18,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
 from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser, get_all_stack_events
+from pcluster.utils import yaml_load
 
 
 class ClusterStack(StackInfo):
@@ -71,6 +72,16 @@ class ClusterStack(StackInfo):
     def official_ami(self):
         """Return the original official AMI."""
         return self._get_param("OfficialAmi")
+
+    @property
+    def efs_mount_target_subnets(self):
+        """Return the subnet of each EFS mount target in the stack template, keyed by the mount target logical id."""
+        resources = yaml_load(AWSApi.instance().cfn.get_stack_template(self.name)).get("Resources", {})
+        return {
+            logical_id: resource["Properties"]["SubnetId"]
+            for logical_id, resource in resources.items()
+            if resource.get("Type") == "AWS::EFS::MountTarget"
+        }
 
     def delete(self):
         """Delete stack."""

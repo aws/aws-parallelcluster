@@ -19,7 +19,7 @@ from cfn_stacks_factory import CfnVpcStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_arn_partition, get_compute_nodes_instance_ips
+from utils import describe_cluster_instances, get_arn_partition, get_cfn_resources, get_compute_nodes_instance_ips
 
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
@@ -100,6 +100,96 @@ def test_efs_same_az(
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     test_efs_correctly_mounted(remote_command_executor, mount_dir)
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+
+@pytest.mark.usefixtures("os", "scheduler", "instance")
+def test_efs_mount_target_subnet_change(
+    region, pcluster_config_reader, clusters_factory, vpc_stack, scheduler_commands_factory
+):
+    """
+    Test the update of a cluster replacing the compute subnet with another subnet of the same AZ.
+
+    EFS allows a single mount target per AZ, so the mount targets of both the internal and the managed EFS
+    must stay in their subnet, otherwise the update fails with "mount target already exists in this AZ".
+    The EFS must still be mounted on the compute nodes launched in the new subnet.
+    """
+    head_node_subnet_id = vpc_stack.get_all_public_subnets()[0]
+    initial_compute_subnet_id = vpc_stack.get_all_private_subnets()[1]
+    updated_compute_subnet_id = vpc_stack.get_all_public_subnets()[1]
+    ec2 = boto3.resource("ec2", region_name=region)
+    compute_az = ec2.Subnet(initial_compute_subnet_id).availability_zone
+    assert_that(ec2.Subnet(updated_compute_subnet_id).availability_zone).is_equal_to(compute_az)
+    assert_that(ec2.Subnet(head_node_subnet_id).availability_zone).is_not_equal_to(compute_az)
+
+    mount_dir = "efs_mount_dir"
+    # Render to a separate file: the template is rendered again for the update with a different compute subnet
+    cluster_config = pcluster_config_reader(
+        output_file="pcluster.config.create.yaml",
+        mount_dir=mount_dir,
+        head_node_subnet_id=head_node_subnet_id,
+        compute_subnet_id=initial_compute_subnet_id,
+    )
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    test_efs_correctly_mounted(remote_command_executor, "/" + mount_dir)
+    _test_efs_correctly_shared(remote_command_executor, "/" + mount_dir, scheduler_commands)
+
+    mount_targets = _get_cluster_mount_targets(cluster, region)
+    compute_az_mount_targets = {
+        logical_id: mount_target
+        for logical_id, mount_target in mount_targets.items()
+        if mount_target["AvailabilityZoneName"] == compute_az
+    }
+    # One mount target in the compute AZ for the internal EFS and one for the managed EFS
+    assert_that(compute_az_mount_targets).is_length(2)
+    for mount_target in compute_az_mount_targets.values():
+        assert_that(mount_target["SubnetId"]).is_equal_to(initial_compute_subnet_id)
+
+    logging.info("Updating the cluster to replace the compute subnet with another subnet of the same AZ")
+    update_cluster_config = pcluster_config_reader(
+        output_file="pcluster.config.update.yaml",
+        mount_dir=mount_dir,
+        head_node_subnet_id=head_node_subnet_id,
+        compute_subnet_id=updated_compute_subnet_id,
+    )
+    cluster.stop(wait_stopped=True)
+    _wait_for_compute_nodes_in_subnets(cluster, region, [])
+    cluster.update(str(update_cluster_config))
+
+    # Mount targets must be neither replaced nor moved to another subnet
+    assert_that(_get_cluster_mount_targets(cluster, region)).is_equal_to(mount_targets)
+
+    cluster.start(wait_running=True)
+    _wait_for_compute_nodes_in_subnets(cluster, region, [updated_compute_subnet_id])
+    test_efs_correctly_mounted(remote_command_executor, "/" + mount_dir)
+    _test_efs_correctly_shared(remote_command_executor, "/" + mount_dir, scheduler_commands)
+
+
+def _get_cluster_mount_targets(cluster, region):
+    """Return the EFS mount targets of the cluster stack, keyed by logical id."""
+    efs_client = boto3.client("efs", region_name=region)
+    mount_targets = {}
+    for resource in get_cfn_resources(cluster.cfn_name, region):
+        if resource["ResourceType"] == "AWS::EFS::MountTarget":
+            mount_target = efs_client.describe_mount_targets(MountTargetId=resource["PhysicalResourceId"])[
+                "MountTargets"
+            ][0]
+            mount_targets[resource["LogicalResourceId"]] = {
+                key: mount_target[key] for key in ["MountTargetId", "FileSystemId", "SubnetId", "AvailabilityZoneName"]
+            }
+    logging.info("Cluster mount targets: %s", mount_targets)
+    return mount_targets
+
+
+@retry(retry_on_result=lambda result: result is False, wait_fixed=seconds(20), stop_max_delay=minutes(15))
+def _wait_for_compute_nodes_in_subnets(cluster, region, expected_subnet_ids):
+    """Wait until the subnets of the running compute nodes are the expected ones (empty list means no nodes)."""
+    compute_nodes = describe_cluster_instances(cluster.name, region, filter_by_node_type="Compute")
+    compute_nodes_subnets = sorted(compute_node["SubnetId"] for compute_node in compute_nodes)
+    logging.info("Compute nodes subnets: %s", compute_nodes_subnets)
+    return compute_nodes_subnets == sorted(expected_subnet_ids)
 
 
 @pytest.mark.usefixtures("instance")

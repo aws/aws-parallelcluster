@@ -488,6 +488,7 @@ class Cluster:
             if context.during_update:
                 config.managed_head_node_security_group = self.stack.get_resource_physical_id("HeadNodeSecurityGroup")
                 config.managed_compute_security_group = self.stack.get_resource_physical_id("ComputeSecurityGroup")
+                config.existing_efs_mount_target_subnets = self.stack.efs_mount_target_subnets
 
             validation_failures = config.validate(validator_suppressors, context)
             if any(f.level.value >= FailureLevel(validation_failure_level).value for f in validation_failures):
