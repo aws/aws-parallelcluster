@@ -1630,6 +1630,11 @@ class BaseClusterConfig(Resource):
         self.deployment_settings = deployment_settings
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
+        # Dictionary {mount target logical id: subnet id} with an entry for each EFS mount target of the deployed stack,
+        # e.g. {"EFS2395b171bc347024MTuswest2a": "subnet-12345678"}.
+        # It is set during update to keep each mount target in its current subnet: EFS allows a single mount target
+        # per AZ, so moving a mount target to another subnet of the same AZ would make the stack update fail.
+        self.existing_efs_mount_target_subnets = {}
         self.instance_types_data_version = ""
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument

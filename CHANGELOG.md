@@ -11,6 +11,9 @@ CHANGELOG
 - Upgrade NVIDIA Fabric manager to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
 - Upgrade NVIDIA IMEX to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
 
+**BUG FIXES**
+- Fix cluster update failing with `mount target already exists in this AZ` when multiple subnets are in the same AZ.
+
 3.15.0
 ------
 
