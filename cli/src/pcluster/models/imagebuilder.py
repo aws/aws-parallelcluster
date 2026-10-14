@@ -516,7 +516,7 @@ class ImageBuilder:
         try:
             return self.bucket
         except Exception as e:
-            raise _imagebuilder_error_mapper(e, f"Unable to access bucket associated to the cluster.\n{e}")
+            raise _imagebuilder_error_mapper(e, f"Unable to access bucket associated to the image.\n{e}")
 
     def _upload_artifacts(self):
         """

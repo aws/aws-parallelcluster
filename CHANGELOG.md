@@ -7,6 +7,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - Improve `export-logs` user experience by parallelizing download to reduce run time, 
   adding progress reporting, and supporting running on deleted clusters.
+- Improve resilience of `create-cluster` and `build-image` by retrying the S3 bucket configuration operations
+  failing with `OperationAborted` due to concurrent operations on the ParallelCluster-managed bucket.
 
 **CHANGES**
 - Add support for Python 3.14 in the pcluster CLI.
