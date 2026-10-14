@@ -30,6 +30,7 @@ from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.schemas.common_schema import ValidationError
+from pcluster.validators.common import FailureLevel, ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
@@ -218,6 +219,48 @@ class TestCluster:
                 _ = cluster._get_stack_template()
         else:
             assert_that(cluster._get_stack_template()).is_equal_to(yaml.safe_load(response))
+
+    def test_efs_mount_target_subnets(self, mocker):
+        """Verify that ClusterStack.efs_mount_target_subnets returns the subnet of each EFS mount target."""
+        template = {
+            "Resources": {
+                "EFS123MTuseast1a": {"Type": "AWS::EFS::MountTarget", "Properties": {"SubnetId": "subnet-1a"}},
+                "EFS123MTuseast1b": {"Type": "AWS::EFS::MountTarget", "Properties": {"SubnetId": "subnet-1b"}},
+                "EFS123": {"Type": "AWS::EFS::FileSystem", "Properties": {}},
+            }
+        }
+        mock_aws_api(mocker)
+        get_template_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_template", return_value=json.dumps(template)
+        )
+        stack = ClusterStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"})
+
+        assert_that(stack.efs_mount_target_subnets).is_equal_to(
+            {"EFS123MTuseast1a": "subnet-1a", "EFS123MTuseast1b": "subnet-1b"}
+        )
+        get_template_mock.assert_called_with(FAKE_NAME)
+
+    @pytest.mark.parametrize("during_update", [True, False])
+    def test_validate_and_parse_config_sets_existing_efs_mount_target_subnets(self, cluster, mocker, during_update):
+        """Verify that the subnets of the deployed EFS mount targets are set in the config only during update."""
+        mount_target_subnets = {"EFS123MTuseast1a": "subnet-1a"}
+        config = mocker.MagicMock(existing_efs_mount_target_subnets={})
+        config.validate.return_value = []
+        mocker.patch("pcluster.models.cluster.parse_config", return_value={})
+        mocker.patch("pcluster.models.cluster.Cluster._load_config", return_value=config)
+        stack_mock = mocker.patch("pcluster.models.cluster.Cluster.stack", new_callable=PropertyMock).return_value
+        stack_mock.efs_mount_target_subnets = mount_target_subnets
+
+        parsed_config, _ = cluster._validate_and_parse_config(
+            validator_suppressors=None,
+            validation_failure_level=FailureLevel.ERROR,
+            config_text="config",
+            context=ValidatorContext(during_update=during_update),
+        )
+
+        assert_that(parsed_config.existing_efs_mount_target_subnets).is_equal_to(
+            mount_target_subnets if during_update else {}
+        )
 
     @pytest.mark.parametrize(
         "error_message",
@@ -644,6 +687,7 @@ class TestCluster:
         )
 
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_template", return_value=json.dumps({"Resources": {}}))
 
         if force:
             _, changes, _ = cluster.validate_update_request(

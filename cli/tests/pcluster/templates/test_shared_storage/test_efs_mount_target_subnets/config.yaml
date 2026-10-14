@@ -1,0 +1,25 @@
+Image:
+  Os: alinux2023
+HeadNode:
+  InstanceType: t3.micro
+  Networking:
+    SubnetId: subnet-0000000a
+  SharedStorageType: Efs
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-1111111a
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-2222222b
+          - subnet-2222222a
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
