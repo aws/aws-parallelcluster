@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
+import time
 from itertools import chain
 from typing import Union
 
@@ -518,6 +519,8 @@ def _assert_cluster_update_scaling(
     ec2_capacity_time_series, compute_nodes_time_series, timestamps = _monitor_cluster_update(
         cluster, updated_cluster_config, scheduler_commands, region, max_monitoring_time
     )
+
+    time.sleep(300)  # Time to upload logs to CW before deleting cluster in case of assertion failure
 
     _check_scaling_results(
         ec2_capacity_time_series,
