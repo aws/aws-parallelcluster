@@ -296,3 +296,54 @@ def test_efs_permissions(mocker, test_datadir, config_file_name):
     assert_that(statement["Action"]).contains_only(
         "elasticfilesystem:ClientMount", "elasticfilesystem:ClientRootAccess", "elasticfilesystem:ClientWrite"
     )
+
+
+@pytest.mark.parametrize(
+    "existing_az1_subnet, expected_az1_subnets",
+    [
+        # Without an existing mount target, any compute subnet of the AZ can be chosen
+        pytest.param(None, ["subnet-1111111a", "subnet-2222222a"], id="new mount target"),
+        pytest.param("subnet-2222222a", ["subnet-2222222a"], id="existing mount target in a compute subnet"),
+        pytest.param("subnet-0000000a", ["subnet-0000000a"], id="existing mount target in the head node subnet"),
+        pytest.param("subnet-9999999a", ["subnet-9999999a"], id="existing mount target subnet no longer used"),
+    ],
+)
+def test_efs_mount_target_subnets(mocker, test_datadir, existing_az1_subnet, expected_az1_subnets):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    subnet_azs = {
+        "subnet-0000000a": "us-east-1a",
+        "subnet-1111111a": "us-east-1a",
+        "subnet-2222222a": "us-east-1a",
+        "subnet-2222222b": "us-east-1b",
+    }
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=lambda subnet_id: subnet_azs[subnet_id]
+    )
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(load_yaml_dict(test_datadir / "config.yaml"))
+
+    def _get_mount_target_subnets(existing_efs_mount_target_subnets=None):
+        # During update, the subnets of the deployed mount targets are set in the config by the Cluster model
+        cluster_config.existing_efs_mount_target_subnets = existing_efs_mount_target_subnets or {}
+        generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
+        mount_targets = get_resources(generated_template, type="AWS::EFS::MountTarget")
+        return {key: mount_target["Properties"]["SubnetId"] for key, mount_target in mount_targets.items()}
+
+    mount_target_subnets = _get_mount_target_subnets()
+    az1_mount_target, az2_mount_target = (
+        next(key for key in mount_target_subnets if key.endswith(f"MT{az.replace('-', '')}"))
+        for az in ["us-east-1a", "us-east-1b"]
+    )
+    existing_mount_target_subnets = {az2_mount_target: "subnet-2222222b"}
+    if existing_az1_subnet:
+        existing_mount_target_subnets[az1_mount_target] = existing_az1_subnet
+
+    # The mount target of each AZ must stay in the subnet where it already exists,
+    # because EFS does not allow to create a second mount target in the same AZ during the stack update.
+    mount_target_subnets = _get_mount_target_subnets(existing_mount_target_subnets)
+    assert_that(mount_target_subnets).contains_only(az1_mount_target, az2_mount_target)
+    assert_that(expected_az1_subnets).contains(mount_target_subnets[az1_mount_target])
+    assert_that(mount_target_subnets[az2_mount_target]).is_equal_to("subnet-2222222b")
