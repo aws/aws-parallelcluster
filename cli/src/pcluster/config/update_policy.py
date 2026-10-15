@@ -41,6 +41,7 @@ class UpdatePolicy:
         action_needed=None,
         condition_checker=None,
         print_succeeded=True,
+        queue_nodes_replacement_checker=None,
     ):
         self.name = None
         self.fail_reason = None
@@ -48,6 +49,9 @@ class UpdatePolicy:
         self.condition_checker = None
         self.print_succeeded = print_succeeded
         self.level = 0
+        # Function (change, patch) -> bool telling whether a change of a parameter of a Slurm queue requires the queue
+        # nodes to be replaced according to the QueueUpdateStrategy. None means that the nodes are never replaced.
+        self.queue_nodes_replacement_checker = None
 
         if base_policy:
             self.name = base_policy.name
@@ -55,6 +59,7 @@ class UpdatePolicy:
             self.action_needed = base_policy.action_needed
             self.condition_checker = base_policy.condition_checker
             self.level = base_policy.level
+            self.queue_nodes_replacement_checker = base_policy.queue_nodes_replacement_checker
 
         if name:
             self.name = name
@@ -66,6 +71,21 @@ class UpdatePolicy:
             self.action_needed = action_needed
         if condition_checker:
             self.condition_checker = condition_checker
+        if queue_nodes_replacement_checker:
+            self.queue_nodes_replacement_checker = queue_nodes_replacement_checker
+
+    def requires_queue_nodes_replacement(self, change, patch):
+        """
+        Check if the change requires the nodes of its Slurm queue to be replaced according to the QueueUpdateStrategy.
+
+        The result is exposed in the change set consumed by the head node.
+        Changes outside the SlurmQueues section never require the replacement of the queue nodes.
+        """
+        return bool(
+            self.queue_nodes_replacement_checker
+            and is_slurm_queues_change(change)
+            and self.queue_nodes_replacement_checker(change, patch)
+        )
 
     def check(self, change, patch):
         """
@@ -146,6 +166,11 @@ def condition_checker_compute_fleet_stop_on_remove(change, patch):
 
 def is_slurm_queues_change(change):
     return any(path.startswith("SlurmQueues[") for path in change.path)
+
+
+def is_list_value_only_extended(change):
+    """Return True if the change only adds values to a list, e.g. subnets added to the SubnetIds of a queue."""
+    return isinstance(change.old_value, list) and all(value in change.new_value for value in change.old_value)
 
 
 def _is_adc_region():
@@ -395,11 +420,7 @@ def condition_checker_queue_update_strategy_on_remove(change, patch):
     # - queue update strategy is set (different from default)
     # - new list element is added
     if is_slurm_queues_change(change):
-        result = (
-            result
-            or is_queue_update_strategy_set(patch)
-            or (isinstance(change.old_value, list) and all(value in change.new_value for value in change.old_value))
-        )
+        result = result or is_queue_update_strategy_set(patch) or is_list_value_only_extended(change)
 
     return result
 
@@ -410,6 +431,11 @@ def condition_checker_managed_placement_group(change, patch):
     else:
         result = condition_checker_queue_update_strategy(change, patch)
     return result
+
+
+def queue_nodes_replacement_checker_on_remove(change, _):
+    # The nodes of a queue are still valid when values are only added to the list, e.g. new subnets
+    return not is_list_value_only_extended(change)
 
 
 def condition_checker_managed_fsx(change, patch):
@@ -607,6 +633,7 @@ UpdatePolicy.QUEUE_UPDATE_STRATEGY = UpdatePolicy(
     fail_reason=fail_reason_queue_update_strategy,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop_conditional"],
     condition_checker=condition_checker_queue_update_strategy,
+    queue_nodes_replacement_checker=lambda *_: True,
 )
 
 # Update supported with fleet stopped or with replacement policy set to TERMINATE
@@ -625,6 +652,7 @@ UpdatePolicy.MANAGED_PLACEMENT_GROUP = UpdatePolicy(
     fail_reason=fail_reason_managed_placement_group,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_placement_group"],
     condition_checker=condition_checker_managed_placement_group,
+    queue_nodes_replacement_checker=lambda *_: True,
 )
 
 # Update policy for updating SharedStorage
@@ -729,6 +757,7 @@ UpdatePolicy.MANAGED_FSX = UpdatePolicy(
     fail_reason=fail_reason_managed_fsx,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["managed_fsx"],
     condition_checker=condition_checker_managed_fsx,
+    queue_nodes_replacement_checker=queue_nodes_replacement_checker_on_remove,
 )
 
 # Update policy for adding or removing a login node pool

@@ -250,7 +250,17 @@ class ConfigPatch:
         :return: A tuple containing the patch applicability and the report rows.
         """
         rows = [
-            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed", "update_policy"]
+            [
+                "param_path",
+                "parameter",
+                "old value",
+                "new value",
+                "check",
+                "reason",
+                "action_needed",
+                "update_policy",
+                "requires_queue_nodes_replacement",
+            ]
         ]
 
         patch_allowed = True
@@ -272,6 +282,7 @@ class ConfigPatch:
                         reason,
                         action_needed,
                         change.update_policy.name,
+                        change.update_policy.requires_queue_nodes_replacement(change, self),
                     ]
                 )
 
@@ -305,12 +316,14 @@ class ConfigPatch:
             new_value = change[change_attributes["new value"]]
             old_value = change[change_attributes["old value"]]
             update_policy = change[change_attributes["update_policy"]]
+            requires_queue_nodes_replacement = change[change_attributes["requires_queue_nodes_replacement"]]
             changes_list.append(
                 {
                     "parameter": parameter,
                     "requestedValue": new_value,
                     "currentValue": old_value,
                     "updatePolicy": update_policy,
+                    "requiresQueueNodesReplacement": requires_queue_nodes_replacement,
                 }
             )
 

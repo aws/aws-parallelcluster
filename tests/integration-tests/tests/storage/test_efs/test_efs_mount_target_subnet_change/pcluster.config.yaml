@@ -11,6 +11,8 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: slurm
+  SlurmSettings:
+    QueueUpdateStrategy: TERMINATE
   SlurmQueues:
     - Name: queue-0
       ComputeResources:
