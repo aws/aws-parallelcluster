@@ -755,6 +755,7 @@ class TestCluster:
                         "reason",
                         "action_needed",
                         "update_policy",
+                        "requires_queue_nodes_replacement",
                     ],
                     [
                         ["Scheduling", "SlurmQueues[queue1]", "Image"],
@@ -765,6 +766,18 @@ class TestCluster:
                         "-",
                         None,
                         UpdatePolicy.QUEUE_UPDATE_STRATEGY.name,
+                        True,
+                    ],
+                    [
+                        ["HeadNode", "Iam"],
+                        "InstanceRole",
+                        "arn:aws:iam::aws:role/some_old_role",
+                        "arn:aws:iam::aws:role/some_new_role",
+                        True,
+                        "-",
+                        None,
+                        UpdatePolicy.SUPPORTED.name,
+                        False,
                     ],
                 ],
                 {
@@ -774,7 +787,15 @@ class TestCluster:
                             "parameter": "Scheduling.SlurmQueues[queue1].Image.CustomAmi",
                             "requestedValue": "ami-0987654321",
                             "updatePolicy": "QUEUE_UPDATE_STRATEGY",
-                        }
+                            "requiresQueueNodesReplacement": True,
+                        },
+                        {
+                            "currentValue": "arn:aws:iam::aws:role/some_old_role",
+                            "parameter": "HeadNode.Iam.InstanceRole",
+                            "requestedValue": "arn:aws:iam::aws:role/some_new_role",
+                            "updatePolicy": "SUPPORTED",
+                            "requiresQueueNodesReplacement": False,
+                        },
                     ]
                 },
             ),

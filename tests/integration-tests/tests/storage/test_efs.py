@@ -154,14 +154,12 @@ def test_efs_mount_target_subnet_change(
         head_node_subnet_id=head_node_subnet_id,
         compute_subnet_id=updated_compute_subnet_id,
     )
-    cluster.stop(wait_stopped=True)
-    _wait_for_compute_nodes_in_subnets(cluster, region, [])
+    # With QueueUpdateStrategy TERMINATE, the update replaces the static node in the new subnet
     cluster.update(str(update_cluster_config))
 
     # Mount targets must be neither replaced nor moved to another subnet
     assert_that(_get_cluster_mount_targets(cluster, region)).is_equal_to(mount_targets)
 
-    cluster.start(wait_running=True)
     _wait_for_compute_nodes_in_subnets(cluster, region, [updated_compute_subnet_id])
     test_efs_correctly_mounted(remote_command_executor, "/" + mount_dir)
     _test_efs_correctly_shared(remote_command_executor, "/" + mount_dir, scheduler_commands)
