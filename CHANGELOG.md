@@ -21,6 +21,8 @@ the validator fails with a clear error message instead of a generic `NoneType` e
 - Reduce IAM role and policy naming collisions by using a more unique name suffix.
 - Fix `describe-cluster` reporting incomplete events with a large stack event history.
 - Fix cluster update failing with `mount target already exists in this AZ` when multiple subnets are in the same AZ.
+- Fix login nodes not able to mount the EFS managed by ParallelCluster when they are in an AZ
+  not used by head node and compute nodes, by creating an EFS mount target in that AZ.
 
 3.16.1
 ------
