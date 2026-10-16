@@ -1158,6 +1158,19 @@ class ClusterCdkStack:
                 deletion_policy,
             )
 
+            # Mount Targets for Login Nodes
+            if self.config.login_nodes:
+                for pool in self.config.login_nodes.pools:
+                    for subnet_id in pool.networking.subnet_ids:
+                        self._add_efs_mount_target(
+                            id,
+                            efs_id,
+                            [file_system_security_group],
+                            subnet_id,
+                            checked_availability_zones,
+                            deletion_policy,
+                        )
+
         self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"].append(
             shared_efs.encryption_in_transit
         )
