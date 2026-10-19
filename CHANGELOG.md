@@ -5,23 +5,37 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Improve `export-logs` user experience by parallelizing download to reduce run time, 
+- Improve `export-logs` user experience by parallelizing download to reduce run time,
   adding progress reporting, and supporting running on deleted clusters.
+- Add `pcluster-diag` check verifying the sudoers definitions ParallelCluster relies on.
 
 **CHANGES**
 - Add support for Python 3.14 in the pcluster CLI.
 - Upgrade the Python runtime of ParallelCluster Lambda functions to Python 3.14.
 - Update the default root volume size to 50 GB.
+- When a system service fails to start during node bootstrap or cluster update, log its `systemctl status` and the end of
+  its journal to `/var/log/chef-client.log`, so that the cause of the failure is available in CloudWatch logs.
+- Upgrade Python to version 3.14.8.
+- Ship only AWS CLI v2 in ParallelCluster AMIs. AWS CLI v1 is no longer installed in the cookbook Python virtual environment.
+- Remove execution permissions for configurations files `/opt/parallelcluster/shared/computefleet-status.json`,
+  `/opt/parallelcluster/scripts/clusterstatusmgtd_logging.conf` and `/etc/dcv/dcv.conf`
+- Log the content of the Slurm configuration files generated on the head node, to simplify troubleshooting.
 
 **BUG FIXES**
 - Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
-- Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
-the validator fails with a clear error message instead of a generic `NoneType` error.
+- Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces,
+  the validator fails with a clear error message instead of a generic `NoneType` error.
 - Reduce IAM role and policy naming collisions by using a more unique name suffix.
 - Fix `describe-cluster` reporting incomplete events with a large stack event history.
 - Fix cluster update failing with `mount target already exists in this AZ` when multiple subnets are in the same AZ.
 - Fix login nodes not able to mount the EFS managed by ParallelCluster when they are in an AZ
   not used by head node and compute nodes, by creating an EFS mount target in that AZ.
+- Fix cluster update hanging on the `fuser` probe that ran before every shared storage unmount when the storage was unresponsive.
+- Set mode `0440` on all ParallelCluster-managed files under `/etc/sudoers.d/`.
+- Fix an issue where EC2 throttling during compute node launch is not retried and is reported as insufficient capacity
+  when using Multiple Instance Types or multiple subnets.
+- Fix an issue where the Comment and Extra fields of Slurm nodes and the Comment field of Slurm reservations
+  could alter the node and reservation information read by ParallelCluster.
 
 3.16.1
 ------
