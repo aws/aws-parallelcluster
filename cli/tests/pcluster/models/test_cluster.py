@@ -240,6 +240,24 @@ class TestCluster:
         )
         get_template_mock.assert_called_with(FAKE_NAME)
 
+    def test_fsx_file_system_subnets(self, mocker):
+        """Verify that ClusterStack.fsx_file_system_subnets returns the subnets of each FSx file system."""
+        template = {
+            "Resources": {
+                "FSX123": {"Type": "AWS::FSx::FileSystem", "Properties": {"SubnetIds": ["subnet-1a"]}},
+                "FSX456": {"Type": "AWS::FSx::FileSystem", "Properties": {"SubnetIds": ["subnet-1b"]}},
+                "EFS123MTuseast1a": {"Type": "AWS::EFS::MountTarget", "Properties": {"SubnetId": "subnet-1a"}},
+            }
+        }
+        mock_aws_api(mocker)
+        get_template_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_template", return_value=json.dumps(template)
+        )
+        stack = ClusterStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"})
+
+        assert_that(stack.fsx_file_system_subnets).is_equal_to({"FSX123": ["subnet-1a"], "FSX456": ["subnet-1b"]})
+        get_template_mock.assert_called_with(FAKE_NAME)
+
     @pytest.mark.parametrize("during_update", [True, False])
     def test_validate_and_parse_config_sets_existing_efs_mount_target_subnets(self, cluster, mocker, during_update):
         """Verify that the subnets of the deployed EFS mount targets are set in the config only during update."""
@@ -261,6 +279,26 @@ class TestCluster:
         assert_that(parsed_config.existing_efs_mount_target_subnets).is_equal_to(
             mount_target_subnets if during_update else {}
         )
+
+    @pytest.mark.parametrize("during_update", [True, False])
+    def test_validate_and_parse_config_sets_existing_fsx_file_system_subnets(self, cluster, mocker, during_update):
+        """Verify that the subnets of the deployed FSx file systems are set in the config only during update."""
+        fsx_subnets = {"FSX123": ["subnet-1a"]}
+        config = mocker.MagicMock(existing_fsx_file_system_subnets={})
+        config.validate.return_value = []
+        mocker.patch("pcluster.models.cluster.parse_config", return_value={})
+        mocker.patch("pcluster.models.cluster.Cluster._load_config", return_value=config)
+        stack_mock = mocker.patch("pcluster.models.cluster.Cluster.stack", new_callable=PropertyMock).return_value
+        stack_mock.fsx_file_system_subnets = fsx_subnets
+
+        parsed_config, _ = cluster._validate_and_parse_config(
+            validator_suppressors=None,
+            validation_failure_level=FailureLevel.ERROR,
+            config_text="config",
+            context=ValidatorContext(during_update=during_update),
+        )
+
+        assert_that(parsed_config.existing_fsx_file_system_subnets).is_equal_to(fsx_subnets if during_update else {})
 
     @pytest.mark.parametrize(
         "error_message",
