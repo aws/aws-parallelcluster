@@ -83,6 +83,16 @@ class ClusterStack(StackInfo):
             if resource.get("Type") == "AWS::EFS::MountTarget"
         }
 
+    @property
+    def fsx_file_system_subnets(self):
+        """Return the subnets of each FSx file system in the stack template, keyed by the file system logical id."""
+        resources = yaml_load(AWSApi.instance().cfn.get_stack_template(self.name)).get("Resources", {})
+        return {
+            logical_id: resource["Properties"]["SubnetIds"]
+            for logical_id, resource in resources.items()
+            if resource.get("Type") == "AWS::FSx::FileSystem"
+        }
+
     def delete(self):
         """Delete stack."""
         AWSApi.instance().cfn.delete_stack(self.name)

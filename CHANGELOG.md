@@ -28,6 +28,7 @@ CHANGELOG
 - Reduce IAM role and policy naming collisions by using a more unique name suffix.
 - Fix `describe-cluster` reporting incomplete events with a large stack event history.
 - Fix cluster update failing with `mount target already exists in this AZ` when multiple subnets are in the same AZ.
+- Fix cluster update replacing the managed FSx for Lustre file system, when all the queues are moved to a different subnet.
 - Fix login nodes not able to mount the EFS managed by ParallelCluster when they are in an AZ
   not used by head node and compute nodes, by creating an EFS mount target in that AZ.
 - Fix cluster update hanging on the `fuser` probe that ran before every shared storage unmount when the storage was unresponsive.
