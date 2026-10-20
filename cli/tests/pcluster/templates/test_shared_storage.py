@@ -508,3 +508,71 @@ def _get_efs_mount_targets(cluster_config):
         }
         for file_system_name in get_resources(generated_template, type="AWS::EFS::FileSystem")
     }
+
+
+@pytest.mark.parametrize(
+    "queues_subnets_after, pin_deployed_subnets, expected_subnet_ids",
+    [
+        # Reproducer of the managed FSx replacement: all the queues in subnet A are removed and a queue in subnet B
+        # is added. The update policies and validators accept the change, so the subnet must be kept by the template.
+        pytest.param({"queue2": "subnet-a0000002"}, True, ["subnet-a0000001"], id="queues moved to another subnet"),
+        pytest.param({"queue1": "subnet-a0000001"}, True, ["subnet-a0000001"], id="queues unchanged"),
+        pytest.param({"queue2": "subnet-a0000002"}, False, ["subnet-a0000002"], id="new file system"),
+    ],
+)
+def test_managed_fsx_subnets_on_update(mocker, queues_subnets_after, pin_deployed_subnets, expected_subnet_ids):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=_get_test_subnet_az)
+
+    # The file system of the deployed stack, generated from the configuration before the update
+    deployed_fsx_subnets = _get_managed_fsx_subnets(_get_fsx_test_cluster_config({"queue1": "subnet-a0000001"}))
+    # During update, the subnets of the deployed file systems are set in the config by the Cluster model
+    cluster_config = _get_fsx_test_cluster_config(queues_subnets_after)
+    if pin_deployed_subnets:
+        cluster_config.existing_fsx_file_system_subnets = deployed_fsx_subnets
+    fsx_subnets = _get_managed_fsx_subnets(cluster_config)
+
+    # Changing the subnets of an FSx replaces the file system, deleting the existing one and its data
+    assert_that(fsx_subnets).is_length(1)
+    assert_that(fsx_subnets.keys()).is_equal_to(deployed_fsx_subnets.keys())
+    assert_that(list(fsx_subnets.values())[0]).is_equal_to(expected_subnet_ids)
+
+
+def _get_fsx_test_cluster_config(queues_subnets):
+    """Return a cluster config with a managed FSx for Lustre, using the given {queue name: subnet id}."""
+    config = {
+        "Image": {"Os": "alinux2023"},
+        "HeadNode": {"InstanceType": "t3.micro", "Networking": {"SubnetId": "subnet-a0000003"}},
+        "Scheduling": {
+            "Scheduler": "slurm",
+            "SlurmQueues": [
+                {
+                    "Name": queue_name,
+                    "Networking": {"SubnetIds": [subnet]},
+                    "ComputeResources": [{"Name": "compute-resource", "InstanceType": "c5.2xlarge"}],
+                }
+                for queue_name, subnet in queues_subnets.items()
+            ],
+        },
+        "SharedStorage": [
+            {
+                "MountDir": "/opt/shared/fsx/managed",
+                "Name": "shared-fsx-managed",
+                "StorageType": "FsxLustre",
+                "FsxLustreSettings": {"StorageCapacity": 1200},
+            }
+        ],
+    }
+    return ClusterSchema(cluster_name="clustername").load(config)
+
+
+def _get_managed_fsx_subnets(cluster_config):
+    """Return {file system logical id: subnet ids} from the generated template."""
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    return {
+        logical_id: file_system["Properties"]["SubnetIds"]
+        for logical_id, file_system in get_resources(generated_template, type="AWS::FSx::FileSystem").items()
+    }
