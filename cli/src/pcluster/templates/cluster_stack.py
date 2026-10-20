@@ -1062,6 +1062,15 @@ class ClusterCdkStack:
             file_system_type_version=shared_fsx.file_system_type_version,
             tags=[CfnTag(key="Name", value=shared_fsx.name)],
         )
+        # If the file system already exists, keep it in its subnets, because changing them replaces the file system,
+        # deleting the existing one and its data.
+        # The subnets are kept even if no longer used by the cluster: the file system is reachable from any subnet
+        # in the VPC.
+        existing_subnet_ids = self.config.existing_fsx_file_system_subnets.get(
+            self.stack.resolve(fsx_resource.logical_id)
+        )
+        if existing_subnet_ids:
+            fsx_resource.subnet_ids = existing_subnet_ids
         for rule in security_group_rules:
             fsx_resource.add_depends_on(rule)
         fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
