@@ -15,7 +15,7 @@ from assertpy import assert_that
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.config.common import CapacityType
 from pcluster.schemas.cluster_schema import ClusterSchema
-from pcluster.utils import load_yaml_dict
+from pcluster.utils import create_hash_suffix, load_yaml_dict
 from pcluster.validators import (
     cluster_validators,
     database_validators,
@@ -104,9 +104,12 @@ def _mock_all_validators(mocker, additional_modules=None):
     return mockers, async_mockers
 
 
-def _load_and_validate(config_path):
+def _load_and_validate(config_path, existing_fsx_file_system_subnets=None):
     input_yaml = load_yaml_dict(config_path)
     cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    if existing_fsx_file_system_subnets:
+        # Simulate an update, where the subnets of the deployed managed FSx are set by the Cluster model
+        cluster.existing_fsx_file_system_subnets = existing_fsx_file_system_subnets
     failures = cluster.validate(context=ValidatorContext())
     assert_that(failures).is_empty()
 
@@ -158,7 +161,10 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
         return_value=("p6e-gb200.36xlarge", "capacity-block"),
     )
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.
-    _load_and_validate(test_datadir / "slurm_1.yaml")
+    _load_and_validate(
+        test_datadir / "slurm_1.yaml",
+        existing_fsx_file_system_subnets={f"FSX{create_hash_suffix('name3')}": ["subnet-12345678"]},
+    )
     _load_and_validate(test_datadir / "slurm_2.yaml")
 
     # Assert validators are called

@@ -17,6 +17,7 @@ from pcluster.config.cluster_config import ExistingFileCache, ExistingFsxOpenZfs
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
+from pcluster.validators.cluster_validators import ManagedFsxCrossAzValidator
 from tests.pcluster.aws.dummy_aws_api import _DummyAWSApi, _DummyInstanceTypeInfo, mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket_object_utils
 from tests.pcluster.utils import assert_sg_rule, get_head_node_policy, get_resources, get_statement_by_sid
@@ -537,6 +538,29 @@ def test_managed_fsx_subnets_on_update(mocker, queues_subnets_after, pin_deploye
     assert_that(fsx_subnets).is_length(1)
     assert_that(fsx_subnets.keys()).is_equal_to(deployed_fsx_subnets.keys())
     assert_that(list(fsx_subnets.values())[0]).is_equal_to(expected_subnet_ids)
+
+
+def test_managed_fsx_cross_az_validator_registered_on_update(mocker):
+    """Verify that the cross-AZ message is checked on the subnets of the deployed file system."""
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=_get_test_subnet_az)
+
+    deployed_fsx_subnets = _get_managed_fsx_subnets(_get_fsx_test_cluster_config({"queue1": "subnet-a0000001"}))
+    cluster_config = _get_fsx_test_cluster_config({"queue2": "subnet-b0000001"})
+    cluster_config.existing_fsx_file_system_subnets = deployed_fsx_subnets
+    register_validator = mocker.patch.object(cluster_config, "_register_validator")
+
+    cluster_config._validate_new_storage_multiple_subnets(
+        cluster_config.scheduling.queues, cluster_config.compute_subnet_ids, {"fsx": 1}
+    )
+
+    register_validator.assert_any_call(
+        ManagedFsxCrossAzValidator,
+        fsx_name="shared-fsx-managed",
+        fsx_subnet_ids=["subnet-a0000001"],
+        compute_subnet_ids=["subnet-b0000001"],
+    )
 
 
 def _get_fsx_test_cluster_config(queues_subnets):

@@ -64,6 +64,7 @@ from pcluster.constants import (
     Feature,
 )
 from pcluster.utils import (
+    create_hash_suffix,
     get_attr,
     get_partition,
     get_resource_name_from_resource_arn,
@@ -93,6 +94,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxCrossAzValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -1807,6 +1809,18 @@ class BaseClusterConfig(Resource):
                     queues=queues,
                     fsx_az_list=storage.file_system_availability_zones,
                 )
+            if isinstance(storage, SharedFsxLustre) and not storage.is_unmanaged:
+                # During update, the existing file system is kept in its subnets, see existing_fsx_file_system_subnets
+                existing_subnet_ids = self.existing_fsx_file_system_subnets.get(
+                    f"{SharedStorageType.FSX.name}{create_hash_suffix(storage.name)}"
+                )
+                if existing_subnet_ids:
+                    self._register_validator(
+                        ManagedFsxCrossAzValidator,
+                        fsx_name=storage.name,
+                        fsx_subnet_ids=existing_subnet_ids,
+                        compute_subnet_ids=compute_subnet_ids,
+                    )
             if isinstance(storage, SharedEbs):
                 ebs_volumes.append(storage)
 

@@ -55,6 +55,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxCrossAzValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -2895,6 +2896,43 @@ def test_unmanaged_fsx_multiple_az_validator(
     actual_failures = UnmanagedFsxMultiAzValidator().execute(queues, fsx_az_list)
     assert_failure_messages(actual_failures, expected_messages)
     assert_failure_level(actual_failures, failure_level)
+
+
+@pytest.mark.parametrize(
+    "fsx_subnet_ids, compute_subnet_ids, expected_message",
+    [
+        pytest.param(["subnet-a1"], ["subnet-a1"], None, id="compute nodes in the same subnet"),
+        pytest.param(["subnet-a1"], ["subnet-a2"], None, id="compute nodes in another subnet of the same AZ"),
+        pytest.param(
+            ["subnet-a1"],
+            ["subnet-b1"],
+            "The managed FSx for Lustre file system 'fsx' is kept in its current Availability Zone (us-east-1a) "
+            "because changing its subnet would replace the file system and delete its data, but the compute nodes "
+            "are in a different Availability Zone (us-east-1b). Accessing a shared storage from different AZs can "
+            "lead to increased storage networking latency and added inter-AZ data transfer costs.",
+            id="compute nodes moved to another AZ",
+        ),
+        # The file system and then its subnet have been deleted out of band: the update must not be blocked
+        pytest.param(["subnet-x1"], ["subnet-b1"], None, id="subnet of the file system deleted out of band"),
+    ],
+)
+def test_managed_fsx_cross_az_validator(mocker, fsx_subnet_ids, compute_subnet_ids, expected_message):
+    mock_aws_api(mocker)
+
+    def _get_subnet_avail_zone(subnet_id):
+        # The AZ is encoded in the test subnet id, e.g. subnet-b1 is in us-east-1b, subnet-x1 does not exist
+        if subnet_id.startswith("subnet-x"):
+            raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
+        return f"us-east-1{subnet_id[len('subnet-')]}"
+
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=_get_subnet_avail_zone)
+
+    actual_failures = ManagedFsxCrossAzValidator().execute("fsx", fsx_subnet_ids, compute_subnet_ids)
+    if expected_message:
+        assert_failure_messages(actual_failures, expected_message)
+        assert_failure_level(actual_failures, FailureLevel.INFO)
+    else:
+        assert_that(actual_failures).is_empty()
 
 
 @pytest.mark.parametrize(
