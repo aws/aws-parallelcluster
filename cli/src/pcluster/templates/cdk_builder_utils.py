@@ -49,6 +49,7 @@ from pcluster.constants import (
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.utils import (
+    create_hash_suffix,
     get_installed_version,
     get_needed_ultraserver_capacity_block_statuses,
     get_resource_name_from_resource_arn,
@@ -65,18 +66,6 @@ def _get_resource_combination_name(*resource_names, partial_length=7, hash_lengt
     prefix = "-".join(name[:partial_length] for name in resource_names)
 
     return f"{prefix}-{hash_value}"
-
-
-def create_hash_suffix(string_to_hash: str):
-    """Create 16digit hash string."""
-    return (
-        string_to_hash
-        if string_to_hash == "HeadNode"
-        # A nosec comment is appended to the following line in order to disable the B324 check.
-        # The sha1 is used just as a hashing function.
-        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
-        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
-    )
 
 
 def get_user_data_content(user_data_path: str):
