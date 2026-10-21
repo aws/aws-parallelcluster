@@ -103,7 +103,13 @@ cap_kernel_debian() {
     [[ -n "${cap}" ]] || { echo "ERROR: could not determine the max FSx Lustre-supported kernel" >&2; exit 1; }
     echo "Capping kernel to the max FSx Lustre-supported version: ${cap}"
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        "linux-image-${cap}" "linux-headers-${cap}" "linux-modules-${cap}" "linux-modules-extra-${cap}"
+        "linux-image-${cap}" "linux-headers-${cap}" "linux-modules-${cap}"
+    # linux-modules-extra carries the InfiniBand/RDMA modules and ships separately only up to
+    # the 6.17 -aws series; from the 7.0.0 -aws series those modules are folded into
+    # linux-modules (installed above) and linux-modules-extra is no longer published.
+    # For this reason, we install it in best-effort, mirroring the product image-build component.
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "linux-modules-extra-${cap}" \
+        || echo "WARNING: linux-modules-extra-${cap} is not available; continuing without it"
     sudo apt-mark hold linux-aws linux-image-aws linux-headers-aws
 }
 
@@ -134,7 +140,7 @@ cap_kernel_dnf() {
     [[ -n "${cap}" ]] || { echo "ERROR: could not determine the max FSx Lustre-supported kernel" >&2; exit 1; }
     echo "Capping kernel to the max FSx Lustre-supported version: ${cap}"
     sudo dnf install -y python3-dnf-plugin-versionlock
-    sudo dnf versionlock add "kernel-${cap}" "kernel-core-${cap}" "kernel-modules-${cap}"
+    sudo dnf versionlock add "kernel-${cap}" "kernel-core-${cap}" "kernel-modules-${cap}" "kernel-modules-core-${cap}" "kernel-tools-${cap}"
 }
 
 echo "===== Starting system ${FLAVOUR} patching on $(hostname) ====="

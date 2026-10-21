@@ -31,7 +31,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
-from pcluster.config.common import CapacityType
+from pcluster.config.common import CapacityType, merge_tags
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -1938,6 +1938,38 @@ def test_generate_tag_specifications(input_tags):
     assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)
 
 
+@pytest.mark.parametrize(
+    "tag_lists, expected",
+    [
+        # No tags at all
+        ([], []),
+        ([None, None], []),
+        # Single source
+        ([[{"key": "A", "value": "1"}]], [("A", "1")]),
+        # Distinct keys across sources are all kept
+        (
+            [[{"key": "A", "value": "1"}], [{"key": "B", "value": "2"}], [{"key": "C", "value": "3"}]],
+            [("A", "1"), ("B", "2"), ("C", "3")],
+        ),
+        # Duplicate keys: later sources (queue, compute resource) override earlier (cluster)
+        (
+            [[{"key": "A", "value": "cluster"}], [{"key": "A", "value": "queue"}], [{"key": "A", "value": "cr"}]],
+            [("A", "cr")],
+        ),
+        # None sources are skipped without affecting precedence
+        (
+            [[{"key": "A", "value": "cluster"}], None, [{"key": "A", "value": "cr"}]],
+            [("A", "cr")],
+        ),
+    ],
+)
+def test_merge_tags(tag_lists, expected):
+    """Verify tag merging deduplicates by key with later sources taking precedence."""
+    tag_lists = [[Tag(tag["key"], tag["value"]) for tag in tags] if tags is not None else None for tags in tag_lists]
+    merged = merge_tags(*tag_lists)
+    assert_that([(tag.key, tag.value) for tag in merged]).is_equal_to(expected)
+
+
 def get_network_card_list(index_list):
     return [NetworkCardInfo({"NetworkCardIndex": index}) for index in index_list]
 
@@ -3321,7 +3353,7 @@ class TestDictLaunchTemplateBuilder:
                         "Ebs": {
                             "Encrypted": True,
                             "VolumeType": "mockVolumeType",
-                            "VolumeSize": 45,
+                            "VolumeSize": 50,
                             "Iops": 15,
                             "Throughput": 20,
                             "DeleteOnTermination": True,

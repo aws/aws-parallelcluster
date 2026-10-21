@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Set
 
+from pcluster.utils import event_loop
 from pcluster.validators.common import AsyncValidator, FailureLevel, ValidationResult, Validator, ValidatorContext
 from pcluster.validators.dev_settings_validators import ExtraChefAttributesValidator
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
@@ -208,11 +209,9 @@ class Resource:
         # if they are taking too long to execute for a resource and its children since the use of
         # get_async_timed_validator_type_for allows to decorate only on single validator at a time and
         # does not cascade to child resources
-        return list(
-            itertools.chain.from_iterable(
-                asyncio.get_event_loop().run_until_complete(asyncio.gather(*self._validation_futures))
-            )
-        )
+        with event_loop() as loop:
+            validation_results = loop.run_until_complete(asyncio.gather(*self._validation_futures))
+        return list(itertools.chain.from_iterable(validation_results))
 
     def _nested_resources(self):
         nested_resources = []
@@ -310,6 +309,20 @@ class BaseTag(Resource):
         super().__init__()
         self.key = Resource.init_param(key)
         self.value = Resource.init_param(value)
+
+
+def merge_tags(*tag_lists):
+    """
+    Merge lists of Tag objects, deduplicating by key.
+
+    Later lists take precedence over earlier ones on duplicate keys, mirroring the tag precedence
+    applied at launch time (cluster < queue < compute resource). ``None`` lists are skipped.
+    """
+    merged = {}
+    for tags in tag_lists:
+        for tag in tags or []:
+            merged[tag.key] = tag
+    return list(merged.values())
 
 
 class AdditionalIamPolicy(Resource):

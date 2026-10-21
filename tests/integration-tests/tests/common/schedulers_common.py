@@ -517,6 +517,33 @@ class SlurmCommands(SchedulerCommands):
         self.wait_job_completed(job_id)
         self.assert_job_succeeded(job_id)
 
+    def submit_command_and_get_output(self, job_command_args):
+        """Submit a command, assert the job succeeded, and return the job's stdout.
+
+        Reads back `slurm-<job_id>.out`, which sbatch writes to the job's submit directory.
+        """
+        result = self.submit_command(**job_command_args)
+        job_id = self.assert_job_submitted(result.stdout)
+        self.wait_job_completed(job_id)
+        self.assert_job_succeeded(job_id)
+        return self._remote_command_executor.run_remote_command(f"cat slurm-{job_id}.out").stdout
+
+    def run_command_and_assert_job_succeeded(self, command, nodes=1, timeout=12):
+        """Run a command as a step and assert the job succeeded.
+
+        salloc runs srun on the head node rather than on the batch host as sbatch does, so the stdio of a
+        wide step does not aggregate on a compute node.
+        """
+        result = self._remote_command_executor.run_remote_command(
+            f"salloc -N {nodes} srun {command}", timeout=minutes(timeout) // 1000
+        )
+        allocation = re.search(r"Granted job allocation (\d+)", f"{result.stdout}\n{result.stderr}")
+        if not allocation:
+            raise Exception(f"Could not find the job id in the salloc output: {result.stdout} {result.stderr}")
+        job_id = allocation.group(1)
+        self.wait_job_completed(job_id, timeout=timeout)
+        self.assert_job_succeeded(job_id)
+
     def get_partition_state(self, partition):
         """Get the state of the partition."""
         return self._remote_command_executor.run_remote_command(

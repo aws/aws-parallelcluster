@@ -27,7 +27,7 @@ from tests.common.assertions import (
     wait_instance_replaced_or_terminating,
 )
 from tests.common.mpi_common import _test_mpi
-from tests.common.utils import GPU_JOB_SCRIPT, fetch_instance_slots, run_system_analyzer
+from tests.common.utils import fetch_instance_slots, run_gpu_workload, run_system_analyzer
 
 
 def test_essential_features(
@@ -92,7 +92,7 @@ def test_essential_features(
         cluster, region, instance, scheduler, default_threads_per_core, request, scheduler_commands_factory
     )
 
-    _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir)
+    _test_gpu_workload(cluster, scheduler_commands_factory)
 
 
 def _test_mpi_job(
@@ -334,27 +334,11 @@ def _test_custom_bootstrap_scripts_args_quotes(cluster):
     )
 
 
-def _test_gpu_workload(cluster, scheduler_commands_factory, test_datadir):
-    """Submit a Slurm job that builds and runs CUDA samples on a GPU compute node."""
+def _test_gpu_workload(cluster, scheduler_commands_factory):
+    """Submit Slurm jobs that build and run CUDA samples on a GPU compute node."""
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
-
-    samples = ["1_Utilities/deviceQuery", "4_CUDA_Libraries/matrixMulCUBLAS"]
-    job_ids = []
-    for sample in samples:
-        logging.info("Submitting CUDA sample job for %s", sample)
-        result = scheduler_commands.submit_script(
-            str(GPU_JOB_SCRIPT),
-            script_args=[sample],
-            partition="gpu",
-            nodes=1,
-            slots=1,
-        )
-        job_ids.append(scheduler_commands.assert_job_submitted(result.stdout))
-
-    for job_id in job_ids:
-        scheduler_commands.wait_job_completed(job_id, timeout=20)
-        scheduler_commands.assert_job_succeeded(job_id)
+    run_gpu_workload(scheduler_commands, partition="gpu")
 
 
 def _test_disable_hyperthreading(

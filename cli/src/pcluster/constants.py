@@ -134,7 +134,7 @@ EBS_VOLUME_TYPE_IOPS_DEFAULT = {
 }
 EBS_VOLUME_SIZE_DEFAULT = 40
 # This value must be greater than or equal to the AMI volume size
-EBS_ROOT_VOLUME_SIZE_DEFAULT = 45
+EBS_ROOT_VOLUME_SIZE_DEFAULT = 50
 EBS_VOLUME_TYPE_DEFAULT = "gp3"
 
 DEFAULT_MAX_COUNT = 10
@@ -155,8 +155,8 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.16.1",
-    "cookbook": "aws-parallelcluster-cookbook-3.16.1",
+    "parallelcluster": "3.16.2",
+    "cookbook": "aws-parallelcluster-cookbook-3.16.2",
     "chef": "19.3.14",
     "ami": "dev",
 }

@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-VERSION = "3.16.1"
+VERSION = "3.16.2"
 CDK_VERSION = "1.164"
 REQUIRES = [
     "setuptools",
@@ -93,6 +93,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
     ],

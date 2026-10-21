@@ -296,3 +296,215 @@ def test_efs_permissions(mocker, test_datadir, config_file_name):
     assert_that(statement["Action"]).contains_only(
         "elasticfilesystem:ClientMount", "elasticfilesystem:ClientRootAccess", "elasticfilesystem:ClientWrite"
     )
+
+
+@pytest.mark.parametrize(
+    "existing_az1_subnet, expected_az1_subnets",
+    [
+        # Without an existing mount target, any compute subnet of the AZ can be chosen
+        pytest.param(None, ["subnet-1111111a", "subnet-2222222a"], id="new mount target"),
+        pytest.param("subnet-2222222a", ["subnet-2222222a"], id="existing mount target in a compute subnet"),
+        pytest.param("subnet-0000000a", ["subnet-0000000a"], id="existing mount target in the head node subnet"),
+        pytest.param("subnet-9999999a", ["subnet-9999999a"], id="existing mount target subnet no longer used"),
+    ],
+)
+def test_efs_mount_target_subnets(mocker, test_datadir, existing_az1_subnet, expected_az1_subnets):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    subnet_azs = {
+        "subnet-0000000a": "us-east-1a",
+        "subnet-1111111a": "us-east-1a",
+        "subnet-2222222a": "us-east-1a",
+        "subnet-2222222b": "us-east-1b",
+    }
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=lambda subnet_id: subnet_azs[subnet_id]
+    )
+
+    cluster_config = ClusterSchema(cluster_name="clustername").load(load_yaml_dict(test_datadir / "config.yaml"))
+
+    def _get_mount_target_subnets(existing_efs_mount_target_subnets=None):
+        # During update, the subnets of the deployed mount targets are set in the config by the Cluster model
+        cluster_config.existing_efs_mount_target_subnets = existing_efs_mount_target_subnets or {}
+        generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+            cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+        )
+        mount_targets = get_resources(generated_template, type="AWS::EFS::MountTarget")
+        return {key: mount_target["Properties"]["SubnetId"] for key, mount_target in mount_targets.items()}
+
+    mount_target_subnets = _get_mount_target_subnets()
+    az1_mount_target, az2_mount_target = (
+        next(key for key in mount_target_subnets if key.endswith(f"MT{az.replace('-', '')}"))
+        for az in ["us-east-1a", "us-east-1b"]
+    )
+    existing_mount_target_subnets = {az2_mount_target: "subnet-2222222b"}
+    if existing_az1_subnet:
+        existing_mount_target_subnets[az1_mount_target] = existing_az1_subnet
+
+    # The mount target of each AZ must stay in the subnet where it already exists,
+    # because EFS does not allow to create a second mount target in the same AZ during the stack update.
+    mount_target_subnets = _get_mount_target_subnets(existing_mount_target_subnets)
+    assert_that(mount_target_subnets).contains_only(az1_mount_target, az2_mount_target)
+    assert_that(expected_az1_subnets).contains(mount_target_subnets[az1_mount_target])
+    assert_that(mount_target_subnets[az2_mount_target]).is_equal_to("subnet-2222222b")
+
+
+def _get_test_subnet_az(subnet_id):
+    """Return the AZ encoded in the test subnet id, e.g. subnet-b0000001 is in us-east-1b."""
+    return f"us-east-1{subnet_id[len('subnet-')]}"
+
+
+@pytest.mark.parametrize(
+    "head_node_subnet, queues_subnets, login_pools_subnets",
+    [
+        pytest.param("subnet-a0000001", [["subnet-a0000002"]], [["subnet-a0000003"]], id="single AZ"),
+        pytest.param("subnet-a0000001", [["subnet-b0000001"]], [["subnet-c0000001"]], id="each node type in its AZ"),
+        pytest.param("subnet-a0000001", [["subnet-a0000002"]], [["subnet-b0000001"]], id="AZ used only by login"),
+        pytest.param("subnet-a0000001", [["subnet-b0000001"]], [], id="AZ used only by head node, no login nodes"),
+        pytest.param(
+            "subnet-a0000001",
+            [["subnet-b0000001", "subnet-c0000001"], ["subnet-a0000002"]],
+            [["subnet-a0000003"]],
+            id="multi-AZ queue",
+        ),
+        pytest.param(
+            "subnet-a0000001",
+            [["subnet-b0000001"], ["subnet-b0000002"]],
+            [["subnet-c0000001"], ["subnet-d0000001"], ["subnet-c0000002"]],
+            id="multiple subnets per AZ and multiple login pools",
+        ),
+    ],
+)
+def test_efs_mount_targets_in_all_cluster_azs(mocker, head_node_subnet, queues_subnets, login_pools_subnets):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=_get_test_subnet_az)
+
+    cluster_config = _get_efs_test_cluster_config(head_node_subnet, queues_subnets, login_pools_subnets)
+    file_systems_mount_targets = _get_efs_mount_targets(cluster_config)
+
+    cluster_subnets = {head_node_subnet}.union(*queues_subnets, *login_pools_subnets)
+    cluster_azs = {_get_test_subnet_az(subnet) for subnet in cluster_subnets}
+    # One file system for the internal shared storage and one for the managed shared storage
+    assert_that(file_systems_mount_targets).is_length(2)
+    for mount_targets in file_systems_mount_targets.values():
+        mount_target_azs = [_get_test_subnet_az(subnet) for subnet in mount_targets.values()]
+        # Every AZ used by head node, compute nodes or login nodes has exactly one mount target,
+        # placed in one of the cluster subnets of that AZ
+        assert_that(mount_target_azs).is_length(len(cluster_azs))
+        assert_that(set(mount_target_azs)).is_equal_to(cluster_azs)
+        assert_that(cluster_subnets.issuperset(mount_targets.values())).is_true()
+
+
+@pytest.mark.parametrize(
+    "queues_subnets, login_pools_subnets_before, login_pools_subnets_after, expected_mount_target_subnets",
+    [
+        pytest.param(
+            [["subnet-b0000001"]],
+            [],
+            [["subnet-c0000001"]],
+            {"a": "subnet-a0000001", "b": "subnet-b0000001", "c": "subnet-c0000001"},
+            id="login pool added in a new AZ",
+        ),
+        pytest.param(
+            [["subnet-b0000001"]],
+            [["subnet-c0000001"]],
+            [["subnet-c0000002"]],
+            {"a": "subnet-a0000001", "b": "subnet-b0000001", "c": "subnet-c0000001"},
+            id="existing mount target in a login only AZ kept",
+        ),
+        pytest.param(
+            [["subnet-b0000001"]],
+            [["subnet-c0000001"]],
+            [["subnet-b0000002"]],
+            {"a": "subnet-a0000001", "b": "subnet-b0000001"},
+            id="login pool moved to an AZ with a mount target",
+        ),
+        pytest.param(
+            [["subnet-b0000001"], ["subnet-c0000002"]],
+            [["subnet-c0000001"]],
+            [["subnet-c0000001"]],
+            {"a": "subnet-a0000001", "b": "subnet-b0000001", "c": "subnet-c0000001"},
+            id="compute subnet added in a login AZ",
+        ),
+    ],
+)
+def test_efs_mount_targets_in_all_cluster_azs_on_update(
+    mocker, queues_subnets, login_pools_subnets_before, login_pools_subnets_after, expected_mount_target_subnets
+):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=_get_test_subnet_az)
+    head_node_subnet = "subnet-a0000001"
+
+    # The mount targets of the deployed stack, generated from the configuration before the update
+    deployed_mount_targets = _get_efs_mount_targets(
+        _get_efs_test_cluster_config(head_node_subnet, [["subnet-b0000001"]], login_pools_subnets_before)
+    )
+    # During update, the subnets of the deployed mount targets are set in the config by the Cluster model
+    cluster_config = _get_efs_test_cluster_config(head_node_subnet, queues_subnets, login_pools_subnets_after)
+    cluster_config.existing_efs_mount_target_subnets = {
+        logical_id: subnet
+        for mount_targets in deployed_mount_targets.values()
+        for logical_id, subnet in mount_targets.items()
+    }
+    file_systems_mount_targets = _get_efs_mount_targets(cluster_config)
+
+    assert_that(file_systems_mount_targets).is_length(2)
+    for file_system_name, mount_targets in file_systems_mount_targets.items():
+        # Mount target logical ids end with the AZ (e.g. ...MTuseast1c): existing mount targets keep their subnet,
+        # a mount target is created in the AZs that do not have one yet
+        assert_that({logical_id[-1]: subnet for logical_id, subnet in mount_targets.items()}).is_equal_to(
+            expected_mount_target_subnets
+        )
+        for logical_id, subnet in mount_targets.items():
+            if logical_id in deployed_mount_targets[file_system_name]:
+                assert_that(subnet).is_equal_to(deployed_mount_targets[file_system_name][logical_id])
+
+
+def _get_efs_test_cluster_config(head_node_subnet, queues_subnets, login_pools_subnets):
+    """Return a cluster config with internal EFS and managed EFS, using the given head, queues and login subnets."""
+    config = {
+        "Image": {"Os": "alinux2023"},
+        "HeadNode": {
+            "InstanceType": "t3.micro",
+            "Networking": {"SubnetId": head_node_subnet},
+            "SharedStorageType": "Efs",
+        },
+        "Scheduling": {
+            "Scheduler": "slurm",
+            "SlurmQueues": [
+                {
+                    "Name": f"queue{index}",
+                    "Networking": {"SubnetIds": subnets},
+                    "ComputeResources": [{"Name": "compute-resource", "InstanceType": "c5.2xlarge"}],
+                }
+                for index, subnets in enumerate(queues_subnets)
+            ],
+        },
+        "SharedStorage": [{"MountDir": "/opt/shared/efs/managed", "Name": "shared-efs-managed", "StorageType": "Efs"}],
+    }
+    if login_pools_subnets:
+        config["LoginNodes"] = {
+            "Pools": [
+                {"Name": f"login{index}", "InstanceType": "t3.small", "Count": 1, "Networking": {"SubnetIds": subnets}}
+                for index, subnets in enumerate(login_pools_subnets)
+            ]
+        }
+    return ClusterSchema(cluster_name="clustername").load(config)
+
+
+def _get_efs_mount_targets(cluster_config):
+    """Return {file system logical id: {mount target logical id: subnet id}} from the generated template."""
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    return {
+        file_system_name: {
+            logical_id: mount_target["Properties"]["SubnetId"]
+            for logical_id, mount_target in get_resources(
+                generated_template, type="AWS::EFS::MountTarget", properties={"FileSystemId": {"Ref": file_system_name}}
+            ).items()
+        }
+        for file_system_name in get_resources(generated_template, type="AWS::EFS::FileSystem")
+    }

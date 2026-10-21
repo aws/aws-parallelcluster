@@ -43,13 +43,22 @@ done
 
 [[ -n "${INSTANCE_TYPE_ICE_CR}" ]] || [[ -n "${INSTANCE_TYPES_ICE_CR}" ]] || fail "You must provide either --single-instance-type-ice-cr or --multi-instance-types-ice-cr or both"
 
+# Gates the CreateFleet ICE emulation
+# When this file exists, the CreateFleet requests returns the mocked ICE.
+# Otherwise, the request is not mocked and reaches EC2.
+CREATE_FLEET_ICE_GATE="/opt/slurm/etc/pcluster/.emulate_create_fleet_ice"
+sudo touch "${CREATE_FLEET_ICE_GATE}"
+
 slurm_plugin_path=$(sudo find / -iname slurm_plugin -print0|grep -FzZ 'node_virtualenv')
 cat > $slurm_plugin_path/overrides.py << EOF
 from botocore.exceptions import ClientError
 import boto3
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+CREATE_FLEET_ICE_GATE = "${CREATE_FLEET_ICE_GATE}"
 
 def run_instances(region, boto3_config, **run_instances_kwargs):
     if "${INSTANCE_TYPE_ICE_CR}" and "${INSTANCE_TYPE_ICE_CR}" in run_instances_kwargs.get("LaunchTemplate", {}).get("LaunchTemplateName"):
@@ -60,28 +69,27 @@ def run_instances(region, boto3_config, **run_instances_kwargs):
     ec2_client = boto3.client("ec2", region_name=region, config=boto3_config)
     return ec2_client.run_instances(**run_instances_kwargs)
 
-def update_lt_instance_overrides(overrides):
-    updated_overrides = []
-    for ov in overrides:
-        if 'InstanceType' in ov:
-            # mutate t3.large into t3-large to force an Error in CreateFleet request
-            mispelled_instance_type = ov['InstanceType'].replace(".", "-")
-            ov['InstanceType'] = mispelled_instance_type
-            updated_overrides.append(ov)
-        else:
-            updated_overrides.append(ov)
-
-    return updated_overrides
-
 def create_fleet(region, boto3_config, **create_fleet_kwargs):
     configs = create_fleet_kwargs.get("LaunchTemplateConfigs", [])
     if len(configs) >= 1 and configs[0]:
         lt_config = configs[0]
 
-        if "${INSTANCE_TYPES_ICE_CR}" and "${INSTANCE_TYPES_ICE_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
-            # CreateFleet will return an Error and an empty list of instances
-            lt_config['Overrides'] = update_lt_instance_overrides(lt_config['Overrides'])
-            logger.info("Updated Instance Overrides for CreateFleet args: %s", create_fleet_kwargs)
+        if "${INSTANCE_TYPES_ICE_CR}" and "${INSTANCE_TYPES_ICE_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName") and os.path.exists(CREATE_FLEET_ICE_GATE):
+            # Emulate a real InsufficientInstanceCapacity error by returning a mocked response, so the node
+            # reports InsufficientInstanceCapacity and triggers fast capacity failover. Removing the
+            # gate file lets the next CreateFleet call pass through to EC2, recovering from the ICE.
+            logger.info("Emulating InsufficientInstanceCapacity for CreateFleet args: %s", create_fleet_kwargs)
+            return {
+                "Instances": [],
+                "Errors": [
+                    {
+                        "LaunchTemplateAndOverrides": lt_config,
+                        "Lifecycle": "on-demand",
+                        "ErrorCode": "InsufficientInstanceCapacity",
+                        "ErrorMessage": "We currently do not have sufficient capacity for the requested instance type."
+                    },
+                ],
+            }
         elif "${INSTANCE_TYPES_EXCEPTION_CR}" and "${INSTANCE_TYPES_EXCEPTION_CR}" in lt_config.get('LaunchTemplateSpecification').get("LaunchTemplateName"):
             # force CreateFleet to raise an exception since "inf*" instance types have Inferentia accelerators
             # that are manufactured by AWS, and we are also requesting Manufacturer=nvidia

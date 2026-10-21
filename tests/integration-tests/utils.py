@@ -269,10 +269,11 @@ def run_command(
         if raise_on_error:
             raise
     except subprocess.TimeoutExpired:
+        # On timeout subprocess.run raises before `result` is assigned, so there is nothing to return to the caller:
+        # re-raise even when raise_on_error is False.
         if log_error:
             logging.error("Command {0} timed out after {1} sec".format(log_command, timeout))
-        if raise_on_error:
-            raise
+        raise
 
     return result
 
@@ -456,11 +457,12 @@ def describe_cluster_instances(
     filter_by_instance_types=None,
     filter_by_queue_name=None,
     filter_by_compute_resource_name=None,
+    filter_by_instance_states=("running",),
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
         {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
-        {"Name": "instance-state-name", "Values": ["running"]},
+        {"Name": "instance-state-name", "Values": list(filter_by_instance_states)},
     ]
     if filter_by_node_type:
         filters.append({"Name": "tag:parallelcluster:node-type", "Values": [filter_by_node_type]})
@@ -600,7 +602,9 @@ def get_vpc_snakecase_value(vpc_stack):
 def get_username_for_os(os):
     """Return username for a given os."""
     usernames = {
+        "alinux2": "ec2-user",
         "alinux2023": "ec2-user",
+        "ubuntu2004": "ubuntu",
         "ubuntu2204": "ubuntu",
         "ubuntu2404": "ubuntu",
         "rhel8": "ec2-user",

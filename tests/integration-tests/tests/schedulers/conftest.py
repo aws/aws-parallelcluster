@@ -157,6 +157,27 @@ def database(request, vpc_stack_for_database, region):
         stack_factory.delete_stack(stack_name, region)
 
 
+def _pick_free_private_ip(ec2_client, subnet):
+    network = ipaddress.IPv4Network(subnet["CidrBlock"])
+    # AWS reserves the first four and the last address of every subnet CIDR.
+    # https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html.
+    # hosts() already drops the network and broadcast addresses; drop the three other AWS-reserved ones too.
+    candidates = {str(address) for address in list(network.hosts())[3:]}
+
+    in_use = set()
+    paginator = ec2_client.get_paginator("describe_network_interfaces")
+    for page in paginator.paginate(Filters=[{"Name": "subnet-id", "Values": [subnet["SubnetId"]]}]):
+        for interface in page["NetworkInterfaces"]:
+            in_use.update(entry["PrivateIpAddress"] for entry in interface.get("PrivateIpAddresses", []))
+
+    free = sorted(candidates - in_use)
+    if not free:
+        raise RuntimeError(f"No free private IP available in subnet {subnet['SubnetId']} ({subnet['CidrBlock']})")
+    ip = random.choice(free)
+    logging.info("Selected private IP %s for the slurmdbd instance in subnet %s", ip, subnet["SubnetId"])
+    return ip
+
+
 @pytest.fixture(scope="class")
 def slurm_dbd(request, database, region, os, vpc_stack_for_database, munge_key):
     stack_factory = CfnStacksFactory(request.config.getoption("credential"))
@@ -179,10 +200,10 @@ def slurm_dbd(request, database, region, os, vpc_stack_for_database, munge_key):
         slurm_dbd_stack_template_path = "../../cloudformation/external-slurmdbd/external-slurmdbd.json"
         logging.info("Creating stack %s", slurm_dbd_stack_name)
         subnet_id = vpc_stack_for_database.get_public_subnet()
-        subnet = boto3.client("ec2", region_name=region).describe_subnets(SubnetIds=[subnet_id])["Subnets"][0]
+        ec2_client = boto3.client("ec2", region_name=region)
+        subnet = ec2_client.describe_subnets(SubnetIds=[subnet_id])["Subnets"][0]
         vpc_id = subnet["VpcId"]
-        ipaddresses = ipaddress.IPv4Network(subnet["CidrBlock"])
-        ip = str(random.choice(list(ipaddresses)))
+        ip = _pick_free_private_ip(ec2_client, subnet)
         _, munge_key_secret_arn = munge_key
 
         with open(slurm_dbd_stack_template_path) as slurmdbd_template:
