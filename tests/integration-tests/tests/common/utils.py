@@ -46,7 +46,7 @@ NODE_TYPES = (HEAD_NODE, COMPUTE_NODE, LOGIN_NODE)
 # compute node. Used by multiple tests to validate GPU workloads.
 GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
 
-RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
+RHEL_OWNERS = ["309956199498", "841258680906", "219670896067", "255153437490", "279693163583"]
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2023": {"name": "al2023-ami-2023.*.*.*-kernel-6.1-*", "owners": ["amazon"]},
