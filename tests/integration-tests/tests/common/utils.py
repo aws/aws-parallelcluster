@@ -92,7 +92,7 @@ def run_gpu_workload(scheduler_commands, partition=None, samples=None, timeout=2
     return job_ids
 
 
-RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
+RHEL_OWNERS = ["309956199498", "841258680906", "219670896067", "255153437490", "279693163583"]
 
 # Regexes to extract a version from an AMI name, keyed by the name prefix that identifies the naming
 # convention. Within a single query the distro release is fixed, so a trailing build/serial is enough
