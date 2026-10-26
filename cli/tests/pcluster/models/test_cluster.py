@@ -988,7 +988,7 @@ class TestCluster:
 
     @pytest.mark.parametrize("operation", ["update", "update dryrun"])
     def test_log_templates(self, cluster, mocker, caplog, operation):
-        """Verify that, for each stack, the deployed template, the new one and their diff are logged, in this order."""
+        """Verify that the diff of each stack is logged, and the new template of a stack that is not deployed."""
         describe_mock = self._mock_deployed_stacks(mocker)
 
         with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
@@ -998,23 +998,17 @@ class TestCluster:
         tag = f"[{operation}]"
         assert_that([message.split(":\n", 1)[0] for message in messages]).is_equal_to(
             [
-                f"{tag} Deployed CloudFormation template of the cluster stack",
-                f"{tag} New CloudFormation template of the cluster stack",
                 f"{tag} Diff of the CloudFormation template of the cluster stack",
-                f"{tag} Deployed CloudFormation template of the nested stack Queues",
-                f"{tag} New CloudFormation template of the nested stack Queues",
                 f"{tag} Diff of the CloudFormation template of the nested stack Queues",
-                # LoginNodes is a new nested stack: it has no deployed template.
+                # LoginNodes is a new nested stack: it has no deployed template to compare with.
                 f"{tag} New CloudFormation template of the nested stack LoginNodes",
             ]
         )
-        assert_that(messages[0]).ends_with(self._compact(self._DEPLOYED_ROOT))
-        assert_that(messages[1]).ends_with(self._compact(self._NEW_ROOT))
-        root_diff = messages[2].splitlines()
+        root_diff = messages[0].splitlines()
         assert_that(root_diff[1:3]).is_equal_to(["--- deployed cluster stack", "+++ new cluster stack"])
         assert_that(root_diff).contains('-        "InstanceType": "t3.micro"', '+        "InstanceType": "t3.large"')
-        assert_that(messages[5]).ends_with(":\nNo change")
-        assert_that(messages[6]).ends_with(self._compact(self._LOGIN))
+        assert_that(messages[1]).ends_with(":\nNo change")
+        assert_that(messages[2]).ends_with(self._compact(self._LOGIN))
         describe_mock.assert_called_once_with(FAKE_NAME)
 
     def test_log_templates_when_deployed_template_unreadable(self, cluster, mocker, caplog):

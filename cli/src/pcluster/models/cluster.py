@@ -989,10 +989,10 @@ class Cluster:
 
     def _log_templates(self, template_body: dict, assets_metadata: Optional[list], operation: str):
         """
-        Log, for the cluster stack and each of its nested stacks, the deployed template, the new one and their diff.
+        Log, for the cluster stack and each of its nested stacks, the diff between the deployed and new templates.
 
-        The messages start with the ``operation`` (e.g. update, update dryrun). The templates are logged as compact
-        JSON. A failure to read a deployed template is only logged: the new template is logged without it.
+        The messages start with the ``operation`` (e.g. update, update dryrun). A failure to read a deployed template
+        is only logged: the new template is then logged as compact JSON instead of the diff.
         """
         tag = f"[{operation}]"
         nested_templates = {
@@ -1257,11 +1257,15 @@ class Cluster:
 
 
 def _log_stack_templates(tag: str, stack_label: str, deployed_template: Optional[dict], new_template: dict):
-    """Log the deployed template of a stack, if any, its new template and, if deployed, the diff between them."""
-    if deployed_template is not None:
-        _log_template(f"{tag} Deployed CloudFormation template of the {stack_label}", deployed_template)
-    _log_template(f"{tag} New CloudFormation template of the {stack_label}", new_template)
-    if deployed_template is not None:
+    """
+    Log the diff between the deployed and new templates of a stack.
+
+    Without a deployed template to compare with (a new nested stack, or one that cannot be read), the new template is
+    logged instead.
+    """
+    if deployed_template is None:
+        _log_template(f"{tag} New CloudFormation template of the {stack_label}", new_template)
+    else:
         diff = unified_diff(
             _template_lines(deployed_template),
             _template_lines(new_template),
