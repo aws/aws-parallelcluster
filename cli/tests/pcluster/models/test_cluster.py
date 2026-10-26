@@ -10,6 +10,7 @@
 # limitations under the License.
 import datetime
 import json
+import logging
 from copy import deepcopy
 from unittest.mock import PropertyMock
 
@@ -25,6 +26,7 @@ from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
+from pcluster.models import cluster as cluster_module
 from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
@@ -946,6 +948,185 @@ class TestCluster:
                 # Verify that additional_instance_types_data was set when valid JSON provided
                 expected_data = json.loads(cluster_config_dict["DevSettings"]["InstanceTypesData"])
                 mock_api_instance.return_value.ec2.additional_instance_types_data = expected_data
+
+    _DEPLOYED_ROOT = {
+        "Resources": {
+            "Queues": {"Type": "AWS::CloudFormation::Stack", "Properties": {"TemplateURL": "old"}},
+            "HeadNode": {"Type": "AWS::EC2::Instance", "Properties": {"InstanceType": "t3.micro"}},
+        }
+    }
+    _NEW_ROOT = {
+        "Resources": {
+            "Queues": {"Type": "AWS::CloudFormation::Stack", "Properties": {"TemplateURL": {"Ref": "QueuesKey"}}},
+            "LoginNodes": {"Type": "AWS::CloudFormation::Stack", "Properties": {"TemplateURL": {"Ref": "LoginKey"}}},
+            "HeadNode": {"Type": "AWS::EC2::Instance", "Properties": {"InstanceType": "t3.large"}},
+        }
+    }
+    _QUEUES = {"Resources": {"LaunchTemplate": {"Type": "AWS::EC2::LaunchTemplate"}}}
+    _LOGIN = {"Resources": {"LoginLaunchTemplate": {"Type": "AWS::EC2::LaunchTemplate"}}}
+    _ASSETS = [
+        {"s3_object_key_parameter": {"key": "QueuesKey"}, "content": _QUEUES},
+        {"s3_object_key_parameter": {"key": "LoginKey"}, "content": _LOGIN},
+    ]
+
+    @staticmethod
+    def _compact(template):
+        return json.dumps(template, separators=(",", ":"))
+
+    def _mock_deployed_stacks(self, mocker, root_error=None):
+        mock_aws_api(mocker)
+        deployed = {FAKE_NAME: yaml.safe_dump(self._DEPLOYED_ROOT, sort_keys=False), "queues-stack-id": self._QUEUES}
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_template",
+            side_effect=root_error if root_error else lambda stack_id: deployed[stack_id],
+        )
+        # The dummy CFN client of mock_aws_api overrides describe_stack_resources.
+        return mocker.patch(
+            "tests.pcluster.aws.dummy_aws_api._DummyCfnClient.describe_stack_resources",
+            return_value={"Queues": {"PhysicalResourceId": "queues-stack-id"}},
+        )
+
+    @pytest.mark.parametrize("operation", ["update", "update dryrun"])
+    def test_log_templates(self, cluster, mocker, caplog, operation):
+        """Verify that, for each stack, the deployed template, the new one and their diff are logged, in this order."""
+        describe_mock = self._mock_deployed_stacks(mocker)
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, operation)
+
+        messages = [record.getMessage() for record in caplog.records]
+        tag = f"[{operation}]"
+        assert_that([message.split(":\n", 1)[0] for message in messages]).is_equal_to(
+            [
+                f"{tag} Deployed CloudFormation template of the cluster stack",
+                f"{tag} New CloudFormation template of the cluster stack",
+                f"{tag} Diff of the CloudFormation template of the cluster stack",
+                f"{tag} Deployed CloudFormation template of the nested stack Queues",
+                f"{tag} New CloudFormation template of the nested stack Queues",
+                f"{tag} Diff of the CloudFormation template of the nested stack Queues",
+                # LoginNodes is a new nested stack: it has no deployed template.
+                f"{tag} New CloudFormation template of the nested stack LoginNodes",
+            ]
+        )
+        assert_that(messages[0]).ends_with(self._compact(self._DEPLOYED_ROOT))
+        assert_that(messages[1]).ends_with(self._compact(self._NEW_ROOT))
+        root_diff = messages[2].splitlines()
+        assert_that(root_diff[1:3]).is_equal_to(["--- deployed cluster stack", "+++ new cluster stack"])
+        assert_that(root_diff).contains('-        "InstanceType": "t3.micro"', '+        "InstanceType": "t3.large"')
+        assert_that(messages[5]).ends_with(":\nNo change")
+        assert_that(messages[6]).ends_with(self._compact(self._LOGIN))
+        describe_mock.assert_called_once_with(FAKE_NAME)
+
+    def test_log_templates_when_deployed_template_unreadable(self, cluster, mocker, caplog):
+        """Verify that the new templates are logged even when the deployed ones cannot be read."""
+        self._mock_deployed_stacks(
+            mocker, root_error=AWSClientError(function_name="get_template", message="Access denied")
+        )
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
+
+        assert_that(
+            [(record.levelname, record.getMessage().split(":\n", 1)[0]) for record in caplog.records]
+        ).is_equal_to(
+            [
+                (
+                    "WARNING",
+                    "Unable to read the deployed CloudFormation template of the cluster stack: Access denied",
+                ),
+                ("INFO", "[update] New CloudFormation template of the cluster stack"),
+                ("INFO", "[update] New CloudFormation template of the nested stack Queues"),
+                ("INFO", "[update] New CloudFormation template of the nested stack LoginNodes"),
+            ]
+        )
+
+    def test_log_template_in_parts(self, mocker, caplog):
+        """Verify that a template longer than the part size is logged in numbered parts that join into it."""
+        mocker.patch("pcluster.models.cluster.TEMPLATE_LOG_PART_SIZE", 10)
+        template = {"Resources": {"HeadNode": {"Type": "AWS::EC2::Instance"}}}
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster_module._log_template("Title", template)
+
+        messages = [record.getMessage() for record in caplog.records]
+        text = self._compact(template)
+        count = -(-len(text) // 10)
+        assert_that(messages).is_length(count)
+        for index, message in enumerate(messages, start=1):
+            assert_that(message).starts_with("Title (part {}/{}):\n".format(index, count))
+        assert_that("".join(message.split(":\n", 1)[1] for message in messages)).is_equal_to(text)
+
+    def test_logged_text_redacts_presigned_urls(self, caplog):
+        template = {
+            "Resources": {
+                "Handle": {
+                    "Value": "https://bucket.s3.amazonaws.com/key?X-Amz-Algorithm=AWS4&X-Amz-Credential=AKIA&"
+                    "X-Amz-Security-Token=secret&X-Amz-Signature=abc"
+                }
+            }
+        }
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster_module._log_template("Title", template)
+
+        message = caplog.records[0].getMessage()
+        assert_that(message).contains("https://bucket.s3.amazonaws.com/key?<redacted>")
+        assert_that(message).does_not_contain("secret")
+
+    @pytest.mark.parametrize("cluster_template", [None, "s3://bucket/template.yaml"])
+    def test_dryrun_update(self, cluster, mocker, cluster_template):
+        """Verify that the dryrun builds and logs the templates without uploading or updating anything."""
+        target_config = mocker.MagicMock()
+        target_config.dev_settings = mocker.MagicMock(cluster_template=cluster_template) if cluster_template else None
+        mocker.patch("pcluster.models.cluster.start_cdk_import")
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_update_request",
+            return_value=(target_config, ["changes"], ["failures"]),
+        )
+        mocker.patch("pcluster.models.cluster.Cluster._add_tags")
+        build_mock = mocker.patch(
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
+            return_value=({"Resources": {}}, ["assets"]),
+        )
+        log_mock = mocker.patch("pcluster.models.cluster.Cluster._log_templates")
+        side_effect_mocks = [
+            mocker.patch(f"pcluster.models.cluster.Cluster.{method}")
+            for method in ("_upload_config", "_upload_instance_types_data", "_upload_change_set", "_upload_artifacts")
+        ]
+        update_stack_mock = mocker.patch("pcluster.aws.cfn.CfnClient.update_stack_from_url")
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value="log-group"
+        )
+
+        assert_that(cluster.dryrun_update("target config")).is_equal_to((["changes"], ["failures"]))
+
+        if cluster_template:
+            build_mock.assert_not_called()
+            log_mock.assert_not_called()
+        else:
+            _, kwargs = build_mock.call_args
+            assert_that(kwargs["cluster_config"]).is_same_as(target_config)
+            assert_that(kwargs["log_group_name"]).is_equal_to("log-group")
+            assert_that(kwargs["upload_assets"]).is_false()
+            log_mock.assert_called_once_with({"Resources": {}}, ["assets"], "update dryrun")
+        for side_effect_mock in side_effect_mocks + [update_stack_mock]:
+            side_effect_mock.assert_not_called()
+
+    def test_dryrun_update_maps_template_errors(self, cluster, mocker):
+        """Verify that a failure to build the templates is reported as a cluster action error."""
+        target_config = mocker.MagicMock(dev_settings=None)
+        mocker.patch("pcluster.models.cluster.start_cdk_import")
+        mocker.patch("pcluster.models.cluster.Cluster.validate_update_request", return_value=(target_config, [], []))
+        mocker.patch("pcluster.models.cluster.Cluster._add_tags")
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value=None
+        )
+        mocker.patch(
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template", side_effect=RuntimeError("cdk failed")
+        )
+
+        with pytest.raises(ClusterActionError, match="Cluster update dryrun failed.\ncdk failed"):
+            cluster.dryrun_update("target config")
 
 
 OLD_CONFIGURATION = """

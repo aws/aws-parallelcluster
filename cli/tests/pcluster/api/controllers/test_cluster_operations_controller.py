@@ -1913,11 +1913,12 @@ class TestUpdateCluster:
                 None,
             ],
         ]
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.validate_update_request",
+        dryrun_mock = mocker.patch(
+            "pcluster.models.cluster.Cluster.dryrun_update",
             autospec=True,
-            return_value=(None, changes, errors),
+            return_value=(changes, errors),
         )
+        update_mock = mocker.patch("pcluster.models.cluster.Cluster.update", autospec=True)
 
         update_cluster_request_content = {
             "region": "us-east-1",
@@ -1931,6 +1932,8 @@ class TestUpdateCluster:
             update_cluster_request_content=update_cluster_request_content,
             dryrun=True,
         )
+        dryrun_mock.assert_called_once()
+        update_mock.assert_not_called()
 
         expected_response = {
             "message": "Request would have succeeded, but DryRun flag is set.",

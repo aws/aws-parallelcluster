@@ -378,7 +378,7 @@ def update_cluster(
             )
 
         if dryrun:
-            _, changes, ignored_validation_failures = cluster.validate_update_request(
+            changes, ignored_validation_failures = cluster.dryrun_update(
                 target_source_config=cluster_config,
                 force=force_update,
                 validator_suppressors=get_validator_suppressors(suppress_validators),
