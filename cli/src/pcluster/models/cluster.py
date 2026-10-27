@@ -905,7 +905,7 @@ class Cluster:
                     stack_name=self.stack_name,
                     log_group_name=self.stack.log_group_name,
                 )
-                self._log_templates(self.template_body, assets_metadata, "update")
+                self._log_templates_best_effort(self.template_body, assets_metadata, "update")
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
@@ -960,6 +960,14 @@ class Cluster:
                 log_group_name=self.stack.log_group_name,
                 upload_assets=False,
             )
+        except Exception as e:
+            LOGGER.warning("Unable to log the CloudFormation templates of the %s: %s", operation, e)
+            return
+        self._log_templates_best_effort(template_body, assets_metadata, operation)
+
+    def _log_templates_best_effort(self, template_body: dict, assets_metadata: Optional[list], operation: str):
+        """Log the templates diff (see ``_log_templates``), logging any failure as a warning instead of raising it."""
+        try:
             self._log_templates(template_body, assets_metadata, operation)
         except Exception as e:
             LOGGER.warning("Unable to log the CloudFormation templates of the %s: %s", operation, e)

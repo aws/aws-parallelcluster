@@ -1067,6 +1067,63 @@ class TestCluster:
         assert_that(message).contains("https://bucket.s3.amazonaws.com/key?<redacted>")
         assert_that(message).does_not_contain("secret")
 
+    @pytest.mark.parametrize("log_error", [None, RuntimeError("unexpected")])
+    def test_update_logs_templates_best_effort(self, cluster, mocker, caplog, log_error):
+        """Verify that the update logs the templates diff before updating the stack, and goes on if logging fails."""
+        mock_aws_api(mocker)
+        target_config = mocker.MagicMock(dev_settings=None)
+        mocker.patch("pcluster.models.cluster.start_cdk_import")
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_update_request",
+            return_value=(target_config, ["changes"], ["failures"]),
+        )
+        for method in (
+            "_add_tags",
+            "_upload_config",
+            "_upload_instance_types_data",
+            "_upload_change_set",
+            "_upload_artifacts",
+        ):
+            mocker.patch(f"pcluster.models.cluster.Cluster.{method}")
+        mocker.patch("pcluster.models.cluster.Cluster._get_cfn_tags", return_value=[])
+        mocker.patch(
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
+            return_value=({"Resources": {}}, []),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value="log-group"
+        )
+        mocker.patch(
+            "pcluster.models.s3_bucket.S3Bucket.get_cfn_template_url", return_value="https://bucket/template.yaml"
+        )
+        calls = []
+
+        def log_templates(*_args):
+            calls.append("log")
+            if log_error:
+                raise log_error
+
+        log_mock = mocker.patch("pcluster.models.cluster.Cluster._log_templates", side_effect=log_templates)
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.update_stack_from_url",
+            side_effect=lambda **kwargs: calls.append("update_stack"),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value={"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"},
+        )
+
+        with caplog.at_level(logging.WARNING, logger="pcluster.models.cluster"):
+            assert_that(cluster.update("target config")).is_equal_to((["changes"], ["failures"]))
+
+        log_mock.assert_called_once_with({"Resources": {}}, [], "update")
+        # The templates are logged before the stack is updated: the deployed ones are those before the update.
+        assert_that(calls).is_equal_to(["log", "update_stack"])
+        warnings = [record.getMessage() for record in caplog.records if record.levelname == "WARNING"]
+        assert_that(warnings).is_equal_to(
+            ["Unable to log the CloudFormation templates of the update: unexpected"] if log_error else []
+        )
+
     @pytest.mark.parametrize("cluster_template", [None, "s3://bucket/template.yaml"])
     def test_log_update_templates(self, cluster, mocker, cluster_template):
         """Verify that the target config templates are built and logged, without uploading or changing anything."""
