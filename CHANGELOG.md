@@ -5,8 +5,8 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Log the diff between the deployed and the new CloudFormation templates of the cluster on `update-cluster`, also with
-  `--dryrun`: to the `pcluster` CLI log file, or to the CloudWatch logs of the ParallelCluster API.
+- Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
+  dryrun. The diff is logged in the CLI log file or the API Lambda logs.
 
 3.16.2
 ------
