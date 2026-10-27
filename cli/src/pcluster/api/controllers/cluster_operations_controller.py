@@ -378,12 +378,13 @@ def update_cluster(
             )
 
         if dryrun:
-            changes, ignored_validation_failures = cluster.dryrun_update(
+            target_config, changes, ignored_validation_failures = cluster.validate_update_request(
                 target_source_config=cluster_config,
                 force=force_update,
                 validator_suppressors=get_validator_suppressors(suppress_validators),
                 validation_failure_level=FailureLevel[validation_failure_level],
             )
+            cluster.log_update_templates(target_config, "update dryrun")
             change_set, _ = _analyze_changes(changes)
             validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
             raise DryrunOperationException(change_set=change_set, validation_messages=validation_messages or None)

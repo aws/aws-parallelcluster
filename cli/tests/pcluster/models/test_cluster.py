@@ -1068,16 +1068,10 @@ class TestCluster:
         assert_that(message).does_not_contain("secret")
 
     @pytest.mark.parametrize("cluster_template", [None, "s3://bucket/template.yaml"])
-    def test_dryrun_update(self, cluster, mocker, cluster_template):
-        """Verify that the dryrun builds and logs the templates without uploading or updating anything."""
-        target_config = mocker.MagicMock()
+    def test_log_update_templates(self, cluster, mocker, cluster_template):
+        """Verify that the target config templates are built and logged, without uploading or changing anything."""
+        target_config = mocker.MagicMock(tags=None)
         target_config.dev_settings = mocker.MagicMock(cluster_template=cluster_template) if cluster_template else None
-        mocker.patch("pcluster.models.cluster.start_cdk_import")
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.validate_update_request",
-            return_value=(target_config, ["changes"], ["failures"]),
-        )
-        mocker.patch("pcluster.models.cluster.Cluster._add_tags")
         build_mock = mocker.patch(
             "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
             return_value=({"Resources": {}}, ["assets"]),
@@ -1091,8 +1085,9 @@ class TestCluster:
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value="log-group"
         )
+        mocker.patch("pcluster.models.cluster.get_installed_version", return_value="3.17.0")
 
-        assert_that(cluster.dryrun_update("target config")).is_equal_to((["changes"], ["failures"]))
+        cluster.log_update_templates(target_config, "update dryrun")
 
         if cluster_template:
             build_mock.assert_not_called()
@@ -1102,16 +1097,17 @@ class TestCluster:
             assert_that(kwargs["cluster_config"]).is_same_as(target_config)
             assert_that(kwargs["log_group_name"]).is_equal_to("log-group")
             assert_that(kwargs["upload_assets"]).is_false()
+            # The tags are added to the target config, not to the config of the cluster.
+            assert_that({tag.key: tag.value for tag in target_config.tags}).is_equal_to(
+                {PCLUSTER_CLUSTER_NAME_TAG: FAKE_NAME, PCLUSTER_VERSION_TAG: "3.17.0"}
+            )
             log_mock.assert_called_once_with({"Resources": {}}, ["assets"], "update dryrun")
         for side_effect_mock in side_effect_mocks + [update_stack_mock]:
             side_effect_mock.assert_not_called()
 
-    def test_dryrun_update_maps_template_errors(self, cluster, mocker):
-        """Verify that a failure to build the templates is reported as a cluster action error."""
-        target_config = mocker.MagicMock(dev_settings=None)
-        mocker.patch("pcluster.models.cluster.start_cdk_import")
-        mocker.patch("pcluster.models.cluster.Cluster.validate_update_request", return_value=(target_config, [], []))
-        mocker.patch("pcluster.models.cluster.Cluster._add_tags")
+    def test_log_update_templates_failure_is_a_warning(self, cluster, mocker, caplog):
+        """Verify that a failure to build or log the templates is only logged as a warning."""
+        target_config = mocker.MagicMock(dev_settings=None, tags=None)
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value=None
         )
@@ -1119,8 +1115,12 @@ class TestCluster:
             "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template", side_effect=RuntimeError("cdk failed")
         )
 
-        with pytest.raises(ClusterActionError, match="Cluster update dryrun failed.\ncdk failed"):
-            cluster.dryrun_update("target config")
+        with caplog.at_level(logging.WARNING, logger="pcluster.models.cluster"):
+            cluster.log_update_templates(target_config, "update dryrun")
+
+        assert_that([record.getMessage() for record in caplog.records]).is_equal_to(
+            ["Unable to log the CloudFormation templates of the update dryrun: cdk failed"]
+        )
 
 
 OLD_CONFIGURATION = """

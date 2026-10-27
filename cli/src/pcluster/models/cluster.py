@@ -940,52 +940,29 @@ class Cluster:
             LOGGER.critical(e)
             raise _cluster_error_mapper(e, f"Cluster update failed.\n{e}")
 
-    def dryrun_update(
-        self,
-        target_source_config: str,
-        validator_suppressors: Set[ValidatorSuppressor] = None,
-        validation_failure_level: FailureLevel = FailureLevel.ERROR,
-        force: bool = False,
-    ):
+    def log_update_templates(self, target_config: BaseClusterConfig, operation: str):
         """
-        Validate a cluster update and log the CloudFormation templates it would deploy, without changing anything.
+        Log the diff between the deployed CloudFormation templates and the ones generated from ``target_config``.
 
-        The templates are built as for an update, but nothing is uploaded to the cluster bucket: the templates do not
-        carry the S3 versions of the target config, which is only uploaded by the update.
-
-        raises ClusterActionError: in case of generic error
-        raises ConfigValidationError: if configuration is invalid
-        raises ClusterUpdateError: if update is not allowed
+        Nothing is uploaded to the cluster bucket and the cluster is left unchanged: this only reads, to log what an
+        update to ``target_config`` would change in the stacks. Any failure is logged as a warning, so that it does not
+        change the outcome of the caller, e.g. an update dryrun.
         """
-        start_cdk_import()
+        # The template is only generated when not provided by the user
+        if target_config.dev_settings and target_config.dev_settings.cluster_template:
+            return
         try:
-            target_config, changes, ignored_validation_failures = self.validate_update_request(
-                target_source_config, validator_suppressors, validation_failure_level, force
+            self._add_tags(target_config)
+            template_body, assets_metadata = CDKTemplateBuilder().build_cluster_template(
+                cluster_config=target_config,
+                bucket=self.bucket,
+                stack_name=self.stack_name,
+                log_group_name=self.stack.log_group_name,
+                upload_assets=False,
             )
-
-            self.config = target_config
-            self.__source_config_text = target_source_config
-            self._add_tags()
-
-            # The template is only generated when not provided by the user
-            if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
-                template_body, assets_metadata = CDKTemplateBuilder().build_cluster_template(
-                    cluster_config=self.config,
-                    bucket=self.bucket,
-                    stack_name=self.stack_name,
-                    log_group_name=self.stack.log_group_name,
-                    upload_assets=False,
-                )
-                self._log_templates(template_body, assets_metadata, "update dryrun")
-
-            return changes, ignored_validation_failures
-
-        except ClusterActionError as e:
-            # It can be a ConfigValidationError or ClusterUpdateError
-            raise e
+            self._log_templates(template_body, assets_metadata, operation)
         except Exception as e:
-            LOGGER.critical(e)
-            raise _cluster_error_mapper(e, f"Cluster update dryrun failed.\n{e}")
+            LOGGER.warning("Unable to log the CloudFormation templates of the %s: %s", operation, e)
 
     def _log_templates(self, template_body: dict, assets_metadata: Optional[list], operation: str):
         """
@@ -1035,19 +1012,20 @@ class Cluster:
             LOGGER.warning("Unable to read the resources of the cluster stack: %s", e)
             return {}
 
-    def _add_tags(self):
-        """Add tags PCLUSTER_CLUSTER_NAME_TAG and PCLUSTER_VERSION_TAG to the attribute config.tags."""
-        if self.config.tags is None:
-            self.config.tags = []
+    def _add_tags(self, config: BaseClusterConfig = None):
+        """Add tags PCLUSTER_CLUSTER_NAME_TAG and PCLUSTER_VERSION_TAG to config.tags (default: the cluster config)."""
+        config = config or self.config
+        if config.tags is None:
+            config.tags = []
 
         # List of tags to be added to the cluster
         tags = {PCLUSTER_CLUSTER_NAME_TAG: self.name, PCLUSTER_VERSION_TAG: get_installed_version()}
 
         # Remove tags if they already exist
-        self.config.tags = [tag for tag in self.config.tags if tag.key not in tags]
+        config.tags = [tag for tag in config.tags if tag.key not in tags]
 
         # Add the tags
-        self.config.tags += [Tag(key=tag_key, value=tag_value) for tag_key, tag_value in tags.items()]
+        config.tags += [Tag(key=tag_key, value=tag_value) for tag_key, tag_value in tags.items()]
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""

@@ -1913,11 +1913,13 @@ class TestUpdateCluster:
                 None,
             ],
         ]
-        dryrun_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster.dryrun_update",
+        target_config = object()
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_update_request",
             autospec=True,
-            return_value=(changes, errors),
+            return_value=(target_config, changes, errors),
         )
+        log_mock = mocker.patch("pcluster.models.cluster.Cluster.log_update_templates", autospec=True)
         update_mock = mocker.patch("pcluster.models.cluster.Cluster.update", autospec=True)
 
         update_cluster_request_content = {
@@ -1932,7 +1934,8 @@ class TestUpdateCluster:
             update_cluster_request_content=update_cluster_request_content,
             dryrun=True,
         )
-        dryrun_mock.assert_called_once()
+        _, *log_args = log_mock.call_args.args
+        assert_that(log_args).is_equal_to([target_config, "update dryrun"])
         update_mock.assert_not_called()
 
         expected_response = {
