@@ -90,7 +90,7 @@ _NESTED_STACK_RESOURCE_TYPE = "AWS::CloudFormation::Stack"
 
 # Maximum characters of a template logged in one message. Templates are logged in parts so that each message, once
 # escaped in a JSON log event (e.g. by the API Lambda logger), stays under the 256 KB limit of a CloudWatch Logs event.
-TEMPLATE_LOG_PART_SIZE = 150_000
+_TEMPLATE_LOG_PART_SIZE = 150_000
 
 # pylint: disable=C0302
 
@@ -976,17 +976,21 @@ class Cluster:
         """
         Log, for the cluster stack and each of its nested stacks, the diff between the deployed and new templates.
 
-        The messages start with the ``operation`` (e.g. update, update dryrun). A failure to read a deployed template
-        is only logged: the new template is then logged as compact JSON instead of the diff.
+        The messages start with the ``operation`` (e.g. update, update dryrun). A new nested stack, which has no
+        deployed template, gets its new template logged as compact JSON. A deployed template that cannot be read is
+        only reported with a warning: no diff is logged for its stack, nor for the nested stacks when it is the one of
+        the cluster stack.
         """
         tag = f"[{operation}]"
         nested_templates = {
             asset["s3_object_key_parameter"]["key"]: asset["content"] for asset in (assets_metadata or [])
         }
         deployed_template = self._deployed_template(self.stack_name, "cluster stack")
-        _log_stack_templates(tag, "cluster stack", deployed_template, template_body)
+        if deployed_template is None:
+            return
+        _log_template_diff(tag, "cluster stack", deployed_template, template_body)
 
-        deployed_resources = (deployed_template or {}).get("Resources") or {}
+        deployed_resources = deployed_template.get("Resources") or {}
         stack_resources = None
         for logical_id, resource in (template_body.get("Resources") or {}).items():
             if resource.get("Type") != _NESTED_STACK_RESOURCE_TYPE:
@@ -994,14 +998,18 @@ class Cluster:
             new_nested_template = _nested_stack_template(resource, nested_templates)
             if new_nested_template is None:
                 continue
-            deployed_nested_template = None
-            if logical_id in deployed_resources:
-                if stack_resources is None:
-                    stack_resources = self._stack_resources()
-                nested_stack_id = (stack_resources.get(logical_id) or {}).get("PhysicalResourceId")
-                if nested_stack_id:
-                    deployed_nested_template = self._deployed_template(nested_stack_id, f"nested stack {logical_id}")
-            _log_stack_templates(tag, f"nested stack {logical_id}", deployed_nested_template, new_nested_template)
+            stack_label = f"nested stack {logical_id}"
+            if logical_id not in deployed_resources:
+                _log_template(f"{tag} New CloudFormation template of the {stack_label}", new_nested_template)
+                continue
+            if stack_resources is None:
+                stack_resources = self._stack_resources()
+            nested_stack_id = (stack_resources.get(logical_id) or {}).get("PhysicalResourceId")
+            deployed_nested_template = (
+                self._deployed_template(nested_stack_id, stack_label) if nested_stack_id else None
+            )
+            if deployed_nested_template is not None:
+                _log_template_diff(tag, stack_label, deployed_nested_template, new_nested_template)
 
     @staticmethod
     def _deployed_template(stack_id: str, stack_label: str) -> Optional[dict]:
@@ -1242,35 +1250,27 @@ class Cluster:
         return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.stack_name)
 
 
-def _log_stack_templates(tag: str, stack_label: str, deployed_template: Optional[dict], new_template: dict):
-    """
-    Log the diff between the deployed and new templates of a stack.
-
-    Without a deployed template to compare with (a new nested stack, or one that cannot be read), the new template is
-    logged instead.
-    """
-    if deployed_template is None:
-        _log_template(f"{tag} New CloudFormation template of the {stack_label}", new_template)
-    else:
-        diff = unified_diff(
-            _template_lines(deployed_template),
-            _template_lines(new_template),
-            fromfile=f"deployed {stack_label}",
-            tofile=f"new {stack_label}",
-            lineterm="",
-        )
-        _log_text(f"{tag} Diff of the CloudFormation template of the {stack_label}", "\n".join(diff) or "No change")
+def _log_template_diff(tag: str, stack_label: str, deployed_template: dict, new_template: dict):
+    """Log the diff between the deployed and new templates of a stack, or "No change"."""
+    diff = unified_diff(
+        _template_lines(deployed_template),
+        _template_lines(new_template),
+        fromfile=f"deployed {stack_label}",
+        tofile=f"new {stack_label}",
+        lineterm="",
+    )
+    _log_text(f"{tag} Diff of the CloudFormation template of the {stack_label}", "\n".join(diff) or "No change")
 
 
 def _log_template(title: str, template: dict):
-    """Log ``template`` as compact JSON, in numbered parts of at most TEMPLATE_LOG_PART_SIZE characters."""
+    """Log ``template`` as compact JSON, in numbered parts of at most _TEMPLATE_LOG_PART_SIZE characters."""
     _log_text(title, json.dumps(template, separators=(",", ":"), default=str))
 
 
 def _log_text(title: str, text: str):
-    """Log ``text`` with presigned URLs redacted, in numbered parts of at most TEMPLATE_LOG_PART_SIZE characters."""
+    """Log ``text`` with presigned URLs redacted, in numbered parts of at most _TEMPLATE_LOG_PART_SIZE characters."""
     text = _redact_presigned_urls(text)
-    starts = range(0, len(text), TEMPLATE_LOG_PART_SIZE)
+    starts = range(0, len(text), _TEMPLATE_LOG_PART_SIZE)
     parts = [text[start:end] for start, end in zip(starts, [*starts[1:], len(text)])]
     if len(parts) <= 1:
         LOGGER.info("%s:\n%s", title, text)

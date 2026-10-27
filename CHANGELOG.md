@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.17.0
+------
+
+**ENHANCEMENTS**
+- Log the diff between the deployed and the new CloudFormation templates of the cluster on `update-cluster`, also with
+  `--dryrun`: to the `pcluster` CLI log file, or to the CloudWatch logs of the ParallelCluster API.
+
 3.16.2
 ------
 

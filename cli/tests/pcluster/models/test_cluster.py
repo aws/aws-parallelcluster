@@ -1012,10 +1012,29 @@ class TestCluster:
         describe_mock.assert_called_once_with(FAKE_NAME)
 
     def test_log_templates_when_deployed_template_unreadable(self, cluster, mocker, caplog):
-        """Verify that the new templates are logged even when the deployed ones cannot be read."""
+        """Verify that only a warning is logged when the deployed template of the cluster stack cannot be read."""
         self._mock_deployed_stacks(
             mocker, root_error=AWSClientError(function_name="get_template", message="Access denied")
         )
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
+
+        assert_that([(record.levelname, record.getMessage()) for record in caplog.records]).is_equal_to(
+            [("WARNING", "Unable to read the deployed CloudFormation template of the cluster stack: Access denied")]
+        )
+
+    def test_log_templates_when_deployed_nested_template_unreadable(self, cluster, mocker, caplog):
+        """Verify that a nested stack whose deployed template cannot be read only gets a warning."""
+        self._mock_deployed_stacks(mocker)
+        deployed = {FAKE_NAME: yaml.safe_dump(self._DEPLOYED_ROOT, sort_keys=False)}
+
+        def get_template(stack_id):
+            if stack_id not in deployed:
+                raise AWSClientError(function_name="get_template", message="Access denied")
+            return deployed[stack_id]
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_template", side_effect=get_template)
 
         with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
             cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
@@ -1024,19 +1043,18 @@ class TestCluster:
             [(record.levelname, record.getMessage().split(":\n", 1)[0]) for record in caplog.records]
         ).is_equal_to(
             [
+                ("INFO", "[update] Diff of the CloudFormation template of the cluster stack"),
                 (
                     "WARNING",
-                    "Unable to read the deployed CloudFormation template of the cluster stack: Access denied",
+                    "Unable to read the deployed CloudFormation template of the nested stack Queues: Access denied",
                 ),
-                ("INFO", "[update] New CloudFormation template of the cluster stack"),
-                ("INFO", "[update] New CloudFormation template of the nested stack Queues"),
                 ("INFO", "[update] New CloudFormation template of the nested stack LoginNodes"),
             ]
         )
 
     def test_log_template_in_parts(self, mocker, caplog):
         """Verify that a template longer than the part size is logged in numbered parts that join into it."""
-        mocker.patch("pcluster.models.cluster.TEMPLATE_LOG_PART_SIZE", 10)
+        mocker.patch("pcluster.models.cluster._TEMPLATE_LOG_PART_SIZE", 10)
         template = {"Resources": {"HeadNode": {"Type": "AWS::EC2::Instance"}}}
 
         with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
