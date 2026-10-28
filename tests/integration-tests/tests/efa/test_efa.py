@@ -21,7 +21,7 @@ from assertpy import assert_that, soft_assertions
 from cfn_stacks_factory import CfnStack
 from constants import REPOSITORY_ROOT
 from remote_command_executor import RemoteCommandExecutor
-from utils import generate_stack_name, get_compute_nodes_instance_ids, get_instance_info
+from utils import StackSetupError, generate_stack_name, get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
@@ -189,6 +189,9 @@ def _provision_efa_fsx_stack(region, request, vpc_stack, cfn_stacks_factory):
     stack is reused instead of creating a new one. Cleanup is handled by cfn_stacks_factory. Returns
     (fsx_fs_id, client_security_group_id) from the stack outputs; the client SG rides the cluster and the
     file-system SG (cross-referencing it) rides the file system.
+
+    Returns (None, None) when FSx has no capacity for the file system in the compute AZ: that AZ is pinned
+    by the capacity reservation, so the rest of the EFA test is still run rather than wasting it.
     """
     existing_stack_name = request.config.getoption("external_shared_storage_stack_name")
     if existing_stack_name:
@@ -221,7 +224,13 @@ def _provision_efa_fsx_stack(region, request, vpc_stack, cfn_stacks_factory):
             template=template,
             capabilities=["CAPABILITY_IAM"],
         )
-        cfn_stacks_factory.create_stack(stack)
+        try:
+            cfn_stacks_factory.create_stack(stack)
+        except StackSetupError as e:
+            if "insufficient capacity" not in str(e):
+                raise
+            logging.warning("Skipping the EFA-enabled FSx Lustre part of the test: %s", e)
+            return None, None
     return stack.cfn_outputs["EfaFsxLustreFsId"], stack.cfn_outputs["EfaFsxLustreClientSecurityGroupId"]
 
 
@@ -269,7 +278,8 @@ def test_efa(
     # https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorial-efa-enabled-fsx-lustre.html
     fsx_fs_id, efa_fsx_security_group_id = _provision_efa_fsx_stack(region, request, vpc_stack, cfn_stacks_factory)
 
-    supports_efa_for_fsx = _supports_efa_for_fsx(instance, os)
+    # Without a file system there is nothing to run the FSx EFA client setup for.
+    supports_efa_for_fsx = bool(fsx_fs_id) and _supports_efa_for_fsx(instance, os)
     bucket_name = None
     if supports_efa_for_fsx:
         bucket_name = request.getfixturevalue("s3_bucket_factory")()
@@ -337,6 +347,8 @@ def test_efa(
 
     # EFA-for-Lustre validation. Only instances that ran the FSx client setup can carry Lustre over efa; the
     # rest ride tcp. The data path is measured the same way either way, and the mount must work on both.
+    if not fsx_fs_id:
+        return
     with soft_assertions():
         if supports_efa_for_fsx:
             _test_efa_fsx_device_count(scheduler_commands, region, instance, partition="efa-enabled")
