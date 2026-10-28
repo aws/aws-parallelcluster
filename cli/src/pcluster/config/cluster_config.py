@@ -1624,6 +1624,11 @@ class BaseClusterConfig(Resource):
         # It is set during update to keep each mount target in its current subnet: EFS allows a single mount target
         # per AZ, so moving a mount target to another subnet of the same AZ would make the stack update fail.
         self.existing_efs_mount_target_subnets = {}
+        # Dictionary {file system logical id: subnet ids} with an entry for each FSx file system of the deployed stack,
+        # e.g. {"FSX3c9d7e6a8c2b1f05": ["subnet-12345678"]}.
+        # It is set during update to keep each managed FSx in its current subnet: changing the subnet of an FSx
+        # replaces the file system, deleting the existing one and its data.
+        self.existing_fsx_file_system_subnets = {}
         self.instance_types_data_version = ""
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
