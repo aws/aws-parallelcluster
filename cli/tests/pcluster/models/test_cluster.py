@@ -1009,7 +1009,8 @@ class TestCluster:
         assert_that(root_diff).contains('-        "InstanceType": "t3.micro"', '+        "InstanceType": "t3.large"')
         assert_that(messages[1]).ends_with(":\nNo change")
         assert_that(messages[2]).ends_with(self._compact(self._LOGIN))
-        describe_mock.assert_called_once_with(FAKE_NAME)
+        # Only the nested stack that is deployed is looked up, alone (DescribeStackResources returns 100 resources).
+        describe_mock.assert_called_once_with(FAKE_NAME, "Queues")
 
     def test_log_templates_when_deployed_template_unreadable(self, cluster, mocker, caplog):
         """Verify that only a warning is logged when the deployed template of the cluster stack cannot be read."""
@@ -1048,6 +1049,24 @@ class TestCluster:
                     "WARNING",
                     "Unable to read the deployed CloudFormation template of the nested stack Queues: Access denied",
                 ),
+                ("INFO", "[update] New CloudFormation template of the nested stack LoginNodes"),
+            ]
+        )
+
+    def test_log_templates_when_nested_stack_unreadable(self, cluster, mocker, caplog):
+        """Verify that a nested stack whose resource cannot be read only gets a warning."""
+        describe_mock = self._mock_deployed_stacks(mocker)
+        describe_mock.side_effect = AWSClientError(function_name="describe_stack_resources", message="Access denied")
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
+
+        assert_that(
+            [(record.levelname, record.getMessage().split(":\n", 1)[0]) for record in caplog.records]
+        ).is_equal_to(
+            [
+                ("INFO", "[update] Diff of the CloudFormation template of the cluster stack"),
+                ("WARNING", "Unable to read the nested stack Queues of the cluster stack: Access denied"),
                 ("INFO", "[update] New CloudFormation template of the nested stack LoginNodes"),
             ]
         )
@@ -1180,21 +1199,28 @@ class TestCluster:
         for side_effect_mock in side_effect_mocks + [update_stack_mock]:
             side_effect_mock.assert_not_called()
 
-    def test_log_update_templates_failure_is_a_warning(self, cluster, mocker, caplog):
+    @pytest.mark.parametrize("failing_step", ["build", "log"])
+    def test_log_update_templates_failure_is_a_warning(self, cluster, mocker, caplog, failing_step):
         """Verify that a failure to build or log the templates is only logged as a warning."""
         target_config = mocker.MagicMock(dev_settings=None, tags=None)
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value=None
         )
+        error = RuntimeError(f"{failing_step} failed")
         mocker.patch(
-            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template", side_effect=RuntimeError("cdk failed")
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
+            side_effect=error if failing_step == "build" else None,
+            return_value=({"Resources": {}}, []),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster._log_templates", side_effect=error if failing_step == "log" else None
         )
 
         with caplog.at_level(logging.WARNING, logger="pcluster.models.cluster"):
             cluster.log_update_templates(target_config, "update dryrun")
 
         assert_that([record.getMessage() for record in caplog.records]).is_equal_to(
-            ["Unable to log the CloudFormation templates of the update dryrun: cdk failed"]
+            [f"Unable to log the CloudFormation templates of the update dryrun: {failing_step} failed"]
         )
 
 
