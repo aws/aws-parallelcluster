@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.17.0
+------
+
+**BUG FIXES**
+- Fix IAM role and policy naming collisions by using a longer suffix derived from the stack ID (24 characters, from 8).
+
 3.16.2
 ------
 
