@@ -3,5 +3,5 @@ boto3
 cfn-flip
 cfn-lint
 jinja2~=3.0
-pytest
+pytest!=9.2.0
 PyYAML>=5.3.1,!=5.4
