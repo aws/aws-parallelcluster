@@ -4,7 +4,7 @@ aws-xray-sdk
 freezegun
 jinja2
 munch
-pytest
+pytest!=9.2.0
 pytest-cov
 pytest-datadir
 pytest-html
