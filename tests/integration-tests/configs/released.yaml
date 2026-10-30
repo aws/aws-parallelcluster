@@ -11,7 +11,7 @@ test-suites:
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
-        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_rhel8 }}]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_3_HOURS_NOPG_rhel8 }}]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
@@ -107,6 +107,9 @@ test-suites:
           oss: ["alinux2023"]
   # The patching test is currently expected to fail; it will be reintroduced once the
   # failure is fixed.
+  # The block is wrapped in a Jinja comment because the renderer ignores YAML comments
+  # and would still create its capacity reservations.
+  {#
   # patching:
   #   test_patching.py::test_patching_cluster:
   #     dimensions:
@@ -125,6 +128,7 @@ test-suites:
   #         oss: ["alinux2023"]
   #         schedulers: ["slurm"]
   #         flags: ["patching:full"]
+  #}
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_1_click:
       dimensions:
@@ -132,7 +136,7 @@ test-suites:
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
-        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_rhel8 }}]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_rhel8 }}] # 1 head node + 1 login node + 1 compute node
           instances: ["g4dn.2xlarge"]
           oss: ["rhel8"]
           schedulers: ["slurm"]
@@ -146,7 +150,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_alinux2023 }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2023 }}]
           instances: [ "c5n.18xlarge" ]
           oss: ["alinux2023"]
           schedulers: ["slurm"]
