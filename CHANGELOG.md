@@ -145,8 +145,8 @@ CHANGELOG
 - Fix cluster creation and update failures caused by IAM policy tag conditions that required the `parallelcluster:cluster-name`
   tag to be the only tag on a request rather than merely present. This affected clusters with login nodes as well as stack
   creation and updates when AWS or CloudFormation attached additional tags to the request.
-- Prevent a path traversal when downloading exported cluster and image logs, so a CloudWatch log stream name containing `../`
-  segments can no longer cause files to be written outside the export directory.
+- Prevent a path traversal in `export-cluster-logs` and `export-image-logs`, where a crafted S3 object key in the
+  log export bucket could cause files to be written outside the export directory on the machine running the command.
 - Return a clear error instead of an unexpected fatal exception when the configured AWS profile does not exist.
 - Cache getPolicy API calls to reduce validation time of clusters that have additional IAM policies.
 
