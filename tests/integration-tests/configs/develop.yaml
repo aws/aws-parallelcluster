@@ -240,12 +240,12 @@ test-suites:
     test_dcv.py::test_dcv_configuration:
       dimensions:
         # DCV on GPU enabled instance
-        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_1 }}]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_1 }}] # 1 head node + 1 login node + 1 compute node
           instances: ["g4dn.2xlarge"]
           oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
         # DCV on ARM + GPU
-        - regions: [{{ g5g_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_3 }}]
+        - regions: [{{ g5g_2xlarge_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_3 }}] # 1 head node + 1 login node + 1 compute node
           instances: ["g5g.2xlarge"]
           oss: [{{ DCV_OS_X86_3 }}]
           schedulers: ["slurm"]
