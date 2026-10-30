@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.17.0
+------
+
+**ENHANCEMENTS**
+- Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
+  dryrun. The diff is logged in the CLI log file or the API Lambda logs.
+
 3.16.2
 ------
 

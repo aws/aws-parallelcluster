@@ -141,6 +141,32 @@ class TestCfnClient:
         assert_that(stack).is_equal_to(expected_stack)
         sleep_mock.assert_called_with(5)
 
+    @pytest.mark.parametrize(
+        "logical_resource_id, expected_params",
+        [
+            (None, {"StackName": FAKE_NAME}),
+            ("Queues", {"StackName": FAKE_NAME, "LogicalResourceId": "Queues"}),
+        ],
+    )
+    def test_describe_stack_resources(self, boto3_stubber, logical_resource_id, expected_params):
+        resource = {
+            "LogicalResourceId": "Queues",
+            "PhysicalResourceId": "queues-stack-id",
+            "ResourceType": "AWS::CloudFormation::Stack",
+            "Timestamp": datetime(2026, 10, 28),
+            "ResourceStatus": "UPDATE_COMPLETE",
+        }
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_stack_resources",
+                response={"StackResources": [resource]},
+                expected_params=expected_params,
+            ),
+        ]
+        boto3_stubber("cloudformation", mocked_requests)
+        resources = CfnClient().describe_stack_resources(FAKE_NAME, logical_resource_id)
+        assert_that(resources).is_equal_to({"Queues": resource})
+
     def test_verify_stack_status_retry(self, boto3_stubber, mocker):
         sleep_mock = mocker.patch("pcluster.aws.common.time.sleep")
         mocker.patch(

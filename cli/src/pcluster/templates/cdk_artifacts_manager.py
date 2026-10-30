@@ -110,9 +110,11 @@ class CDKArtifactsManager:
         """Return the template content."""
         return self.cluster_cdk_assembly.get_template_body()
 
-    def upload_assets(self, bucket: S3Bucket):
+    def upload_assets(self, bucket: S3Bucket, upload: bool = True):
         """
         Upload the assets in the cloud assembly directory to the cluster artifacts S3 Bucket.
+
+        With ``upload`` False, the assets are not uploaded, but their metadata is returned all the same.
 
         Returns a mapping of the Asset Logical ID and associated parameters to be passed to the root template.
         Output:
@@ -153,6 +155,8 @@ class CDKArtifactsManager:
                     "content": asset_file_content,
                 }
             )
+            if not upload:
+                continue
             LOGGER.info("Uploading asset %s to S3", asset_id)
 
             bucket.upload_cfn_asset(

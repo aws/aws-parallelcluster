@@ -15,10 +15,12 @@
 import json
 import logging
 import os
+import re
 import tempfile
 import time
 from copy import deepcopy
 from datetime import datetime
+from difflib import unified_diff
 from enum import Enum
 from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from typing import List, Optional, Set, Tuple
@@ -77,6 +79,19 @@ from pcluster.validators.common import FailureLevel, ValidationResult, Validator
 # pylint: disable=C0302
 
 LOGGER = logging.getLogger(__name__)
+
+# Query string of a presigned S3 URL. It carries temporary credentials (X-Amz-Security-Token, X-Amz-Credential,
+# X-Amz-Signature), so it is redacted from the logged templates and changes.
+_PRESIGNED_URL_QUERY_STRING = re.compile(r"\?[^\s\"'\\]*X-Amz-(?:Security-Token|Credential|Signature)=[^\s\"'\\]*")
+_REDACTED_QUERY_STRING = "?<redacted>"
+
+# Type of the resources holding a nested stack.
+_NESTED_STACK_RESOURCE_TYPE = "AWS::CloudFormation::Stack"
+
+# Maximum characters of a template logged in one message. Templates are logged in parts so that each message, once
+# escaped in a JSON log event (e.g. by the API Lambda logger), stays under the 256 KB limit of a CloudWatch Logs event;
+# the size leaves room for the escape characters.
+_TEMPLATE_LOG_PART_SIZE = 135_000
 
 # pylint: disable=C0302
 
@@ -891,6 +906,10 @@ class Cluster:
                     stack_name=self.stack_name,
                     log_group_name=self.stack.log_group_name,
                 )
+                try:
+                    self._log_templates(self.template_body, assets_metadata, "update")
+                except Exception as e:  # best effort: logging the templates must not change the outcome of the update
+                    LOGGER.warning("Unable to log the CloudFormation templates of the update: %s", e)
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
@@ -925,19 +944,104 @@ class Cluster:
             LOGGER.critical(e)
             raise _cluster_error_mapper(e, f"Cluster update failed.\n{e}")
 
-    def _add_tags(self):
-        """Add tags PCLUSTER_CLUSTER_NAME_TAG and PCLUSTER_VERSION_TAG to the attribute config.tags."""
-        if self.config.tags is None:
-            self.config.tags = []
+    def log_update_templates(self, target_config: BaseClusterConfig, operation: str):
+        """
+        Log the diff between the deployed CloudFormation templates and the ones generated from ``target_config``.
+
+        Nothing is uploaded to the cluster bucket and the cluster is left unchanged: this only reads, to log what an
+        update to ``target_config`` would change in the stacks. Any failure is logged as a warning, so that it does not
+        change the outcome of the caller, e.g. an update dryrun.
+        """
+        # The template is only generated when not provided by the user
+        if target_config.dev_settings and target_config.dev_settings.cluster_template:
+            return
+        try:
+            self._add_tags(target_config)
+            template_body, assets_metadata = CDKTemplateBuilder().build_cluster_template(
+                cluster_config=target_config,
+                bucket=self.bucket,
+                stack_name=self.stack_name,
+                log_group_name=self.stack.log_group_name,
+                upload_assets=False,
+            )
+            self._log_templates(template_body, assets_metadata, operation)
+        except Exception as e:
+            LOGGER.warning("Unable to log the CloudFormation templates of the %s: %s", operation, e)
+
+    def _log_templates(self, template_body: dict, assets_metadata: Optional[list], operation: str):
+        """
+        Log, for the cluster stack and each of its nested stacks, the diff between the deployed and new templates.
+
+        The messages start with the ``operation`` (e.g. update, update dryrun). A new nested stack, which has no
+        deployed template, gets its new template logged as compact JSON. A deployed template that cannot be read is
+        only reported with a warning: no diff is logged for its stack, nor for the nested stacks when it is the one of
+        the cluster stack. Only the nested stacks of the cluster stack are compared, not nested stacks of nested stacks:
+        ParallelCluster nests stacks one level deep.
+        """
+        tag = f"[{operation}]"
+        nested_templates = {
+            asset["s3_object_key_parameter"]["key"]: asset["content"] for asset in (assets_metadata or [])
+        }
+        deployed_template = self._deployed_template(self.stack_name, "cluster stack")
+        if deployed_template is None:
+            return
+        _log_template_diff(tag, "cluster stack", deployed_template, template_body)
+
+        deployed_resources = deployed_template.get("Resources") or {}
+        for logical_id, resource in (template_body.get("Resources") or {}).items():
+            if resource.get("Type") != _NESTED_STACK_RESOURCE_TYPE:
+                continue
+            new_nested_template = _nested_stack_template(resource, nested_templates)
+            if new_nested_template is None:
+                continue
+            stack_label = f"nested stack {logical_id}"
+            if logical_id not in deployed_resources:
+                _log_template(f"{tag} New CloudFormation template of the {stack_label}", new_nested_template)
+                continue
+            nested_stack_id = self._nested_stack_id(logical_id, stack_label)
+            deployed_nested_template = (
+                self._deployed_template(nested_stack_id, stack_label) if nested_stack_id else None
+            )
+            if deployed_nested_template is not None:
+                _log_template_diff(tag, stack_label, deployed_nested_template, new_nested_template)
+
+    @staticmethod
+    def _deployed_template(stack_id: str, stack_label: str) -> Optional[dict]:
+        """Return the deployed template of the stack, or None, logging a warning, if it cannot be read."""
+        try:
+            return _parse_template(AWSApi.instance().cfn.get_stack_template(stack_id))
+        except AWSClientError as e:
+            LOGGER.warning("Unable to read the deployed CloudFormation template of the %s: %s", stack_label, e)
+            return None
+
+    def _nested_stack_id(self, logical_id: str, stack_label: str) -> Optional[str]:
+        """
+        Return the ID of the nested stack ``logical_id`` of the cluster stack, or None, with a warning, if not readable.
+
+        The stack resource is read alone: DescribeStackResources returns at most 100 resources of a stack, and the
+        cluster stack can have more.
+        """
+        try:
+            resources = AWSApi.instance().cfn.describe_stack_resources(self.stack_name, logical_id)
+        except AWSClientError as e:
+            LOGGER.warning("Unable to read the %s of the cluster stack: %s", stack_label, e)
+            return None
+        return (resources.get(logical_id) or {}).get("PhysicalResourceId")
+
+    def _add_tags(self, config: BaseClusterConfig = None):
+        """Add tags PCLUSTER_CLUSTER_NAME_TAG and PCLUSTER_VERSION_TAG to config.tags (default: the cluster config)."""
+        config = config or self.config
+        if config.tags is None:
+            config.tags = []
 
         # List of tags to be added to the cluster
         tags = {PCLUSTER_CLUSTER_NAME_TAG: self.name, PCLUSTER_VERSION_TAG: get_installed_version()}
 
         # Remove tags if they already exist
-        self.config.tags = [tag for tag in self.config.tags if tag.key not in tags]
+        config.tags = [tag for tag in config.tags if tag.key not in tags]
 
         # Add the tags
-        self.config.tags += [Tag(key=tag_key, value=tag_value) for tag_key, tag_value in tags.items()]
+        config.tags += [Tag(key=tag_key, value=tag_value) for tag_key, tag_value in tags.items()]
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
@@ -1144,3 +1248,66 @@ class Cluster:
     def _stack_events_stream_name(self):
         """Return the name of the stack events log stream."""
         return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.stack_name)
+
+
+def _log_template_diff(tag: str, stack_label: str, deployed_template: dict, new_template: dict):
+    """Log the diff between the deployed and new templates of a stack, or "No change"."""
+    diff = unified_diff(
+        _template_lines(deployed_template),
+        _template_lines(new_template),
+        fromfile=f"deployed {stack_label}",
+        tofile=f"new {stack_label}",
+        lineterm="",
+    )
+    _log_text(f"{tag} Diff of the CloudFormation template of the {stack_label}", "\n".join(diff) or "No change")
+
+
+def _log_template(title: str, template: dict):
+    """Log ``template`` as compact JSON, in numbered parts of at most _TEMPLATE_LOG_PART_SIZE characters."""
+    _log_text(title, json.dumps(template, separators=(",", ":"), default=str))
+
+
+def _log_text(title: str, text: str):
+    """Log ``text`` with presigned URLs redacted, in numbered parts of at most _TEMPLATE_LOG_PART_SIZE characters."""
+    text = _redact_presigned_urls(text)
+    starts = range(0, len(text), _TEMPLATE_LOG_PART_SIZE)
+    parts = [text[start:end] for start, end in zip(starts, [*starts[1:], len(text)])]
+    if len(parts) <= 1:
+        LOGGER.info("%s:\n%s", title, text)
+        return
+    for index, part in enumerate(parts, start=1):
+        LOGGER.info("%s (part %d/%d):\n%s", title, index, len(parts), part)
+
+
+def _redact_presigned_urls(value: str) -> str:
+    """Return the value with the query string of any presigned URL in it redacted."""
+    return _PRESIGNED_URL_QUERY_STRING.sub(_REDACTED_QUERY_STRING, value)
+
+
+def _parse_template(template_body):
+    """
+    Return the template as a dict: GetTemplate returns a JSON template already parsed, and a YAML one as text.
+
+    The template of the cluster stack is uploaded as YAML (see ``S3Bucket.upload_cfn_template``), so it is text; the
+    templates of the nested stacks are uploaded as JSON, so they are already parsed.
+    """
+    return template_body if isinstance(template_body, dict) else yaml_load(template_body)
+
+
+def _template_lines(template: dict) -> List[str]:
+    """Return the template as indented JSON lines, with sorted keys, so that only differences of content show."""
+    return json.dumps(template, indent=2, sort_keys=True, default=str).splitlines()
+
+
+def _nested_stack_template(nested_stack_resource: dict, nested_templates: dict) -> Optional[dict]:
+    """
+    Return the new template of a nested stack, or None if it is not among the generated templates.
+
+    CDK uploads the nested templates as assets: the TemplateURL of the nested stack refers to the parameter that holds
+    the S3 key of its asset.
+    """
+    template_url = json.dumps((nested_stack_resource.get("Properties") or {}).get("TemplateURL"))
+    for s3_key_parameter, template in nested_templates.items():
+        if f'"{s3_key_parameter}"' in template_url:
+            return template
+    return None
