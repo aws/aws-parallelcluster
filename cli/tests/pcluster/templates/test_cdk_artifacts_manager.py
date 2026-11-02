@@ -46,3 +46,30 @@ def test_upload_assets(mocker, mock_cloud_assembly, file_assets, asset_content):
     bucket_upload_asset_mock.assert_called_with(
         asset_file_content=asset_content, asset_name=file_assets[0].id, format=S3FileFormat.MINIFIED_JSON
     )
+
+
+def test_upload_assets_without_upload(mocker, mock_cloud_assembly):
+    file_assets = [
+        FileAssetMetadataEntry(
+            path="asset_path",
+            id="asset_logical_id",
+            s3_bucket_parameter="asset_s3_bucket",
+            s3_key_parameter="asset_s3_key",
+            artifact_hash_parameter="asset_hash_parameter",
+            packaging="File",
+            source_hash="",
+        )
+    ]
+    cloud_assembly = mock_cloud_assembly(assets=file_assets)
+    mock_bucket(mocker)
+    mock_dict = mock_bucket_object_utils(mocker)
+    mocker.patch("pcluster.templates.cdk_artifacts_manager.load_json_dict", return_value="asset_content")
+    bucket = dummy_cluster_bucket()
+
+    assets_metadata = CDKArtifactsManager(cloud_assembly).upload_assets(bucket, upload=False)
+
+    # The metadata is returned, but nothing is uploaded.
+    mock_dict.get("upload_cfn_asset").assert_not_called()
+    assert [(metadata["s3_object_key_parameter"]["key"], metadata["content"]) for metadata in assets_metadata] == [
+        ("asset_s3_key", "asset_content")
+    ]
