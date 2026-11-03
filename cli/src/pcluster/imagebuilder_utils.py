@@ -151,7 +151,7 @@ def _expected_inline_policy(account_id: str, partition: str):
                 },
                 {
                     "Action": "logs:DeleteLogGroup",
-                    "Resource": f"arn:{partition}:logs:*:{account_id}:log-group:/aws/lambda/ParallelClusterImage-*:*",
+                    "Resource": f"arn:{partition}:logs:*:{account_id}:log-group:/aws/lambda/ParallelClusterImage-*",
                     "Effect": "Allow",
                 },
                 {
