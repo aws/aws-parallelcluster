@@ -157,7 +157,7 @@ MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 COOKBOOK_PACKAGES_VERSIONS = {
     "parallelcluster": "3.16.3",
     "cookbook": "aws-parallelcluster-cookbook-3.16.3",
-    "chef": "19.3.14",
+    "chef": "19.4.46",
     "ami": "dev",
 }
 
