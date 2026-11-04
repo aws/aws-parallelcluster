@@ -320,6 +320,13 @@ class TestBuildImageCommand:
         if len(actions) != 0:
             raise AssertionError(f"Actions {actions} are not in the policy")
 
+        # DeleteLogGroup must be granted on the Log Group ARN, which also matches the Log Stream ARN
+        delete_log_group = [s for s in policy["Statement"] if s["Action"] == "logs:DeleteLogGroup"]
+        assert_that(delete_log_group).is_length(1)
+        assert_that(delete_log_group[0]["Resource"]).is_equal_to(
+            f"arn:{partition}:logs:*:{account_id}:log-group:/aws/lambda/ParallelClusterImage-*"
+        )
+
     def _build_args(self, args):
         args = [[k, v] if v is not None else [k] for k, v in args.items()]
         return list(itertools.chain(*args))

@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.16.3
+------
+
+**CHANGES**
+- Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
+  to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
+
 3.16.2
 ------
 
