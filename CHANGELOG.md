@@ -4,6 +4,14 @@ CHANGELOG
 3.17.0
 ------
 
+**ENHANCEMENTS**
+- Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
+  dryrun. The diff is logged in the CLI log file or the API Lambda logs.
+
+**CHANGES**
+- Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
+  to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
+
 **BUG FIXES**
 - Fix IAM role and policy naming collisions by using a longer suffix derived from the stack ID (24 characters, from 8).
 
@@ -144,8 +152,8 @@ CHANGELOG
 - Fix cluster creation and update failures caused by IAM policy tag conditions that required the `parallelcluster:cluster-name`
   tag to be the only tag on a request rather than merely present. This affected clusters with login nodes as well as stack
   creation and updates when AWS or CloudFormation attached additional tags to the request.
-- Prevent a path traversal when downloading exported cluster and image logs, so a CloudWatch log stream name containing `../`
-  segments can no longer cause files to be written outside the export directory.
+- Prevent a path traversal in `export-cluster-logs` and `export-image-logs`, where a crafted S3 object key in the
+  log export bucket could cause files to be written outside the export directory on the machine running the command.
 - Return a clear error instead of an unexpected fatal exception when the configured AWS profile does not exist.
 - Cache getPolicy API calls to reduce validation time of clusters that have additional IAM policies.
 

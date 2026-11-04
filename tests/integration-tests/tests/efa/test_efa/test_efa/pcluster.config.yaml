@@ -5,8 +5,10 @@ HeadNode:
   Networking:
     SubnetId: {{ public_subnet_id }}
     ElasticIp: true
+    {% if fsx_efa_security_group_id %}
     AdditionalSecurityGroups:
       - {{ fsx_efa_security_group_id }}
+    {% endif %}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -26,8 +28,10 @@ Scheduling:
           {% if placement_group_enabled and capacity_reservation_framework_placement_group %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
+        {% if fsx_efa_security_group_id %}
         AdditionalSecurityGroups:
           - {{ fsx_efa_security_group_id }}
+        {% endif %}
       ComputeResources:
         - Name: efa-enabled-i1
           InstanceType: {{ instance }}
@@ -49,8 +53,10 @@ SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
+  {% if fsx_fs_id %}
   - MountDir: {{ fsx_mount_dir }}
     Name: fsx-efa
     StorageType: FsxLustre
     FsxLustreSettings:
       FileSystemId: {{ fsx_fs_id }}
+  {% endif %}

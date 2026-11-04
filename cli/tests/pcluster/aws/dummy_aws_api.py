@@ -122,7 +122,7 @@ class _DummyCfnClient(CfnClient):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
-    def describe_stack_resources(self, stack_name: str):
+    def describe_stack_resources(self, stack_name: str, logical_resource_id: str = None):
         return {}
 
 
