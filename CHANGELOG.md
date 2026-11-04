@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 - Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
   to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
+- Upgrade Cinc Client to version 19.4.46 (from 19.3.14).
 
 3.16.2
 ------
