@@ -5,7 +5,7 @@ schemaVersion: 1.0
 constants:
   - ChefVersion:
       type: string
-      value: 19.3.14
+      value: 19.4.46
   - FailExitCode:
       type: string
       value: 1
@@ -26,6 +26,7 @@ phases:
                 amzn.2023) echo 'alinux2023' ;;
                 ubuntu.22*) echo 'ubuntu2204' ;;
                 ubuntu.24*) echo 'ubuntu2404' ;;
+                ubuntu.26*) echo 'ubuntu2604' ;;
                 rhel.8*) echo 'rhel8' ;;
                 rocky.8*) echo 'rocky8' ;;
                 rhel.9*) echo 'rhel9' ;;
@@ -143,8 +144,11 @@ phases:
                 # Refresh the package index first: the index inherited from the base AMI can still
                 # reference package versions already rotated out of the pool, which fails the fetch.
                 apt-get -y update
-                apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
-                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
+                # Ubuntu 26.04 ships extra kernel modules in linux-modules, which has no meta package to hold
+                MOD_PKG=linux-modules-extra; MOD_HOLD=linux-modules-extra-aws
+                [[ $OS == ubuntu2604 ]] && MOD_PKG=linux-modules && MOD_HOLD=
+                apt-get -y install linux-headers-$(uname -r) $MOD_PKG-$(uname -r)
+                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws $MOD_HOLD
               fi
               echo "Kernel version is $(uname -a)"
 
@@ -280,7 +284,8 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
-                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
+                MOD_HOLD=linux-modules-extra-aws; [[ $OS == ubuntu2604 ]] && MOD_HOLD=
+                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws $MOD_HOLD
               fi
               
               # Handle SSM agent

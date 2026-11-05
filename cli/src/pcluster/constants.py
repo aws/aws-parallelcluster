@@ -33,7 +33,11 @@ SUPPORTED_OSES = [
     "rhel9",
     "rocky9",
 ]
-UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
+# OSes not officially supported: accepted by the configuration schema, but rejected by
+# ArchitectureOsValidator unless it is suppressed. They have no official ParallelCluster AMIs.
+UNOFFICIAL_OSES = ["ubuntu2604"]
+ACCEPTED_OSES = SUPPORTED_OSES + UNOFFICIAL_OSES
+UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "ubuntu2604", "rhel8", "rocky8", "rhel9", "rocky9"]
 UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "rhel9"]
 SUPPORTED_OSES_FOR_P6E_GB200 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6E_GB200))
 UNSUPPORTED_OSES_FOR_P6_B300 = []
@@ -60,6 +64,7 @@ CAPACITY_RESERVATION_OS_MAP = {
     "alinux2023": CR_PLATFORM_LINUX_UNIX,
     "ubuntu2204": CR_PLATFORM_LINUX_UNIX,
     "ubuntu2404": CR_PLATFORM_LINUX_UNIX,
+    "ubuntu2604": CR_PLATFORM_LINUX_UNIX,
     "rhel8": CR_PLATFORM_RHEL,
     "rocky8": CR_PLATFORM_LINUX_UNIX,
     "rhel9": CR_PLATFORM_RHEL,
@@ -70,6 +75,7 @@ OS_MAPPING = {
     "alinux2023": {"user": "ec2-user"},
     "ubuntu2204": {"user": "ubuntu"},
     "ubuntu2404": {"user": "ubuntu"},
+    "ubuntu2604": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
     "rocky8": {"user": "rocky"},
     "rhel9": {"user": "ec2-user"},
@@ -80,6 +86,7 @@ OS_TO_IMAGE_NAME_PART_MAP = {
     "alinux2023": "amzn2023-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",
     "ubuntu2404": "ubuntu-2404-lts-hvm",
+    "ubuntu2604": "ubuntu-2604-lts-hvm",
     "rhel8": "rhel8-hvm",
     "rocky8": "rocky8-hvm",
     "rhel9": "rhel9-hvm",
@@ -155,9 +162,9 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.16.2",
-    "cookbook": "aws-parallelcluster-cookbook-3.16.2",
-    "chef": "19.3.14",
+    "parallelcluster": "3.16.3",
+    "cookbook": "aws-parallelcluster-cookbook-3.16.3",
+    "chef": "19.4.46",
     "ami": "dev",
 }
 
@@ -347,7 +354,7 @@ PCLUSTER_BUCKET_REQUIRED_BOOTSTRAP_FEATURES = ["basic", "export-logs"]
 
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX = "PClusterBuildImageCleanupRole"
 # Tag key & expected revision (increment when policy widens)
-PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 2
+PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 3
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-image-cleanup-role-bootstrapped"
 
 P6E_GB200 = "p6e-gb200"

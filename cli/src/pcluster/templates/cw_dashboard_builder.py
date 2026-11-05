@@ -751,7 +751,7 @@ class CWDashboardConstruct(Construct):
                     ),
                     self._new_cw_log_widget(
                         title="syslog",
-                        conditions=[Condition(["ubuntu2204", "ubuntu2404"], base_os)],
+                        conditions=[Condition(["ubuntu2204", "ubuntu2404", "ubuntu2604"], base_os)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*syslog")],
                     ),
                     self._new_cw_log_widget(
