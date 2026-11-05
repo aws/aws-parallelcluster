@@ -8,6 +8,9 @@ CHANGELOG
 - Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
   dryrun. The diff is logged in the CLI log file or the API Lambda logs.
 
+3.16.3
+------
+
 **CHANGES**
 - Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
   to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
