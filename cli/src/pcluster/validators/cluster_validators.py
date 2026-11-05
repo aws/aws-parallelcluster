@@ -22,6 +22,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.config.common import CapacityType, SharedStorageType, merge_tags
 from pcluster.constants import (
+    ACCEPTED_OSES,
     CIDR_ALL_IPS,
     DELETE_POLICY,
     EFS_PORT,
@@ -34,7 +35,6 @@ from pcluster.constants import (
     PCLUSTER_VERSION_TAG,
     PRIVATE_OSES,
     RETAIN_POLICY,
-    SUPPORTED_OSES,
     SUPPORTED_SCHEDULERS,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
@@ -60,8 +60,8 @@ EFS_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": SUPPORTED_OSES,
-    "arm64": SUPPORTED_OSES,
+    "x86_64": ACCEPTED_OSES,
+    "arm64": ACCEPTED_OSES,
 }
 
 FSX_MESSAGES = {
