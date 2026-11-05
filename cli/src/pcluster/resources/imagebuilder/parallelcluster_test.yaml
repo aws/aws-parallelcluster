@@ -35,6 +35,7 @@ phases:
                 amzn.2023) echo alinux2023;;
                 ubuntu.22*) echo ubuntu2204;;
                 ubuntu.24*) echo ubuntu2404;;
+                ubuntu.26*) echo ubuntu2604;;
                 rhel.8*) echo rhel8;;
                 rocky.8*) echo rocky8;;
                 rhel.9*) echo rhel9;;
@@ -90,7 +91,7 @@ phases:
               set -v
               ARCHITECTURE='{{ test.OSArchitecture.outputs.stdout }}'
               OS='{{ test.OSName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22|26)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"
