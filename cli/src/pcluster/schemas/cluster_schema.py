@@ -94,6 +94,7 @@ from pcluster.config.cluster_config import (
 from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
+    ACCEPTED_OSES,
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
     FILE_CACHE,
@@ -112,7 +113,6 @@ from pcluster.constants import (
     ONTAP,
     OPENZFS,
     PCLUSTER_AMI_ID_REGEX,
-    SUPPORTED_OSES,
 )
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
@@ -1208,7 +1208,7 @@ class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
     os = fields.Str(
-        required=True, validate=validate.OneOf(SUPPORTED_OSES), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True, validate=validate.OneOf(ACCEPTED_OSES), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     custom_ami = fields.Str(
         validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX),

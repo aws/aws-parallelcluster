@@ -1000,6 +1000,11 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
             "The architecture x86_64 is only supported for the following operating systems",
         ),
         ("ubuntu2404", "x86_64", None),
+        (
+            "ubuntu2604",
+            "x86_64",
+            "The architecture x86_64 is only supported for the following operating systems",
+        ),
         # All OSes supported for ARM
         ("alinux2023", "arm64", None),
         ("alinux2023", "arm64", None),
@@ -1009,6 +1014,11 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
             "The architecture arm64 is only supported for the following operating systems",
         ),
         ("ubuntu2204", "arm64", None),
+        (
+            "ubuntu2604",
+            "arm64",
+            "The architecture arm64 is only supported for the following operating systems",
+        ),
         ("rhel8", "arm64", None),
         ("rhel8", "arm64", None),
     ],
