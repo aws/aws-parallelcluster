@@ -167,6 +167,52 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
             id="test with no filter",
         ),
         pytest.param(
+            None,
+            None,
+            {
+                "Images": [
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-ubuntu-2204-lts-hvm-x86_64-older",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2023-hvm-x86_64-older",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2018-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2023-hvm-arm64-latest",
+                        "Architecture": "arm64",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-ubuntu-2204-lts-hvm-x86_64-latest",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2023-hvm-x86_64-latest",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2019-11-09T01:21:00.000Z",
+                    },
+                    {
+                        "Name": "aws-parallelcluster-3.0.0-amzn2023-hvm-x86_64-deprecated",
+                        "Architecture": "x86_64",
+                        "CreationDate": "2020-11-09T01:21:00.000Z",
+                        "DeprecationTime": "2022-11-09T01:21:00.000Z",
+                    },
+                ]
+            },
+            [
+                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2023-hvm-arm64-latest"}),
+                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2023-hvm-x86_64-latest"}),
+                ImageInfo({"Name": "aws-parallelcluster-3.0.0-ubuntu-2204-lts-hvm-x86_64-latest"}),
+            ],
+            None,
+            id="test with multiple images per os and architecture not returned in order",
+        ),
+        pytest.param(
             "alinux2023",
             None,
             {
