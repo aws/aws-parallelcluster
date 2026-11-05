@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import itertools
 import re
 from datetime import datetime
 from typing import Any, List, Tuple
@@ -329,12 +328,13 @@ class Ec2Client(Boto3Client):
         name = f"{self._get_official_image_name_prefix(os, architecture)}*"
         filters = [{"Name": "name", "Values": [name]}]
         images = self._describe_images_with_pagination(Owners=owners, Filters=filters, IncludeDeprecated=True)
+        images_by_os_arch = {}
+        for image in images:
+            os_arch = f'{self.extract_os_from_official_image_name(image["Name"])}-{image["Architecture"]}'
+            images_by_os_arch.setdefault(os_arch, []).append(image)
         return [
             ImageInfo(self._find_valid_official_image(images_os_arch))
-            for _, images_os_arch in itertools.groupby(
-                images,
-                key=lambda image: f'{self.extract_os_from_official_image_name(image["Name"])}-{image["Architecture"]}',
-            )
+            for _, images_os_arch in sorted(images_by_os_arch.items())
         ]
 
     @AWSExceptionHandler.handle_client_exception
