@@ -1,9 +1,10 @@
 import logging
 
 import boto3
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 from retrying import retry
-from time_utils import seconds
+from time_utils import minutes, seconds
 
 from tests.common.networking.security_groups import (
     delete_security_group,
@@ -67,6 +68,36 @@ def wait_for_fsx_filesystem_deletion(region: str, file_system_id: str):
     if fs_description is not None:
         state = fs_description.get("Lifecycle")
         raise Exception(f"FSx File System {file_system_id} in state {state} not deleted, yet. Sleeping 60 seconds ...")
+
+
+@retry(
+    stop_max_delay=minutes(40),
+    wait_fixed=seconds(30),
+    retry_on_result=lambda file_cache: file_cache.get("Lifecycle") == "CREATING"
+    or (file_cache.get("Lifecycle") == "AVAILABLE" and not file_cache.get("NetworkInterfaceIds")),
+)
+def _describe_file_cache_until_created(region: str, file_cache_id: str):
+    file_cache = _fsx(region).describe_file_caches(FileCacheIds=[file_cache_id])["FileCaches"][0]
+    logging.info(
+        f"File Cache {file_cache_id} in state {file_cache.get('Lifecycle')} "
+        f"with network interfaces {file_cache.get('NetworkInterfaceIds')}"
+    )
+    return file_cache
+
+
+def wait_for_file_cache_available(region: str, file_cache_id: str):
+    """
+    Wait for the File Cache to be AVAILABLE with its network interfaces reported by DescribeFileCaches.
+
+    The custom resource creating the File Cache returns as soon as the creation is started.
+    Until the File Cache is AVAILABLE, DescribeFileCaches does not report its network interfaces
+    and the cluster validation fails with ExistingFsxNetworkingValidator.
+    """
+    logging.info(f"Waiting for File Cache {file_cache_id} to be available")
+    file_cache = _describe_file_cache_until_created(region, file_cache_id)
+    assert_that(file_cache.get("Lifecycle")).described_as(f"Lifecycle of File Cache {file_cache_id}").is_equal_to(
+        "AVAILABLE"
+    )
 
 
 def _fsx(region):

@@ -279,7 +279,13 @@ Resources:
      PermissionsBoundary: !If [HasPermissionBoundary, !Ref PermissionsBoundaryPolicy, !Ref 'AWS::NoValue']
      RoleName: !Sub
        - ${IAMRoleAndPolicyPrefix}APIGatewayExecutionRole-${StackIdSuffix}
-       - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId']]]] }
+       # The first segment of the StackId alone is a timestamp, which is the same for stacks created
+       # at the same time; the clock sequence and node segments are added to make the role name unique.
+       - StackIdSuffix: !Join
+         - ''
+         - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+           - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+           - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
      Policies:
        - PolicyName: !Sub ${IAMRoleAndPolicyPrefix}lambda-invoke
          PolicyDocument:

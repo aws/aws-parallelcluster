@@ -15,6 +15,9 @@ CHANGELOG
 - Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
   to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
 
+**BUG FIXES**
+- Fix IAM role and policy naming collisions by using a longer suffix derived from the stack ID (24 characters, from 8).
+
 3.16.2
 ------
 
