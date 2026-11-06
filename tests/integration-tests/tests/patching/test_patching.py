@@ -73,6 +73,11 @@ MANDATORY_KERNEL_MODULES = {
     ],
 }
 
+# Kernel modules that load only if the underlying host exposes the hardware they drive, so they can
+# be missing on a node replaced during patching regardless of the kernel. They are not checked after patching.
+# rapl: the RAPL perf events driver fails to load when the host does not expose the RAPL MSRs.
+HOST_DEPENDENT_KERNEL_MODULES = ["rapl"]
+
 
 def test_patching_cluster(
     region,
@@ -110,6 +115,7 @@ def test_patching_cluster(
       11. On each node type, require the mandatory kernel modules to be loaded after patching.
           For every other module loaded before patching but not after, skip it if it no longer
           exists for the patched kernel, or require that it can be loaded again if it does.
+          Host-dependent modules (HOST_DEPENDENT_KERNEL_MODULES) are not checked.
     """
     ec2 = boto3.client("ec2", region_name=region)
 
@@ -236,7 +242,9 @@ def test_patching_cluster(
                 f"{mandatory_missing}"
             ).is_empty()
             missing = kernel_modules_before[node_type] - kernel_modules_after[node_type]
-            failed_to_load = _reload_missing_modules(executor, missing - mandatory, node_type)
+            failed_to_load = _reload_missing_modules(
+                executor, missing - mandatory - set(HOST_DEPENDENT_KERNEL_MODULES), node_type
+            )
             assert_that(failed_to_load).described_as(
                 f"{node_type}: after patching the following kernel modules fail to load: {failed_to_load}"
             ).is_empty()

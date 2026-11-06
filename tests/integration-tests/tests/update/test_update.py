@@ -60,6 +60,7 @@ from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.storage.assertions import assert_storage_existence
 from tests.common.storage.constants import StorageType
+from tests.common.storage.fsx_utils import wait_for_file_cache_available
 from tests.common.utils import generate_random_string, get_deployed_config_version, retrieve_latest_ami
 from tests.storage.storage_common import (
     assert_file_exists,
@@ -1715,6 +1716,10 @@ def _create_shared_storages_resources(
     """Create existing EBS, EFS, FSX resources for test."""
 
     storage_stack = external_shared_storage_stack(vpc_stack, bucket_name, file_cache_path)
+
+    file_cache_id = storage_stack.cfn_outputs.get("FileCacheId")
+    if file_cache_id:
+        wait_for_file_cache_available(region, file_cache_id)
 
     return (
         storage_stack.cfn_outputs.get("EbsId"),
