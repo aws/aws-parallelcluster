@@ -42,7 +42,7 @@ jobs:
       run: ./util/bump-version.sh  --version ${{ inputs.pcluster-version }}
         
     - name: Create a Pull Request
-      uses: peter-evans/create-pull-request@v6
+      uses: peter-evans/create-pull-request@v8
       with:
         commit-message: 'Bump version to ${{ inputs.pcluster-version }}'
         title: 'Bump version to ${{ inputs.pcluster-version }}'
