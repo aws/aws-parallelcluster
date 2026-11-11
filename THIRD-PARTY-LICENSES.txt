@@ -1131,7 +1131,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 boto3
-1.43.117
+1.44.0
 Apache-2.0
 Amazon Web Services
 https://github.com/boto/boto3
@@ -1315,7 +1315,7 @@ https://github.com/boto/boto3
 
 
 botocore
-1.43.117
+1.44.0
 Apache-2.0
 Amazon Web Services
 https://github.com/boto/botocore
@@ -1517,7 +1517,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 
 certifi
-2026.10.19
+2026.10.23
 Mozilla Public License 2.0 (MPL 2.0)
 Kenneth Reitz
 https://github.com/certifi/python-certifi
@@ -1572,7 +1572,7 @@ SOFTWARE.
 
 
 click
-8.5.0
+8.5.1
 BSD-3-Clause
 UNKNOWN
 https://github.com/pallets/click/
@@ -2553,7 +2553,7 @@ THE SOFTWARE.
 
 
 multidict
-7.1.0
+7.2.1
 Apache-2.0
 Andrew Svetlov <andrew.svetlov@gmail.com>
 https://github.com/aio-libs/multidict
@@ -3068,7 +3068,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The above BSD License Applies to all code, even that also covered by Apache 2.0.
 
 python-multipart
-0.0.32
+0.0.33
 Apache-2.0
 Andrew Dunham <andrew@du.nham.ca>
 https://github.com/Kludex/python-multipart
