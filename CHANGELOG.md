@@ -5,12 +5,35 @@ CHANGELOG
 ------
 
 **CHANGES**
+- Upgrade EFA installer to 1.51.0 (from 1.49.0).
+  - Efa-driver: efa-3.3.1
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.7.0-1
+  - Rdma-core: rdma-core-65.0-1
+  - Open MPI: openmpi40-aws-4.1.8-1 and openmpi50-aws-5.0.9-11
+- Upgrade NVIDIA driver, Fabric Manager, and IMEX to version 595.112.07 (from 595.71.05).
+- Upgrade mysql-community-client to version 8.4.13 (from 8.4.10).
+- Upgrade the Python version used by the virtual environments in the AMIs to 3.14.10 (from 3.14.8).
+- Upgrade amazon-efs-utils to version 3.3.5 (from 3.1.3).
+- Upgrade stunnel to version 5.82 (from 5.78) to address CVE-2026-70368.
+- Upgrade Cinc Client to version 19.4.46 (from 19.3.14).
+- Upgrade Amazon DCV to version 2026.0-25174 (from 2025.0-20103).
+  - server: `2026.0.25174-1`
+  - xdcv: `2026.0.715-1`
+  - gl: `2026.0.1124-1`
+  - web_viewer: `2026.0.25174-1`
+- On Ubuntu, stop setting the kernel parameter `fs.protected_regular` to 0, so that it keeps the OS default value as on the other OSes.
 - Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
   to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
-- Upgrade Cinc Client to version 19.4.46 (from 19.3.14).
 
 **BUG FIXES**
-- Fix IAM role and policy naming collisions by using a longer suffix derived from the stack ID (24 characters, from 8).
+- Only enable NVIDIA IMEX service on GB200 compute nodes. Only enable NVIDIA Fabric Manager service on compute nodes with NVSwitch, and do not enable the `nvidia-powerd` service. Since 3.16.0 the services were enabled unnecessarily on all instance types.
+- Fix dynamic nodes getting stuck in `COMPLETING` state indefinitely, holding their jobs, when the backing instance
+  of a node with jobs is terminated and its private IP is reused by another compute node.
+- Ensure only the latest AMI is returned by `pcluster list-official-images` for a given OS and architecture.
+- Fix name collisions of the `APIGatewayExecutionRole` IAM role when multiple ParallelCluster API stacks are created
+  at the same time, by using a longer suffix derived from the stack ID (24 characters, from 8).
 
 3.16.2
 ------
