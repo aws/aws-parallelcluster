@@ -416,7 +416,9 @@ def skip_if_parallelcluster_version_below(min_version, feature):
 @retry(
     retry_on_result=lambda status: status is None,
     wait_fixed=seconds(300),
-    stop_max_delay=minutes(150),  # 2.5 hours
+    # Ubuntu builds on GPU instances can take ~155 min just to reach the Image Builder test phase
+    # (build up to ~100 min + CreateImage up to ~75 min), so 150 min was not enough.
+    stop_max_delay=minutes(210),  # 3.5 hours
 )
 def wait_for_image_build_status(image, statuses: list):
     """Poll the image until its build status is one of ``statuses``; return that status."""
