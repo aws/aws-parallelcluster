@@ -1523,7 +1523,14 @@ def resolve_default_instance(request):
 
     az_id = vpc_stack.az_override or vpc_stack.default_az_id
     resolved = resolve_instance_with_capacity(
-        region, az_id, instance, os_name, alternative_instance_types=alternative_instance_types
+        region,
+        az_id,
+        instance,
+        os_name,
+        alternative_instance_types=alternative_instance_types,
+        # An AZ pinned by the tests config usually comes from a CAPACITY_RESERVATION placeholder, whose reservation
+        # is sized for the test and has the placement group setting chosen by the config: reuse it.
+        ignore_placement_group=bool(vpc_stack.az_override),
     )
     if resolved != instance:
         logging.info("Substituted default instance %s -> %s (capacity fallback)", instance, resolved)
