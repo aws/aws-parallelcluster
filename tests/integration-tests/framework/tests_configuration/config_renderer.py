@@ -47,6 +47,8 @@ MAX_CAPACITY_BLOCK_HOURS = 24
 # validation renders every file under configs/, and that must never spend money.
 CAPACITY_BLOCK_DRY_RUN_ENV_VAR = "PCLUSTER_SKIP_CAPACITY_BLOCK_PURCHASE"
 
+CAPACITY_BLOCK_INSTANCE_TYPE_SEPARATOR = "_OR_"
+
 
 def _get_global_build_number(config=None, args=None):
     """
@@ -410,61 +412,89 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
 
 
 def _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters):
-    """Resolve a ``*_CAPACITY_BLOCK_*`` variable to the AZ of a usable capacity block.
+    """Resolve a ``*_CAPACITY_BLOCK_*`` variable to the ``az`` and ``instance_type`` of a usable capacity block.
 
     Some instance types (notably the p6 family) can realistically only be obtained through capacity
     blocks. A block already owned is reused when it still covers the run; otherwise an "instant"
-    block is bought, sweeping the candidate regions until one has an offering. The AZ of the block
-    is what the variable renders to, so the test runs where the capacity actually is.
+    block is bought, sweeping the regions offering the instance type until one has an offering. The
+    variable lists one or more instance types separated by CAPACITY_BLOCK_INSTANCE_TYPE_SEPARATOR, in
+    order of preference. The test config renders ``.az`` and ``.instance_type`` of the variable, so
+    the test runs where the capacity actually is, on the instance type it was obtained for.
 
     Buying a capacity block is an upfront, non-refundable charge, hence only one is ever bought and
     only for variables explicitly declared as capacity blocks in the test config.
 
-    Raises when no capacity block can be obtained in any candidate region.
+    Raises when no capacity block can be obtained for any of the instance types in any region.
     """
     logging.info("Checking capacity block for %s", var)
-    count, hours, instance_type, os_name = _parse_capacity_block_variable(var)
-    instance_type, os_platform = _resolve_instance_type_and_os(
-        instance_type, instance_type_parameters, os_name, os_parameters
-    )
+    count, hours, instance_types_expression, os_name = _parse_capacity_block_variable(var)
+    instance_types = []
+    for instance_type in instance_types_expression.split(CAPACITY_BLOCK_INSTANCE_TYPE_SEPARATOR):
+        instance_type, os_platform = _resolve_instance_type_and_os(
+            instance_type, instance_type_parameters, os_name, os_parameters
+        )
+        instance_types.append(instance_type)
     if os.environ.get(CAPACITY_BLOCK_DRY_RUN_ENV_VAR):
         # Config validation renders every file under configs/, which must not spend money. Render a
-        # placeholder AZ just to keep the test yaml valid.
+        # placeholder AZ and the preferred instance type just to keep the test yaml valid.
         logging.info("%s set: not looking for a capacity block for %s", CAPACITY_BLOCK_DRY_RUN_ENV_VAR, var)
-        az_for_capacity_reservation[var] = "use1-az6"
+        az_for_capacity_reservation[var] = {"az": "use1-az6", "instance_type": instance_types[0]}
         return
-    # Regions where the capacity-block-only instance types (p6 family) are offered.
-    candidate_regions = [
-        "ap-south-1",
-        "us-east-1",
-        "us-east-2",
-        "us-west-2",
-    ]
-    random.shuffle(candidate_regions)
 
-    for region in candidate_regions:
-        az_id = _find_or_buy_capacity_block(region, instance_type, os_platform, count, hours)
-        if az_id:
-            az_for_capacity_reservation[var] = az_id
-            return
-    # Tests declaring a capacity block are run on demand, so there is nothing to gain from carrying
-    # on with a config that cannot possibly work: fail loudly instead of skipping later on.
+    candidate_regions = {}
+    for instance_type in instance_types:
+        candidate_regions[instance_type] = _get_regions_offering(instance_type)
+        random.shuffle(candidate_regions[instance_type])
+    capacity_block = _find_or_buy_capacity_block(candidate_regions, os_platform, count, hours)
+    if capacity_block:
+        az_id, instance_type = capacity_block
+        az_for_capacity_reservation[var] = {"az": az_id, "instance_type": instance_type}
+        return
+    # Tests declaring a capacity block cannot run anywhere else, so there is nothing to gain from
+    # carrying on with a config that cannot possibly work: fail loudly instead of skipping later on.
     raise Exception(
-        f"Could not find or buy a capacity block for {instance_type} ({os_platform}, {count} instances, "
-        f">={hours}h) in any of {candidate_regions}. Capacity blocks are only sold until "
-        "05:00 UTC for same-day use; retry within the selling window or pick another instance type."
+        f"Could not find or buy a capacity block ({os_platform}, {count} instances, >={hours}h) for any of "
+        f"{candidate_regions}. Capacity blocks are only sold until 05:00 UTC for same-day use; retry within "
+        "the selling window or pick another instance type."
     )
 
 
-def _find_or_buy_capacity_block(region, instance_type, os_platform, count, min_hours):
-    """Return the AZ ID of a capacity block usable in *region*, reusing or buying one, else None."""
-    ec2_client = boto3.client("ec2", region_name=region)
-    reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
-    if reservation:
-        return _wait_for_capacity_block_active(
-            ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
-        )
-    return _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours)
+def _get_regions_offering(instance_type):
+    """Return the regions enabled in the account where *instance_type* is offered."""
+    enabled_regions = boto3.client("ec2", region_name="us-east-1").describe_regions()["Regions"]
+    regions = []
+    for region in [enabled_region["RegionName"] for enabled_region in enabled_regions]:
+        try:
+            offerings = boto3.client("ec2", region_name=region).describe_instance_type_offerings(
+                LocationType="region", Filters=[{"Name": "instance-type", "Values": [instance_type]}]
+            )["InstanceTypeOfferings"]
+        except Exception as e:
+            logging.info("Could not check whether %s is offered in %s: %s", instance_type, region, e)
+            continue
+        if offerings:
+            regions.append(region)
+    logging.info("Regions offering %s: %s", instance_type, regions)
+    return regions
+
+
+def _find_or_buy_capacity_block(candidate_regions, os_platform, count, min_hours):
+    """Reuse or buy a capacity block, returning its (AZ ID, instance type), else None."""
+    for instance_type, regions in candidate_regions.items():
+        for region in regions:
+            ec2_client = boto3.client("ec2", region_name=region)
+            reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
+            if reservation:
+                az_id = _wait_for_capacity_block_active(
+                    ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
+                )
+                return az_id, instance_type
+    for instance_type, regions in candidate_regions.items():
+        for region in regions:
+            ec2_client = boto3.client("ec2", region_name=region)
+            az_id = _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours)
+            if az_id:
+                return az_id, instance_type
+    return None
 
 
 def _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count):
@@ -649,8 +679,10 @@ def _wait_for_capacity_block_active(ec2_client, reservation_id, start_date, end_
 
 
 def _parse_capacity_block_variable(var):
-    # Example variable:
-    # {{ p6_b200_48xlarge_CAPACITY_BLOCK_2_INSTANCES_6_HOURS_alinux2023 }}
+    # Example variables:
+    # {{ p6_b200_48xlarge_CAPACITY_BLOCK_2_INSTANCES_6_HOURS_alinux2023.az }}
+    # With a fallback instance type, returned as is in the instance type expression:
+    # {{ p6_b200_48xlarge_OR_p6_b300_48xlarge_CAPACITY_BLOCK_2_INSTANCES_6_HOURS_alinux2023.az }}
     pattern = re.compile("(.*)_CAPACITY_BLOCK_(.*)_INSTANCES_(.*)_HOURS_?(.*)?")
     match = pattern.match(var)
     instance_type = match.group(1)
