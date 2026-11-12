@@ -19,6 +19,7 @@ Scheduling:
           - {{ private_subnet_id }}
         PlacementGroup:
           Enabled: true
+          {% if capacity_reservation_framework_placement_group %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
       ComputeResources:
         - Name: compute-resource1
           InstanceType: c5n.18xlarge
