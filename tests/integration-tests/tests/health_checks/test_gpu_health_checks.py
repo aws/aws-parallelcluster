@@ -157,7 +157,7 @@ def test_cluster_with_gpu_health_checks(
                 HEALTH_CHECK_LOG_FILE,
                 node_address,
                 cluster,
-                [rf".*JobID {node_health_status.latest_job}\D.*Running GPU Health Check with DCGMI.*"],
+                [rf".*JobID {node_health_status.latest_job}.*Running GPU Health Check with DCGMI.*"],
                 should_exist=node_health_status.health_check_executed,
             )
 
@@ -273,8 +273,8 @@ def _test_gpu_health_checks_on_capacity_block(
 def _test_gpu_health_checks_gpu_selection(slurm_commands, cluster, target_node, target_queue):
     """Assert the GPU health check targets only the GPUs allocated to the job.
 
-    A job requesting a GPU through GRES must check that GPU only, while a job with neither GPUs requested
-    through GRES nor an exclusive node allocation must skip the check, since other jobs can use the GPUs of the node.
+    A job requesting a GPU through GRES must check only the GPU allocated to it. A job with neither GPUs requested
+    through GRES nor an exclusive node allocation has no GPU allocated, and must skip the check.
     """
     gres_job_id = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
