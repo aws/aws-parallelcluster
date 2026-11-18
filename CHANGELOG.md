@@ -8,6 +8,13 @@ CHANGELOG
 - Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
   dryrun. The diff is logged in the CLI log file or the API Lambda logs.
 
+**CHANGES**
+- Fail `build-image` on errors in the ParallelCluster build components instead of ignoring them. Builds that used to
+  succeed with a partially configured image now fail at the step that caused the error.
+
+**BUG FIXES**
+- Unlock the `rocky-repos` package at the end of `build-image` on Rocky Linux when `DisableKernelUpdate` is set.
+
 3.16.3
 ------
 

@@ -19,7 +19,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /etc/os-release
               RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               case "$RELEASE" in
@@ -39,7 +39,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               OS="{{ build.OperatingSystemName.outputs.stdout }}"
               if [[ $OS =~ ^ubuntu ]] && command -v snap &>/dev/null; then
                 snap watch --last=auto-refresh 2>/dev/null || true
@@ -52,7 +52,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               # Get OS info
               . /etc/os-release
               # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
@@ -94,7 +94,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
 
               # Pin kernel versions and install packages
@@ -143,8 +143,9 @@ phases:
                 # Refresh the package index first: the index inherited from the base AMI can still
                 # reference package versions already rotated out of the pool, which fails the fetch.
                 apt-get -y update
-                apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
-                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
+                # Kernel 7.0+ has no linux-modules-extra package
+                apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r))
+                apt-mark hold $(dpkg -l linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws 2>/dev/null | awk '/^ii/{print $2}')
               fi
               echo "Kernel version is $(uname -a)"
 
@@ -154,7 +155,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
               
               # Disable Nouveau driver
@@ -167,9 +168,10 @@ phases:
 
               # Install prerequisites
               if [[ $PLATFORM == RHEL ]]; then
-                yum -y groupinstall development && sudo yum -y install wget jq
+                yum -y groupinstall development
+                yum -y install wget jq
                 # Do not install curl on al2023 since curl-minimal-8.5.0-1.amzn2023* is already shipped and conflicts.
-                [[ $OS != alinux2023 ]] && yum -y install curl
+                [[ $OS == alinux2023 ]] || yum -y install curl
               else
                 [[ "${CfnParamUpdateOsAndReboot}" == "false" ]] && {
                   # disable apt-daily.timer to avoid dpkg lock
@@ -181,7 +183,6 @@ phases:
                 apt-get -y update
                 apt-get -y install build-essential curl wget jq
               fi
-              exit 0
 
       - name: RebootStep
         action: Reboot
@@ -196,7 +197,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
               
               # Update CA certificates and install Cinc
@@ -220,21 +221,24 @@ phases:
               }
               
               # Download cookbook
-              mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
+              mkdir -p /etc/chef
+              chown -R root:root /etc/chef
               delays=(1 2 4 8 16 32 64 128 256)
               for i in {0..8}; do
-                HTTP_CODE=$(curl -sS -L -w '%{http_code}' -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL")
-                if [[ "$HTTP_CODE" -eq 200 ]]; then
+                HTTP_CODE=$(curl -sS -L -w '%{http_code}' -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL") || true
+                if [[ "$HTTP_CODE" == 200 ]]; then
                   echo "Cookbook download succeeded (HTTP $HTTP_CODE)"
                   break
                 fi
                 echo "Cookbook download attempt $((i+1)) failed with HTTP $HTTP_CODE. Response body:"
-                cat /etc/chef/aws-parallelcluster-cookbook.tgz
+                cat /etc/chef/aws-parallelcluster-cookbook.tgz 2>/dev/null || true
                 echo ""
                 sleep ${!delays[$i]}
               done
+              [[ "$HTTP_CODE" == 200 ]] || { echo "Cookbook download failed after ${!#delays[@]} attempts: $COOKBOOK_URL"; exit {{ FailExitCode }}; }
               
-              cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
+              tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz -C /etc/chef --strip-components 1
+              rm -f /etc/chef/aws-parallelcluster-cookbook.tgz
 
       - name: CreateChefFiles
         action: CreateFile
@@ -253,7 +257,7 @@ phases:
         inputs:
           commands:
             - |
-              set -ex
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
 
               # Validate cookbook version matches expected ParallelCluster version
@@ -271,7 +275,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
               
               # Remove kernel version lock
@@ -280,7 +284,7 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
-                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
+                apt-mark unhold $(apt-mark showhold | grep -xE 'linux-(aws|base|headers-aws|image-aws|modules-extra-aws)')
               fi
               
               # Handle SSM agent
