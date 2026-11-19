@@ -313,6 +313,13 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
+    test_head_node_instance_type_change.py::test_head_node_instance_type_change:
+      dimensions:
+        # Reserve the head node initial (c5.xlarge) and new (c5.2xlarge) instance types.
+        - regions: [{{ c5_xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_ubuntu2404__c5_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_ubuntu2404 }}]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2404"]
+          schedulers: ["slurm"]
     test_update_race_conditions.py::test_update_race_conditions:
       dimensions:
         - regions: ["us-east-1"]
