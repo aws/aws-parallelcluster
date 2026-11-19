@@ -8,6 +8,9 @@ CHANGELOG
 - Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
   dryrun. The diff is logged in the CLI log file or the API Lambda logs.
 
+**CHANGES**
+- Remove support for Python 3.9 in the `pcluster` CLI, which is in end of life.
+
 3.16.3
 ------
 
