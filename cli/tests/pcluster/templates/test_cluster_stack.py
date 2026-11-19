@@ -1084,6 +1084,38 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     assert_that(generated_head_node_dna_json).is_equal_to(default_head_node_dna_json)
 
 
+# Datetime mocking is required because some template values depend on the current datetime value
+@freeze_time("2021-01-01T01:01:01")
+def test_head_node_dna_json_mount_dir_permissions(mocker, test_datadir):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    generated_head_node_dna_json = json.loads(
+        _get_cfn_init_file_content(
+            template=generated_template,
+            resource="HeadNodeLaunchTemplate",
+            file="/opt/parallelcluster/tmp/dna.json",
+        )
+    )["cluster"]
+
+    # One value per storage, in the same order as the mount directories
+    assert_that(generated_head_node_dna_json["ebs_shared_dirs"]).is_equal_to("/ebs1,/ebs2")
+    assert_that(generated_head_node_dna_json["ebs_mount_dir_permissions"]).is_equal_to("DEFAULT,0755")
+    assert_that(generated_head_node_dna_json["efs_shared_dirs"]).is_equal_to("/efs1,/efs2")
+    assert_that(generated_head_node_dna_json["efs_mount_dir_permissions"]).is_equal_to("NONE,1777")
+    assert_that(generated_head_node_dna_json["fsx_shared_dirs"]).is_equal_to("/fsx1")
+    assert_that(generated_head_node_dna_json["fsx_mount_dir_permissions"]).is_equal_to("NONE")
+    assert_that(generated_head_node_dna_json["raid_shared_dir"]).is_equal_to("/raid")
+    assert_that(generated_head_node_dna_json["raid_mount_dir_permissions"]).is_equal_to("0750")
+
+
 @freeze_time("2021-01-01T01:01:01")
 @pytest.mark.parametrize(
     "config_file_name, expected_head_node_bootstrap_timeout",

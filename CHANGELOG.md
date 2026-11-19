@@ -7,6 +7,9 @@ CHANGELOG
 **ENHANCEMENTS**
 - Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
   dryrun. The diff is logged in the CLI log file or the API Lambda logs.
+- Add the `SharedStorage/MountDirPermissions` section to configure the permissions ParallelCluster sets on the mount
+  directory of each shared storage: `Permissions` sets the mode (default `1777`), and `SetPermissions: false` leaves the
+  permissions of the file system unchanged, for example for an existing file system shared with other clients.
 
 3.16.3
 ------

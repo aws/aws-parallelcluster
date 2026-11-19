@@ -229,6 +229,9 @@ SharedStorage:
   {% for i in range(max_ebs_count) %}
   - MountDir: /new/mount/efs{{ i }}
     Name: nameebs{{ i }}
+    MountDirPermissions:
+      SetPermissions: true
+      Permissions: "0755"
     StorageType: Ebs
     EbsSettings:
       VolumeType: gp2

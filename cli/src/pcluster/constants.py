@@ -250,6 +250,9 @@ COMPUTE_INSTANCE_INFO_TIMEOUT = 90
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 
 DEFAULT_EPHEMERAL_DIR = "/scratch"
+# Mode ParallelCluster sets on the mount directory of a shared storage, unless SharedStorage/MountDirPermissions
+# says otherwise
+DEFAULT_MOUNT_DIR_PERMISSIONS = "1777"
 
 # Dedicated ParallelCluster-managed directory used to stage bootstrap files (dna.json, extra.json,
 # wait_condition_handle.txt, bootstrap.sh) instead of /tmp, so bootstrap works when /tmp is mounted

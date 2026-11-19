@@ -42,6 +42,7 @@ from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
+    DEFAULT_MOUNT_DIR_PERMISSIONS,
     DELETE_POLICY,
     DETAILED_MONITORING_ENABLED_DEFAULT,
     EBS_ROOT_VOLUME_SIZE_DEFAULT,
@@ -98,6 +99,7 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MountDirPermissionsValidator,
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
@@ -291,6 +293,47 @@ class LocalStorage(Resource):
         self.ephemeral_volume = ephemeral_volume
 
 
+class MountDirPermissions(Resource):
+    """Represent the permissions ParallelCluster sets on the mount directory of a shared storage."""
+
+    def __init__(self, set_permissions: bool = None, permissions: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.set_permissions = Resource.init_param(set_permissions, default=True)
+        self.permissions = Resource.init_param(permissions, default=DEFAULT_MOUNT_DIR_PERMISSIONS)
+        # Name of the shared storage, used by the validators in their messages
+        self.storage_name = None
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        self._register_validator(
+            MountDirPermissionsValidator,
+            set_permissions=self.set_permissions,
+            permissions=None if self.is_implied("permissions") else self.permissions,
+            name=self.storage_name,
+        )
+
+    @property
+    def dna_value(self):
+        """
+        Return the value the cookbook uses to set the permissions of the mount directory.
+
+        DEFAULT when MountDirPermissions is not set, so the cookbook keeps its default mode for the mount directory
+        (1777, or 755 for /home), NONE when the permissions of the file system must be left unchanged,
+        the mode to set otherwise.
+        """
+        if self.implied:
+            return "DEFAULT"
+        if not self.set_permissions:
+            return "NONE"
+        return self.permissions
+
+
+def _init_mount_dir_permissions(mount_dir_permissions: MountDirPermissions, storage_name: str):
+    """Return the given MountDirPermissions, or an implied one, bound to the name of its shared storage."""
+    mount_dir_permissions = mount_dir_permissions or MountDirPermissions(implied=True)
+    mount_dir_permissions.storage_name = storage_name
+    return mount_dir_permissions
+
+
 class SharedEbs(Ebs):
     """Represent a shared EBS, inherits from both _SharedStorage and Ebs classes."""
 
@@ -304,9 +347,11 @@ class SharedEbs(Ebs):
         volume_id: str = None,
         raid: Raid = None,
         deletion_policy: str = None,
+        mount_dir_permissions: MountDirPermissions = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.mount_dir_permissions = _init_mount_dir_permissions(mount_dir_permissions, name)
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.mount_dir = Resource.init_param(mount_dir)
@@ -366,10 +411,12 @@ class SharedEfs(Resource):
         encryption_in_transit: bool = None,
         iam_authorization: bool = None,
         access_point_id: str = None,
+        mount_dir_permissions: MountDirPermissions = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
         self.name = Resource.init_param(name)
+        self.mount_dir_permissions = _init_mount_dir_permissions(mount_dir_permissions, name)
         self.shared_storage_type = SharedStorageType.EFS
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
@@ -407,10 +454,11 @@ class SharedEfs(Resource):
 class BaseSharedFsx(Resource):
     """Represent the shared FSX resource."""
 
-    def __init__(self, mount_dir: str, name: str):
+    def __init__(self, mount_dir: str, name: str, mount_dir_permissions: MountDirPermissions = None):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
         self.name = Resource.init_param(name)
+        self.mount_dir_permissions = _init_mount_dir_permissions(mount_dir_permissions, name)
         self.shared_storage_type = SharedStorageType.FSX
         self.__file_system_data = None
 

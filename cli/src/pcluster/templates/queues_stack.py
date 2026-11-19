@@ -198,6 +198,9 @@ class QueuesStack(NestedStack):
                     ),
                     "cluster_config_version": self._config.config_version,
                     "enable_efa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
+                    "raid_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.RAID]["MountDirPermissions"]
+                    ),
                     "raid_shared_dir": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
@@ -216,6 +219,9 @@ class QueuesStack(NestedStack):
                         else DefaultUserHomeType.SHARED.value.lower()
                     ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.EFS),
+                    "efs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["MountDirPermissions"]
+                    ),
                     "efs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EFS]
                     ),
@@ -244,6 +250,9 @@ class QueuesStack(NestedStack):
                     "fsx_fs_types": to_comma_separated_string(
                         self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
+                    "fsx_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["MountDirPermissions"]
+                    ),
                     "fsx_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.FSX]
                     ),
@@ -252,6 +261,9 @@ class QueuesStack(NestedStack):
                         queue.compute_settings.local_storage.ephemeral_volume.mount_dir
                         if isinstance(queue, SlurmQueue) and queue.compute_settings.local_storage.ephemeral_volume
                         else DEFAULT_EPHEMERAL_DIR
+                    ),
+                    "ebs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EBS]["MountDirPermissions"]
                     ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
