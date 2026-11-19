@@ -143,10 +143,9 @@ phases:
                 # Refresh the package index first: the index inherited from the base AMI can still
                 # reference package versions already rotated out of the pool, which fails the fetch.
                 apt-get -y update
-                # Kernel 7.0+ has no linux-modules-extra package, and Ubuntu 26.04 no linux-modules-extra-aws to hold
+                # Kernel 7.0+ has no linux-modules-extra package. Hold the linux-modules-extra-aws* meta packages that exist
                 apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r))
-                MOD_HOLD=linux-modules-extra-aws; [[ $OS == ubuntu2604 ]] && MOD_HOLD=
-                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws $MOD_HOLD
+                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws $(apt-cache pkgnames linux-modules-extra-aws)
               fi
               echo "Kernel version is $(uname -a)"
 
@@ -285,8 +284,7 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
-                MOD_HOLD=linux-modules-extra-aws; [[ $OS == ubuntu2604 ]] && MOD_HOLD=
-                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws $MOD_HOLD
+                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws $(apt-cache pkgnames linux-modules-extra-aws)
               fi
               
               # Handle SSM agent
