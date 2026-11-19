@@ -519,6 +519,20 @@ def restart_head_node(cluster):
     logging.info(f"Restarted head node for cluster: {cluster.name}")
 
 
+def change_head_node_instance_type(cluster, instance_type):
+    """Stop the head node, change its instance type and start it again."""
+    logging.info(f"Changing head node instance type to {instance_type} for cluster: {cluster.name}")
+    head_node_instance = cluster.get_cluster_instance_ids(node_type="HeadNode")
+    ec2_client = boto3.client("ec2", region_name=cluster.region)
+    ec2_client.stop_instances(InstanceIds=head_node_instance)
+    ec2_client.get_waiter("instance_stopped").wait(InstanceIds=head_node_instance)
+    ec2_client.modify_instance_attribute(InstanceId=head_node_instance[0], InstanceType={"Value": instance_type})
+    ec2_client.start_instances(InstanceIds=head_node_instance)
+    wait_head_node_running(cluster)
+    ec2_client.get_waiter("instance_status_ok").wait(InstanceIds=head_node_instance)
+    logging.info(f"Changed head node instance type to {instance_type} for cluster: {cluster.name}")
+
+
 def reboot_head_node(cluster, remote_command_executor=None):
     logging.info(f"Rebooting head node for cluster: {cluster.name}")
     if not remote_command_executor:
