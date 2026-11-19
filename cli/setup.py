@@ -66,7 +66,7 @@ setup(
     description="AWS ParallelCluster is an AWS supported Open Source cluster management tool to deploy "
     "and manage HPC clusters in the AWS cloud.",
     url="https://github.com/aws/aws-parallelcluster",
-    license="Apache License 2.0",
+    license="Apache-2.0",
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
     python_requires=">=3.10",
@@ -94,7 +94,6 @@ setup(
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering",
-        "License :: OSI Approved :: Apache Software License",
     ],
     project_urls={
         "Changelog": "https://github.com/aws/aws-parallelcluster/blob/develop/CHANGELOG.md",
