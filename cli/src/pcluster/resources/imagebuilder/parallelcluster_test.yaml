@@ -118,6 +118,7 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
+      # Normalize cuda.version to major.minor (e.g. 13.0.2 -> 13.0) to match nvcc and the /usr/local/cuda-<ver> install dir.
       - name: CudaVersion
         action: ExecuteBash
         inputs:
@@ -125,7 +126,6 @@ phases:
             - |
               set -v
               PATTERN=$(jq '.default.cluster.nvidia.cuda.version' {{ CookbookDefaultFile }})
-              # Normalize cuda.version to major.minor (e.g. 13.0.2 -> 13.0) to match nvcc and the /usr/local/cuda-<ver> install dir.
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs | cut -d. -f1,2)
               echo ${VERSION}
 
@@ -309,6 +309,8 @@ phases:
               [[ $? -ne 0 ]] && echo "Python3 is not installed" && exit 1
               echo "Python test passed"
 
+      # Check the package database with dnf check, or with dpkg --audit and apt-get check on Ubuntu.
+      # dpkg --audit exits 0 even when it finds problems, so check that it prints nothing
       - name: DPKG
         action: ExecuteBash
         inputs:
@@ -321,8 +323,12 @@ phases:
                 if command -v dpkg &> /dev/null; then
                   echo "ERROR: dpkg found on non-Debian system" && exit 1
                 fi
-                echo "dpkg test passed"
+                dnf check || { echo "ERROR: dnf check failed"; exit 1; }
+              else
+                [[ -z "$(dpkg --audit)" ]] || { echo "ERROR: dpkg --audit found problems"; exit 1; }
+                apt-get check || { echo "ERROR: apt-get check failed"; exit 1; }
               fi
+              echo "dpkg test passed"
 
       - name: PythonVersion
         action: ExecuteBash
