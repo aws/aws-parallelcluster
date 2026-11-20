@@ -58,17 +58,21 @@ def test_head_node_instance_type_change(
 
     The test changes the head node instance type through EC2, which is what customers do to vertically scale
     the head node, and verifies that the running jobs, the compute nodes, the login nodes and the shared
-    storages survive the head node stop/start.
+    storages survive the head node stop/start, that the cluster can still scale out, and that a supported
+    cluster update still succeeds without replacing the resized head node.
     """
-    cluster_config = pcluster_config_reader(
-        head_node_instance_type=HEAD_NODE_INITIAL_INSTANCE_TYPE,
-        queue=QUEUE,
-        login_node_pool=LOGIN_NODE_POOL,
-        ebs_mount_dir=EBS_MOUNT_DIR,
-        efs_mount_dir=EFS_MOUNT_DIR,
-        fsx_mount_dir=FSX_MOUNT_DIR,
-    )
-    cluster = clusters_factory(cluster_config)
+    config_params = {
+        "head_node_instance_type": HEAD_NODE_INITIAL_INSTANCE_TYPE,
+        "queue": QUEUE,
+        "login_node_pool": LOGIN_NODE_POOL,
+        "ebs_mount_dir": EBS_MOUNT_DIR,
+        "efs_mount_dir": EFS_MOUNT_DIR,
+        "fsx_mount_dir": FSX_MOUNT_DIR,
+        "max_count": 1,
+    }
+    # Both the initial and the updated configs are rendered from the same template: write each to its own file,
+    # since by default the config reader overwrites the template with the rendered config.
+    cluster = clusters_factory(pcluster_config_reader(output_file="pcluster.config.initial.yaml", **config_params))
     username = get_username_for_os(os)
     home_dir = f"/home/{username}"
 
@@ -87,11 +91,18 @@ def test_head_node_instance_type_change(
     # Change the head node instance type with a stop/start.
     # computemgtd self-terminates the compute nodes if slurmctld is unreachable for more than clustermgtd_timeout
     # (600 seconds by default), so the head node downtime must stay below it for the compute nodes to survive.
+    head_node_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
     change_head_node_instance_type(cluster, instance_type=HEAD_NODE_NEW_INSTANCE_TYPE)
+
+    # The head node public IP changes on stop/start, so all the remote command executors must be re-created.
+    head_node_rce = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(head_node_rce)
     _assert_cluster_after_head_node_change(
         request,
         cluster,
         region,
+        head_node_rce,
+        scheduler_commands,
         scheduler_commands_factory,
         job_id,
         job_instance_id,
@@ -100,11 +111,24 @@ def test_head_node_instance_type_change(
         home_dir,
     )
 
+    # A supported cluster update must still work on the resized head node. The cluster config still declares the
+    # initial head node instance type (HeadNode/InstanceType cannot be updated): the update must not revert or
+    # replace the head node.
+    # The update adds a dynamic node: increasing MaxCount does not require stopping the compute fleet.
+    cluster.update(
+        str(pcluster_config_reader(output_file="pcluster.config.update.yaml", **{**config_params, "max_count": 2}))
+    )
+    _assert_cluster_after_update(
+        cluster, region, scheduler_commands, head_node_instance_id, job_id, compute_instance_ids
+    )
+
 
 def _assert_cluster_after_head_node_change(
     request,
     cluster,
     region,
+    head_node_rce,
+    scheduler_commands,
     scheduler_commands_factory,
     job_id,
     job_instance_id,
@@ -113,9 +137,6 @@ def _assert_cluster_after_head_node_change(
     home_dir,
 ):
     """Verify head node, jobs, compute nodes, login nodes and shared storages after the instance type change."""
-    # The head node public IP changes on stop/start, so all the remote command executors must be re-created.
-    head_node_rce = RemoteCommandExecutor(cluster)
-    scheduler_commands = scheduler_commands_factory(head_node_rce)
     login_node_rce = get_login_node_executors_by_pool(cluster, [LOGIN_NODE_POOL])[0]
     login_node_scheduler_commands = scheduler_commands_factory(login_node_rce)
 
@@ -132,12 +153,29 @@ def _assert_cluster_after_head_node_change(
         scheduler_commands.assert_job_state(job_id, "RUNNING")
         assert_that(scheduler_commands.get_job_instance_id(job_id)).is_equal_to(job_instance_id)
         _assert_compute_nodes_not_replaced(cluster, compute_instance_ids)
-        _assert_home_read_write(cluster, head_node_rce, home_dir)
+        # /home is served by the internal EFS, while the SharedStorage EBS volume is attached to the head node and
+        # exported over NFS: its read/write verifies the head node NFS server is back after the restart.
+        _assert_dirs_shared_with_head_node(cluster, head_node_rce, [home_dir, EBS_MOUNT_DIR])
         _assert_job_from_login_node_writes_to_home(
             head_node_rce, login_node_rce, login_node_scheduler_commands, username, home_dir
         )
 
-    scheduler_commands.cancel_job(job_id)
+
+def _assert_cluster_after_update(
+    cluster, region, scheduler_commands, head_node_instance_id, job_id, compute_instance_ids
+):
+    """Verify the update kept the resized head node, added the dynamic node and the cluster scales out on it."""
+    with soft_assertions():
+        assert_that(cluster.get_cluster_instance_ids(node_type="HeadNode")).is_equal_to([head_node_instance_id])
+        assert_instance_type(head_node_instance_id, region, HEAD_NODE_NEW_INSTANCE_TYPE)
+        assert_that(scheduler_commands.get_compute_nodes(filter_by_partition=QUEUE, all_nodes=True)).is_length(2)
+        scheduler_commands.assert_job_state(job_id, "RUNNING")
+        # The static node is busy with the long-running job: an exclusive job requires launching the new dynamic node.
+        logging.info("Verifying the cluster scales out on the dynamic node added by the update")
+        scheduler_commands.submit_command_and_assert_job_succeeded(
+            {"command": "hostname", "nodes": 1, "partition": QUEUE, "other_options": "--exclusive"}
+        )
+        assert_that(cluster.get_cluster_instance_ids(node_type="Compute")).is_length(len(compute_instance_ids) + 1)
 
 
 def _assert_compute_nodes_not_replaced(cluster, compute_instance_ids):
@@ -169,16 +207,19 @@ def _assert_job_from_login_node_writes_to_home(
         assert_that(executor.run_remote_command(f"cat {output_file}").stdout.strip()).is_equal_to("Hello World")
 
 
-def _assert_home_read_write(cluster, head_node_rce, home_dir):
-    """Verify every compute and login node can read and write the user home, sharing it with the head node."""
+def _assert_dirs_shared_with_head_node(cluster, head_node_rce, shared_dirs):
+    """Verify every compute and login node can read and write the shared dirs, sharing them with the head node."""
     compute_node_executors = [
         RemoteCommandExecutor(cluster, compute_node_ip=compute_node["privateIpAddress"])
         for compute_node in cluster.describe_cluster_instances(node_type="Compute")
     ]
     login_node_executors = get_login_node_executors_by_pool(cluster, [LOGIN_NODE_POOL])
     for executor in [*compute_node_executors, *login_node_executors]:
-        logging.info("Verifying %s is shared between the head node and %s", home_dir, executor.get_target_host_type())
-        test_directory_correctly_shared_between_ln_and_hn(head_node_rce, executor, home_dir)
+        for shared_dir in shared_dirs:
+            logging.info(
+                "Verifying %s is shared between the head node and %s", shared_dir, executor.get_target_host_type()
+            )
+            test_directory_correctly_shared_between_ln_and_hn(head_node_rce, executor, shared_dir)
 
 
 def _assert_head_node_shared_storages_mounted(cluster, region, head_node_rce):
