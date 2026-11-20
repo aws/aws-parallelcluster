@@ -31,7 +31,7 @@ from pcluster.validators.common import ValidatorContext
 from pcluster.validators.dev_settings_validators import CliAttributeOverridesValidator
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
-from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
+from pcluster.validators.iam_validators import IamPolicyValidator, IamResourcePrefixValidator, InstanceProfileValidator, RoleValidator
 from pcluster.validators.imagebuilder_validators import (
     AMIVolumeSizeValidator,
     ComponentsValidator,
@@ -106,6 +106,7 @@ class Iam(Resource):
         cleanup_lambda_role: str = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
         permissions_boundary: str = None,
+        resource_prefix: str = None,
     ):
         super().__init__()
         self.instance_role = Resource.init_param(instance_role)
@@ -113,6 +114,7 @@ class Iam(Resource):
         self.additional_iam_policies = additional_iam_policies
         self.instance_profile = Resource.init_param(instance_profile)
         self.permissions_boundary = Resource.init_param(permissions_boundary)
+        self.resource_prefix = Resource.init_param(resource_prefix)
 
     @property
     def additional_iam_policy_arns(self) -> List[str]:
@@ -132,8 +134,10 @@ class Iam(Resource):
             self._register_validator(RoleValidator, role_arn=self.cleanup_lambda_role)
 
         if self.permissions_boundary:
-            self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
-
+            self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)           
+        
+        if self.resource_prefix:
+            self._register_validator(IamResourcePrefixValidator, resource_prefix=self.resource_prefix)
 
 class UpdateOsPackages(Resource):
     """Represent the UpdateOsPackages configuration for the ImageBuilder."""
