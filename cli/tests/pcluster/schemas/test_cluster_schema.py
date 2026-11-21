@@ -669,6 +669,63 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
 
 
 @pytest.mark.parametrize(
+    "mount_dir_permissions, expected_set_permissions, expected_permissions, expected_dna_value, failure_message",
+    [
+        # Not set: the cookbook keeps its default mode
+        (None, True, "1777", "DEFAULT", None),
+        ({"Permissions": "0755"}, True, "0755", "0755", None),
+        ({"Permissions": "755"}, True, "755", "755", None),
+        ({"SetPermissions": True}, True, "1777", "1777", None),
+        ({"SetPermissions": False}, False, "1777", "NONE", None),
+        ({"Permissions": "75"}, None, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"Permissions": "0789"}, None, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"Permissions": "a+rwx"}, None, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"SetPermissions": "maybe"}, None, None, None, "Not a valid boolean"),
+    ],
+)
+@pytest.mark.parametrize(
+    "storage_config",
+    [
+        {"StorageType": "Ebs", "EbsSettings": {"Encrypted": True}},
+        {"StorageType": "Efs", "EfsSettings": {"Encrypted": True}},
+        {"StorageType": "FsxLustre", "FsxLustreSettings": {"CopyTagsToBackups": True}},
+        {"StorageType": "FsxOntap", "FsxOntapSettings": {"VolumeId": "fsvol-12345678901234567"}},
+    ],
+)
+def test_shared_storage_mount_dir_permissions_schema(
+    mocker,
+    storage_config,
+    mount_dir_permissions,
+    expected_set_permissions,
+    expected_permissions,
+    expected_dna_value,
+    failure_message,
+):
+    mock_aws_api(mocker)
+    config_dict = {"Name": "name", "MountDir": "/mount/dir", **storage_config}
+    if mount_dir_permissions is not None:
+        config_dict["MountDirPermissions"] = mount_dir_permissions
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SharedStorageSchema().load(config_dict)
+        return
+
+    storage = SharedStorageSchema().load(config_dict)
+    assert_that(storage.mount_dir_permissions.set_permissions).is_equal_to(expected_set_permissions)
+    assert_that(storage.mount_dir_permissions.permissions).is_equal_to(expected_permissions)
+    assert_that(storage.mount_dir_permissions.dna_value).is_equal_to(expected_dna_value)
+    assert_that(storage.mount_dir_permissions.storage_name).is_equal_to("name")
+
+    # The section is dumped only when it is set
+    dumped = SharedStorageSchema(context={"delete_defaults_when_dump": True}).dump(storage)
+    if mount_dir_permissions is None:
+        assert_that(dumped).does_not_contain_key("MountDirPermissions")
+    else:
+        assert_that(dumped).contains_key("MountDirPermissions")
+
+
+@pytest.mark.parametrize(
     "scheduler, install_intel_packages_enabled, failure_message",
     [
         ("slurm", True, None),

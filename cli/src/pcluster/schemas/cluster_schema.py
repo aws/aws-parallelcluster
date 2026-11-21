@@ -69,6 +69,7 @@ from pcluster.config.cluster_config import (
     LogRotation,
     Logs,
     Monitoring,
+    MountDirPermissions,
     PlacementGroup,
     Proxy,
     QueueImage,
@@ -522,6 +523,23 @@ class FileCacheSettingsSchema(BaseSchema):
     )
 
 
+class MountDirPermissionsSchema(BaseSchema):
+    """Represent the permissions ParallelCluster sets on the mount directory of a shared storage."""
+
+    set_permissions = fields.Bool(metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY})
+    permissions = fields.Str(
+        validate=validate.Regexp(
+            r"^[0-7]?[0-7]{3}$", error="Permissions must be an octal mode of 3 or 4 digits, for example 755 or 1777."
+        ),
+        metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return MountDirPermissions(**data)
+
+
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
@@ -531,6 +549,9 @@ class SharedStorageSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY},
     )
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    mount_dir_permissions = fields.Nested(
+        MountDirPermissionsSchema, metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY}
+    )
     storage_type = fields.Str(
         required=True,
         validate=validate.OneOf(["Ebs", FSX_LUSTRE, FSX_OPENZFS, FSX_ONTAP, "Efs", FILE_CACHE]),
@@ -584,7 +605,11 @@ class SharedStorageSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FsxLustre)."""
         storage_type = data.get("storage_type")
-        shared_volume_attributes = {"mount_dir": data.get("mount_dir"), "name": data.get("name")}
+        shared_volume_attributes = {
+            "mount_dir": data.get("mount_dir"),
+            "name": data.get("name"),
+            "mount_dir_permissions": data.get("mount_dir_permissions"),
+        }
         settings = (
             data.get("efs_settings", None)
             or data.get("ebs_settings", None)
