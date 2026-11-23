@@ -16,7 +16,9 @@ import boto3
 from utils import get_instance_info, get_similar_instance_types
 
 
-def _find_existing_reservation(ec2_client, instance_type, az_id, instance_platform, with_placement_group):
+def _find_existing_reservation(
+    ec2_client, instance_type, az_id, instance_platform, with_placement_group, ignore_placement_group=False
+):
     """Return True if an active capacity reservation already exists."""
     try:
         reservations = ec2_client.describe_capacity_reservations(
@@ -33,14 +35,14 @@ def _find_existing_reservation(ec2_client, instance_type, az_id, instance_platfo
         if (
             reservation.get("AvailabilityZoneId") == az_id
             and reservation.get("InstancePlatform") == instance_platform
-            and bool(reservation.get("PlacementGroupArn")) == with_placement_group
+            and (ignore_placement_group or bool(reservation.get("PlacementGroupArn")) == with_placement_group)
         ):
             logging.info(
                 "Reusing existing capacity reservation %s for %s in %s (placement_group=%s)",
                 reservation.get("CapacityReservationId"),
                 instance_type,
                 az_id,
-                with_placement_group,
+                bool(reservation.get("PlacementGroupArn")),
             )
             return True
     return False
@@ -80,7 +82,14 @@ def _ensure_cluster_placement_group(ec2_client, name):
 
 
 def resolve_instance_with_capacity(
-    region, az_id, instance_type, os, minutes=50, count=2, alternative_instance_types=()
+    region,
+    az_id,
+    instance_type,
+    os,
+    minutes=50,
+    count=2,
+    alternative_instance_types=(),
+    ignore_placement_group=False,
 ):
     """Reserve capacity for *instance_type* in *az_id*, falling back to similar instance types.
 
@@ -91,6 +100,7 @@ def resolve_instance_with_capacity(
 
     EFA-capable instances are reserved with a placement group.
     Non-EFA instances are reserved without a placement group.
+    With *ignore_placement_group*, existing reservations are reused whatever their placement group setting.
 
     Returns the (possibly substituted) instance type string.
     """
@@ -107,7 +117,9 @@ def resolve_instance_with_capacity(
 
     for candidate in candidates:
         # For instances larger than .xlarge, reuse an existing reservation (dedup) before creating one.
-        if dedup and _find_existing_reservation(ec2_client, candidate, az_id, instance_platform, with_placement_group):
+        if dedup and _find_existing_reservation(
+            ec2_client, candidate, az_id, instance_platform, with_placement_group, ignore_placement_group
+        ):
             return candidate
         try:
             reservation_args = {

@@ -24,7 +24,7 @@ import urllib
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from hashlib import sha256
+from hashlib import sha1, sha256
 from importlib.metadata import version
 from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from io import BytesIO
@@ -703,3 +703,15 @@ def get_dictionary_diff(d1: dict, d2: dict, path: str = "") -> set[str]:
             diffs.add(key_path)
 
     return diffs
+
+
+def create_hash_suffix(string_to_hash: str):
+    """Create 16digit hash string."""
+    return (
+        string_to_hash
+        if string_to_hash == "HeadNode"
+        # A nosec comment is appended to the following line in order to disable the B324 check.
+        # The sha1 is used just as a hashing function.
+        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
+    )

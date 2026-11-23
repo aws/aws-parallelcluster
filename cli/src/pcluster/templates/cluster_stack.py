@@ -1062,6 +1062,15 @@ class ClusterCdkStack:
             file_system_type_version=shared_fsx.file_system_type_version,
             tags=[CfnTag(key="Name", value=shared_fsx.name)],
         )
+        # If the file system already exists, keep it in its subnets, because changing them replaces the file system,
+        # deleting the existing one and its data.
+        # The subnets are kept even if no longer used by the cluster: the file system is reachable from any subnet
+        # in the VPC.
+        existing_subnet_ids = self.config.existing_fsx_file_system_subnets.get(
+            self.stack.resolve(fsx_resource.logical_id)
+        )
+        if existing_subnet_ids:
+            fsx_resource.subnet_ids = existing_subnet_ids
         for rule in security_group_rules:
             fsx_resource.add_depends_on(rule)
         fsx_resource.cfn_options.deletion_policy = fsx_resource.cfn_options.update_replace_policy = (
@@ -1158,6 +1167,19 @@ class ClusterCdkStack:
                 deletion_policy,
             )
 
+            # Mount Targets for Login Nodes
+            if self.config.login_nodes:
+                for pool in self.config.login_nodes.pools:
+                    for subnet_id in pool.networking.subnet_ids:
+                        self._add_efs_mount_target(
+                            id,
+                            efs_id,
+                            [file_system_security_group],
+                            subnet_id,
+                            checked_availability_zones,
+                            deletion_policy,
+                        )
+
         self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"].append(
             shared_efs.encryption_in_transit
         )
@@ -1185,6 +1207,15 @@ class ClusterCdkStack:
                 security_groups=[sg.ref for sg in security_groups],
                 subnet_id=subnet_id,
             )
+            # EFS allows a single mount target per AZ: if the mount target already exists, keep it in its subnet,
+            # because moving it to another subnet of the same AZ makes the update fail.
+            # The subnet is kept even if no longer used by the cluster: the mount target is reachable from any subnet
+            # of the AZ in the VPC.
+            existing_subnet_id = self.config.existing_efs_mount_target_subnets.get(
+                self.stack.resolve(efs_resource.logical_id)
+            )
+            if existing_subnet_id:
+                efs_resource.subnet_id = existing_subnet_id
             efs_resource.cfn_options.deletion_policy = efs_resource.cfn_options.update_replace_policy = deletion_policy
             checked_availability_zones.append(availability_zone)
 

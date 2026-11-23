@@ -5,20 +5,87 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Improve `export-logs` user experience by parallelizing download to reduce run time, 
-  adding progress reporting, and supporting running on deleted clusters.
+- Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
+  dryrun. The diff is logged in the CLI log file or the API Lambda logs.
 
 **CHANGES**
-- Add support for Python 3.14 in the pcluster CLI.
-- Update the default root volume size to 50 GB.
+- Remove support for Python 3.9 in the `pcluster` CLI, which is in end of life.
 
 **BUG FIXES**
 - Fix `update-cluster` failing with an unhandled exception when changing a shared storage `MountDir` with running nodes.
-- Fix `build-image` with `UpdateOs` enabled failing in proxied environments.
-- Fix issue with validator `ExistingFsxNetworkingValidator` so that, when a shared storage does not return network interfaces, 
-the validator fails with a clear error message instead of a generic `NoneType` error.
-- Reduce IAM role and policy naming collisions by using a more unique name suffix.
-- Fix `describe-cluster` reporting incomplete events with a large stack event history.
+
+3.16.3
+------
+
+**CHANGES**
+- Upgrade EFA installer to 1.51.0 (from 1.49.0).
+  - Efa-driver: efa-3.3.1
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.7.0-1
+  - Rdma-core: rdma-core-65.0-1
+  - Open MPI: openmpi40-aws-4.1.8-1 and openmpi50-aws-5.0.9-11
+- Upgrade NVIDIA driver, Fabric Manager, and IMEX to version 595.112.07 (from 595.71.05).
+- Upgrade mysql-community-client to version 8.4.13 (from 8.4.10).
+- Upgrade the Python version used by the virtual environments in the AMIs to 3.14.10 (from 3.14.8).
+- Upgrade amazon-efs-utils to version 3.3.5 (from 3.1.3).
+- Upgrade stunnel to version 5.82 (from 5.78).
+- Upgrade Cinc Client to version 19.4.46 (from 19.3.14).
+- Upgrade Amazon DCV to version 2026.0-25174 (from 2025.0-20103).
+  - server: `2026.0.25174-1`
+  - xdcv: `2026.0.715-1`
+  - gl: `2026.0.1124-1`
+  - web_viewer: `2026.0.25174-1`
+- On Ubuntu, stop setting the kernel parameter `fs.protected_regular` to 0, so that it keeps the OS default value as on the other OSes.
+- Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
+  to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
+
+**BUG FIXES**
+- Only enable NVIDIA IMEX service on GB200 compute nodes. Only enable NVIDIA Fabric Manager service on compute nodes with NVSwitch, and do not enable the `nvidia-powerd` service. Since 3.16.0 the services were enabled unnecessarily on all instance types.
+- Fix dynamic nodes getting stuck in `COMPLETING` state indefinitely, holding their jobs, when the backing instance
+  of a node with jobs is terminated and its private IP is reused by another compute node.
+- Ensure only the latest AMI is returned by `pcluster list-official-images` for a given OS and architecture.
+- Fix name collisions of the `APIGatewayExecutionRole` IAM role when multiple ParallelCluster API stacks are created
+  at the same time, by using a longer suffix derived from the stack ID (24 characters, from 8).
+
+3.16.2
+------
+
+**ENHANCEMENTS**
+- Improve `export-logs`: speed up by downloading logs in parallel, add progress reporting, support running on deleted clusters.
+- Add a `pcluster-diag` check that verifies the sudoers definitions ParallelCluster relies on.
+
+**CHANGES**
+- Add support for Python 3.14 in the `pcluster` CLI.
+- Upgrade the Python runtime of ParallelCluster Lambda functions to Python 3.14 (from 3.12).
+- Increase the default root volume size to 50 GB (from 45 GB).
+- Log the `systemctl status` output and the last journal entries of any system service that fails to start during
+  node bootstrap or cluster update to `/var/log/chef-client.log`, so that the cause of the failure is available in CloudWatch Logs.
+- Upgrade the Python version used by the virtual environments baked into the AMIs to 3.14.8 (from 3.14.6).
+- Ship only AWS CLI v2 in ParallelCluster AMIs. AWS CLI v1 is no longer installed in the cookbook Python virtual environment.
+- Remove execution permissions from the configuration files `/opt/parallelcluster/shared/computefleet-status.json`,
+  `/opt/parallelcluster/scripts/clusterstatusmgtd_logging.conf` and `/etc/dcv/dcv.conf`.
+- Log the content of the Slurm configuration files generated on the head node, to simplify troubleshooting.
+
+**BUG FIXES**
+- Fix `build-image` failing in proxied environments when `UpdateOs` is enabled.
+- Fix `ExistingFsxNetworkingValidator` failing with a generic `NoneType` error when a file system does not return
+  network interfaces. The validator now fails with a clear error message.
+- Fix IAM role and policy naming collisions by using a longer suffix derived from the stack ID (24 characters, from 8).
+- Fix `describe-cluster` reporting incomplete events when the stack has a large event history.
+- Fix cluster update failing with `mount target already exists in this AZ` when multiple subnets are in the same AZ.
+- Fix cluster update replacing the managed FSx for Lustre file system, when all the queues are replaced with new ones on a different subnet.
+- Fix login nodes failing to mount the EFS file system managed by ParallelCluster when they are in an AZ not used by
+  the head node or compute nodes. ParallelCluster now creates an EFS mount target in that AZ.
+- Fix cluster update hanging when a shared storage is unresponsive, caused by the `fuser` probe run before each unmount.
+- Fix the permissions of ParallelCluster-managed files under `/etc/sudoers.d/` by setting mode `0440` on all of them.
+- Fix EC2 throttling during compute node launch not being retried and being reported as insufficient capacity
+  when using multiple instance types or multiple subnets.
+- Fix ParallelCluster treating `key=value` text in the `Comment` and `Extra` fields of Slurm nodes and reservations
+  as actual properties.
+
+**DEPRECATIONS**
+- This is the last ParallelCluster release that supports Ubuntu 22.04.
 
 3.16.1
 ------
@@ -118,8 +185,8 @@ the validator fails with a clear error message instead of a generic `NoneType` e
 - Fix cluster creation and update failures caused by IAM policy tag conditions that required the `parallelcluster:cluster-name`
   tag to be the only tag on a request rather than merely present. This affected clusters with login nodes as well as stack
   creation and updates when AWS or CloudFormation attached additional tags to the request.
-- Prevent a path traversal when downloading exported cluster and image logs, so a CloudWatch log stream name containing `../`
-  segments can no longer cause files to be written outside the export directory.
+- Prevent a path traversal in `export-cluster-logs` and `export-image-logs`, where a crafted S3 object key in the
+  log export bucket could cause files to be written outside the export directory on the machine running the command.
 - Return a clear error instead of an unexpected fatal exception when the configured AWS profile does not exist.
 - Cache getPolicy API calls to reduce validation time of clusters that have additional IAM policies.
 

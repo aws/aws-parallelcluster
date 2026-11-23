@@ -29,6 +29,8 @@ Scheduling:
     CustomActions:
       OnNodeStart:
         Script: s3://{{ bucket_name }}/compute_node_start.sh
+      OnNodeConfigured:
+        Script: s3://{{ bucket_name }}/compute_node_configured.sh
     Iam:
       S3Access:
         - BucketName: {{ bucket_name }}

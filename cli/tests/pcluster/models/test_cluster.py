@@ -10,6 +10,7 @@
 # limitations under the License.
 import datetime
 import json
+import logging
 from copy import deepcopy
 from unittest.mock import PropertyMock
 
@@ -25,11 +26,13 @@ from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
+from pcluster.models import cluster as cluster_module
 from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.schemas.common_schema import ValidationError
+from pcluster.validators.common import FailureLevel, ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
@@ -218,6 +221,86 @@ class TestCluster:
                 _ = cluster._get_stack_template()
         else:
             assert_that(cluster._get_stack_template()).is_equal_to(yaml.safe_load(response))
+
+    def test_efs_mount_target_subnets(self, mocker):
+        """Verify that ClusterStack.efs_mount_target_subnets returns the subnet of each EFS mount target."""
+        template = {
+            "Resources": {
+                "EFS123MTuseast1a": {"Type": "AWS::EFS::MountTarget", "Properties": {"SubnetId": "subnet-1a"}},
+                "EFS123MTuseast1b": {"Type": "AWS::EFS::MountTarget", "Properties": {"SubnetId": "subnet-1b"}},
+                "EFS123": {"Type": "AWS::EFS::FileSystem", "Properties": {}},
+            }
+        }
+        mock_aws_api(mocker)
+        get_template_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_template", return_value=json.dumps(template)
+        )
+        stack = ClusterStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"})
+
+        assert_that(stack.efs_mount_target_subnets).is_equal_to(
+            {"EFS123MTuseast1a": "subnet-1a", "EFS123MTuseast1b": "subnet-1b"}
+        )
+        get_template_mock.assert_called_with(FAKE_NAME)
+
+    def test_fsx_file_system_subnets(self, mocker):
+        """Verify that ClusterStack.fsx_file_system_subnets returns the subnets of each FSx file system."""
+        template = {
+            "Resources": {
+                "FSX123": {"Type": "AWS::FSx::FileSystem", "Properties": {"SubnetIds": ["subnet-1a"]}},
+                "FSX456": {"Type": "AWS::FSx::FileSystem", "Properties": {"SubnetIds": ["subnet-1b"]}},
+                "EFS123MTuseast1a": {"Type": "AWS::EFS::MountTarget", "Properties": {"SubnetId": "subnet-1a"}},
+            }
+        }
+        mock_aws_api(mocker)
+        get_template_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_template", return_value=json.dumps(template)
+        )
+        stack = ClusterStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"})
+
+        assert_that(stack.fsx_file_system_subnets).is_equal_to({"FSX123": ["subnet-1a"], "FSX456": ["subnet-1b"]})
+        get_template_mock.assert_called_with(FAKE_NAME)
+
+    @pytest.mark.parametrize("during_update", [True, False])
+    def test_validate_and_parse_config_sets_existing_efs_mount_target_subnets(self, cluster, mocker, during_update):
+        """Verify that the subnets of the deployed EFS mount targets are set in the config only during update."""
+        mount_target_subnets = {"EFS123MTuseast1a": "subnet-1a"}
+        config = mocker.MagicMock(existing_efs_mount_target_subnets={})
+        config.validate.return_value = []
+        mocker.patch("pcluster.models.cluster.parse_config", return_value={})
+        mocker.patch("pcluster.models.cluster.Cluster._load_config", return_value=config)
+        stack_mock = mocker.patch("pcluster.models.cluster.Cluster.stack", new_callable=PropertyMock).return_value
+        stack_mock.efs_mount_target_subnets = mount_target_subnets
+
+        parsed_config, _ = cluster._validate_and_parse_config(
+            validator_suppressors=None,
+            validation_failure_level=FailureLevel.ERROR,
+            config_text="config",
+            context=ValidatorContext(during_update=during_update),
+        )
+
+        assert_that(parsed_config.existing_efs_mount_target_subnets).is_equal_to(
+            mount_target_subnets if during_update else {}
+        )
+
+    @pytest.mark.parametrize("during_update", [True, False])
+    def test_validate_and_parse_config_sets_existing_fsx_file_system_subnets(self, cluster, mocker, during_update):
+        """Verify that the subnets of the deployed FSx file systems are set in the config only during update."""
+        fsx_subnets = {"FSX123": ["subnet-1a"]}
+        config = mocker.MagicMock(existing_fsx_file_system_subnets={})
+        config.validate.return_value = []
+        mocker.patch("pcluster.models.cluster.parse_config", return_value={})
+        mocker.patch("pcluster.models.cluster.Cluster._load_config", return_value=config)
+        stack_mock = mocker.patch("pcluster.models.cluster.Cluster.stack", new_callable=PropertyMock).return_value
+        stack_mock.fsx_file_system_subnets = fsx_subnets
+
+        parsed_config, _ = cluster._validate_and_parse_config(
+            validator_suppressors=None,
+            validation_failure_level=FailureLevel.ERROR,
+            config_text="config",
+            context=ValidatorContext(during_update=during_update),
+        )
+
+        assert_that(parsed_config.existing_fsx_file_system_subnets).is_equal_to(fsx_subnets if during_update else {})
 
     @pytest.mark.parametrize(
         "error_message",
@@ -644,6 +727,7 @@ class TestCluster:
         )
 
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_template", return_value=json.dumps({"Resources": {}}))
 
         if force:
             _, changes, _ = cluster.validate_update_request(
@@ -864,6 +948,280 @@ class TestCluster:
                 # Verify that additional_instance_types_data was set when valid JSON provided
                 expected_data = json.loads(cluster_config_dict["DevSettings"]["InstanceTypesData"])
                 mock_api_instance.return_value.ec2.additional_instance_types_data = expected_data
+
+    _DEPLOYED_ROOT = {
+        "Resources": {
+            "Queues": {"Type": "AWS::CloudFormation::Stack", "Properties": {"TemplateURL": "old"}},
+            "HeadNode": {"Type": "AWS::EC2::Instance", "Properties": {"InstanceType": "t3.micro"}},
+        }
+    }
+    _NEW_ROOT = {
+        "Resources": {
+            "Queues": {"Type": "AWS::CloudFormation::Stack", "Properties": {"TemplateURL": {"Ref": "QueuesKey"}}},
+            "LoginNodes": {"Type": "AWS::CloudFormation::Stack", "Properties": {"TemplateURL": {"Ref": "LoginKey"}}},
+            "HeadNode": {"Type": "AWS::EC2::Instance", "Properties": {"InstanceType": "t3.large"}},
+        }
+    }
+    _QUEUES = {"Resources": {"LaunchTemplate": {"Type": "AWS::EC2::LaunchTemplate"}}}
+    _LOGIN = {"Resources": {"LoginLaunchTemplate": {"Type": "AWS::EC2::LaunchTemplate"}}}
+    _ASSETS = [
+        {"s3_object_key_parameter": {"key": "QueuesKey"}, "content": _QUEUES},
+        {"s3_object_key_parameter": {"key": "LoginKey"}, "content": _LOGIN},
+    ]
+
+    @staticmethod
+    def _compact(template):
+        return json.dumps(template, separators=(",", ":"))
+
+    def _mock_deployed_stacks(self, mocker, root_error=None):
+        mock_aws_api(mocker)
+        deployed = {FAKE_NAME: yaml.safe_dump(self._DEPLOYED_ROOT, sort_keys=False), "queues-stack-id": self._QUEUES}
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_template",
+            side_effect=root_error if root_error else lambda stack_id: deployed[stack_id],
+        )
+        # The dummy CFN client of mock_aws_api overrides describe_stack_resources.
+        return mocker.patch(
+            "tests.pcluster.aws.dummy_aws_api._DummyCfnClient.describe_stack_resources",
+            return_value={"Queues": {"PhysicalResourceId": "queues-stack-id"}},
+        )
+
+    @pytest.mark.parametrize("operation", ["update", "update dryrun"])
+    def test_log_templates(self, cluster, mocker, caplog, operation):
+        """Verify that the diff of each stack is logged, and the new template of a stack that is not deployed."""
+        describe_mock = self._mock_deployed_stacks(mocker)
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, operation)
+
+        messages = [record.getMessage() for record in caplog.records]
+        tag = f"[{operation}]"
+        assert_that([message.split(":\n", 1)[0] for message in messages]).is_equal_to(
+            [
+                f"{tag} Diff of the CloudFormation template of the cluster stack",
+                f"{tag} Diff of the CloudFormation template of the nested stack Queues",
+                # LoginNodes is a new nested stack: it has no deployed template to compare with.
+                f"{tag} New CloudFormation template of the nested stack LoginNodes",
+            ]
+        )
+        root_diff = messages[0].splitlines()
+        assert_that(root_diff[1:3]).is_equal_to(["--- deployed cluster stack", "+++ new cluster stack"])
+        assert_that(root_diff).contains('-        "InstanceType": "t3.micro"', '+        "InstanceType": "t3.large"')
+        assert_that(messages[1]).ends_with(":\nNo change")
+        assert_that(messages[2]).ends_with(self._compact(self._LOGIN))
+        # Only the nested stack that is deployed is looked up, alone (DescribeStackResources returns 100 resources).
+        describe_mock.assert_called_once_with(FAKE_NAME, "Queues")
+
+    def test_log_templates_when_deployed_template_unreadable(self, cluster, mocker, caplog):
+        """Verify that only a warning is logged when the deployed template of the cluster stack cannot be read."""
+        self._mock_deployed_stacks(
+            mocker, root_error=AWSClientError(function_name="get_template", message="Access denied")
+        )
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
+
+        assert_that([(record.levelname, record.getMessage()) for record in caplog.records]).is_equal_to(
+            [("WARNING", "Unable to read the deployed CloudFormation template of the cluster stack: Access denied")]
+        )
+
+    def test_log_templates_when_deployed_nested_template_unreadable(self, cluster, mocker, caplog):
+        """Verify that a nested stack whose deployed template cannot be read only gets a warning."""
+        self._mock_deployed_stacks(mocker)
+        deployed = {FAKE_NAME: yaml.safe_dump(self._DEPLOYED_ROOT, sort_keys=False)}
+
+        def get_template(stack_id):
+            if stack_id not in deployed:
+                raise AWSClientError(function_name="get_template", message="Access denied")
+            return deployed[stack_id]
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_template", side_effect=get_template)
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
+
+        assert_that(
+            [(record.levelname, record.getMessage().split(":\n", 1)[0]) for record in caplog.records]
+        ).is_equal_to(
+            [
+                ("INFO", "[update] Diff of the CloudFormation template of the cluster stack"),
+                (
+                    "WARNING",
+                    "Unable to read the deployed CloudFormation template of the nested stack Queues: Access denied",
+                ),
+                ("INFO", "[update] New CloudFormation template of the nested stack LoginNodes"),
+            ]
+        )
+
+    def test_log_templates_when_nested_stack_unreadable(self, cluster, mocker, caplog):
+        """Verify that a nested stack whose resource cannot be read only gets a warning."""
+        describe_mock = self._mock_deployed_stacks(mocker)
+        describe_mock.side_effect = AWSClientError(function_name="describe_stack_resources", message="Access denied")
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster._log_templates(self._NEW_ROOT, self._ASSETS, "update")
+
+        assert_that(
+            [(record.levelname, record.getMessage().split(":\n", 1)[0]) for record in caplog.records]
+        ).is_equal_to(
+            [
+                ("INFO", "[update] Diff of the CloudFormation template of the cluster stack"),
+                ("WARNING", "Unable to read the nested stack Queues of the cluster stack: Access denied"),
+                ("INFO", "[update] New CloudFormation template of the nested stack LoginNodes"),
+            ]
+        )
+
+    def test_log_template_in_parts(self, mocker, caplog):
+        """Verify that a template longer than the part size is logged in numbered parts that join into it."""
+        mocker.patch("pcluster.models.cluster._TEMPLATE_LOG_PART_SIZE", 10)
+        template = {"Resources": {"HeadNode": {"Type": "AWS::EC2::Instance"}}}
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster_module._log_template("Title", template)
+
+        messages = [record.getMessage() for record in caplog.records]
+        text = self._compact(template)
+        count = -(-len(text) // 10)
+        assert_that(messages).is_length(count)
+        for index, message in enumerate(messages, start=1):
+            assert_that(message).starts_with("Title (part {}/{}):\n".format(index, count))
+        assert_that("".join(message.split(":\n", 1)[1] for message in messages)).is_equal_to(text)
+
+    def test_logged_text_redacts_presigned_urls(self, caplog):
+        template = {
+            "Resources": {
+                "Handle": {
+                    "Value": "https://bucket.s3.amazonaws.com/key?X-Amz-Algorithm=AWS4&X-Amz-Credential=AKIA&"
+                    "X-Amz-Security-Token=secret&X-Amz-Signature=abc"
+                }
+            }
+        }
+
+        with caplog.at_level(logging.INFO, logger="pcluster.models.cluster"):
+            cluster_module._log_template("Title", template)
+
+        message = caplog.records[0].getMessage()
+        assert_that(message).contains("https://bucket.s3.amazonaws.com/key?<redacted>")
+        assert_that(message).does_not_contain("secret")
+
+    @pytest.mark.parametrize("log_error", [None, RuntimeError("unexpected")])
+    def test_update_logs_templates_best_effort(self, cluster, mocker, caplog, log_error):
+        """Verify that the update logs the templates diff before updating the stack, and goes on if logging fails."""
+        mock_aws_api(mocker)
+        target_config = mocker.MagicMock(dev_settings=None)
+        mocker.patch("pcluster.models.cluster.start_cdk_import")
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_update_request",
+            return_value=(target_config, ["changes"], ["failures"]),
+        )
+        for method in (
+            "_add_tags",
+            "_upload_config",
+            "_upload_instance_types_data",
+            "_upload_change_set",
+            "_upload_artifacts",
+        ):
+            mocker.patch(f"pcluster.models.cluster.Cluster.{method}")
+        mocker.patch("pcluster.models.cluster.Cluster._get_cfn_tags", return_value=[])
+        mocker.patch(
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
+            return_value=({"Resources": {}}, []),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value="log-group"
+        )
+        mocker.patch(
+            "pcluster.models.s3_bucket.S3Bucket.get_cfn_template_url", return_value="https://bucket/template.yaml"
+        )
+        calls = []
+
+        def log_templates(*_args):
+            calls.append("log")
+            if log_error:
+                raise log_error
+
+        log_mock = mocker.patch("pcluster.models.cluster.Cluster._log_templates", side_effect=log_templates)
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.update_stack_from_url",
+            side_effect=lambda **kwargs: calls.append("update_stack"),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value={"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"},
+        )
+
+        with caplog.at_level(logging.WARNING, logger="pcluster.models.cluster"):
+            assert_that(cluster.update("target config")).is_equal_to((["changes"], ["failures"]))
+
+        log_mock.assert_called_once_with({"Resources": {}}, [], "update")
+        # The templates are logged before the stack is updated: the deployed ones are those before the update.
+        assert_that(calls).is_equal_to(["log", "update_stack"])
+        warnings = [record.getMessage() for record in caplog.records if record.levelname == "WARNING"]
+        assert_that(warnings).is_equal_to(
+            ["Unable to log the CloudFormation templates of the update: unexpected"] if log_error else []
+        )
+
+    @pytest.mark.parametrize("cluster_template", [None, "s3://bucket/template.yaml"])
+    def test_log_update_templates(self, cluster, mocker, cluster_template):
+        """Verify that the target config templates are built and logged, without uploading or changing anything."""
+        target_config = mocker.MagicMock(tags=None)
+        target_config.dev_settings = mocker.MagicMock(cluster_template=cluster_template) if cluster_template else None
+        build_mock = mocker.patch(
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
+            return_value=({"Resources": {}}, ["assets"]),
+        )
+        log_mock = mocker.patch("pcluster.models.cluster.Cluster._log_templates")
+        side_effect_mocks = [
+            mocker.patch(f"pcluster.models.cluster.Cluster.{method}")
+            for method in ("_upload_config", "_upload_instance_types_data", "_upload_change_set", "_upload_artifacts")
+        ]
+        update_stack_mock = mocker.patch("pcluster.aws.cfn.CfnClient.update_stack_from_url")
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value="log-group"
+        )
+        mocker.patch("pcluster.models.cluster.get_installed_version", return_value="3.17.0")
+
+        cluster.log_update_templates(target_config, "update dryrun")
+
+        if cluster_template:
+            build_mock.assert_not_called()
+            log_mock.assert_not_called()
+        else:
+            _, kwargs = build_mock.call_args
+            assert_that(kwargs["cluster_config"]).is_same_as(target_config)
+            assert_that(kwargs["log_group_name"]).is_equal_to("log-group")
+            assert_that(kwargs["upload_assets"]).is_false()
+            # The tags are added to the target config, not to the config of the cluster.
+            assert_that({tag.key: tag.value for tag in target_config.tags}).is_equal_to(
+                {PCLUSTER_CLUSTER_NAME_TAG: FAKE_NAME, PCLUSTER_VERSION_TAG: "3.17.0"}
+            )
+            log_mock.assert_called_once_with({"Resources": {}}, ["assets"], "update dryrun")
+        for side_effect_mock in side_effect_mocks + [update_stack_mock]:
+            side_effect_mock.assert_not_called()
+
+    @pytest.mark.parametrize("failing_step", ["build", "log"])
+    def test_log_update_templates_failure_is_a_warning(self, cluster, mocker, caplog, failing_step):
+        """Verify that a failure to build or log the templates is only logged as a warning."""
+        target_config = mocker.MagicMock(dev_settings=None, tags=None)
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name", new_callable=PropertyMock, return_value=None
+        )
+        error = RuntimeError(f"{failing_step} failed")
+        mocker.patch(
+            "pcluster.models.cluster.CDKTemplateBuilder.build_cluster_template",
+            side_effect=error if failing_step == "build" else None,
+            return_value=({"Resources": {}}, []),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster._log_templates", side_effect=error if failing_step == "log" else None
+        )
+
+        with caplog.at_level(logging.WARNING, logger="pcluster.models.cluster"):
+            cluster.log_update_templates(target_config, "update dryrun")
+
+        assert_that([record.getMessage() for record in caplog.records]).is_equal_to(
+            [f"Unable to log the CloudFormation templates of the update dryrun: {failing_step} failed"]
+        )
 
 
 OLD_CONFIGURATION = """

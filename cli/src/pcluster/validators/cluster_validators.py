@@ -22,6 +22,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.config.common import CapacityType, SharedStorageType, merge_tags
 from pcluster.constants import (
+    ACCEPTED_OSES,
     CIDR_ALL_IPS,
     DELETE_POLICY,
     EFS_PORT,
@@ -34,7 +35,6 @@ from pcluster.constants import (
     PCLUSTER_VERSION_TAG,
     PRIVATE_OSES,
     RETAIN_POLICY,
-    SUPPORTED_OSES,
     SUPPORTED_SCHEDULERS,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
@@ -60,8 +60,8 @@ EFS_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": SUPPORTED_OSES,
-    "arm64": SUPPORTED_OSES,
+    "x86_64": ACCEPTED_OSES,
+    "arm64": ACCEPTED_OSES,
 }
 
 FSX_MESSAGES = {
@@ -815,6 +815,33 @@ class ManagedFsxMultiAzValidator(Validator):
                 "storage, properly configured to work across the target subnets or remove the managed FSx storage to "
                 "use multiple subnets for a queue.",
                 FailureLevel.ERROR,
+            )
+
+
+class ManagedFsxCrossAzValidator(Validator):
+    """
+    Managed FSx Storage Vs Compute Subnets AZ validator.
+
+    During update, the managed FSx is kept in its current subnets to not replace it, even if the compute subnets
+    are moved to a different AZ. In these cases we notify customers that they may incur in increased latency and costs.
+    """
+
+    def _validate(self, fsx_name, fsx_subnet_ids, compute_subnet_ids):
+        try:
+            fsx_az_set = set(AWSApi.instance().ec2.get_subnets_az_mapping(fsx_subnet_ids).values())
+        except AWSClientError:
+            # The subnets of the deployed file system may no longer exist, e.g. if the file system and then its subnet
+            # have been deleted out of band. The message is not relevant in this case and must not block the update.
+            return
+        compute_az_set = set(AWSApi.instance().ec2.get_subnets_az_mapping(compute_subnet_ids).values())
+        if not compute_az_set.issubset(fsx_az_set):
+            self._add_failure(
+                f"The managed FSx for Lustre file system '{fsx_name}' is kept in its current Availability Zone "
+                f"({', '.join(sorted(fsx_az_set))}) because changing its subnet would replace the file system "
+                f"and delete its data, but the compute nodes are in a different Availability Zone "
+                f"({', '.join(sorted(compute_az_set - fsx_az_set))}). Accessing a shared storage from different AZs "
+                "can lead to increased storage networking latency and added inter-AZ data transfer costs.",
+                FailureLevel.INFO,
             )
 
 

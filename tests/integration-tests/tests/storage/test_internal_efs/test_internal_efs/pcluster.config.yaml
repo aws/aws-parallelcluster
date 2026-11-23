@@ -7,7 +7,7 @@ LoginNodes:
       Count: 2
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
+          - {{ login_nodes_subnet_id }}
       GracetimePeriod: 5
 HeadNode:
   SharedStorageType: Efs
@@ -15,7 +15,7 @@ HeadNode:
     Encrypted: true
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ head_node_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -31,4 +31,4 @@ Scheduling:
           MinCount: 1
       Networking:
         SubnetIds:
-          - {{ private_subnet_id }}
+          - {{ compute_subnet_id }}

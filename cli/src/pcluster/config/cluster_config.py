@@ -64,6 +64,7 @@ from pcluster.constants import (
     Feature,
 )
 from pcluster.utils import (
+    create_hash_suffix,
     get_attr,
     get_partition,
     get_resource_name_from_resource_arn,
@@ -93,6 +94,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxCrossAzValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
@@ -1619,6 +1621,16 @@ class BaseClusterConfig(Resource):
         self.deployment_settings = deployment_settings
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
+        # Dictionary {mount target logical id: subnet id} with an entry for each EFS mount target of the deployed stack,
+        # e.g. {"EFS2395b171bc347024MTuswest2a": "subnet-12345678"}.
+        # It is set during update to keep each mount target in its current subnet: EFS allows a single mount target
+        # per AZ, so moving a mount target to another subnet of the same AZ would make the stack update fail.
+        self.existing_efs_mount_target_subnets = {}
+        # Dictionary {file system logical id: subnet ids} with an entry for each FSx file system of the deployed stack,
+        # e.g. {"FSX3c9d7e6a8c2b1f05": ["subnet-12345678"]}.
+        # It is set during update to keep each managed FSx in its current subnet: changing the subnet of an FSx
+        # replaces the file system, deleting the existing one and its data.
+        self.existing_fsx_file_system_subnets = {}
         self.instance_types_data_version = ""
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
@@ -1797,6 +1809,18 @@ class BaseClusterConfig(Resource):
                     queues=queues,
                     fsx_az_list=storage.file_system_availability_zones,
                 )
+            if isinstance(storage, SharedFsxLustre) and not storage.is_unmanaged:
+                # During update, the existing file system is kept in its subnets, see existing_fsx_file_system_subnets
+                existing_subnet_ids = self.existing_fsx_file_system_subnets.get(
+                    f"{SharedStorageType.FSX.name}{create_hash_suffix(storage.name)}"
+                )
+                if existing_subnet_ids:
+                    self._register_validator(
+                        ManagedFsxCrossAzValidator,
+                        fsx_name=storage.name,
+                        fsx_subnet_ids=existing_subnet_ids,
+                        compute_subnet_ids=compute_subnet_ids,
+                    )
             if isinstance(storage, SharedEbs):
                 ebs_volumes.append(storage)
 

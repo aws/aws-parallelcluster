@@ -505,7 +505,7 @@ class ImageBuilderCdkStack(Stack):
             handler="delete_image_stack.handler",
             memory_size=128,
             role=execution_role,
-            runtime="python3.12",
+            runtime="python3.14",
             timeout=900,
             environment=lambda_env,
             tags=build_tags,

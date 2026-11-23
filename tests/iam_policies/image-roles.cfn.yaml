@@ -67,7 +67,7 @@ Resources:
                 Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
                 Effect: Allow
               - Action: logs:DeleteLogGroup
-                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*:*'
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
                 Effect: Allow
               - Action:
                   - SNS:GetTopicAttributes

@@ -16,7 +16,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               FILE=/etc/os-release
               if [ -e ${!FILE} ]; then
                 . ${!FILE}
@@ -32,7 +32,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2023'` ]; then
@@ -41,6 +41,8 @@ phases:
                 OS='ubuntu2204'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.24'` ]; then
                 OS='ubuntu2404'
+              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.26'` ]; then
+                OS='ubuntu2604'
               elif [ `echo "${!RELEASE}" | grep '^rhel\.8'` ]; then
                 OS='rhel8'
               elif [ `echo "${!RELEASE}" | grep '^rocky\.8'` ]; then
@@ -62,7 +64,7 @@ phases:
         inputs:
           commands:
             - |
-               set -x
+               set -euxo pipefail
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
                if [ `echo "${!OS}" | grep -E '^(alinux|rhel|rocky)'` ]; then
@@ -79,7 +81,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
               if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|ubuntu|rhel|rocky)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
@@ -109,7 +111,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               PROXY_ENV_FILE=/etc/parallelcluster/pcluster_proxy_env.sh
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               REGION=${AWS::Region}
@@ -162,7 +164,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
               [ -f "${!PROXY_ENV}" ] && . "${!PROXY_ENV}"
@@ -173,7 +175,7 @@ phases:
                 # disable apt-daily.timer to avoid dpkg lock
                 flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
                 # disable unattended upgrades
-                sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
+                [ ! -f /etc/apt/apt.conf.d/20auto-upgrades ] || sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
                 # update package index
                 DEBIAN_FRONTEND=noninteractive apt-get -y update
               fi
@@ -182,7 +184,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
@@ -200,7 +202,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               echo ${AWS::Region}
 
       - name: DisableKernelUpdate
@@ -208,7 +210,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               DISABLE_KERNEL_UPDATE=$(cat /etc/parallelcluster/image_dna.json | jq -r '.cluster.disable_kernel_update')
               echo "${!DISABLE_KERNEL_UPDATE}"
 
@@ -217,7 +219,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
@@ -249,7 +251,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
@@ -259,12 +261,8 @@ phases:
               if [[ ${!PLATFORM} == RHEL ]]; then
                 yum -y update
 
-                if [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rhel9" ]] || [[ ${!OS} == "rocky9" ]] || [[ ${!OS} == "alinux2023" ]] ; then
-                  # package-cleanup has changed in RHEL8 and it works differently https://access.redhat.com/solutions/1227
-                  yum remove -y $(yum repoquery --installonly --latest-limit=-2 -q)
-                else
-                  package-cleanup -y --oldkernels --count=1
-                fi
+                # package-cleanup has changed in RHEL8 and it works differently https://access.redhat.com/solutions/1227
+                yum remove -y $(yum repoquery --installonly --latest-limit=-2 -q)
 
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 DEBIAN_FRONTEND=noninteractive apt-get -y update
@@ -287,7 +285,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
               DISABLE_KERNEL_UPDATE='{{ build.DisableKernelUpdate.outputs.stdout }}'
@@ -302,7 +300,7 @@ phases:
                 yum versionlock delete ${!KERNEL_PACKAGES_PREFIX} ${!KERNEL_PACKAGES_PREFIX}-core ${!KERNEL_PACKAGES_PREFIX}-modules
 
                 if [[ ${!OS} == "rocky8" ]] || [[ ${!OS} == "rocky9" ]] ; then
-                  yum versionlock delete rocky-release
+                  yum versionlock delete rocky-release rocky-repos
                 elif [[ ${!OS} == "rhel8" ]] || [[ ${!OS} == "rhel9" ]] ; then
                   yum versionlock delete redhat-release
                 fi
@@ -314,7 +312,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               if [[ -f /tmp/imagebuilder_service/ssm_installed ]]; then
                 echo "Keeping SSM agent installed"
                 rm -rf /tmp/imagebuilder_service/ssm_installed
@@ -334,7 +332,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               PROXY_ENV='{{ build.ConfigureProxy.outputs.stdout }}'
               if [ -n "${!PROXY_ENV}" ]; then rm -f "${!PROXY_ENV}"; fi
 

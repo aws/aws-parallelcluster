@@ -163,9 +163,10 @@ class CfnClient(Boto3Client):
             )
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_stack_resources(self, stack_name: str):
-        """Get stack resources information."""
-        response = self._client.describe_stack_resources(StackName=stack_name).get("StackResources")
+    def describe_stack_resources(self, stack_name: str, logical_resource_id: str = None):
+        """Get stack resources information, only of the resource ``logical_resource_id`` when given."""
+        optional_args = {"LogicalResourceId": logical_resource_id} if logical_resource_id else {}
+        response = self._client.describe_stack_resources(StackName=stack_name, **optional_args).get("StackResources")
         return {resource["LogicalResourceId"]: resource for resource in response}  # Build dictionary for better query.
 
     @AWSExceptionHandler.handle_client_exception

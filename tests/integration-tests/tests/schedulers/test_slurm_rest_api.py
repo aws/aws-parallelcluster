@@ -24,6 +24,7 @@ from tests.common.assertions import (
     assert_systemd_service_running,
     known_harmless_slurm_daemon_errors,
 )
+from tests.common.slurm_upgrade import upgrade_slurm_with_stopped_compute_nodes
 
 # slurmrestd listens on this unix socket when configured via the upstream postinstall script
 # (aws-samples/aws-parallelcluster-post-install-scripts/rest-api).
@@ -78,6 +79,20 @@ def test_slurm_rest_api(
         _assert_slurmrestd_endpoint_responsive(rce, "ping")
         assert_no_errors_in_service_log(rce, "slurmrestd", ignore_patterns=known_harmless_slurm_daemon_errors())
 
+    # The upgrade rebuilds slurmrestd against /opt/libjwt: token authentication and the OpenAPI plugins are exercised
+    # again, with the API version rediscovered.
+    install_start_time = rce.run_remote_command("date '+%Y-%m-%d %H:%M:%S'", hide=True).stdout.strip()
+    if not upgrade_slurm_with_stopped_compute_nodes(rce, cluster):
+        return
+    rce = RemoteCommandExecutor(cluster)
+    with soft_assertions():
+        assert_systemd_service_running(rce, "slurmrestd")
+        _assert_slurmrestd_endpoint_responsive(rce, "ping")
+        # Scoped to what the upgraded daemon logged.
+        assert_no_errors_in_service_log(
+            rce, "slurmrestd", ignore_patterns=known_harmless_slurm_daemon_errors(), since=install_start_time
+        )
+
 
 def _slurmrestd_request(rce, url_path, raise_on_error=True):
     """Send an authenticated request to slurmrestd and return the parsed JSON response."""
@@ -131,6 +146,7 @@ def _assert_slurmrestd_endpoint_responsive(rce, endpoint):
 
     pings = payload.get("pings", [])
     assert_that(pings).described_as(f"slurmrestd /{endpoint} returned no pings").is_not_empty()
-    assert_that(pings[0].get("pinged")).described_as(
-        f"slurmrestd /{endpoint} ping status is not UP: {pings[0]}"
-    ).is_equal_to("UP")
+    # "pinged" is gone from API v0.0.45 (Slurm 26.05); "responding" replaced it.
+    ping = pings[0]
+    responding = ping["responding"] if "responding" in ping else ping.get("pinged") == "UP"
+    assert_that(responding).described_as(f"slurmrestd /{endpoint} ping status is not UP: {ping}").is_true()
