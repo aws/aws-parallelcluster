@@ -399,6 +399,12 @@ def yaml_load(stream):
     yaml.add_constructor(
         tag=BaseResolver.DEFAULT_MAPPING_TAG, constructor=yaml_no_duplicates_constructor, Loader=SafeLoader
     )
+    # Read the integers written with a leading zero, for example 0755, as strings instead of octal numbers (YAML 1.1),
+    # so that a file mode written as 0644 is not silently read as 420.
+    # The constructor is registered on SafeLoader, so it applies to every yaml.safe_load call of the process.
+    yaml.add_constructor(
+        tag="tag:yaml.org,2002:int", constructor=_yaml_int_keeping_leading_zero_constructor, Loader=SafeLoader
+    )
     return yaml.safe_load(stream)
 
 
@@ -413,6 +419,14 @@ def yaml_no_duplicates_constructor(loader, node, deep=False):
         mapping[key] = value
 
     return loader.construct_mapping(node, deep)
+
+
+def _yaml_int_keeping_leading_zero_constructor(loader, node):
+    """Return the integers written with a leading zero as strings, and the other integers as SafeLoader does."""
+    value = loader.construct_scalar(node)
+    if re.match(r"^[-+]?0[0-9_]+$", value):
+        return value
+    return SafeLoader.construct_yaml_int(loader, node)
 
 
 def get_http_tokens_setting(imds_support):

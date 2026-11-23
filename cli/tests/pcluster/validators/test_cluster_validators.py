@@ -59,6 +59,7 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MountDirPermissionsValidator,
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
@@ -1766,6 +1767,25 @@ def test_shared_storage_name_validator(name, expected_message):
 )
 def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
     actual_failures = SharedStorageMountDirValidator().execute(mount_dir)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "set_permissions, permissions, expected_message",
+    [
+        (True, None, None),
+        (True, "0755", None),
+        (False, None, None),
+        (
+            False,
+            "0755",
+            "MountDirPermissions/Permissions cannot be set for the shared storage 'storage' when "
+            "MountDirPermissions/SetPermissions is false",
+        ),
+    ],
+)
+def test_mount_dir_permissions_validator(set_permissions, permissions, expected_message):
+    actual_failures = MountDirPermissionsValidator().execute(set_permissions, permissions, "storage")
     assert_failure_messages(actual_failures, expected_message)
 
 

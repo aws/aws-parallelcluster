@@ -989,6 +989,23 @@ class SharedStorageMountDirValidator(Validator):
             )
 
 
+class MountDirPermissionsValidator(Validator):
+    """
+    Mount directory permissions validator.
+
+    Make sure Permissions is not set when SetPermissions is false, because ParallelCluster would not apply it.
+    """
+
+    def _validate(self, set_permissions: bool, permissions: str, name: str):
+        if not set_permissions and permissions is not None:
+            self._add_failure(
+                f"MountDirPermissions/Permissions cannot be set for the shared storage '{name}' when "
+                "MountDirPermissions/SetPermissions is false. Remove Permissions to keep the permissions of the file "
+                "system, or set SetPermissions to true to apply them.",
+                FailureLevel.ERROR,
+            )
+
+
 class SharedFileCacheNotHomeValidator(Validator):
     """
     Shared FileCache Not Home Validator.
