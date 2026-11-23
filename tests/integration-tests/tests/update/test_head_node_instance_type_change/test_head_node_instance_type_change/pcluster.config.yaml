@@ -1,0 +1,44 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+
+  InstanceType: {{ head_node_instance_type }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  SharedStorageType: Efs
+LoginNodes:
+  Pools:
+    - Name: {{ login_node_pool }}
+      InstanceType: {{ instance }}
+      Count: 1
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      GracetimePeriod: 3
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: {{ queue }}
+      ComputeResources:
+        - Name: cr1
+          Instances:
+            - InstanceType: {{ instance }}
+          MinCount: 1
+          MaxCount: {{ max_count }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ ebs_mount_dir }}
+    Name: shared-ebs
+    StorageType: Ebs
+  - MountDir: {{ efs_mount_dir }}
+    Name: shared-efs
+    StorageType: Efs
+  - MountDir: {{ fsx_mount_dir }}
+    Name: shared-fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200

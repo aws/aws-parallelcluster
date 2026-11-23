@@ -22,3 +22,4 @@ tests_outputs/
 test.yaml
 .vscode
 .kiro/specs
+.claude/logs

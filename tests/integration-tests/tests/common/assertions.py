@@ -38,6 +38,12 @@ def wait_instance_replaced_or_terminating(instance_id, region):
     assert_instance_replaced_or_terminating(instance_id, region)
 
 
+def assert_instance_type(instance_id, region, expected_instance_type):
+    """Assert that a given instance has the expected instance type."""
+    ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
+    assert_that(ec2_response["Reservations"][0]["Instances"][0]["InstanceType"]).is_equal_to(expected_instance_type)
+
+
 def assert_instance_replaced_or_terminating(instance_id, region):
     """Assert that a given instance got replaced or is marked as Unhealthy."""
     ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
