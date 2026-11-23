@@ -64,6 +64,10 @@ SharedStorage:
   - MountDir: {{ new_ebs_mount_dir }}
     Name: /manage-ebs
     StorageType: Ebs
+{% if new_ebs_mount_dir_permissions %}
+    MountDirPermissions:
+      Permissions: {{ new_ebs_mount_dir_permissions }}
+{% endif %}
     EbsSettings:
       VolumeType: gp3
       DeletionPolicy: {{ new_ebs_deletion_policy }}
@@ -80,6 +84,10 @@ SharedStorage:
   - MountDir: {{ new_efs_mount_dir }}
     Name: manage-efs
     StorageType: Efs
+{% if new_efs_set_mount_dir_permissions is defined and new_efs_set_mount_dir_permissions is not none %}
+    MountDirPermissions:
+      SetPermissions: {{ new_efs_set_mount_dir_permissions }}
+{% endif %}
     EfsSettings:
       Encrypted: true
       PerformanceMode: maxIO
@@ -91,6 +99,10 @@ SharedStorage:
   - MountDir: {{ existing_efs_mount_dir }}
     Name: existing_efs
     StorageType: Efs
+{% if existing_efs_mount_dir_permissions %}
+    MountDirPermissions:
+      Permissions: {{ existing_efs_mount_dir_permissions }}
+{% endif %}
     EfsSettings:
       FileSystemId: {{ existing_efs_id }}
 {% endif %}
@@ -110,6 +122,10 @@ SharedStorage:
   - MountDir: {{ fsx_lustre_mount_dir }}
     Name: existingfsx
     StorageType: FsxLustre
+{% if fsx_lustre_set_mount_dir_permissions is defined and fsx_lustre_set_mount_dir_permissions is not none %}
+    MountDirPermissions:
+      SetPermissions: {{ fsx_lustre_set_mount_dir_permissions }}
+{% endif %}
     FsxLustreSettings:
       FileSystemId: {{ existing_fsx_lustre_fs_id }}
 {% endif %}
