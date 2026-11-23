@@ -36,6 +36,45 @@ default_cluster_params = {
 }
 
 
+def test_shared_storage_mount_dir_update_with_running_compute_fleet(mocker):
+    cluster = dummy_cluster()
+    mocker.patch.object(cluster, "has_running_capacity", return_value=True)
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=False)
+    storage = {
+        "Name": "fsx-lustre",
+        "MountDir": "/fsx",
+        "StorageType": "FsxLustre",
+        "FsxLustreSettings": {"StorageCapacity": 1200},
+    }
+    patch = ConfigPatch(
+        cluster,
+        base_config={"Scheduling": {"Scheduler": "slurm"}, "SharedStorage": [storage]},
+        target_config={"Scheduling": {"Scheduler": "slurm"}, "SharedStorage": [dict(storage, MountDir="/fsx1")]},
+    )
+
+    try:
+        patch_allowed, rows = patch.check()
+    except AttributeError as error:
+        raise AssertionError("MountDir updates must return a validation result") from error
+
+    assert_that(patch_allowed).is_false()
+    assert_that(rows[1:]).is_equal_to(
+        [
+            [
+                ["SharedStorage[fsx-lustre]"],
+                "MountDir",
+                "/fsx",
+                "/fsx1",
+                "ACTION NEEDED",
+                "All compute nodes must be stopped or QueueUpdateStrategy must be set.",
+                "Stop the compute fleet with the pcluster update-compute-fleet command"
+                ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation.",
+                UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.name,
+            ]
+        ]
+    )
+
+
 def _duplicate_config_file(dst_config_file, test_datadir):
     """
     Make a copy of the src template to the target file.
