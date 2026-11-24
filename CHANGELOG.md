@@ -12,6 +12,8 @@ CHANGELOG
 
 **CHANGES**
 - Remove support for Python 3.9 in the `pcluster` CLI, which is in end of life.
+- In US isolated regions, when `RootVolume/Size` is not specified, the root volume size is now inherited from the AMI,
+  as in the other regions, instead of being set to a fixed default size of 45GB.
 
 **BUG FIXES**
 - Fix `update-cluster` failing with an unhandled exception when changing a shared storage `MountDir` with running nodes.
