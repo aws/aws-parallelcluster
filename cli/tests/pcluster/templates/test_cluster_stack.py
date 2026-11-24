@@ -1109,7 +1109,7 @@ def test_head_node_dna_json_mount_dir_permissions(mocker, test_datadir):
     assert_that(generated_head_node_dna_json["ebs_shared_dirs"]).is_equal_to("/ebs1,/ebs2")
     assert_that(generated_head_node_dna_json["ebs_mount_dir_permissions"]).is_equal_to("DEFAULT,0755")
     assert_that(generated_head_node_dna_json["efs_shared_dirs"]).is_equal_to("/efs1,/efs2")
-    assert_that(generated_head_node_dna_json["efs_mount_dir_permissions"]).is_equal_to("NONE,1777")
+    assert_that(generated_head_node_dna_json["efs_mount_dir_permissions"]).is_equal_to("NONE,DEFAULT")
     assert_that(generated_head_node_dna_json["fsx_shared_dirs"]).is_equal_to("/fsx1")
     assert_that(generated_head_node_dna_json["fsx_mount_dir_permissions"]).is_equal_to("NONE")
     assert_that(generated_head_node_dna_json["raid_shared_dir"]).is_equal_to("/raid")

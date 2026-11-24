@@ -999,16 +999,13 @@ class ClusterCdkStack:
         """
         Return the value the cookbook uses to set the permissions of the mount directory of the storage.
 
-        DEFAULT when MountDirPermissions is not set, so the cookbook keeps its default mode for the mount directory
-        (1777, or 755 for /home), NONE when the permissions of the file system must be left unchanged,
-        the mode to set otherwise.
+        NONE when the permissions of the file system must be left unchanged, the mode set in Permissions if any,
+        DEFAULT otherwise, so the cookbook keeps its default mode for the mount directory (1777, or 755 for /home).
         """
         mount_dir_permissions = storage.mount_dir_permissions
-        if mount_dir_permissions.implied:
-            return "DEFAULT"
         if not mount_dir_permissions.set_permissions:
             return "NONE"
-        return mount_dir_permissions.permissions
+        return mount_dir_permissions.configured_permissions or "DEFAULT"
 
     def _add_fsx_storage(self, id: str, shared_fsx: BaseSharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
