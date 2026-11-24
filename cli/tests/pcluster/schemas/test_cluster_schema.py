@@ -35,7 +35,7 @@ from pcluster.schemas.cluster_schema import (
     TimeoutsSchema,
 )
 from pcluster.utils import replace_url_parameters, yaml_load
-from pcluster.validators.cluster_validators import MountDirPermissionsValidator
+from pcluster.validators.cluster_validators import MountDirPermissionsFsxOpenZfsValidator, MountDirPermissionsValidator
 from pcluster.validators.common import ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.utils import load_cluster_model_from_yaml
@@ -697,6 +697,7 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
         {"StorageType": "Efs", "EfsSettings": {"Encrypted": True}},
         {"StorageType": "FsxLustre", "FsxLustreSettings": {"CopyTagsToBackups": True}},
         {"StorageType": "FsxOntap", "FsxOntapSettings": {"VolumeId": "fsvol-12345678901234567"}},
+        {"StorageType": "FsxOpenZfs", "FsxOpenZfsSettings": {"VolumeId": "fsvol-12345678901234567"}},
     ],
 )
 def test_shared_storage_mount_dir_permissions_schema(
@@ -733,6 +734,14 @@ def test_shared_storage_mount_dir_permissions_schema(
             },
         )
     )
+    # MountDirPermissions has no effect on FSx for OpenZFS: warn when it is set and asks to set permissions
+    if storage_config["StorageType"] == "FsxOpenZfs":
+        assert_that(storage._validators).contains(
+            (
+                MountDirPermissionsFsxOpenZfsValidator,
+                {"set_permissions": mount_dir_permissions is not None and expected_set_permissions, "name": "name"},
+            )
+        )
 
     # The section is dumped only when it is set
     dumped = SharedStorageSchema(context={"delete_defaults_when_dump": True}).dump(storage)

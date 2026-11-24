@@ -540,12 +540,13 @@ class FileModeField(fields.Str):
 class MountDirPermissionsSchema(BaseSchema):
     """Represent the permissions ParallelCluster sets on the mount directory of a shared storage."""
 
-    set_permissions = fields.Bool(metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY})
+    # The mode is stored in the file system, so the head node changes it without mounting the storage again
+    set_permissions = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     permissions = FileModeField(
         validate=validate.Regexp(
             r"^[0-7]?[0-7]{3}$", error="Permissions must be an octal mode of 3 or 4 digits, for example 755 or 1777."
         ),
-        metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY},
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
 
     @post_load
@@ -563,9 +564,7 @@ class SharedStorageSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY},
     )
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    mount_dir_permissions = fields.Nested(
-        MountDirPermissionsSchema, metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY}
-    )
+    mount_dir_permissions = fields.Nested(MountDirPermissionsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     storage_type = fields.Str(
         required=True,
         validate=validate.OneOf(["Ebs", FSX_LUSTRE, FSX_OPENZFS, FSX_ONTAP, "Efs", FILE_CACHE]),

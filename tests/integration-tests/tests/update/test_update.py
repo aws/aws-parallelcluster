@@ -1331,8 +1331,8 @@ def test_dynamic_file_systems_update(  # noqa: C901
         # configuration with PyYAML, which would read a leading zero as an octal number.
         new_ebs_mount_dir_permissions="750",
         new_efs_set_mount_dir_permissions=False,
-        # Change the permissions of storage already mounted by the previous update (1777 so far): the storage is
-        # mounted again with the new permissions. With SetPermissions false the mode stays as it is.
+        # Change the permissions of storage already mounted by the previous update (1777 so far): the head node
+        # changes the mode without mounting the storage again. With SetPermissions false the mode stays as it is.
         existing_efs_mount_dir_permissions="770",
         fsx_lustre_set_mount_dir_permissions=False,
         queue_update_strategy="DRAIN",

@@ -99,6 +99,7 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MountDirPermissionsFsxOpenZfsValidator,
     MountDirPermissionsValidator,
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
@@ -650,6 +651,14 @@ class ExistingFsxOpenZfs(BaseSharedFsx):
         super().__init__(**kwargs)
         self.volume_id = volume_id
         self.file_system_type = OPENZFS
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        super()._register_validators(context)
+        self._register_validator(
+            MountDirPermissionsFsxOpenZfsValidator,
+            set_permissions=not self.mount_dir_permissions.implied and self.mount_dir_permissions.set_permissions,
+            name=self.name,
+        )
 
     @property
     def file_system_id(self):

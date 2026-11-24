@@ -836,7 +836,7 @@ def _test_add_mount_dir_permissions(base_conf, target_conf):
     # Add MountDirPermissions to a mounted storage in target conf
     _get_storage_by_name(target_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0750"}
 
-    # Changing the permissions of a mounted storage follows the same policy as changing its MountDir
+    # The permissions of a mounted storage are changed without mounting it again
     _check_patch(
         base_conf,
         target_conf,
@@ -846,11 +846,11 @@ def _test_add_mount_dir_permissions(base_conf, target_conf):
                 "MountDirPermissions",
                 None,
                 {"Permissions": "0750"},
-                UpdatePolicy(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY),
+                UpdatePolicy(UpdatePolicy.SUPPORTED),
                 is_list=False,
             )
         ],
-        UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
+        UpdatePolicy.SUPPORTED,
     )
 
 
@@ -868,11 +868,11 @@ def _test_change_mount_dir_permissions(base_conf, target_conf):
                 "Permissions",
                 "0750",
                 "0700",
-                UpdatePolicy(UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY),
+                UpdatePolicy(UpdatePolicy.SUPPORTED),
                 is_list=False,
             )
         ],
-        UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY,
+        UpdatePolicy.SUPPORTED,
     )
 
 

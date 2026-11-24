@@ -59,6 +59,7 @@ from pcluster.validators.cluster_validators import (
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MountDirPermissionsFsxOpenZfsValidator,
     MountDirPermissionsValidator,
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
@@ -1787,6 +1788,20 @@ def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
 def test_mount_dir_permissions_validator(set_permissions, permissions, expected_message):
     actual_failures = MountDirPermissionsValidator().execute(set_permissions, permissions, "storage")
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "set_permissions, expected_message",
+    [
+        (False, None),
+        (True, "MountDirPermissions has no effect on the FSx for OpenZFS storage 'storage'"),
+    ],
+)
+def test_mount_dir_permissions_fsx_open_zfs_validator(set_permissions, expected_message):
+    actual_failures = MountDirPermissionsFsxOpenZfsValidator().execute(set_permissions, "storage")
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_message:
+        assert_failure_level(actual_failures, FailureLevel.WARNING)
 
 
 @pytest.mark.parametrize(
