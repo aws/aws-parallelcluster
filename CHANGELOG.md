@@ -7,6 +7,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
   dryrun. The diff is logged in the CLI log file or the API Lambda logs.
+- Add `SharedStorage/MountDirPermissions` to set the permissions of the shared storage mount directory, or to leave
+  them unchanged with `SetPermissions: false`.
 
 **CHANGES**
 - Remove support for Python 3.9 in the `pcluster` CLI, which is in end of life.

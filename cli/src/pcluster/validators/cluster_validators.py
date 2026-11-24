@@ -989,6 +989,42 @@ class SharedStorageMountDirValidator(Validator):
             )
 
 
+class MountDirPermissionsValidator(Validator):
+    """
+    Mount directory permissions validator.
+
+    Make sure Permissions is not set when SetPermissions is false, because ParallelCluster would not apply it.
+    """
+
+    def _validate(self, set_permissions: bool, permissions: str, name: str):
+        if not set_permissions and permissions is not None:
+            self._add_failure(
+                f"MountDirPermissions/Permissions cannot be set for the shared storage '{name}' when "
+                "MountDirPermissions/SetPermissions is false. Remove Permissions to keep the permissions of the file "
+                "system, or set SetPermissions to true to apply them.",
+                FailureLevel.ERROR,
+            )
+
+
+class MountDirPermissionsFsxOpenZfsValidator(Validator):
+    """
+    Mount directory permissions validator for FSx for OpenZFS.
+
+    Warn that MountDirPermissions has no effect on FSx for OpenZFS, because ParallelCluster does not change the
+    permissions of the root of the volume: with the default NFS export of the volume (root_squash), the root user of
+    the cluster nodes is mapped to the anonymous user.
+    """
+
+    def _validate(self, set_permissions: bool, name: str):
+        if set_permissions:
+            self._add_failure(
+                f"MountDirPermissions has no effect on the FSx for OpenZFS storage '{name}': ParallelCluster does not "
+                "change the permissions of the root of the volume. Set them from a client that the NFS exports of the "
+                "volume allow to act as root (no_root_squash).",
+                FailureLevel.WARNING,
+            )
+
+
 class SharedFileCacheNotHomeValidator(Validator):
     """
     Shared FileCache Not Home Validator.

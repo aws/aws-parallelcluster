@@ -34,7 +34,9 @@ from pcluster.schemas.cluster_schema import (
     SlurmQueueSchema,
     TimeoutsSchema,
 )
-from pcluster.utils import replace_url_parameters
+from pcluster.utils import replace_url_parameters, yaml_load
+from pcluster.validators.cluster_validators import MountDirPermissionsFsxOpenZfsValidator, MountDirPermissionsValidator
+from pcluster.validators.common import ValidatorContext
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.utils import load_cluster_model_from_yaml
 
@@ -666,6 +668,112 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
             SharedStorageSchema().load(config_dict)
     else:
         SharedStorageSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "mount_dir_permissions, expected_set_permissions, expected_permissions, failure_message",
+    [
+        # Not set: the cookbook keeps its default mode
+        (None, True, "1777", None),
+        ({"Permissions": "0755"}, True, "0755", None),
+        ({"Permissions": "755"}, True, "755", None),
+        # Modes written without quotes are read from the YAML file as integers
+        ({"Permissions": 755}, True, "755", None),
+        ({"Permissions": 1777}, True, "1777", None),
+        ({"Permissions": 75}, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"Permissions": True}, None, None, "Not a valid string"),
+        ({"SetPermissions": True}, True, "1777", None),
+        ({"SetPermissions": False}, False, "1777", None),
+        ({"Permissions": "75"}, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"Permissions": "0789"}, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"Permissions": "a+rwx"}, None, None, "Permissions must be an octal mode of 3 or 4 digits"),
+        ({"SetPermissions": "maybe"}, None, None, "Not a valid boolean"),
+    ],
+)
+@pytest.mark.parametrize(
+    "storage_config",
+    [
+        {"StorageType": "Ebs", "EbsSettings": {"Encrypted": True}},
+        {"StorageType": "Efs", "EfsSettings": {"Encrypted": True}},
+        {"StorageType": "FsxLustre", "FsxLustreSettings": {"CopyTagsToBackups": True}},
+        {"StorageType": "FsxOntap", "FsxOntapSettings": {"VolumeId": "fsvol-12345678901234567"}},
+        {"StorageType": "FsxOpenZfs", "FsxOpenZfsSettings": {"VolumeId": "fsvol-12345678901234567"}},
+    ],
+)
+def test_shared_storage_mount_dir_permissions_schema(
+    mocker,
+    storage_config,
+    mount_dir_permissions,
+    expected_set_permissions,
+    expected_permissions,
+    failure_message,
+):
+    mock_aws_api(mocker)
+    config_dict = {"Name": "name", "MountDir": "/mount/dir", **storage_config}
+    if mount_dir_permissions is not None:
+        config_dict["MountDirPermissions"] = mount_dir_permissions
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SharedStorageSchema().load(config_dict)
+        return
+
+    storage = SharedStorageSchema().load(config_dict)
+    assert_that(storage.mount_dir_permissions.set_permissions).is_equal_to(expected_set_permissions)
+    assert_that(storage.mount_dir_permissions.permissions).is_equal_to(expected_permissions)
+
+    # The storage validates its MountDirPermissions, naming itself in the messages
+    storage._register_validators(ValidatorContext())
+    assert_that(storage._validators).contains(
+        (
+            MountDirPermissionsValidator,
+            {
+                "set_permissions": expected_set_permissions,
+                "permissions": (mount_dir_permissions or {}).get("Permissions") and expected_permissions,
+                "name": "name",
+            },
+        )
+    )
+    # MountDirPermissions has no effect on FSx for OpenZFS: warn when it is set and asks to set permissions
+    if storage_config["StorageType"] == "FsxOpenZfs":
+        assert_that(storage._validators).contains(
+            (
+                MountDirPermissionsFsxOpenZfsValidator,
+                {"set_permissions": mount_dir_permissions is not None and expected_set_permissions, "name": "name"},
+            )
+        )
+
+    # The section is dumped only when it is set
+    dumped = SharedStorageSchema(context={"delete_defaults_when_dump": True}).dump(storage)
+    if mount_dir_permissions is None:
+        assert_that(dumped).does_not_contain_key("MountDirPermissions")
+    else:
+        assert_that(dumped).contains_key("MountDirPermissions")
+
+
+@pytest.mark.parametrize(
+    "permissions_yaml, expected_permissions",
+    [
+        ("0750", "0750"),
+        ("750", "750"),
+        ("1777", "1777"),
+        ('"0750"', "0750"),
+    ],
+)
+def test_shared_storage_mount_dir_permissions_from_yaml(mocker, permissions_yaml, expected_permissions):
+    """Read MountDirPermissions/Permissions from YAML text as pcluster reads a configuration file."""
+    mock_aws_api(mocker)
+    config_dict = yaml_load(
+        "MountDir: /mount/dir\n"
+        "Name: name\n"
+        "StorageType: Efs\n"
+        "MountDirPermissions:\n"
+        f"  Permissions: {permissions_yaml}\n"
+    )
+
+    storage = SharedStorageSchema().load(config_dict)
+
+    assert_that(storage.mount_dir_permissions.permissions).is_equal_to(expected_permissions)
 
 
 @pytest.mark.parametrize(

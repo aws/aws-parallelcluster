@@ -871,6 +871,50 @@ def _test_incompatible_ebs_sections(base_conf, target_conf):
     )
 
 
+def _test_add_mount_dir_permissions(base_conf, target_conf):
+    # Add MountDirPermissions to a mounted storage in target conf
+    _get_storage_by_name(target_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0750"}
+
+    # The permissions of a mounted storage are changed without mounting it again
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["SharedStorage[ebs1]"],
+                "MountDirPermissions",
+                None,
+                {"Permissions": "0750"},
+                UpdatePolicy(UpdatePolicy.SUPPORTED),
+                is_list=False,
+            )
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_change_mount_dir_permissions(base_conf, target_conf):
+    # Change the value of MountDirPermissions of a mounted storage in target conf
+    _get_storage_by_name(base_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0750"}
+    _get_storage_by_name(target_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0700"}
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["SharedStorage[ebs1]", "MountDirPermissions"],
+                "Permissions",
+                "0750",
+                "0700",
+                UpdatePolicy(UpdatePolicy.SUPPORTED),
+                is_list=False,
+            )
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
 def _test_different_names(base_conf, target_conf):
     # First make sure sections are present with original names
     base_ebs_1_section = _get_storage_by_name(base_conf, "ebs1")
@@ -1063,6 +1107,8 @@ def _test_iam(base_conf, target_conf):
         _test_less_target_sections,
         _test_more_target_sections,
         _test_incompatible_ebs_sections,
+        _test_add_mount_dir_permissions,
+        _test_change_mount_dir_permissions,
         _test_equal_configs,
         _test_different_names,
         _test_compute_resources,

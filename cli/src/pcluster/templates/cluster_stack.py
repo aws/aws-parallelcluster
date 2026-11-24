@@ -990,6 +990,22 @@ class ClusterCdkStack:
         elif storage.shared_storage_type == SharedStorageType.RAID:
             storage_list.extend(self._add_raid_volume(cfn_resource_id, storage))
         self.shared_storage_mount_dirs[storage.shared_storage_type].append(storage.mount_dir)
+        self.shared_storage_attributes[storage.shared_storage_type]["MountDirPermissions"].append(
+            self._get_mount_dir_permissions(storage)
+        )
+
+    @staticmethod
+    def _get_mount_dir_permissions(storage):
+        """
+        Return the value the cookbook uses to set the permissions of the mount directory of the storage.
+
+        NONE when the permissions of the file system must be left unchanged, the mode set in Permissions if any,
+        DEFAULT otherwise, so the cookbook keeps its default mode for the mount directory (1777, or 755 for /home).
+        """
+        mount_dir_permissions = storage.mount_dir_permissions
+        if not mount_dir_permissions.set_permissions:
+            return "NONE"
+        return mount_dir_permissions.configured_permissions or "DEFAULT"
 
     def _add_fsx_storage(self, id: str, shared_fsx: BaseSharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
@@ -1349,6 +1365,9 @@ class ClusterCdkStack:
                     "stack_name": self._stack_name,
                     "stack_arn": self.stack.stack_id,
                     "raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.RAID),
+                    "raid_mount_dir_permissions": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.RAID]["MountDirPermissions"]
+                    ),
                     "raid_shared_dir": to_comma_separated_string(
                         self.shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
@@ -1367,6 +1386,9 @@ class ClusterCdkStack:
                         else DefaultUserHomeType.SHARED.value.lower()
                     ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EFS),
+                    "efs_mount_dir_permissions": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.EFS]["MountDirPermissions"]
+                    ),
                     "efs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EFS]),
                     "efs_encryption_in_transits": to_comma_separated_string(
                         self.shared_storage_attributes[SharedStorageType.EFS]["EncryptionInTransits"],
@@ -1392,6 +1414,9 @@ class ClusterCdkStack:
                     "fsx_fs_types": to_comma_separated_string(
                         self.shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
+                    "fsx_mount_dir_permissions": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.FSX]["MountDirPermissions"]
+                    ),
                     "fsx_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.FSX]),
                     "volume": get_shared_storage_ids_by_type(self.shared_storage_infos, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
@@ -1399,6 +1424,9 @@ class ClusterCdkStack:
                         head_node.local_storage.ephemeral_volume.mount_dir
                         if head_node.local_storage.ephemeral_volume
                         else DEFAULT_EPHEMERAL_DIR
+                    ),
+                    "ebs_mount_dir_permissions": to_comma_separated_string(
+                        self.shared_storage_attributes[SharedStorageType.EBS]["MountDirPermissions"]
                     ),
                     "ebs_shared_dirs": to_comma_separated_string(self.shared_storage_mount_dirs[SharedStorageType.EBS]),
                     "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",

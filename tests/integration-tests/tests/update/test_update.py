@@ -1325,6 +1325,16 @@ def test_dynamic_file_systems_update(  # noqa: C901
         new_lustre_deletion_policy="Retain",
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Retain",
+        # Restrict the permissions of the new EBS and leave those of the new EFS
+        # as the file system has them. The other new storage keeps the default mode (1777).
+        # The modes are written without quotes and without a leading zero: the tests framework loads and dumps the
+        # configuration with PyYAML, which would read a leading zero as an octal number.
+        new_ebs_mount_dir_permissions="750",
+        new_efs_set_mount_dir_permissions=False,
+        # Change the permissions of storage already mounted by the previous update (1777 so far): the head node
+        # changes the mode without mounting the storage again. With SetPermissions false the mode stays as it is.
+        existing_efs_mount_dir_permissions="770",
+        fsx_lustre_set_mount_dir_permissions=False,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
         login_nodes_pools_count=login_nodes_pools_count,
@@ -1414,6 +1424,25 @@ def test_dynamic_file_systems_update(  # noqa: C901
         file_cache_path,
     )
 
+    logging.info("Checking the permissions of the mount directories of the new storage")
+    _test_mount_dir_permissions(
+        remote_command_executor,
+        {
+            # MountDirPermissions/Permissions: 750
+            new_ebs_mount_dir: "750",
+            # MountDirPermissions/SetPermissions: false, so the root of a new EFS keeps its native mode
+            new_efs_mount_dir: "755",
+            # MountDirPermissions not set
+            new_raid_mount_dir: "1777",
+            new_lustre_mount_dir: "1777",
+            # Mounted by the previous update with the default mode, then changed by this update
+            existing_efs_mount_dir: "770",
+            existing_fsx_lustre_mount_dir: "1777",
+        },
+    )
+    # Non root users cannot write at the top of these mount directories
+    restricted_mount_dirs = [new_ebs_mount_dir, new_efs_mount_dir, existing_efs_mount_dir]
+
     all_mount_dirs_update_2 = remove_none_items(
         [
             new_ebs_mount_dir,
@@ -1442,7 +1471,11 @@ def test_dynamic_file_systems_update(  # noqa: C901
     logging.info("Checking that previously mounted storage is visible on all compute nodes")
     for mount_dir in all_mount_dirs_update_1:
         verify_directory_correctly_shared(
-            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1", "queue2"],
+            run_sudo=mount_dir in restricted_mount_dirs,
         )
 
     logging.info("Checking that newly mounted storage is not visible on compute nodes with jobs running (queue1)")
@@ -1458,14 +1491,26 @@ def test_dynamic_file_systems_update(  # noqa: C901
 
     logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue2)")
     for mount_dir in all_mount_dirs_update_2:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue2"])
+        verify_directory_correctly_shared(
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue2"],
+            run_sudo=mount_dir in restricted_mount_dirs,
+        )
 
     logging.info("Canceling job in queue1 to trigger compute nodes replacement")
     scheduler_commands.cancel_job(queue1_job_id)
 
     logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue1)")
     for mount_dir in all_mount_dirs_update_2:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
+        verify_directory_correctly_shared(
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1"],
+            run_sudo=mount_dir in restricted_mount_dirs,
+        )
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
@@ -1772,6 +1817,15 @@ def _test_shared_storages_unmount(
     # check storages are not on compute nodes
     for node_name in node_names:
         _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
+
+
+def _test_mount_dir_permissions(remote_command_executor, expected_modes):
+    """Check the mode of the mount directories on the head node."""
+    for mount_dir, expected_mode in expected_modes.items():
+        if not mount_dir:
+            continue
+        mode = remote_command_executor.run_remote_command(f"stat -c %a {mount_dir}").stdout.strip()
+        assert_that(mode).described_as(f"Mode of {mount_dir}").is_equal_to(expected_mode)
 
 
 def _test_shared_storages_mount_on_headnode(

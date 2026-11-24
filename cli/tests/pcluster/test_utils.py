@@ -402,6 +402,10 @@ def test_replace_url_parameters(mocker, url, expected_url):
     (
         ["PropA:\n  PropB: ValueB", {"PropA": {"PropB": "ValueB"}}, None],
         ["PropA:\n  PropB: ValueB1\n  PropB: ValueB2", None, ConstructorError("Duplicate key found: PropB *")],
+        # Integers with a leading zero are kept as strings instead of being read as octal numbers
+        ["Mode: 0755\nSize: 010", {"Mode": "0755", "Size": "010"}, None],
+        ["Mode: 755\nZero: 0\nNegative: -5\nHex: 0x1F", {"Mode": 755, "Zero": 0, "Negative": -5, "Hex": 31}, None],
+        ['Mode: "0755"', {"Mode": "0755"}, None],
     ),
 )
 def test_yaml_load(yaml_string, expected_yaml_dict, expected_error):

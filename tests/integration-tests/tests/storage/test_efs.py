@@ -21,6 +21,7 @@ from retrying import retry
 from time_utils import minutes, seconds
 from utils import describe_cluster_instances, get_arn_partition, get_cfn_resources, get_compute_nodes_instance_ips
 
+from tests.common.assertions import assert_no_msg_in_logs
 from tests.common.utils import get_sts_endpoint, reboot_head_node
 from tests.storage.storage_common import (
     assert_subnet_az_relations_from_config,
@@ -165,6 +166,30 @@ def test_efs_mount_target_subnet_change(
     _wait_for_compute_nodes_in_subnets(cluster, region, [updated_compute_subnet_id])
     test_efs_correctly_mounted(remote_command_executor, "/" + mount_dir)
     _test_efs_correctly_shared(remote_command_executor, "/" + mount_dir, scheduler_commands)
+
+    # Update the cluster to change only the permissions of the mounted EFS, with the compute fleet running and no
+    # QueueUpdateStrategy: the head node changes the mode without mounting the EFS again, and the compute node is kept.
+    logging.info("Updating the cluster to change the permissions of the mounted EFS, with the compute fleet running")
+    compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
+    assert_that(_get_mount_dir_mode(remote_command_executor, "/" + mount_dir)).is_equal_to("1777")
+    update_cluster_config = pcluster_config_reader(
+        output_file="pcluster.config.update_mount_dir_permissions.yaml",
+        mount_dir=mount_dir,
+        head_node_subnet_id=head_node_subnet_id,
+        compute_subnet_id=updated_compute_subnet_id,
+        mount_dir_permissions="750",
+    )
+    cluster.update(str(update_cluster_config))
+
+    assert_that(_get_mount_dir_mode(remote_command_executor, "/" + mount_dir)).is_equal_to("750")
+    assert_no_msg_in_logs(remote_command_executor, ["/var/log/chef-client.log"], [f"umount -fl /{mount_dir}"])
+    assert_that(cluster.get_cluster_instance_ids(node_type="Compute")).is_equal_to(compute_instance_ids)
+    test_efs_correctly_mounted(remote_command_executor, "/" + mount_dir)
+
+
+def _get_mount_dir_mode(remote_command_executor, mount_dir):
+    """Return the mode of the mount directory on the head node."""
+    return remote_command_executor.run_remote_command(f"stat -c %a {mount_dir}").stdout.strip()
 
 
 def _get_cluster_mount_targets(cluster, region):

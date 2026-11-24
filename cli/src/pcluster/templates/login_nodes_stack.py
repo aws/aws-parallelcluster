@@ -156,10 +156,16 @@ class Pool(Construct):
                         )
                         else DefaultUserHomeType.SHARED.value.lower()
                     ),
+                    "ebs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EBS]["MountDirPermissions"]
+                    ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
                     ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.EFS),
+                    "efs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["MountDirPermissions"]
+                    ),
                     "efs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EFS]
                     ),
@@ -190,6 +196,9 @@ class Pool(Construct):
                     "fsx_fs_types": to_comma_separated_string(
                         self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
+                    "fsx_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["MountDirPermissions"]
+                    ),
                     "fsx_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.FSX]
                     ),
@@ -203,6 +212,9 @@ class Pool(Construct):
                     "pool_name": self._pool.name,
                     "node_type": "LoginNode",
                     "proxy": self._pool.networking.proxy.http_proxy_address if self._pool.networking.proxy else "NONE",
+                    "raid_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.RAID]["MountDirPermissions"]
+                    ),
                     "raid_shared_dir": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),

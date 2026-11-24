@@ -26,3 +26,7 @@ SharedStorage:
   - MountDir: {{ mount_dir }}
     Name: efs
     StorageType: Efs
+{% if mount_dir_permissions %}
+    MountDirPermissions:
+      Permissions: {{ mount_dir_permissions }}
+{% endif %}

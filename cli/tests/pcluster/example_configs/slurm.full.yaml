@@ -199,6 +199,9 @@ SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
     StorageType: Ebs
+    MountDirPermissions:
+      SetPermissions: true
+      Permissions: "0755"
     EbsSettings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 100
@@ -211,6 +214,8 @@ SharedStorage:
   - MountDir: /my/mount/point2
     Name: name2
     StorageType: Efs
+    MountDirPermissions:
+      SetPermissions: false
     EfsSettings:
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
