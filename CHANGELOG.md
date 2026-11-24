@@ -13,6 +13,9 @@ CHANGELOG
 **CHANGES**
 - Remove support for Python 3.9 in the `pcluster` CLI, which is in end of life.
 
+**BUG FIXES**
+- Fix `update-cluster` failing with an unhandled exception when changing a shared storage `MountDir` with running nodes.
+
 3.16.3
 ------
 
