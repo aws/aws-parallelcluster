@@ -23,6 +23,7 @@ readonly CLUSTERMGTD_LOG="/var/log/parallelcluster/clustermgtd"
 # Step 5: the accounting database conversion can take tens of minutes and must not be interrupted.
 readonly SLURMDBD_STARTUP_TIMEOUT_SECONDS=$((60 * 60))
 readonly SLURMDBD_STOP_TIMEOUT_SECONDS=120
+readonly SLURMDBD_ANSWER_TIMEOUT_SECONDS=120
 readonly CONTROLLER_PING_TIMEOUT_SECONDS=300
 
 SUPERVISORCTL=""
@@ -225,11 +226,36 @@ start_slurmdbd_in_foreground() {
     stop_foreground_slurmdbd "${pid}"
 }
 
+# Wait until slurmdbd answers: sacctmgr reads the accounting database on a head node; an external Slurmdbd instance
+# has no slurm.conf for sacctmgr, so there slurmdbd must listen on DbdPort.
+wait_for_slurmdbd() {
+    local port elapsed=0
+    if is_head_node; then
+        until "${PREFIX}/bin/sacctmgr" -n show clusters >/dev/null 2>&1; do
+            ((elapsed < SLURMDBD_ANSWER_TIMEOUT_SECONDS)) || fail "sacctmgr cannot read the accounting database"
+            sleep 5
+            elapsed=$((elapsed + 5))
+        done
+    else
+        port="$(conf_value DbdPort)"
+        port="${port:-${SLURMDBD_PORT_DEFAULT}}"
+        until ss -ltn "sport = :${port}" | grep -q ":${port}"; do
+            ((elapsed < SLURMDBD_ANSWER_TIMEOUT_SECONDS)) || fail "slurmdbd is not listening on port ${port}"
+            sleep 5
+            elapsed=$((elapsed + 5))
+        done
+    fi
+}
+
 # Step 5. Start the daemons on the head node, exactly the ones recorded by record_daemons.
 start_daemons() {
     if ((SLURMDBD)); then
         start_slurmdbd_in_foreground
         systemctl start slurmdbd
+        # The unit is Type=simple, so systemctl returns before slurmdbd listens. A slurmctld that starts first finds
+        # the database down, reads the TRES from its state files, and exits with a fatal error when a major release
+        # adds a TRES (8 < 9 for the pids TRES of 26.11). systemd restarts it, but Step 7.2 reports the fatal error.
+        wait_for_slurmdbd
     fi
     log "Step 5: starting the Slurm daemons and the ParallelCluster daemons"
     if ((SLURMCTLD)); then systemctl start slurmctld; fi
@@ -249,7 +275,7 @@ wait_for_controller() {
 
 # Step 7 checks 1, 2, 3 and 5, which need no compute node, or Appendix A.7 on an external Slurmdbd instance.
 verify() {
-    local expected_version="$1" slurmctld_log_offset="$2" version log_file lines status port elapsed=0
+    local expected_version="$1" slurmctld_log_offset="$2" version log_file lines status port
     version="$(installed_version)"
     log "Step 7.1: installed Slurm version is ${version}"
     [[ -z "${expected_version}" || "${version}" == "${expected_version}" ]] ||
@@ -283,25 +309,15 @@ verify() {
         unit_active slurmdbd || fail "slurmdbd is not active"
         log_file="$(slurmdbd_log_file)"
         log "Step 7.5: $(grep 'slurmdbd version' "${log_file}" 2>/dev/null | tail -n 1)"
+        # The conversion completed, not merely the daemon started.
+        wait_for_slurmdbd
         if is_head_node; then
-            # The conversion completed, not merely the daemon started.
-            until "${PREFIX}/bin/sacctmgr" -n show clusters >/dev/null 2>&1; do
-                ((elapsed < 120)) || fail "sacctmgr cannot read the accounting database"
-                sleep 5
-                elapsed=$((elapsed + 5))
-            done
             log "Step 7.5: sacctmgr -n show clusters: $("${PREFIX}/bin/sacctmgr" -n show clusters | tr -s ' ' | tr '\n' ';')"
             log "Step 7.5: sacct -X --starttime now-7days | head:"
             "${PREFIX}/bin/sacct" -X --starttime now-7days | head || true
         else
             port="$(conf_value DbdPort)"
-            port="${port:-${SLURMDBD_PORT_DEFAULT}}"
-            until ss -ltn "sport = :${port}" | grep -q ":${port}"; do
-                ((elapsed < 120)) || fail "slurmdbd is not listening on port ${port}"
-                sleep 5
-                elapsed=$((elapsed + 5))
-            done
-            log "Appendix A.7: slurmdbd is active and listens on port ${port}"
+            log "Appendix A.7: slurmdbd is active and listens on port ${port:-${SLURMDBD_PORT_DEFAULT}}"
         fi
     fi
 }
