@@ -1329,11 +1329,11 @@ def test_dynamic_file_systems_update(  # noqa: C901
         # as the file system has them. The other new storage keeps the default mode (1777).
         # The modes are written without quotes and without a leading zero: the tests framework loads and dumps the
         # configuration with PyYAML, which would read a leading zero as an octal number.
-        new_ebs_mount_dir_permissions="750",
+        new_ebs_mount_dir_permissions="755",
         new_efs_set_mount_dir_permissions=False,
         # Change the permissions of storage already mounted by the previous update (1777 so far): the head node
         # changes the mode without mounting the storage again. With SetPermissions false the mode stays as it is.
-        existing_efs_mount_dir_permissions="770",
+        existing_efs_mount_dir_permissions="775",
         fsx_lustre_set_mount_dir_permissions=False,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
@@ -1428,15 +1428,15 @@ def test_dynamic_file_systems_update(  # noqa: C901
     _test_mount_dir_permissions(
         remote_command_executor,
         {
-            # MountDirPermissions/Permissions: 750
-            new_ebs_mount_dir: "750",
+            # MountDirPermissions/Permissions: 755
+            new_ebs_mount_dir: "755",
             # MountDirPermissions/SetPermissions: false, so the root of a new EFS keeps its native mode
             new_efs_mount_dir: "755",
             # MountDirPermissions not set
             new_raid_mount_dir: "1777",
             new_lustre_mount_dir: "1777",
             # Mounted by the previous update with the default mode, then changed by this update
-            existing_efs_mount_dir: "770",
+            existing_efs_mount_dir: "775",
             existing_fsx_lustre_mount_dir: "1777",
         },
     )
