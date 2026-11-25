@@ -11,15 +11,15 @@
 import re
 from enum import Enum
 
+from pcluster.aws.common import get_region
 from pcluster.config.cluster_config import QueueUpdateStrategy
 from pcluster.config.update_policy_utils import SharedStorageChangeInfo
 from pcluster.constants import (
-    AWSBATCH,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
-    SLURM,
     STORAGE_TYPES_SUPPORTING_LIVE_UPDATES,
 )
+from pcluster.utils import get_dictionary_diff, parse_json_string
 
 
 class UpdatePolicy:
@@ -148,6 +148,12 @@ def is_slurm_queues_change(change):
     return any(path.startswith("SlurmQueues[") for path in change.path)
 
 
+def _is_adc_region():
+    """Return True if the currently configured AWS region belongs to an ADC partition."""
+    region = get_region() or ""
+    return region.startswith("us-iso")
+
+
 def extract_type_and_name_from_path(path):
     # Example path = 'SlurmQueues[slurm-q-name]'
     # This function returns the type and name extracted like this: 'SlurmQueues', 'slurm-q-name'
@@ -219,14 +225,6 @@ def unchanged_managed_fsx_lustre_names(_, patch):
     return managed_fsx_names_before_update.intersection(managed_fsx_names_after_update)
 
 
-def is_slurm_scheduler(patch):
-    return patch.cluster.stack.scheduler == SLURM
-
-
-def is_awsbatch_scheduler(_, patch):
-    return patch.cluster.stack.scheduler == AWSBATCH
-
-
 def is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
     return (
         patch.cluster.has_running_capacity()
@@ -279,8 +277,6 @@ def is_home_change(change):
 def fail_reason_shared_storage_update_policy(change, patch):
     if is_home_change(change):
         return "The /home directory cannot be changed during an update"
-    if is_awsbatch_scheduler(change, patch):
-        return f"Update actions are not currently supported for the '{change.key}' parameter"
 
     reasons = []
     if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
@@ -427,13 +423,6 @@ def condition_checker_managed_fsx(change, patch):
 def actions_needed_shared_storage_update(change, patch):
     if is_home_change(change):
         return "Please revert any changes to the /home mount"
-    if is_awsbatch_scheduler(change, patch):
-        return (
-            f"Restore '{change.key}' value to '{change.old_value}'"
-            if change.old_value is not None
-            else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
-            + ". If you need this change, please consider creating a new cluster instead of updating the existing one."
-        )
     actions = []
     if is_compute_fleet_stop_required_for_shared_storage_change(change, patch):
         actions.append(f"{UpdatePolicy.ACTIONS_NEEDED['compute_nodes_stop'](change, patch)}")
@@ -459,12 +448,9 @@ def condition_checker_shared_storage_update_policy(change, patch):
     Check different requirements for different schedulers.
 
     Compute and login fleet stop is required for plugin scheduler.
-    Update for awsbatch scheduler is not supported.
     QueueUpdateStrategy can override UpdatePolicy of parameters under SlurmQueues for slurm scheduler.
     """
     if is_home_change(change):
-        return False
-    if is_awsbatch_scheduler(change, patch):
         return False
     if patch.cluster.has_running_login_nodes() and not is_login_fleet_update_supported_for_shared_storage(change):
         return False
@@ -510,6 +496,40 @@ def get_pool_name_from_change_paths(change):
     return ""
 
 
+# ExtraChefAttributes update policy helpers
+# Define which paths within ExtraChefAttributes JSON are updatable (dot-notation)
+# IMPORTANT: We assume this set to contain the path to leaf fields.
+EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS: set[str] = {
+    "cluster.slurm.reconfigure_timeout",
+    "cluster.cluster_readiness_check_enabled",
+    "cluster.cluster_readiness_check_ignore_failure",
+}
+
+
+def _get_non_updatable_changes(old_value: str, new_value: str) -> list[str]:
+    """Parse and compare two ExtraChefAttributes JSON strings, returning paths that are not updatable."""
+    old_attrs = parse_json_string(old_value, raise_on_error=False, default={}) if old_value else {}
+    new_attrs = parse_json_string(new_value, raise_on_error=False, default={}) if new_value else {}
+
+    return [p for p in get_dictionary_diff(old_attrs, new_attrs) if p not in EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS]
+
+
+def condition_checker_extra_chef_attributes(change, _) -> bool:
+    """
+    Check if ExtraChefAttributes changes are allowed.
+
+    Only changes to paths defined in EXTRA_CHEF_ATTRIBUTES_UPDATABLE_PATHS are allowed.
+    """
+    return len(_get_non_updatable_changes(change.old_value, change.new_value)) == 0
+
+
+def fail_reason_extra_chef_attributes(change, _) -> str:
+    """Generate fail reason for ExtraChefAttributes update."""
+    non_updatable_changes = _get_non_updatable_changes(change.old_value, change.new_value)
+    paths_str = ", ".join(sorted(non_updatable_changes))
+    return f"The following ExtraChefAttributes fields cannot be updated: {paths_str}"
+
+
 # Common fail_reason messages
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
@@ -526,6 +546,7 @@ UpdatePolicy.FAIL_REASONS = {
     "compute_or_login_nodes_running": lambda change, patch: (
         "The update is not supported when compute or login nodes are running"
     ),
+    "extra_chef_attributes_update": fail_reason_extra_chef_attributes,
 }
 
 # Common action_needed messages
@@ -548,6 +569,9 @@ UpdatePolicy.ACTIONS_NEEDED = {
         "Stop the login nodes by setting Count parameter to 0 "
         "and update the cluster with the pcluster update-cluster command"
     ),
+    "extra_chef_attributes_update": lambda change, patch: (
+        "Revert the non-updatable ExtraChefAttributes fields to their original values."
+    ),
 }
 
 # Base policies
@@ -567,16 +591,13 @@ UpdatePolicy.SUPPORTED = UpdatePolicy(
     name="SUPPORTED", level=0, fail_reason="-", condition_checker=(lambda change, patch: True)
 )
 
-# Checks resize of max_vcpus in Batch Compute Environment
-UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
-    name="AWSBATCH_CE_MAX_RESIZE",
-    level=1,
-    fail_reason=lambda change, patch: "Max vCPUs can not be lower than the current Desired vCPUs ({0})".format(
-        patch.cluster.get_running_capacity()
-    ),
-    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: patch.cluster.get_running_capacity()
-    <= patch.target_config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"],
+# Update policy for ExtraChefAttributes - allows updates to specific fields only
+UpdatePolicy.EXTRA_CHEF_ATTRIBUTES = UpdatePolicy(
+    name="EXTRA_CHEF_ATTRIBUTES",
+    level=5,
+    fail_reason=UpdatePolicy.FAIL_REASONS["extra_chef_attributes_update"],
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["extra_chef_attributes_update"],
+    condition_checker=condition_checker_extra_chef_attributes,
 )
 
 # Update supported only with all compute nodes down or with replacement policy set different from COMPUTE_FLEET_STOP
@@ -609,7 +630,7 @@ UpdatePolicy.MANAGED_PLACEMENT_GROUP = UpdatePolicy(
 # Update policy for updating SharedStorage
 UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY = UpdatePolicy(
     name="SHARED_STORAGE_UPDATE_POLICY",
-    level=6 if not is_awsbatch_scheduler else 1000,
+    level=6,
     fail_reason=fail_reason_shared_storage_update_policy,
     action_needed=UpdatePolicy.ACTIONS_NEEDED["shared_storage_update_conditional"],
     condition_checker=condition_checker_shared_storage_update_policy,
@@ -682,16 +703,23 @@ UpdatePolicy.UNSUPPORTED = UpdatePolicy(
     + ". If you need this change, please consider creating a new cluster instead of updating the existing one.",
 )
 
-UpdatePolicy.UNSUPPORTED_ORDER_CHANGE = UpdatePolicy(
-    name="UNSUPPORTED_ORDER_CHANGE",
-    level=1000,  # Same level as UNSUPPORTED since it should also block updates
+# Update supported everywhere except ADC regions (us-iso*, us-isob*).
+#
+# In ADC regions there is a CloudFormation behavior where an UpdateStack call that includes
+# both a Tags change and a resource whose change is only in Metadata does not update that
+# resource. This breaks the head node update flow because cfn-hup on the head node polls
+# DescribeStackResource for Metadata changes on HeadNodeLaunchTemplate and never sees them,
+# leaving the HeadNodeWaitCondition to time out.
+#
+# Until the CloudFormation behavior is fixed in ADC, block tag updates in those regions.
+UpdatePolicy.SUPPORTED_UNLESS_ADC = UpdatePolicy(
+    name="SUPPORTED_UNLESS_ADC",
+    level=1000,
     fail_reason=lambda change, patch: (
-        f"Update actions are not currently supported for the '{change.key}' parameter. "
-        f"The order of {change.key} has changed, but order changes are not supported"
+        f"Updating '{change.key}' during a cluster update is not supported in ADC regions."
     ),
-    action_needed=lambda change, patch: (
-        f"Restore the original order of '{change.key}' to match the current configuration."
-    ),
+    action_needed=lambda change, patch: f"Restore '{change.key}' to its previous value.",
+    condition_checker=lambda change, patch: not _is_adc_region(),
 )
 
 # Block update if cluster has a managed Fsx for Lustre FileSystem, otherwise fallback to QueueUpdateStrategy

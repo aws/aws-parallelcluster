@@ -15,29 +15,21 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
-      {% if scheduler != "awsbatch" %}
       Iam:
         InstanceProfile: {{ compute_instance_profile }}
-      {% endif %}
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: {{ min_count }}
           Efa:
             Enabled: false
             GdrSupport: false
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-    {% if scheduler == "slurm" %}
     - Name: queue-1
       Iam:
         InstanceRole: {{ compute_instance_role }}
@@ -52,4 +44,3 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-    {% endif %}

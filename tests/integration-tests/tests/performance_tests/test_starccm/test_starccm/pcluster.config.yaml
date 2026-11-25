@@ -40,7 +40,9 @@ Scheduling:
           - {{ private_subnet_id }}
         PlacementGroup:
           Enabled: true
+          {% if capacity_reservation_framework_placement_group %}
           Name: {{ capacity_reservation_framework_placement_group }}
+          {% endif %}
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:{{partition}}:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status

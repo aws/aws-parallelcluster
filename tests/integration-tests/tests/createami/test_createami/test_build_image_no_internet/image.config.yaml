@@ -1,0 +1,28 @@
+Image:
+    RootVolume:
+        Size: 200
+        Encrypted: True
+
+Build:
+    InstanceType: {{ instance }}
+    ParentImage: {{ parent_image }}
+    SecurityGroupIds:
+        - {{ security_group_id }}
+    SubnetId: {{ subnet_id }}
+    Iam:
+        AdditionalIamPolicies:
+            - Policy: arn:{{ partition }}:iam::aws:policy/AmazonS3ReadOnlyAccess
+    UpdateOsPackages:
+        Enabled: {{ update_os_packages }}
+    Installation:
+        LustreClient:
+            Enabled: {{ enable_lustre_client }}
+        NvidiaSoftware:
+            Enabled: {{ enable_nvidia }}
+
+DevSettings:
+    TerminateInstanceOnFailure: True
+    Cookbook:
+        ChefCookbook: {{ chef_cookbook }}
+        ExtraChefAttributes: '{"cluster": {"install_http_proxy_address": "{{ install_http_proxy_address }}"}}'
+    NodePackage: {{ node_package }}

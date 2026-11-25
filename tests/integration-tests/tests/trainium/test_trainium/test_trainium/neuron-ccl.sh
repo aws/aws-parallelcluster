@@ -6,7 +6,9 @@
 
 cat <<'EOF' >submission-script.sh
 #!/bin/bash
-set -xe
+# pipefail: without it, a neuron-bench crash is masked by tee's exit 0, so the
+# Slurm job reports COMPLETED with an empty output-ccl.txt instead of failing.
+set -xeo pipefail
 
 # FIXME remove this repo once packages are public available
 TEMPORARY_ARTIFACTS_BUCKET_PATH=s3://aws-parallelcluster-beta/neuron/
@@ -50,7 +52,10 @@ TOTAL_RANK=$(($SLURM_NNODES*32))
 # Download file for simulation (64 in the file name corresponds to the number of ranks hardcoded into the file).
 # To use a different number of ranks you need to generate another one:
 # python3 inst-sweep/genneffs_nccl.py -n <total-number-of-ranks> --all --output <output-dir>
-NEFF_FILE=test_nccl_64r_50allg_int8_393216/0/file.neff
+
+NEFF_FILE_PATH=test_nccl_64r_50allg_int8_393216/0/
+mkdir -p $NEFF_FILE_PATH
+NEFF_FILE=$NEFF_FILE_PATH/file.neff
 if [[ ! -f $NEFF_FILE ]]; then
   aws s3 cp ${TEMPORARY_ARTIFACTS_BUCKET_PATH}test_nccl_64r_50allg_int8_393216_0_file.neff $NEFF_FILE --region us-east-1
 fi

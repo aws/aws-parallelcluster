@@ -181,10 +181,9 @@ class TagSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     value = fields.Str(
-        # TODO Tags can be updated with policy QUEUE_UPDATE_STRATEGY
         required=True,
         validate=validate.Length(max=256),
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        metadata={"update_policy": UpdatePolicy.SUPPORTED_UNLESS_ADC},
     )
 
     @post_load
@@ -216,13 +215,7 @@ class CookbookSchema(BaseSchema):
             )
         }
     )
-    extra_chef_attributes = fields.Str(
-        metadata={
-            "update_policy": UpdatePolicy(
-                UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"]
-            )
-        }
-    )
+    extra_chef_attributes = fields.Str(metadata={"update_policy": UpdatePolicy.EXTRA_CHEF_ATTRIBUTES})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -275,9 +268,8 @@ class BaseDeploymentSettingsSchema(BaseSchema):
 class BaseDevSettingsSchema(BaseSchema):
     """Represent the common schema of Dev Setting for ImageBuilder and Cluster."""
 
-    cookbook = fields.Nested(CookbookSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    cookbook = fields.Nested(CookbookSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     node_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    aws_batch_cli_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
 
 class ImdsSchema(BaseSchema):

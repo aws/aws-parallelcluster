@@ -83,12 +83,6 @@ main() {
     fi
     _info "Detected ParallelCluster CLI version ${_pcluster_version}"
 
-    _version=$(grep "^VERSION = \"" "${_srcdir}/awsbatch-cli/setup.py" |awk '{print $3}'| tr -d \")
-    if [ -z "${_version}" ]; then
-        _error_exit "Unable to detect ParallelCluster AWS Batch CLI version, are you in the right directory?"
-    fi
-    _info "Detected ParallelCluster AWS Batch CLI version ${_version}"
-
     # Create archive
     _cwd=$(pwd)
     pushd "${_srcdir}" > /dev/null || exit
@@ -107,10 +101,7 @@ main() {
          _bucket_region=".${_bucket_region}"
      fi
 
-    echo "Done. Add the following configuration to the pcluster create config file:"
-    echo ""
-    echo "DevSettings:"
-    echo "  AwsBatchCliPackage: s3://${_bucket}/${_key_path}/aws-parallelcluster-${_pcluster_version}.tgz"
+    echo "Done."
 }
 
 main "$@"

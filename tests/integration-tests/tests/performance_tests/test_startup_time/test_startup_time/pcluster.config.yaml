@@ -7,9 +7,6 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
-  Iam:
-    AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -23,9 +20,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
     - Name: q2
       ComputeResources:
         - Name: q2
@@ -36,9 +30,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
     - Name: q3
       ComputeResources:
         - Name: q3
@@ -49,8 +40,5 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-      Iam:
-        AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore #Required to report patching status
 DevSettings:
   ComputeStartupTimeMetricEnabled: true

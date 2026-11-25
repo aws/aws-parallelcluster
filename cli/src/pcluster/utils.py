@@ -23,7 +23,8 @@ import time
 import urllib
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
-from hashlib import sha256
+from contextlib import contextmanager
+from hashlib import sha1, sha256
 from importlib.metadata import version
 from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from io import BytesIO
@@ -43,7 +44,6 @@ from yaml.resolver import BaseResolver
 from pcluster.aws.common import get_region
 from pcluster.constants import (
     SUPPORTED_OSES_FOR_ARCHITECTURE,
-    SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_FEATURES_MAP,
     Feature,
 )
@@ -161,16 +161,6 @@ def zip_dir(path):
                 )
     file_out.seek(0)
     return file_out
-
-
-def get_supported_os_for_scheduler(scheduler):
-    """
-    Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
-
-    :param scheduler: the scheduler for which we want to know the supported os
-    :return: an array of strings of the supported OSes
-    """
-    return SUPPORTED_OSES_FOR_SCHEDULER.get(scheduler, [])
 
 
 def get_supported_os_for_architecture(architecture):
@@ -409,6 +399,12 @@ def yaml_load(stream):
     yaml.add_constructor(
         tag=BaseResolver.DEFAULT_MAPPING_TAG, constructor=yaml_no_duplicates_constructor, Loader=SafeLoader
     )
+    # Read the integers written with a leading zero, for example 0755, as strings instead of octal numbers (YAML 1.1),
+    # so that a file mode written as 0644 is not silently read as 420.
+    # The constructor is registered on SafeLoader, so it applies to every yaml.safe_load call of the process.
+    yaml.add_constructor(
+        tag="tag:yaml.org,2002:int", constructor=_yaml_int_keeping_leading_zero_constructor, Loader=SafeLoader
+    )
     return yaml.safe_load(stream)
 
 
@@ -423,6 +419,14 @@ def yaml_no_duplicates_constructor(loader, node, deep=False):
         mapping[key] = value
 
     return loader.construct_mapping(node, deep)
+
+
+def _yaml_int_keeping_leading_zero_constructor(loader, node):
+    """Return the integers written with a leading zero as strings, and the other integers as SafeLoader does."""
+    value = loader.construct_scalar(node)
+    if re.match(r"^[-+]?0[0-9_]+$", value):
+        return value
+    return SafeLoader.construct_yaml_int(loader, node)
 
 
 def get_http_tokens_setting(imds_support):
@@ -481,6 +485,29 @@ def batch_by_property_callback(items, property_callback: Callable[..., int], bat
         if item_index == len(items) - 1:
             # If on the last time, yield the batch
             yield current_batch
+
+
+@contextmanager
+def event_loop():
+    """Provide an asyncio event loop, closing it on exit if this context created it.
+
+    This is required to support Python 3.14, where asyncio.get_event_loop() raises a RuntimeError
+    when there is no running loop instead of implicitly creating one. If a loop is already running
+    it is reused and left open (the caller does not own it); otherwise a new loop is created and
+    closed on exit to avoid leaking event loops.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        created = False
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        created = True
+    try:
+        yield loop
+    finally:
+        if created:
+            loop.close()
 
 
 class AsyncUtils:
@@ -559,7 +586,7 @@ class AsyncUtils:
 
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
-            return await asyncio.get_event_loop().run_in_executor(
+            return await asyncio.get_running_loop().run_in_executor(
                 AsyncUtils._thread_pool_executor, lambda: func(self, *args, **kwargs)
             )
 
@@ -614,3 +641,91 @@ def get_needed_ultraserver_capacity_block_statuses(statuses, capacity_reservatio
         ):
             needed_capacity_block_statuses.append(status)
     return needed_capacity_block_statuses
+
+
+def parse_json_string(value: str, raise_on_error: bool = False, default: any = None) -> any:
+    """
+    Parse a JSON string into a Python object.
+
+    :param value: JSON string to parse
+    :param raise_on_error: If True, raises exception on parse failure; if False, returns default
+    :param default: Value to return on parse failure when raise_on_error is False
+    :return: Parsed JSON object or default value on failure
+    """
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError) as e:
+        LOGGER.error("Failed to parse JSON string: %s. Error: %s", value, e)
+        if raise_on_error:
+            raise e
+        return default
+
+
+def _collect_leaves(d: dict, prefix: str) -> set[str]:
+    """Collect all leaf paths from a dict."""
+    leaves = set()
+    for k, v in d.items():
+        key_path = f"{prefix}.{k}" if prefix else str(k)
+        if isinstance(v, dict) and v:
+            leaves.update(_collect_leaves(v, key_path))
+        else:
+            leaves.add(key_path)
+    return leaves if leaves else {prefix} if prefix else set()
+
+
+def _collect_diff_for_key(d: dict, key: str, path: str) -> set[str]:
+    """Collect leaf paths for a key that exists only in one dictionary."""
+    key_path = f"{path}.{key}" if path else str(key)
+    if isinstance(d[key], dict) and d[key]:
+        return _collect_leaves(d[key], key_path)
+    return {key_path}
+
+
+def get_dictionary_diff(d1: dict, d2: dict, path: str = "") -> set[str]:
+    """
+    Recursively find all leaf paths where two dictionaries differ.
+
+    Returns a set of dot-notation paths (e.g., "cluster.settings.enabled") where
+    the dictionaries have different values, including added or removed keys.
+    Always returns leaf paths, never intermediate dict paths.
+
+    :param d1: First dictionary to compare (if None, treated as empty dict)
+    :param d2: Second dictionary to compare (if None, treated as empty dict)
+    :param path: Current path prefix (used for recursion)
+    :return: Set of dot-notation paths where dictionaries differ.
+             If no differences detected return empoty set.
+    """
+    d1 = d1 or {}
+    d2 = d2 or {}
+
+    diffs: set[str] = set()
+    keys1, keys2 = set(d1.keys()), set(d2.keys())
+
+    # Collect paths that are added or remove
+    for k in keys1 - keys2:
+        diffs.update(_collect_diff_for_key(d1, k, path))
+
+    for k in keys2 - keys1:
+        diffs.update(_collect_diff_for_key(d2, k, path))
+
+    # Compare paths
+    for k in keys1 & keys2:
+        key_path = f"{path}.{k}" if path else str(k)
+        if isinstance(d1[k], dict) and isinstance(d2[k], dict):
+            diffs.update(get_dictionary_diff(d1[k], d2[k], key_path))
+        elif d1[k] != d2[k]:
+            diffs.add(key_path)
+
+    return diffs
+
+
+def create_hash_suffix(string_to_hash: str):
+    """Create 16digit hash string."""
+    return (
+        string_to_hash
+        if string_to_hash == "HeadNode"
+        # A nosec comment is appended to the following line in order to disable the B324 check.
+        # The sha1 is used just as a hashing function.
+        # [B324:hashlib] Use of weak MD4, MD5, or SHA1 hash for security. Consider usedforsecurity=False
+        else sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()  # nosec nosemgrep
+    )

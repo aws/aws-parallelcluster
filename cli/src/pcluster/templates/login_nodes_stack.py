@@ -36,8 +36,6 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.utils import (
     get_attr,
     get_http_tokens_setting,
-    get_resource_name_from_resource_arn,
-    get_service_endpoint,
     is_feature_supported,
 )
 
@@ -129,80 +127,7 @@ class Pool(Construct):
         ds_config = self._config.directory_service
         ds_generate_keys = str(ds_config.generate_ssh_keys_for_users).lower() if ds_config else "false"
 
-        if self._pool.instance_profile:
-            instance_profile_name = get_resource_name_from_resource_arn(self._pool.instance_profile)
-            instance_role_name = (
-                AWSApi.instance()
-                .iam.get_instance_profile(instance_profile_name)
-                .get("InstanceProfile")
-                .get("Roles")[0]
-                .get("RoleName")
-            )
-        elif self._pool.instance_role:
-            instance_role_name = get_resource_name_from_resource_arn(self._pool.instance_role)
-        else:
-            instance_role_name = self._instance_role.ref
-
         launch_template_id = f"LoginNodeLaunchTemplate{create_hash_suffix(self._pool.name)}"
-        launch_template = ec2.CfnLaunchTemplate(
-            Stack.of(self),
-            launch_template_id,
-            launch_template_name=f"{self.stack_name}-{self._pool.name}",
-            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
-                    self._pool.local_storage.root_volume,
-                    AWSApi.instance().ec2.describe_image(self._config.login_nodes_ami[self._pool.name]).device_name,
-                ),
-                image_id=self._config.login_nodes_ami[self._pool.name],
-                instance_type=self._pool.instance_type,
-                key_name=self._pool.ssh.key_name,
-                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
-                    http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
-                ),
-                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
-                user_data=Fn.base64(
-                    Fn.sub(
-                        get_user_data_content("../resources/login_node/user_data.sh"),
-                        {
-                            **{
-                                "Timeout": str(
-                                    get_attr(
-                                        self._config,
-                                        "dev_settings.timeouts.compute_node_bootstrap_timeout",
-                                        NODE_BOOTSTRAP_TIMEOUT,
-                                    )
-                                ),
-                                "AutoScalingGroupName": f"{self._login_nodes_stack_id}-AutoScalingGroup",
-                                "LaunchingLifecycleHookName": (
-                                    f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook"
-                                ),
-                                "LaunchTemplateResourceId": launch_template_id,
-                                "CloudFormationUrl": get_service_endpoint("cloudformation", self._config.region),
-                                "CfnInitRole": instance_role_name,
-                            },
-                            **get_common_user_data_env(self._pool, self._config),
-                        },
-                    )
-                ),
-                network_interfaces=login_nodes_pool_lt_nw_interface,
-                tag_specifications=[
-                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
-                        resource_type="instance",
-                        tags=get_default_instance_tags(
-                            self.stack_name, self._config, self._pool, "LoginNode", self._shared_storage_infos
-                        )
-                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
-                        + get_custom_tags(self._config),
-                    ),
-                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
-                        resource_type="volume",
-                        tags=get_default_volume_tags(self.stack_name, "LoginNode")
-                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
-                        + get_custom_tags(self._config),
-                    ),
-                ],
-            ),
-        )
 
         dna_json = json.dumps(
             {
@@ -216,7 +141,6 @@ class Pool(Construct):
                     ),
                     "cluster_config_version": self._config.config_version,
                     "custom_node_package": self._config.custom_node_package or "",
-                    "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
                     "cw_logging_enabled": "true" if self._config.is_cw_logging_enabled else "false",
                     "directory_service": {
                         "enabled": str(ds_config is not None).lower(),
@@ -232,10 +156,16 @@ class Pool(Construct):
                         )
                         else DefaultUserHomeType.SHARED.value.lower()
                     ),
+                    "ebs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EBS]["MountDirPermissions"]
+                    ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
                     ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.EFS),
+                    "efs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["MountDirPermissions"]
+                    ),
                     "efs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EFS]
                     ),
@@ -266,6 +196,9 @@ class Pool(Construct):
                     "fsx_fs_types": to_comma_separated_string(
                         self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
+                    "fsx_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["MountDirPermissions"]
+                    ),
                     "fsx_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.FSX]
                     ),
@@ -274,11 +207,14 @@ class Pool(Construct):
                     "hosted_zone": (str(self._cluster_hosted_zone.ref) if self._cluster_hosted_zone else ""),
                     "dcv_enabled": "login_node" if self._pool.has_dcv_enabled else "false",
                     "dcv_port": self._pool.dcv.port if self._pool.dcv else "NONE",
-                    "log_group_name": self._log_group.log_group_name,
+                    "log_group_name": self._log_group.log_group_name if self._config.is_cw_logging_enabled else "NONE",
                     "log_rotation_enabled": "true" if self._config.is_log_rotation_enabled else "false",
                     "pool_name": self._pool.name,
                     "node_type": "LoginNode",
                     "proxy": self._pool.networking.proxy.http_proxy_address if self._pool.networking.proxy else "NONE",
+                    "raid_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.RAID]["MountDirPermissions"]
+                    ),
                     "raid_shared_dir": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
@@ -301,65 +237,66 @@ class Pool(Construct):
                     "launch_template_id": launch_template_id,
                 }
             },
-            indent=4,
+            indent=None,  # Keep indent as None for compact sizing and proper parsing in user_data.sh
         )
 
-        cfn_init = {
-            "configSets": {
-                "deployFiles": ["deployConfigFiles"],
-                "update": ["deployConfigFiles", "chefUpdate"],
-            },
-            "deployConfigFiles": {
-                "files": {
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/dna.json": {  # nosec B108
-                        "content": dna_json,
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "encoding": "plain",
-                    },
-                    # A nosec comment is appended to the following line in order to disable the B108 check.
-                    # The file is needed by the product
-                    # [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
-                    "/tmp/extra.json": {  # nosec B108
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "content": self._config.extra_chef_attributes,
-                    },
-                },
-                "commands": {
-                    "mkdir": {"command": "mkdir -p /etc/chef/ohai/hints"},
-                    "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
-                    "jq": {
-                        "command": (
-                            'jq -s ".[0] * .[1]" /tmp/dna.json /tmp/extra.json > /etc/chef/dna.json '
-                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
+        launch_template = ec2.CfnLaunchTemplate(
+            Stack.of(self),
+            launch_template_id,
+            launch_template_name=f"{self.stack_name}-{self._pool.name}",
+            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
+                block_device_mappings=self._launch_template_builder.get_block_device_mappings(
+                    self._pool.local_storage.root_volume,
+                    AWSApi.instance().ec2.describe_image(self._config.login_nodes_ami[self._pool.name]).device_name,
+                ),
+                image_id=self._config.login_nodes_ami[self._pool.name],
+                instance_type=self._pool.instance_type,
+                metadata_options=ec2.CfnLaunchTemplate.MetadataOptionsProperty(
+                    http_tokens=get_http_tokens_setting(self._config.imds.imds_support)
+                ),
+                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=self._instance_profile),
+                user_data=Fn.base64(
+                    Fn.sub(
+                        get_user_data_content("../resources/login_node/user_data.sh"),
+                        {
+                            **{
+                                "Timeout": str(
+                                    get_attr(
+                                        self._config,
+                                        "dev_settings.timeouts.compute_node_bootstrap_timeout",
+                                        NODE_BOOTSTRAP_TIMEOUT,
+                                    )
+                                ),
+                                "AutoScalingGroupName": f"{self._login_nodes_stack_id}-AutoScalingGroup",
+                                "LaunchingLifecycleHookName": (
+                                    f"{self._login_nodes_stack_id}-LoginNodesLaunchingLifecycleHook"
+                                ),
+                                "DnaJson": dna_json,
+                                "ExtraJson": self._config.extra_chef_attributes,
+                            },
+                            **get_common_user_data_env(self._pool, self._config),
+                        },
+                    )
+                ),
+                network_interfaces=login_nodes_pool_lt_nw_interface,
+                tag_specifications=[
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="instance",
+                        tags=get_default_instance_tags(
+                            self.stack_name, self._config, self._pool, "LoginNode", self._shared_storage_infos
                         )
-                    },
-                },
-            },
-            "chefUpdate": {
-                "commands": {
-                    "chef": {
-                        "command": (
-                            ". /etc/parallelcluster/pcluster_cookbook_environment.sh; "
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
-                            " --logfile /var/log/chef-client.log --force-formatter --no-color"
-                            " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
-                            " --override-runlist aws-parallelcluster-entrypoints::update &&"
-                            " /opt/parallelcluster/scripts/fetch_and_run -postupdate"
-                        ),
-                        "cwd": "/etc/chef",
-                    }
-                }
-            },
-        }
-
-        launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
+                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
+                        + get_custom_tags(self._config),
+                    ),
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="volume",
+                        tags=get_default_volume_tags(self.stack_name, "LoginNode")
+                        + [CfnTag(key=PCLUSTER_LOGIN_NODES_POOL_NAME_TAG, value=self._pool.name)]
+                        + get_custom_tags(self._config),
+                    ),
+                ],
+            ),
+        )
 
         return launch_template
 

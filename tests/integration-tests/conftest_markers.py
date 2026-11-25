@@ -18,7 +18,6 @@ UNSUPPORTED_DIMENSIONS = [
     ("eu-north-1", "c4.xlarge", "*", "*"),
     ("eu-west-3", "c4.xlarge", "*", "*"),
     ("ap-east-1", "c4.xlarge", "*", "*"),
-    ("*", "*", "ubuntu2004", "awsbatch"),
     ("us-gov-east-1", "*", "c4.xlarge", "*"),
 ]
 

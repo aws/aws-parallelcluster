@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Integration-test deploy role for the pcluster CLI, plus the test-only permissions attached to it.
+  Defines ParallelClusterUserRole (the assumable role the CLI/CI assumes to run pcluster) and
+  IntegTestsPolicy (test-infra permissions the customer-facing policy must never ship). The
+  real ParallelCluster permissions come from cloudformation/policies/parallelcluster-policies.yaml,
+  which conftest.py merges into the same stack and attaches to ParallelClusterUserRole. Inline
+  cluster/image/log/batch policies and IAM path/name-prefix plumbing live in user-role.cfn.yaml
+  (used only by the resource-prefix and permission-boundary tests), not here.
+
+Resources:
+
+  ParallelClusterUserRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /parallelcluster/
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              AWS:
+                - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+      MaxSessionDuration: 20000
+
+  IntegTestsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles:
+        - !Ref ParallelClusterUserRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Required to test AdditionalIamPolicies
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+              # Needed to enable capacity reservation access without creating a custom policy in tests
+              - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEC2FullAccess
+            Effect: Allow
+          # Required to use KMS encryption key in tests
+          - Action:
+              - kms:DescribeKey
+              - kms:Decrypt
+              - kms:GenerateDataKeyWithoutPlainText
+              - kms:ReEncrypt
+            Resource: '*'
+            Effect: Allow
+          - Action:
+              - kms:CreateGrant
+            Resource: '*'
+            Effect: Allow
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: true
+          # Required to use test bucket (e.g. to test pre/post_install scripts)
+          - Action:
+              - s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::integ-tests-*
+            Effect: Allow
+          - Action:
+              - cloudwatch:GetMetricData
+            Resource: '*'
+            Effect: Allow
+          # Required to read the Directory Service password when tests create AD-integrated clusters.
+          # The customer path scopes this to the specific secret ARN on the head-node role (added by
+          # the CLI); the test deploy role assumes one identity across arbitrary test clusters, so it
+          # needs a broad grant. This is test-only.
+          - Action: "secretsmanager:GetSecretValue"
+            Resource: !Sub arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:*
+            Effect: Allow
+            Sid: DirectoryServicePasswordReadFromSecretsManager
+          - Action: "ssm:GetParameter"
+            Resource: !Sub arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:parameter/*
+            Effect: Allow
+            Sid: DirectoryServicePasswordReadFromSsm
+
+Outputs:
+  ParallelClusterUserRole:
+    Value: !GetAtt ParallelClusterUserRole.Arn

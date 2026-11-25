@@ -13,6 +13,7 @@ import logging
 
 import boto3
 from assertpy import assert_that
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes
 
@@ -25,9 +26,11 @@ def terminate_login_nodes(cluster):
     """
     logging.info(f"Terminating login nodes for cluster: {cluster.name}")
     instance_ids = cluster.get_cluster_instance_ids(node_type="LoginNode")
-    ec2 = boto3.client("ec2", region_name=cluster.region)
-    ec2.terminate_instances(InstanceIds=instance_ids)
-    ec2.get_waiter("instance_terminated").wait(InstanceIds=instance_ids)
+    logging.info(f"Detected login nodes for cluster {cluster.name}: {instance_ids}")
+    if instance_ids:
+        ec2 = boto3.client("ec2", region_name=cluster.region)
+        ec2.terminate_instances(InstanceIds=instance_ids)
+        ec2.get_waiter("instance_terminated").wait(InstanceIds=instance_ids)
     logging.info(f"Login nodes for cluster {cluster.name} have been terminated: {instance_ids}")
 
 
@@ -56,3 +59,21 @@ def wait_for_login_fleet_stop(cluster, wait_fixed=None, stop_max_delay=None):
         wait_fixed=wait_fixed if wait_fixed is not None else minutes(1),
         stop_max_delay=stop_max_delay if stop_max_delay is not None else minutes(10),
     )(assert_login_nodes_count)(cluster, 0)
+
+
+def get_login_node_executors_by_pool(cluster, login_node_pools):
+    """
+    Return a remote command executor for each login node belonging to the given pools.
+    :param cluster: the cluster.
+    :param login_node_pools: the list of login node pool names to target.
+    :return: a list of remote command executors, empty when no pools are requested.
+    """
+    if not login_node_pools:
+        return []
+    executors = []
+    for login_node in cluster.describe_login_nodes():
+        if login_node.get("poolName") not in login_node_pools:
+            continue
+        login_node_ip = login_node.get("publicIpAddress") or login_node.get("privateIpAddress")
+        executors.append(RemoteCommandExecutor(cluster, login_node_ip=login_node_ip))
+    return executors

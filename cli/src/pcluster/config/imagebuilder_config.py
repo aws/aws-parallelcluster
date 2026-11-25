@@ -13,6 +13,7 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 
+import json
 from typing import List
 
 from pcluster.aws.common import get_region
@@ -27,6 +28,7 @@ from pcluster.config.common import (
 )
 from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster.validators.common import ValidatorContext
+from pcluster.validators.dev_settings_validators import CliAttributeOverridesValidator
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
@@ -240,7 +242,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         distribution_configuration: DistributionConfiguration = None,
         terminate_instance_on_failure: bool = None,
         disable_validate_and_test: bool = None,
-        cinc_installer_url: str = None,
+        cli_attribute_overrides: str = None,
         disable_kernel_update: bool = None,
         slurm_patches_s3_archive: str = None,
         **kwargs
@@ -250,9 +252,35 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.distribution_configuration = distribution_configuration
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
         self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=True)
-        self.cinc_installer_url = Resource.init_param(cinc_installer_url, default="")
+        # JSON string of CLI-side build-image overrides (e.g. cinc_version,
+        # cinc_installer_url), unfurled by the accessors below. Mirrors
+        # Cookbook.ExtraChefAttributes: freeform JSON, well-formedness only.
+        self.cli_attribute_overrides = Resource.init_param(cli_attribute_overrides, default="")
         self.disable_kernel_update = Resource.init_param(disable_kernel_update, default=False)
         self.slurm_patches_s3_archive = Resource.init_param(slurm_patches_s3_archive, default="")
+
+    def _cli_attribute_override(self, key):
+        """Unfurl a single value from the cli_attribute_overrides JSON blob."""
+        if not self.cli_attribute_overrides:
+            return ""
+        return json.loads(self.cli_attribute_overrides).get(key, "")
+
+    @property
+    def cinc_installer_url(self):
+        """CINC installer URL override (from cli_attribute_overrides)."""
+        return self._cli_attribute_override("cinc_installer_url")
+
+    @property
+    def cinc_version(self):
+        """CINC client version override (from cli_attribute_overrides)."""
+        return self._cli_attribute_override("cinc_version")
+
+    def _register_validators(self, context: ValidatorContext = None):
+        super()._register_validators(context)
+        if self.cli_attribute_overrides:
+            self._register_validator(
+                CliAttributeOverridesValidator, cli_attribute_overrides=self.cli_attribute_overrides
+            )
 
 
 class ImagebuilderDeploymentSettings(BaseDeploymentSettings):
@@ -332,7 +360,6 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.lustre = None
         self.is_official_ami_build = None
         self.custom_node_package = None
-        self.custom_awsbatchcli_package = None
         self.base_os = None
         self.disable_kernel_update = None
         self.slurm_patches_s3_archive = None
@@ -345,9 +372,6 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         self.lustre = {"enabled": "yes"} if config.build.installation.lustre_client.enabled else {"enabled": "no"}
         self.is_official_ami_build = "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
-        self.custom_awsbatchcli_package = (
-            dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
-        )
         self.slurm_patches_s3_archive = (
             dev_settings.slurm_patches_s3_archive if dev_settings and dev_settings.slurm_patches_s3_archive else ""
         )

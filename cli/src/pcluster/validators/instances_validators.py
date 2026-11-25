@@ -11,6 +11,7 @@
 from enum import Enum
 from typing import Callable, Dict
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config import cluster_config
 from pcluster.constants import MIN_MEMORY_ABSOLUTE_DIFFERENCE, MIN_MEMORY_PRECENTAGE_DIFFERENCE
@@ -208,6 +209,40 @@ class InstancesNetworkingValidator(Validator, _FlexibleInstanceTypesValidatorMix
                 FailureLevel.WARNING,
             )
 
+        unique_max_efa_interfaces = {
+            instance_type_info.max_efa_interfaces()
+            for instance_type_name, instance_type_info in instance_types_info.items()
+        }
+
+        if len(unique_max_efa_interfaces) > 1:
+            lowest_efa = min(unique_max_efa_interfaces)
+            highest_efa = max(unique_max_efa_interfaces)
+            self._add_failure(
+                f"Compute Resource {compute_resource_name} has instance types with varying numbers of maximum EFA "
+                f"interfaces (Min: {lowest_efa}, Max: {highest_efa}). EFA network configuration will be based on "
+                f"the instance type with the fewest EFA interfaces ({lowest_efa}).",
+                FailureLevel.WARNING,
+            )
+
+        # Check that all instance types agree on whether NCI-0 supports EFA
+        nci0_efa_support = {
+            instance_type_info.max_efa_interfaces() == instance_type_info.max_network_cards()
+            for instance_type_info in instance_types_info.values()
+        }
+        if len(nci0_efa_support) > 1:
+            supports = [
+                it for it, info in instance_types_info.items() if info.max_efa_interfaces() == info.max_network_cards()
+            ]
+            does_not = [
+                it for it, info in instance_types_info.items() if info.max_efa_interfaces() != info.max_network_cards()
+            ]
+            self._add_failure(
+                f"Compute Resource {compute_resource_name} mixes instance types where NCI-0 supports EFA "
+                f"({', '.join(supports)}) with instance types where it does not ({', '.join(does_not)}). "
+                f"This may result in a suboptimal EFA network configuration for some instance types.",
+                FailureLevel.WARNING,
+            )
+
         if placement_group_enabled and len(instance_types_info.keys()) > 1:
             self._add_failure(
                 f"Enabling placement groups for queue: {queue_name} may result in Insufficient Capacity Errors due to "
@@ -301,3 +336,42 @@ class InstancesMemorySchedulingWarningValidator(Validator):
         # EC2 API should return valid values, but since it's really cheap better add a check
         available_memory = [value for value in available_memory if value is not None]
         return min(available_memory), max(available_memory)
+
+
+class LaunchTemplateValidator(Validator):
+    """Validate that the specified launch template exists, is accessible, and only contains allowed properties."""
+
+    # Only these properties are allowed in the launch template
+    ALLOWED_PROPERTIES = {"NetworkInterfaces"}
+
+    def _validate(
+        self,
+        compute_resource_name: str,
+        launch_template_id: str,
+        launch_template_version: int,
+        **kwargs,
+    ):
+        """Check if the launch template exists, is valid, and only contains NetworkInterfaces."""
+        if not launch_template_id:
+            return
+
+        version = str(launch_template_version)
+        try:
+            lt_data = AWSApi.instance().ec2.describe_launch_template_version(launch_template_id, version)
+        except Exception as e:
+            self._add_failure(
+                f"Launch template '{launch_template_id}' version '{version}' specified in Compute Resource "
+                f"'{compute_resource_name}' could not be found or accessed: {e}",
+                FailureLevel.ERROR,
+            )
+            return
+
+        # Check for disallowed properties
+        disallowed_properties = set(lt_data.keys()) - self.ALLOWED_PROPERTIES
+        if disallowed_properties:
+            self._add_failure(
+                f"Launch template '{launch_template_id}' in Compute Resource '{compute_resource_name}' contains "
+                f"properties that are not allowed: {', '.join(sorted(disallowed_properties))}. "
+                f"Allowed properties are: {', '.join(sorted(self.ALLOWED_PROPERTIES))}.",
+                FailureLevel.ERROR,
+            )

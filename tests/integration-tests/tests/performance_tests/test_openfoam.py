@@ -4,7 +4,8 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
-from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
+from tests.common.utils import push_result_to_dynamodb
+from tests.performance_tests.common import _log_output_performance_difference
 
 # timeout in seconds
 OPENFOAM_INSTALLATION_TIMEOUT = 300
@@ -12,7 +13,6 @@ OPENFOAM_JOB_TIMEOUT = 5400  # Takes long time because during the first time, it
 # builds and installs many things
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "alinux2023": {8: 754, 16: 366, 32: 182},  # v3.10.0
-    "alinux2": {8: 754, 16: 366, 32: 182},  # v3.1.3
     "ubuntu2404": {8: 742, 16: 376, 32: 185},  # v3.13.0 just a placeholder, Ubuntu24.04 not supported
     "ubuntu2204": {8: 742, 16: 376, 32: 185},  # v3.7.0 just a placeholder, Ubuntu22.04 not supported
     "ubuntu2004": {8: 750, 16: 382, 32: 187},  # v3.1.3
@@ -50,7 +50,6 @@ def run_openfoam_test(remote_command_executor, test_datadir, number_of_nodes):
     return observed_value
 
 
-@pytest.mark.usefixtures("serial_execution_by_instance")
 def test_openfoam(
     vpc_stack,
     instance,
@@ -61,7 +60,7 @@ def test_openfoam(
     clusters_factory,
     test_datadir,
 ):
-    if os not in ["alinux2", "ubuntu2404"]:
+    if os not in ["ubuntu2404"]:
         pytest.skip(f"OpenFOAM is not supported on {os}")
     number_of_nodes = [8, 16, 32]
     cluster_config = pcluster_config_reader(number_of_nodes=max(number_of_nodes))

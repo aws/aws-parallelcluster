@@ -32,10 +32,10 @@ phases:
               set -v
               RELEASE='{{ test.OSRelease.outputs.stdout }}'
               case $RELEASE in
-                amzn.2) echo alinux2;;
                 amzn.2023) echo alinux2023;;
                 ubuntu.22*) echo ubuntu2204;;
                 ubuntu.24*) echo ubuntu2404;;
+                ubuntu.26*) echo ubuntu2604;;
                 rhel.8*) echo rhel8;;
                 rocky.8*) echo rocky8;;
                 rhel.9*) echo rhel9;;
@@ -91,7 +91,7 @@ phases:
               set -v
               ARCHITECTURE='{{ test.OSArchitecture.outputs.stdout }}'
               OS='{{ test.OSName.outputs.stdout }}'
-              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(20|22|26)04|alinux(2|2023)|rhel8|rocky8|rhel9|rocky9)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
                 echo "true"
               else
                 echo "false"
@@ -118,6 +118,7 @@ phases:
               VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
               echo ${VERSION}
 
+      # Normalize cuda.version to major.minor (e.g. 13.0.2 -> 13.0) to match nvcc and the /usr/local/cuda-<ver> install dir.
       - name: CudaVersion
         action: ExecuteBash
         inputs:
@@ -125,7 +126,7 @@ phases:
             - |
               set -v
               PATTERN=$(jq '.default.cluster.nvidia.cuda.version' {{ CookbookDefaultFile }})
-              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs | cut -d. -f1,2)
               echo ${VERSION}
 
       - name: CudaSamplesDir
@@ -252,40 +253,35 @@ phases:
               echo "Correctly installed CUDA ${cuda_output}"
 
               echo "Testing CUDA with deviceQuery..."
-              if [ {{ test.OSArchitecture.outputs.stdout }} != 'arm64' ]; then
+              if [ -f /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery ]; then
                 /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
                 [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               else
                  cd /usr/local/{{ test.CudaSamplesDir.outputs.stdout }}//Samples/1_Utilities/deviceQuery
-                 if [ {{ test.OSName.outputs.stdout }} == 'alinux2' ]; then
-                   make
-                   /usr/local/{{ test.CudaSamplesDir.outputs.stdout }}/bin/sbsa/linux/release/deviceQuery | grep -o "Result = PASS"
-                 else
-                   if [ {{ test.OSName.outputs.stdout }} == 'ubuntu2004' ]; then
-                     MINI_CMAKE_VER_REQ=$(sed -n 's/cmake_minimum_required(\(VERSION \)\?\([0-9.]*\)).*/\2/p' CMakeLists.txt)
-                     COOKBOOK_ENV=$(jq '.default.cluster.cookbook_virtualenv_path' {{ CookbookDefaultFile }})
-                     COOKBOOK_ENV_PATH=$(echo ${COOKBOOK_ENV} | tr -d '\n' | cut -d = -f 2 | xargs)
-                     echo "Installing Cmake >= ${MINI_CMAKE_VER_REQ} in $COOKBOOK_ENV_PATH/bin"
-                     . $COOKBOOK_ENV_PATH/bin/activate
-                     $COOKBOOK_ENV_PATH/bin/pip3 install cmake>=$MINI_CMAKE_VER_REQ
-                     CMAKE_ARGS=""
-                     if [ -e $COOKBOOK_ENV_PATH/bin/cmake ]; then
-                       CMAKE_ARGS="-DCMAKE_INSTALL_PREFIX=$COOKBOOK_ENV_PATH/bin/cmake ${CMAKE_ARGS}"
-                     fi
+                 if [ {{ test.OSName.outputs.stdout }} == 'ubuntu2004' ]; then
+                   MINI_CMAKE_VER_REQ=$(sed -n 's/cmake_minimum_required(\(VERSION \)\?\([0-9.]*\)).*/\2/p' CMakeLists.txt)
+                   COOKBOOK_ENV=$(jq '.default.cluster.cookbook_virtualenv_path' {{ CookbookDefaultFile }})
+                   COOKBOOK_ENV_PATH=$(echo ${COOKBOOK_ENV} | tr -d '\n' | cut -d = -f 2 | xargs)
+                   echo "Installing Cmake >= ${MINI_CMAKE_VER_REQ} in $COOKBOOK_ENV_PATH/bin"
+                   . $COOKBOOK_ENV_PATH/bin/activate
+                   $COOKBOOK_ENV_PATH/bin/pip3 install cmake>=$MINI_CMAKE_VER_REQ
+                   CMAKE_ARGS=""
+                   if [ -e $COOKBOOK_ENV_PATH/bin/cmake ]; then
+                     CMAKE_ARGS="-DCMAKE_INSTALL_PREFIX=$COOKBOOK_ENV_PATH/bin/cmake ${CMAKE_ARGS}"
                    fi
-                   mkdir build && cd build
-                   cmake .. \
-                    -DCMAKE_CUDA_ARCHITECTURES="75;80;86" \
-                    -DCMAKE_CUDA_COMPILER=/usr/local/cuda-${cuda_ver}/bin/nvcc \
-                    -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-${cuda_ver} \
-                    -DCMAKE_PREFIX_PATH=/usr/local/cuda-cuda-${cuda_ver} \
-                     ${CMAKE_ARGS}
-                   make
-                   ./deviceQuery | grep -o "Result = PASS"
-                   if [ "${OS}" == 'ubuntu2004' ]; then
-                     $COOKBOOK_ENV_PATH/bin/pip3 uninstall cmake -y
-                     deactivate
-                   fi
+                 fi
+                 mkdir build && cd build
+                 cmake .. \
+                  -DCMAKE_CUDA_ARCHITECTURES="75;80;86" \
+                  -DCMAKE_CUDA_COMPILER=/usr/local/cuda-${cuda_ver}/bin/nvcc \
+                  -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-${cuda_ver} \
+                  -DCMAKE_PREFIX_PATH=/usr/local/cuda-cuda-${cuda_ver} \
+                   ${CMAKE_ARGS}
+                 make
+                 ./deviceQuery | grep -o "Result = PASS"
+                 if [ "${OS}" == 'ubuntu2004' ]; then
+                   $COOKBOOK_ENV_PATH/bin/pip3 uninstall cmake -y
+                   deactivate
                  fi
                  [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
               fi
@@ -313,6 +309,8 @@ phases:
               [[ $? -ne 0 ]] && echo "Python3 is not installed" && exit 1
               echo "Python test passed"
 
+      # Check the package database with dnf check, or with dpkg --audit and apt-get check on Ubuntu.
+      # dpkg --audit exits 0 even when it finds problems, so check that it prints nothing
       - name: DPKG
         action: ExecuteBash
         inputs:
@@ -325,8 +323,12 @@ phases:
                 if command -v dpkg &> /dev/null; then
                   echo "ERROR: dpkg found on non-Debian system" && exit 1
                 fi
-                echo "dpkg test passed"
+                dnf check || { echo "ERROR: dnf check failed"; exit 1; }
+              else
+                [[ -z "$(dpkg --audit)" ]] || { echo "ERROR: dpkg --audit found problems"; exit 1; }
+                apt-get check || { echo "ERROR: apt-get check failed"; exit 1; }
               fi
+              echo "dpkg test passed"
 
       - name: PythonVersion
         action: ExecuteBash
@@ -385,7 +387,6 @@ phases:
         loop:
           name: TestName
           forEach:
-            - aws-parallelcluster-awsbatch
             - aws-parallelcluster-platform
             - aws-parallelcluster-environment
             - aws-parallelcluster-computefleet

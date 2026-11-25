@@ -4,7 +4,11 @@ HeadNode:
   InstanceType: {{ head_node_instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
+    ElasticIp: true
+    {% if fsx_efa_security_group_id %}
+    AdditionalSecurityGroups:
+      - {{ fsx_efa_security_group_id }}
+    {% endif %}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -13,17 +17,21 @@ Scheduling:
   Scheduler: {{ scheduler }}
   SlurmQueues:
     - Name: efa-enabled
-      {% if p6_b200_capacity_reservation_id %}
+      {% if capacity_reservation_id %}
       CapacityType: CAPACITY_BLOCK
       CapacityReservationTarget:
-        CapacityReservationId: {{ p6_b200_capacity_reservation_id }}
+        CapacityReservationId: {{ capacity_reservation_id }}
       {% endif %}
       Networking:
         PlacementGroup:
-          Enabled: {% if instance not in ["p4d.24xlarge", "p6-b200.48xlarge"] %}true{% else %}false{% endif %}
-          {% if instance in ["c5n.18xlarge", "c6gn.16xlarge"] %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
+          Enabled: {{ placement_group_enabled }}
+          {% if placement_group_enabled and capacity_reservation_framework_placement_group %}Name: {{ capacity_reservation_framework_placement_group }}{% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
+        {% if fsx_efa_security_group_id %}
+        AdditionalSecurityGroups:
+          - {{ fsx_efa_security_group_id }}
+        {% endif %}
       ComputeResources:
         - Name: efa-enabled-i1
           InstanceType: {{ instance }}
@@ -32,12 +40,23 @@ Scheduling:
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
-            {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
-{% if instance == "p4d.24xlarge" %}
-          CapacityReservationTarget:
-            CapacityReservationResourceGroupArn: arn:aws:resource-groups:us-east-1:447714826191:group/EC2CRGroup
-{% endif %}
+      {% if supports_efa_for_fsx %}
+      # Unsupported instances/OSes skip the FSx EFA setup and mount the same file system over tcp.
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket_name }}/pcluster-efa-fsx-lustre-client-tutorial.sh
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+      {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: name1
     StorageType: Ebs
+  {% if fsx_fs_id %}
+  - MountDir: {{ fsx_mount_dir }}
+    Name: fsx-efa
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      FileSystemId: {{ fsx_fs_id }}
+  {% endif %}

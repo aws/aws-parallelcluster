@@ -23,10 +23,8 @@ PCLUSTER_AMI_ID_REGEX = r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
 
 CIDR_ALL_IPS = "0.0.0.0/0"
 
-SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
-SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
+SUPPORTED_SCHEDULERS = ["slurm"]
 SUPPORTED_OSES = [
-    "alinux2",
     "alinux2023",
     "ubuntu2204",
     "ubuntu2404",
@@ -35,12 +33,16 @@ SUPPORTED_OSES = [
     "rhel9",
     "rocky9",
 ]
-SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2", "alinux2023"]}
-UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "rhel8", "rocky8", "rhel9", "rocky9"]
-UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "alinux2", "rhel9"]
+# OSes not officially supported: accepted by the configuration schema, but rejected by
+# ArchitectureOsValidator unless it is suppressed. They have no official ParallelCluster AMIs.
+UNOFFICIAL_OSES = ["ubuntu2604"]
+ACCEPTED_OSES = SUPPORTED_OSES + UNOFFICIAL_OSES
+UNSUPPORTED_OSES_FOR_MICRO_NANO = ["ubuntu2204", "ubuntu2404", "ubuntu2604", "rhel8", "rocky8", "rhel9", "rocky9"]
+UNSUPPORTED_OSES_FOR_P6E_GB200 = ["rhel8", "rocky8", "rhel9"]
 SUPPORTED_OSES_FOR_P6E_GB200 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6E_GB200))
+UNSUPPORTED_OSES_FOR_P6_B300 = []
+SUPPORTED_OSES_FOR_P6_B300 = list(set(SUPPORTED_OSES) - set(UNSUPPORTED_OSES_FOR_P6_B300))
 UNSUPPORTED_OSES_FOR_DCV = []
-UNSUPPORTED_OSES_FOR_NON_GPU_DCV = ["rocky9", "rhel9"]
 UNSUPPORTED_ARM_OSES_FOR_DCV = []
 UNSUPPORTED_OSES_FOR_LUSTRE = []
 DELETE_POLICY = "Delete"
@@ -51,7 +53,6 @@ SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": SUPPORTED_OSES}
 NVIDIA_OPENRM_UNSUPPORTED_INSTANCE_TYPES = ["p3", "p3dn", "p2", "g3", "g3s", "g2"]
 SLURM = "slurm"
-AWSBATCH = "awsbatch"
 
 
 #  Capacity Reservation Platform types we support.
@@ -60,10 +61,10 @@ CR_PLATFORM_RHEL = "Red Hat Enterprise Linux"
 
 
 CAPACITY_RESERVATION_OS_MAP = {
-    "alinux2": CR_PLATFORM_LINUX_UNIX,
     "alinux2023": CR_PLATFORM_LINUX_UNIX,
     "ubuntu2204": CR_PLATFORM_LINUX_UNIX,
     "ubuntu2404": CR_PLATFORM_LINUX_UNIX,
+    "ubuntu2604": CR_PLATFORM_LINUX_UNIX,
     "rhel8": CR_PLATFORM_RHEL,
     "rocky8": CR_PLATFORM_LINUX_UNIX,
     "rhel9": CR_PLATFORM_RHEL,
@@ -71,10 +72,10 @@ CAPACITY_RESERVATION_OS_MAP = {
 }
 
 OS_MAPPING = {
-    "alinux2": {"user": "ec2-user"},
     "alinux2023": {"user": "ec2-user"},
     "ubuntu2204": {"user": "ubuntu"},
     "ubuntu2404": {"user": "ubuntu"},
+    "ubuntu2604": {"user": "ubuntu"},
     "rhel8": {"user": "ec2-user"},
     "rocky8": {"user": "rocky"},
     "rhel9": {"user": "ec2-user"},
@@ -82,10 +83,10 @@ OS_MAPPING = {
 }
 
 OS_TO_IMAGE_NAME_PART_MAP = {
-    "alinux2": "amzn2-hvm",
     "alinux2023": "amzn2023-hvm",
     "ubuntu2204": "ubuntu-2204-lts-hvm",
     "ubuntu2404": "ubuntu-2404-lts-hvm",
+    "ubuntu2604": "ubuntu-2604-lts-hvm",
     "rhel8": "rhel8-hvm",
     "rocky8": "rocky8-hvm",
     "rhel9": "rhel9-hvm",
@@ -95,12 +96,6 @@ OS_TO_IMAGE_NAME_PART_MAP = {
 PRIVATE_OSES = ["rocky8", "rocky9"]
 
 IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
-
-# Describe the list of requirements to be satisfied by the Pcluster AWS Batch CLI to manage the cluster.
-# It must be in the form <package-name><comparison-operator><version>
-# It can contain multiple items separated by a colon.
-# i.e. aws-parallelcluster-awsbatch-cli>=2.0.0,aws-parallelcluster-awsbatch-cli<3.0.0
-AWSBATCH_CLI_REQUIREMENTS = "aws-parallelcluster-awsbatch-cli<2.0.0"
 
 
 FSX_SSD_THROUGHPUT = {"PERSISTENT_1": [50, 100, 200], "PERSISTENT_2": [125, 250, 500, 1000]}
@@ -146,7 +141,7 @@ EBS_VOLUME_TYPE_IOPS_DEFAULT = {
 }
 EBS_VOLUME_SIZE_DEFAULT = 40
 # This value must be greater than or equal to the AMI volume size
-EBS_ROOT_VOLUME_SIZE_DEFAULT = 45
+EBS_ROOT_VOLUME_SIZE_DEFAULT = 50
 EBS_VOLUME_TYPE_DEFAULT = "gp3"
 
 DEFAULT_MAX_COUNT = 10
@@ -167,9 +162,9 @@ MAX_NEW_STORAGE_COUNT = {"efs": 1, "fsx": 1, "raid": 1}
 MAX_EXISTING_STORAGE_COUNT = {"efs": 20, "fsx": 20, "raid": 0}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "3.15.0",
-    "cookbook": "aws-parallelcluster-cookbook-3.15.0",
-    "chef": "18.4.12",
+    "parallelcluster": "3.17.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.17.0",
+    "chef": "19.4.46",
     "ami": "dev",
 }
 
@@ -185,6 +180,12 @@ CW_ALARM_PERCENT_THRESHOLD_DEFAULT = 90
 CW_ALARM_EVALUATION_PERIODS_DEFAULT = 1
 CW_ALARM_DATAPOINTS_TO_ALARM_DEFAULT = 1
 DETAILED_MONITORING_ENABLED_DEFAULT = False
+
+# CloudWatch Metrics
+CW_METRICS_NAMESPACE = "ParallelCluster"
+CW_METRICS_DIMENSION_CLUSTER_NAME = "ClusterName"
+CW_METRICS_DIMENSION_INSTANCE_ID = "InstanceId"
+CW_METRICS_CLUSTERMGTD_HEARTBEAT = "ClustermgtdHeartbeat"
 
 STACK_EVENTS_LOG_STREAM_NAME_FORMAT = "{}-cfn-events"
 
@@ -241,10 +242,23 @@ NODEJS_INCOMPATIBLE_VERSION_RANGE = ["13.0.0", "13.6.0"]
 
 NODE_BOOTSTRAP_TIMEOUT = 2100
 
+# Default time budget (seconds) for retrieving EC2 instance info after a CreateFleet launch,
+# to tolerate EC2 API eventual consistency.
+COMPUTE_INSTANCE_INFO_TIMEOUT = 90
+
 # DirectoryService
 DIRECTORY_SERVICE_RESERVED_SETTINGS = {"id_provider": "ldap"}
 
 DEFAULT_EPHEMERAL_DIR = "/scratch"
+# Mode ParallelCluster sets on the mount directory of a shared storage, unless SharedStorage/MountDirPermissions
+# says otherwise
+DEFAULT_MOUNT_DIR_PERMISSIONS = "1777"
+
+# Dedicated ParallelCluster-managed directory used to stage bootstrap files (dna.json, extra.json,
+# wait_condition_handle.txt, bootstrap.sh) instead of /tmp, so bootstrap works when /tmp is mounted
+# with noexec. Defined once here and referenced by cluster_stack.py (cfn-init) and the user_data
+# templates (via the PclusterTmpDir Fn::Sub variable).
+PCLUSTER_TMP_DIR = "/opt/parallelcluster/tmp"
 
 LAMBDA_VPC_ACCESS_MANAGED_POLICY = "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 
@@ -343,10 +357,13 @@ PCLUSTER_BUCKET_REQUIRED_BOOTSTRAP_FEATURES = ["basic", "export-logs"]
 
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_PREFIX = "PClusterBuildImageCleanupRole"
 # Tag key & expected revision (increment when policy widens)
-PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 2
+PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_REVISION = 3
 PCLUSTER_BUILD_IMAGE_CLEANUP_ROLE_BOOTSTRAP_TAG_KEY = "parallelcluster:build-image-cleanup-role-bootstrapped"
 
 P6E_GB200 = "p6e-gb200"
+P6_B300 = "p6-b300"
+INSTANCE_TYPES_WITH_FIRST_INTERFACE_ENA = [P6E_GB200, P6_B300]
+
 ULTRASERVER_INSTANCE_PREFIX_LIST = [P6E_GB200]
 # Dictionary mapping ultraserver instance prefixes to their allowed capacity block sizes
 ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
@@ -354,5 +371,3 @@ ULTRASERVER_CAPACITY_BLOCK_ALLOWED_SIZE_DICT = {
 }
 # Capacity Block states that are considered inactive (cannot check health status)
 CAPACITY_BLOCK_INACTIVE_STATES = ["scheduled", "payment-pending", "assessing", "delayed"]
-
-ORDER_SENSITIVE_PARAMETERS = ["Tags"]

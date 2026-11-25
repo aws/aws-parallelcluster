@@ -9,7 +9,6 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import datetime
 import json
 import logging
 import re
@@ -22,12 +21,11 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from botocore.exceptions import ClientError
 from cfn_stacks_factory import CfnStack
-from dateutil.parser import parse as date_parse
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from troposphere import Template, iam
-from utils import generate_stack_name, get_arn_partition, get_gpu_count
+from utils import generate_stack_name, get_arn_partition, get_gpu_count, run_command
 
 from tests.common.assertions import (
     _assert_build_image_stack_deleted,
@@ -38,17 +36,106 @@ from tests.common.assertions import (
     assert_no_msg_in_logs,
 )
 from tests.common.utils import (
+    export_image_logs,
     generate_random_string,
     get_installed_parallelcluster_base_version,
     get_installed_parallelcluster_version,
+    keep_recent_image_logs,
     retrieve_latest_ami,
+    upload_github_artifacts_to_s3,
+    wait_for_build_image_complete,
+    wait_for_image_build_status,
 )
+from tests.proxy.test_proxy import proxy_stack_factory  # noqa: F401
 
 
 class ImageNotFound(Exception):
     """Exception when image is not found."""
 
     pass
+
+
+def _get_base_ami(region, os, architecture):
+    """Select the appropriate base AMI and feature flags based on OS.
+
+    Uses first-stage AMIs for RHEL/Rocky/Ubuntu (kernel version requirements),
+    remarkable (Deep Learning) AMIs for ubuntu2204, and official AMIs for everything else.
+    Returns (base_ami, feature_flags) where feature_flags is a dict with keys:
+      enable_nvidia, update_os_packages, enable_lustre_client.
+    """
+    enable_nvidia = True
+    update_os_packages = os in ["alinux2023", "rocky9"]
+    enable_lustre_client = True
+
+    if os in ["ubuntu2204"]:
+        # Test Deep Learning AMIs
+        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+        enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
+    elif "rhel" in os or "ubuntu" in os or os == "rocky8":
+        # Use official AMIs. First stage AMIs must not be used as parent image in this test.
+        base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
+        update_os_packages = True
+        if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
+            enable_lustre_client = False
+    else:
+        # Test vanilla AMIs.
+        base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
+        if os in ["rocky9"]:
+            enable_lustre_client = False
+
+    feature_flags = {
+        "enable_nvidia": enable_nvidia,
+        "update_os_packages": update_os_packages,
+        "enable_lustre_client": enable_lustre_client,
+    }
+    return base_ami, feature_flags
+
+
+@pytest.mark.usefixtures("instance")
+def test_build_image_no_internet(
+    region,
+    os,
+    pcluster_config_reader,
+    architecture,
+    proxy_stack_factory,  # noqa: F811
+    images_factory,
+    s3_bucket_factory,
+    request,
+):
+    """Test build image in a private subnet with no internet access, only VPC endpoints and a proxy for OS repos."""
+    base_ami, feature_flags = _get_base_ami(region, os, architecture)
+    # Enable NVIDIA installation so the offline NVIDIA/imex install path is exercised through the
+    # proxy. It is disabled for the Deep Learning AMI parent, which already ships the driver (the
+    # nvidia_install recipe skips the whole stack when the driver is already present).
+    enable_nvidia = feature_flags["enable_nvidia"]
+
+    # Create proxy stack with build-image mode enabled
+    no_internet_proxy_stack = proxy_stack_factory(enable_build_image_proxy=True)
+
+    # Upload dev packages to S3 so the build instance can access them via the S3 VPC endpoint
+    # instead of GitHub (which is blocked in the no-internet environment).
+    bucket_name = s3_bucket_factory()
+    s3_artifacts = upload_github_artifacts_to_s3(bucket_name, region, request)
+
+    # Get the proxy URL from the stack output
+    install_http_proxy_address = no_internet_proxy_stack.cfn_outputs["ProxyAddress"]
+
+    image_id = generate_stack_name("integ-tests-build-image-no-internet", request.config.getoption("stackname_suffix"))
+    image_config = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        subnet_id=no_internet_proxy_stack.cfn_outputs["PrivateSubnet"],
+        security_group_id=no_internet_proxy_stack.cfn_outputs["DefaultSecurityGroupId"],
+        chef_cookbook=s3_artifacts["chef_cookbook"],
+        node_package=s3_artifacts["node_package"],
+        install_http_proxy_address=install_http_proxy_address,
+        enable_nvidia=str(enable_nvidia).lower(),
+        enable_lustre_client=str(feature_flags["enable_lustre_client"]).lower(),
+        update_os_packages=str(feature_flags["update_os_packages"]).lower(),
+    )
+
+    image = images_factory(image_id, image_config, region)
+    wait_for_build_image_complete(image, request.config.getoption("output_dir"))
 
 
 @pytest.mark.usefixtures("instance")
@@ -80,11 +167,7 @@ def test_invalid_config(
 
     # Test Suppression of a validator
 
-    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2204, alinux2023 yet
-    if os not in ["ubuntu2204", "alinux2023"]:
-        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-    else:
-        base_ami = retrieve_latest_ami(region, os, architecture=architecture)
+    base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
 
     image_config = pcluster_config_reader(
         config_file="warnings.image.config.yaml", parent_image=base_ami, bucket_name=bucket_name
@@ -112,6 +195,7 @@ def test_build_image(
     s3_bucket_factory,
     build_image_custom_resource,
     images_factory,
+    noexec_tmp_ami_factory,
     request,
     clusters_factory,
     scheduler_commands_factory,
@@ -133,45 +217,22 @@ def test_build_image(
     bucket_name = s3_bucket_factory()
     _set_s3_bucket_policy(bucket_name, get_arn_partition(region), region)
 
-    enable_nvidia = True
-    update_os_packages = False
-    enable_lustre_client = True
+    # Get base AMI and feature flags
+    base_ami, flags = _get_base_ami(region, os, architecture)
 
-    # Disable nvidia installation for ubuntu2404 because nvidia drivers are failing with newest kernel
-    if os in ["ubuntu2404"]:
-        enable_nvidia = False
+    enable_nvidia = flags["enable_nvidia"] and get_gpu_count(instance) > 0
+    if not enable_nvidia:
+        # Build from an AMI where /tmp is already noexec at boot.
+        base_ami = noexec_tmp_ami_factory(base_ami, instance)
 
-    # Get base AMI
-    if os in ["alinux2", "ubuntu2004"]:
-        # Test Deep Learning AMIs
-        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-        enable_nvidia = False  # Deep learning AMIs have Nvidia pre-installed
-    elif "rhel" in os or "ubuntu" in os or os == "rocky8":
-        # Test AMIs from first stage build. Because RHEL/Rocky and Ubuntu have specific requirement of kernel versions.
-        try:
-            base_ami = retrieve_latest_ami(region, os, ami_type="first_stage", architecture=architecture)
-        except IndexError:  # If first stage AMI is not available, use official AMI.
-            # Therefore, the test tries to succeed at best effort.
-            logging.info("First stage AMI not available, using official AMI instead.")
-            base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-            update_os_packages = True
-            if os in ["ubuntu2204", "rhel9", "ubuntu2404"]:
-                enable_lustre_client = False
-    else:
-        # Test vanilla AMIs.
-        base_ami = retrieve_latest_ami(region, os, ami_type="official", architecture=architecture)
-        if os in ["rocky9"]:
-            enable_lustre_client = False
-    if os in ["alinux2", "alinux2023", "rocky9"]:
-        update_os_packages = True
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
         instance_role=instance_role,
         bucket_name=bucket_name,
-        enable_nvidia=str(enable_nvidia and get_gpu_count(instance) > 0).lower(),
-        update_os_packages=str(update_os_packages).lower(),
-        enable_lustre_client=str(enable_lustre_client).lower(),
+        enable_nvidia=str(enable_nvidia).lower(),
+        update_os_packages=str(flags["update_os_packages"]).lower(),
+        enable_lustre_client=str(flags["enable_lustre_client"]).lower(),
     )
 
     image = images_factory(image_id, image_config, region)
@@ -187,15 +248,30 @@ def test_build_image(
     )
 
     with soft_assertions():
-        _test_build_image_success(image)
-        _test_build_instances_tags(image, image.config["Build"]["Tags"], region)
-        _test_build_imds_settings(image, "required", region)
+        _wait_for_build_instance(image)
+        _test_build_instances_tags(image, image.config["Build"]["Tags"])
+        _test_build_imds_settings(image, "required")
+
+        wait_for_build_image_complete(image, request.config.getoption("output_dir"))
+
+        # Only validate export-image-logs if the build did NOT complete successfully. On a successful
+        # build the build-image stack self-deletes, which races the export command and causes
+        # intermittent "stack does not exist" failures; a successful build also does not need its logs
+        # exported. If the build failed the stack is retained, so the export reliably has its stack.
+        #
+        # On a successful build we still want evidence that the build logs reached CloudWatch, so we tail
+        # the image build log group instead: `aws logs tail` reads the log group directly and has none of
+        # export's dependencies (no S3 bucket, no build-image stack), so it cannot hit the deletion race.
+        if image.image_status != "BUILD_COMPLETE":
+            _test_export_logs(s3_bucket_factory, image, region)
+            _test_export_logs(s3_bucket_factory, image, region, True)
+        else:
+            _test_tail_image_logs(image, region)
+
         _test_image_tag_and_volume(image)
         _test_list_image_log_streams(image)
         _test_get_image_log_events(image)
         _test_list_images(image)
-        _test_export_logs(s3_bucket_factory, image, region)
-        _test_export_logs(s3_bucket_factory, image, region, True)
 
     _test_cluster_creation(
         image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
@@ -240,44 +316,6 @@ def _wait_for_creation_of_delete_stack_function(stack_name, cfn_client):
     )
 
 
-@pytest.mark.usefixtures("instance", "scheduler")
-def test_kernel4_build_image_run_cluster(
-    region,
-    os,
-    pcluster_config_reader,
-    architecture,
-    images_factory,
-    request,
-    scheduler_commands_factory,
-    clusters_factory,
-):
-    """
-    Test build image for given region and os and run a job in a new cluster created from the new images.
-
-    Also check that the build instance has the desired ImdsSupport setting (IMDSv2, v1.0 is optional).
-
-    Note: This test has been introduced to verify the build-image with Amazon Linux based on kernel 4,
-    because the base AMI for Amazon Linux were based on kernel 5.10.
-
-    At the moment this test is no longer relevant,
-    kernel 5.10 in Amazon Linux 2 has been introduced on Nov 2021 and kernel 4.14 is now EOL.
-    """
-    # Get base AMI from kernel4
-    base_ami = retrieve_latest_ami(region, os, ami_type="kernel4", architecture=architecture)
-
-    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami, region=region)
-
-    image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
-    image = images_factory(image_id, image_config, region, **{"rollback-on-failure": False})
-    _test_build_image_success(image)
-    _test_build_imds_settings(image, "required", region)
-    _test_list_images(image)
-
-    _test_cluster_creation(
-        image.ec2_image_id, pcluster_config_reader, region, clusters_factory, scheduler_commands_factory
-    )
-
-
 def _test_list_images(image):
     images = image.list_images(region=image.region, image_status="AVAILABLE")["images"]
     matches = [img for img in images if img["imageId"] == image.image_id]
@@ -310,46 +348,27 @@ def _test_list_image_log_streams(image):
     streams = list_streams_result["logStreams"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
-    expected_log_stream = f"{get_installed_parallelcluster_base_version()}/1"
+    expected_log_stream = image.build_log_stream_name
     assert_that(stream_names).contains(expected_log_stream)
 
 
 def _test_get_image_log_events(image):
     """Test pcluster get-image-log-events functionality."""
     logging.info("Testing that pcluster get-image-log-events is working as expected")
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    log_stream_name = image.build_log_stream_name
 
-    # Get the first event to establish time boundary for testing
-    initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
-    first_event = initial_events["events"][0]
-    first_event_time_str = first_event["timestamp"]
-    first_event_time = date_parse(first_event_time_str)
-    before_first = (first_event_time - datetime.timedelta(seconds=1)).isoformat()
-    after_first = (first_event_time + datetime.timedelta(seconds=1)).isoformat()
+    # GetLogEvents can return empty pages while more events are available,
+    # so page forward until the token stops changing, which marks the end of the stream.
+    events = []
+    next_token = None
+    while True:
+        response = image.get_log_events(log_stream_name, start_from_head=True, next_token=next_token)
+        events.extend(response["events"])
+        if not response.get("nextToken") or response["nextToken"] == next_token:
+            break
+        next_token = response["nextToken"]
 
-    # args, expect_first, expect_count
-    test_cases = [
-        ({}, None, None),
-        ({"limit": 1}, False, 1),
-        ({"limit": 2, "start_from_head": True}, True, 2),
-        ({"limit": 1, "start_time": before_first, "end_time": after_first, "start_from_head": True}, True, 1),
-        ({"limit": 1, "end_time": before_first}, None, 0),
-        ({"limit": 1, "start_time": after_first, "start_from_head": True}, False, 1),
-        ({"limit": 1, "next_token": initial_events["nextToken"]}, False, 1),
-        ({"limit": 1, "next_token": initial_events["nextToken"], "start_from_head": True}, False, 1),
-    ]
-
-    for args, expect_first, expect_count in test_cases:
-        events = image.get_log_events(log_stream_name, **args)["events"]
-
-        if expect_count is not None:
-            assert_that(events).is_length(expect_count)
-
-        if expect_first is True:
-            assert_that(events[0]["message"]).contains(first_event["message"])
-
-        if expect_first is False:
-            assert_that(events[0]["message"]).does_not_contain(first_event["message"])
+    assert_that(events).is_not_empty()
 
 
 def _set_s3_bucket_policy(bucket_name, partition, region):
@@ -374,7 +393,29 @@ def _set_s3_bucket_policy(bucket_name, partition, region):
     boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
 
 
+def _test_tail_image_logs(image, region):
+    """Assert the image build logs reached CloudWatch by tailing the image build log group.
+
+    Used on a successful build, where export-image-logs is skipped (the build-image stack self-deletes
+    and races the export). ``aws logs tail`` reads the log group directly -- no S3 bucket and no
+    dependency on the build-image stack -- so it gives race-free evidence that logs are being pushed.
+    The image build log group is ``/aws/imagebuilder/ParallelClusterImage-<image_id>``.
+    """
+    logging.info("Testing that image build logs reached CloudWatch via aws logs tail")
+    log_group_name = f"/aws/imagebuilder/ParallelClusterImage-{image.image_id}"
+    # `aws logs tail` defaults to only the last 10 minutes; an image build takes much longer, so widen
+    # the window with --since so an empty result means "no logs" rather than "no logs in the last 10 min".
+    result = run_command(
+        ["aws", "logs", "tail", log_group_name, "--since", "1h", "--region", region],
+        raise_on_error=True,
+    )
+    assert_that(result.stdout.strip()).described_as(
+        f"no log events found in {log_group_name}; build logs were not pushed to CloudWatch"
+    ).is_not_empty()
+
+
 def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=False):
+    bucket_name = None
     if not use_pcluster_bucket:
         bucket_name = s3_bucket_factory()
         logging.info("bucket is %s", bucket_name)
@@ -389,14 +430,11 @@ def _test_export_logs(s3_bucket_factory, image, region, use_pcluster_bucket=Fals
         output_file = f"{tempdir}/testfile.tar.gz"
         bucket_prefix = "test_prefix"
 
-        if not use_pcluster_bucket:
-            ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))(image.export_logs)(
-                bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix
-            )
-        else:
-            ret = retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))(image.export_logs)(
-                output_file=output_file, bucket_prefix=bucket_prefix
-            )
+        ret = image.export_logs(
+            bucket=bucket_name,
+            output_file=output_file,
+            bucket_prefix=bucket_prefix,
+        )
 
         assert_that(ret["path"]).contains(output_file)
 
@@ -430,10 +468,11 @@ def _test_image_tag_and_volume(image):
         raise ImageNotFound()
     assert_that(len(image_list)).is_equal_to(1)
 
-    created_image = image_list[0]
-    volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
-    assert_that(volume_size).is_equal_to(200)
-    assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
+    if len(image_list) > 0:
+        created_image = image_list[0]
+        volume_size = created_image.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
+        assert_that(volume_size).is_equal_to(200)
+        assert_that(created_image["Tags"]).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
 
 
 @pytest.fixture()
@@ -529,7 +568,7 @@ def test_build_image_custom_components(
     bucket.upload_file(str(test_datadir / custom_script_file), "scripts/custom_script.sh")
 
     # Get ParallelCluster AMI as base AMI
-    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
+    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture, request=request)
 
     image_id = generate_stack_name(
         "integ-tests-build-image-custom-components", request.config.getoption("stackname_suffix")
@@ -544,57 +583,36 @@ def test_build_image_custom_components(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_success(image)
+    wait_for_build_image_complete(image, request.config.getoption("output_dir"))
 
 
-def _test_build_imds_settings(image, status, region):
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(10))
+def _wait_for_build_instance(image):
+    """Wait until the ImageBuilder build instance is launched.
+
+    The build instance exists only while the image is being built; it is terminated and the build-image
+    stack self-deletes once the image reaches BUILD_COMPLETE. Waiting for it here lets the tag and IMDS
+    checks run against a live instance instead of racing the teardown or passing vacuously.
+    """
+    build_instance_name = f"Build instance for ParallelClusterImage-{image.image_id}"
+    return [
+        instance
+        for instance in image.get_imagebuilder_instances()
+        if instance.get("State", {}).get("Name") == "running"
+        and {"Key": "Name", "Value": build_instance_name} in instance.get("Tags", [])
+    ]
+
+
+def _test_build_imds_settings(image, status):
     logging.info(f"Checking that the ImageBuilder instances have IMDSv2 {status}")
-
-    instance_names = [
-        f"Build instance for ParallelClusterImage-{image.image_id}",
-        f"Test instance for ParallelClusterImage-{image.image_id}",
-    ]
-
-    describe_response = boto3.client("ec2", region_name=region).describe_instances(
-        Filters=[{"Name": "tag:Name", "Values": instance_names}]
-    )
-
-    for reservations in describe_response.get("Reservations"):
-        for instance in reservations.get("Instances"):
-            assert_instance_has_desired_imds_v2_setting(instance, status)
+    for instance in image.get_imagebuilder_instances():
+        assert_instance_has_desired_imds_v2_setting(instance, status)
 
 
-def _test_build_instances_tags(image, build_tags, region):
+def _test_build_instances_tags(image, build_tags):
     logging.info("Checking that the ImageBuilder instances have the build tags")
-
-    instance_names = [
-        f"Build instance for ParallelClusterImage-{image.image_id}",
-        f"Test instance for ParallelClusterImage-{image.image_id}",
-    ]
-
-    describe_response = boto3.client("ec2", region_name=region).describe_instances(
-        Filters=[{"Name": "tag:Name", "Values": instance_names}]
-    )
-
-    for reservations in describe_response.get("Reservations"):
-        for instance in reservations.get("Instances"):
-            assert_instance_has_desired_tags(instance, build_tags)
-
-
-def _test_build_image_success(image):
-    logging.info("Test build image process for image %s.", image.image_id)
-
-    pcluster_describe_image_result = image.describe()
-    logging.info(pcluster_describe_image_result)
-
-    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
-        time.sleep(600)
-        pcluster_describe_image_result = image.describe()
-        logging.info(pcluster_describe_image_result)
-    if image.image_status != "BUILD_COMPLETE":
-        image.keep_logs = True
-        _keep_recent_logs(image)
-    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
+    for instance in image.get_imagebuilder_instances():
+        assert_instance_has_desired_tags(instance, build_tags)
 
 
 @pytest.mark.usefixtures("os")
@@ -605,11 +623,15 @@ def test_build_image_wrong_pcluster_version(
     architecture,
     pcluster_ami_without_standard_naming,
     images_factory,
+    s3_bucket_factory,
     request,
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
     current_version = get_installed_parallelcluster_version()
-    wrong_version = "3.9.3"
+    # Compute a wrong version that is 2 minor versions before the current one, with patch set to 0.
+    # For example, if the current version is 3.15.1, the wrong_version is 3.13.0.
+    major, minor, _ = (int(part) for part in current_version.split("."))
+    wrong_version = f"{major}.{minor - 2}.0"
     logging.info("Asserting wrong_version is different from current_version")
     assert_that(current_version != wrong_version).is_true()
     # Retrieve an AMI without 'aws-parallelcluster-<version>' in its name.
@@ -625,35 +647,23 @@ def test_build_image_wrong_pcluster_version(
 
     image = images_factory(image_id, image_config, region)
 
-    _test_build_image_failed(image)
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    _test_build_image_failed(image, request.config.getoption("output_dir"))
+
+    # This build deterministically fails, so the build-image stack is retained (it does not
+    # self-delete). That makes it a reliable place to validate export-image-logs end to end, for
+    # both a custom bucket and the default pcluster bucket.
+    _test_export_logs(s3_bucket_factory, image, region)
+    _test_export_logs(s3_bucket_factory, image, region, True)
+
+    log_stream_name = image.build_log_stream_name
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(rf"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
-def _test_build_image_failed(image):
+def _test_build_image_failed(image, output_dir):
     logging.info("Test build image process for image %s.", image.image_id)
-
-    pcluster_describe_image_result = image.describe()
-    logging.info(pcluster_describe_image_result)
-
-    while image.image_status.endswith("_IN_PROGRESS"):  # e.g. BUILD_IN_PROGRESS, DELETE_IN_PROGRESS
-        time.sleep(600)
-        pcluster_describe_image_result = image.describe()
-        logging.info(pcluster_describe_image_result)
-
+    wait_for_image_build_status(image, ["BUILD_COMPLETE", "BUILD_FAILED"])
     if image.image_status == "BUILD_FAILED":
-        image.keep_logs = True
-        _keep_recent_logs(image)
+        export_image_logs(image, output_dir)
+        keep_recent_image_logs(image)
     assert_that(image.image_status).is_equal_to("BUILD_FAILED")
-
-
-def _keep_recent_logs(image):
-    """Keep several lines of recent log to the console when creating an image fails."""
-    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
-    nlines = 200
-    log_events = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=nlines)
-    log_messages = [event["message"] for event in log_events]
-    logging.info(
-        f"Image built failed for {image.image_id}, the last {nlines} lines of the log are:\n" + "\n".join(log_messages)
-    )

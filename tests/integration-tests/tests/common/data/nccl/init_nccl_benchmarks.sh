@@ -6,7 +6,7 @@ rm -rf /shared/${1}
 
 module load ${1}
 NCCL_BENCHMARKS_VERSION='2.17.1'
-NCCL_VERSION='2.28.3-1'
+NCCL_VERSION='2.28.9-1'
 MPI_HOME=$(which mpirun | awk -F '/bin' '{print $1}')
 NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90" # Arch for NVIDIA A100 and H100, ref https://docs.nvidia.com/cuda/ada-compatibility-guide/index.html
 
@@ -28,8 +28,8 @@ NVCC_GENCODE="${NVCC_GENCODE}" make MPI=1 MPI_HOME=${MPI_HOME} NCCL_HOME=/shared
 
 # Compile OFI NCCL plugin for RHEL and Rocky because EFA doesn't ship the plugin on the OSes
 . /etc/os-release
-if [[ $ID==rhel || $ID==rocky ]]; then
-  OFI_NCCL_VERSION='1.16.3'
+if [[ "$ID" == "rhel" || "$ID" == "rocky" ]]; then
+  OFI_NCCL_VERSION='1.18.0'
   wget https://github.com/aws/aws-ofi-nccl/archive/v${OFI_NCCL_VERSION}.tar.gz
   tar xvfz v${OFI_NCCL_VERSION}.tar.gz
   cd aws-ofi-nccl-${OFI_NCCL_VERSION}

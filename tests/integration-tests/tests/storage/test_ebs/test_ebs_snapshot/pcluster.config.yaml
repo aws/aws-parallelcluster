@@ -1,6 +1,5 @@
 Image:
   Os: {{ os }}
-{% if scheduler == "slurm" %}
 LoginNodes:
   Pools:
     - Name: login-node-pool-0
@@ -10,7 +9,6 @@ LoginNodes:
         SubnetIds:
           - {{ public_subnet_id }}
       GracetimePeriod: 5
-{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -21,24 +19,16 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 1
-          DesiredvCpus: 1
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-    {% if scheduler == "slurm" %}
     - Name: queue-1
       ComputeResources:
         - Name: compute-resource-0
@@ -49,7 +39,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[1] }}
-    {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dir }}
     StorageType: Ebs

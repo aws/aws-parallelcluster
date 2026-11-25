@@ -6,6 +6,11 @@ Parameters:
     Description: EC2 Keypair to access management instance.
     Type: AWS::EC2::KeyPair::KeyName
 
+  InstanceType:
+    Description: Instance type of the proxy and client instances.
+    Type: String
+    Default: t3.medium
+
   VpcCidr:
     Description: CIDR for the VPC
     Type: String
@@ -16,6 +21,23 @@ Parameters:
     Type: String
     Default: 0.0.0.0/0
 
+  EnableBuildImageProxy:
+    Description: >-
+      When true, enables build-image isolated network mode: adds VPC endpoints,
+      IP forwarding, tinyproxy domain allowlist, and removes ProxyClient verification.
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+
+  AvailabilityZone:
+    Description: >-
+      AZ name (e.g. us-east-1c) for both the public and private subnets.
+      When empty, both subnets fall back to the Region's "a" AZ.
+    Type: String
+    Default: ""
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -24,14 +46,26 @@ Metadata:
         Parameters:
           - VpcCidr
           - SSHCidr
+          - AvailabilityZone
       - Label:
           default: Permissions
         Parameters:
           - Keypair
+      - Label:
+          default: Build Image Proxy
+        Parameters:
+          - EnableBuildImageProxy
   cfn-lint:
     config:
       ignore_checks:
         - E1152
+
+Conditions:
+  IsBuildImageProxy: !Equals [!Ref EnableBuildImageProxy, "true"]
+  IsClusterProxy: !Not [!Condition IsBuildImageProxy]
+  # China regions (aws-cn partition) use cn.com.amazonaws prefix for VPC Interface endpoint service names
+  IsChinaRegion: !Equals [!Ref "AWS::Partition", "aws-cn"]
+  HasAvailabilityZone: !Not [!Equals [!Ref AvailabilityZone, ""]]
 
 Resources:
 
@@ -61,7 +95,7 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}a
+      AvailabilityZone: !If [HasAvailabilityZone, !Ref AvailabilityZone, !Sub "${AWS::Region}a"]
       CidrBlock: !Select [ 0, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
       MapPublicIpOnLaunch: true
       VpcId: !Ref Vpc
@@ -93,7 +127,7 @@ Resources:
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub ${AWS::Region}b
+      AvailabilityZone: !If [HasAvailabilityZone, !Ref AvailabilityZone, !Sub "${AWS::Region}a"]
       CidrBlock: !Select [ 1, !Cidr [ !GetAtt Vpc.CidrBlock, 2, 8 ]]
       MapPublicIpOnLaunch: false
       VpcId: !Ref Vpc
@@ -121,6 +155,91 @@ Resources:
       InstanceId: !Ref Proxy
       RouteTableId: !Ref PrivateSubnetRT
 
+  # VPC ENDPOINTS (build-image mode only)
+  # S3 Gateway endpoint uses standard com.amazonaws naming in all partitions
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      VpcId: !Ref Vpc
+      RouteTableIds:
+        - !Ref PrivateSubnetRT
+
+  # Interface endpoints use com.amazonaws in all partitions, except for some services in China regions
+  LogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  # EC2 VPC endpoint uses cn.com.amazonaws prefix in China regions
+  EC2Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub
+        - "${Prefix}.${AWS::Region}.ec2"
+        - Prefix: !If [IsChinaRegion, "cn.com.amazonaws", "com.amazonaws"]
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  # ImageBuilder VPC endpoint uses cn.com.amazonaws prefix in China regions
+  ImageBuilderEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: IsBuildImageProxy
+    Properties:
+      ServiceName: !Sub
+        - "${Prefix}.${AWS::Region}.imagebuilder"
+        - Prefix: !If [IsChinaRegion, "cn.com.amazonaws", "com.amazonaws"]
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref PrivateSubnet
+
   # SECURITY GROUPS
   ProxySecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -143,6 +262,7 @@ Resources:
 
   ProxyClientSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: IsClusterProxy
     Properties:
       GroupDescription: Security Group for proxy clients
       SecurityGroupIngress:
@@ -203,18 +323,16 @@ Resources:
           HttpPutResponseHopLimit: 4
           HttpTokens: required
 
-  # PROXY
+  # PROXY INSTANCE
   Proxy:
     Type: AWS::EC2::Instance
     DependsOn:
-      # Dependencies required to support ENI updates when VPC, IGW and instance are defined in the same template.
-      # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html#cfn-ec2-instance-networkinterfaces
       - VpcIGW
       - ProxyENI
     Properties:
       IamInstanceProfile: !Ref ProxyInstanceProfile
-      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-      InstanceType: t3.medium
+      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+      InstanceType: !Ref InstanceType
       KeyName: !Ref Keypair
       NetworkInterfaces:
         - DeviceIndex: 0
@@ -223,71 +341,194 @@ Resources:
         LaunchTemplateId: !Ref Imdsv2LaunchTemplate
         Version: !GetAtt Imdsv2LaunchTemplate.LatestVersionNumber
       UserData:
-        Fn::Base64: |
-          #!/bin/bash -ex
-          set -o pipefail
-          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-          apt-get update -y
-          apt-get install -y tinyproxy redsocks
-      
-          cat << EOF > /etc/tinyproxy/tinyproxy.conf
-          User tinyproxy
-          Group tinyproxy
-          Port 8888
-          Timeout 3600
-          DefaultErrorFile "/usr/share/tinyproxy/default.html"
-          StatFile "/usr/share/tinyproxy/stats.html"
-          Logfile "/var/log/tinyproxy/tinyproxy.log"
-          LogLevel Info
-          PidFile "/run/tinyproxy/tinyproxy.pid"
-          MaxClients 500
-          MinSpareServers 20
-          MaxSpareServers 100
-          StartServers 20
-          MaxRequestsPerChild 0
-          ViaProxyName "tinyproxy"
-          ConnectPort 443
-          ConnectPort 563
-          EOF
-          
-          /etc/init.d/tinyproxy restart
-      
-          cat << EOF > /etc/redsocks.conf
-          base {
-            log_debug = off;
-            log_info = on;
-            log = "file:/var/log/redsocks";
-            daemon = on;
-            user = redsocks;
-            group = redsocks;
-            redirector = iptables;
-          }
-                        
-          redsocks {
-            local_ip = 0.0.0.0;
-            local_port = 8889;
-            ip = localhost;
-            port = 8888;
-            type = http-connect;
-          }
-          EOF
-      
-          /etc/init.d/redsocks restart
-          
-          iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
-          iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8889
-          
-          mkdir -p /etc/iptables/
-          iptables-save > /etc/iptables/rules.v4
-          
-          # Installing iptables-persistent without manual prompt
-          # https://gist.github.com/alonisser/a2c19f5362c2091ac1e7
-          echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
-          echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
-          apt-get install -y iptables-persistent
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -ex
+            set -o pipefail
+            exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+            # Common curl options, used for every request below: bounded retries for transient
+            # glitches plus connect/total time caps so no single hung endpoint can block the script
+            # past the wait-condition budget.
+            CURL_OPTS="--retry 3 --connect-timeout 5 --max-time 15"
+
+            # Signal the success/failure to the wait condition.
+            function signal() {
+              curl $CURL_OPTS -X PUT -H "Content-Type:" \
+                --data-binary "{\"Status\":\"$1\",\"Reason\":\"$2\",\"UniqueId\":\"Proxy\",\"Data\":\"$1\"}" \
+                "${ProxyReadyWaitConditionHandle}"
+            }
+
+            # On any error, signal the failure to the wait condition
+            function signal_failure() {
+              rc=$?
+              trap - EXIT
+              if [ "$rc" -ne 0 ]; then
+                signal FAILURE "Proxy UserData failed before signaling ready" || true
+              fi
+            }
+            trap signal_failure EXIT
+
+            BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
+
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches),
+            # plus a lock timeout so apt-get waits for a boot-time apt/unattended-upgrade process
+            # (holding /var/lib/dpkg/lock-frontend) to release, instead of failing immediately.
+            # Acquire::Retries only covers network fetches, not the dpkg lock.
+            APT_RETRY="-o Acquire::Retries=5 -o DPkg::Lock::Timeout=300"
+
+            # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
+            # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            # unattended-upgrades.service is a separate boot unit (not driven by apt-daily.timer), so it
+            # is disabled explicitly too — otherwise it can hold the dpkg lock during our apt-get install.
+            flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service unattended-upgrades.service || true
+            sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
+              /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
+
+            # Finish any transaction interrupted before we start installing.
+            dpkg --configure -a
+
+            # Enable IP forwarding — without this, the kernel drops packets routed from
+            # the private subnet, causing "connection timed out" in the ConfigureSystem step.
+            if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
+              sysctl -w net.ipv4.ip_forward=1
+              echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+            fi
+
+            apt-get $APT_RETRY update -y
+            apt-get $APT_RETRY install -y tinyproxy redsocks
+
+            # Tinyproxy config — build-image mode adds domain allowlist filtering
+            cat << EOF > /etc/tinyproxy/tinyproxy.conf
+            User tinyproxy
+            Group tinyproxy
+            Port 8888
+            Timeout 3600
+            DefaultErrorFile "/usr/share/tinyproxy/default.html"
+            StatFile "/usr/share/tinyproxy/stats.html"
+            Logfile "/var/log/tinyproxy/tinyproxy.log"
+            LogLevel Info
+            PidFile "/run/tinyproxy/tinyproxy.pid"
+            MaxClients 500
+            MinSpareServers 20
+            MaxSpareServers 100
+            StartServers 20
+            MaxRequestsPerChild 0
+            ViaProxyName "tinyproxy"
+            ConnectPort 443
+            ConnectPort 563
+            EOF
+
+            if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
+              # Add domain allowlist filtering for isolated network
+              echo 'Filter "/etc/tinyproxy/filter"' >> /etc/tinyproxy/tinyproxy.conf
+              echo 'FilterDefaultDeny Yes' >> /etc/tinyproxy/tinyproxy.conf
+
+              # Domain allowlist for isolated network:
+              # OS package repos: Ubuntu, Rocky, Amazon Linux
+              # AWS services: awscli, EFA installer, efs-utils package repo + GPG key (CloudFront), S3 (global + virtual-hosted)
+              # Build dependencies: Rust crates, snap store (Firefox/DCV on Ubuntu)
+              # RHEL repos: Red Hat Update Infrastructure (RHUI)
+              # EPEL GPG key: CloudFront distribution
+              # DCV GPG key: CloudFront distribution (NICE DCV)
+              # Rocky mirrors: domains from China mirrorlist resolution
+              cat << FILTER > /etc/tinyproxy/filter
+            \.ubuntu\.com$
+            \.launchpadcontent\.net$
+            \.fedoraproject\.org$
+            ^dl\.rockylinux\.org$
+            ^mirrors\.rockylinux\.org$
+            ^download\.rockylinux\.org$
+            ^mirror\.ps\.kz$
+            \.production\.gcp\.mirrors\.ctrliq\.cloud$
+            ^mirror\.hashy0917\.net$
+            ^rocky\.mirror\.co\.ge$
+            ^in\.mirrors\.cicku\.me$
+            ^mirrors\.ipserverone\.com$
+            ^mirror\.bharatdatacenter\.com$
+            ^mirrors\.esto\.network$
+            ^ftp\.iij\.ad\.jp$
+            ^mirror\.dc\.uz$
+            ^mirror\.ourhost\.az$
+            ^mirror\.maeen\.sa$
+            ^mirror\.nevacloud\.com$
+            ^ftp\.yz\.yamagata-u\.ac\.jp$
+            ^mirror\.twds\.com\.tw$
+            ^cdn\.amazonlinux\.com$
+            ^awscli\.amazonaws\.com
+            \.s3\.amazonaws\.com
+            ^s3\.amazonaws\.com
+            ^efa-installer\.amazonaws\.com
+            ^amazon-efs-utils\.aws\.com
+            ^index\.crates\.io
+            ^static\.crates\.io
+            ^api\.snapcraft\.io
+            ^cloudfront\.cdn\.snapcraftcontent\.com
+            ^d2lzkl7pfhq30w\.cloudfront\.net
+            ^d1uj6qtbmh3dt5\.cloudfront\.net
+            \.aws\.ce\.redhat\.com
+            FILTER
+
+              # EPEL mirrors rotate per request and can't be pinned statically, so resolve
+              # the mirrorlist here and allowlist every host it returns.
+              for RELEASEVER in 8 9; do
+                for ARCH in x86_64 aarch64; do
+                  curl -s $CURL_OPTS "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=$ARCH" \
+                    | awk -F/ '/^https?:/ {print $3}'
+                done
+              done | sort -u | while read -r EPEL_HOST; do
+                echo "^$(echo "$EPEL_HOST" | sed 's/\./\\./g')\$" >> /etc/tinyproxy/filter
+              done
+            fi
+
+            /etc/init.d/tinyproxy restart
+
+            # Redsocks bridges transparent HTTPS to tinyproxy via HTTP CONNECT.
+            # Tinyproxy can't handle raw TLS — redsocks wraps port 443 traffic in CONNECT
+            # so tinyproxy can read the hostname and apply its domain allowlist.
+            # Needed for pre-Chef HTTPS calls in parallelcluster.yaml (e.g., apt-get upgrade
+            # ca-certificates in the InstallCincAndCookbooks step). Once Chef runs,
+            # detect_proxy.rb sets explicit proxy env vars and bypasses redsocks.
+            cat << EOF > /etc/redsocks.conf
+            base {
+              log_debug = off;
+              log_info = on;
+              log = "file:/var/log/redsocks";
+              daemon = on;
+              user = redsocks;
+              group = redsocks;
+              redirector = iptables;
+            }
+
+            redsocks {
+              local_ip = 0.0.0.0;
+              local_port = 8889;
+              ip = localhost;
+              port = 8888;
+              type = http-connect;
+            }
+            EOF
+
+            /etc/init.d/redsocks restart
+
+            # HTTP → tinyproxy (reads Host header for filtering)
+            iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8888
+
+            # HTTPS → redsocks → tinyproxy CONNECT (wraps TLS in CONNECT for filtering)
+            iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8889
+
+            mkdir -p /etc/iptables/
+            iptables-save > /etc/iptables/rules.v4
+
+            echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+            echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
+            apt-get $APT_RETRY install -y iptables-persistent
+
+            signal SUCCESS "Proxy ready"
       Tags:
-      - Key: Name
-        Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
+        - Key: Name
+          Value: !Sub [ "Proxy-${StackIdSuffix}", {StackIdSuffix: !Select [1, !Split ['/', !Ref 'AWS::StackId']]}]
 
   ProxyENI:
     Type: AWS::EC2::NetworkInterface
@@ -297,18 +538,34 @@ Resources:
       SourceDestCheck: false
       SubnetId: !Ref PublicSubnet
 
-  # PROXY Client
+  # Signaled upon the finish Proxy UserData. ProxyClient depends on this so it launches only after the
+  # proxy can actually carry network traffic.
+  ProxyReadyWaitConditionHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  ProxyReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Proxy
+    Properties:
+      Count: 1
+      Handle: !Ref ProxyReadyWaitConditionHandle
+      Timeout: 600
+
+  # PROXY VERIFICATION CLIENT
+  # In cluster mode: tests explicit proxy (http_proxy env var) by downloading from GitHub.
+  # In build-image mode: tests transparent proxy (iptables REDIRECT) by curling allowlisted domains.
   ProxyClient:
     Type: AWS::EC2::Instance
     DependsOn:
       - Proxy
+      - ProxyReadyWaitCondition
     Properties:
       IamInstanceProfile: !Ref ProxyClientNodeInstanceProfile
-      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id
-      InstanceType: t3.medium
+      ImageId: resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+      InstanceType: !Ref InstanceType
       KeyName: !Ref Keypair
       SecurityGroupIds:
-        - !Ref ProxyClientSecurityGroup
+        - !If [IsClusterProxy, !Ref ProxyClientSecurityGroup, !GetAtt Vpc.DefaultSecurityGroup]
       SubnetId: !Ref PrivateSubnet
       LaunchTemplate:
         LaunchTemplateId: !Ref Imdsv2LaunchTemplate
@@ -320,21 +577,107 @@ Resources:
             #!/bin/bash -ex
             set -o pipefail
             exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-            
-            apt-get update -y
-            apt-get -y install python3-pip
-            pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
-            
-            cat >> /home/ubuntu/test-proxy.sh <<TEST
-            http_proxy="http://${ProxyPrivateIp}:${ProxyPort}" wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
-            wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
-            TEST
-            
-            chmod +x /home/ubuntu/test-proxy.sh
-            
-            bash -ex /home/ubuntu/test-proxy.sh
-            
-            /usr/local/bin/cfn-signal --exit-code 0 --stack "${AWS::StackName}" --region "${AWS::Region}" "${ProxyVerificationWaitConditionHandle}"
+
+            # Common curl options, used for every request below: bounded retries for transient
+            # glitches plus connect/total time caps so no single hung endpoint can block the script
+            # past the wait-condition budget.
+            CURL_OPTS="--retry 3 --connect-timeout 5 --max-time 15"
+
+            # True when $1 (curl -v output) shows the proxy blocked the request.
+            function proxy_denied() {
+              echo "$1" | grep -qiE 'code 403 from proxy after CONNECT|has been filtered|Access denied'
+            }
+
+            # Resolve this instance's ID via IMDSv2, for troubleshooting. Never fails: echoes
+            # "unknown" if the metadata lookup does not succeed.
+            function get_instance_id() {
+              local token
+              token=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300" || true)
+              curl -sf -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/instance-id || echo "unknown"
+            }
+
+            # Signal the success/failure to the wait condition.
+            function signal() {
+              curl $CURL_OPTS -X PUT -H "Content-Type:" \
+                --data-binary "{\"Status\":\"$1\",\"Reason\":\"$2\",\"UniqueId\":\"ProxyClient\",\"Data\":\"$1\"}" \
+                "${ProxyVerificationWaitConditionHandle}"
+            }
+
+            # On any error, signal the failure to the wait condition
+            function signal_failure() {
+              rc=$?
+              trap - EXIT
+              if [ "$rc" -ne 0 ]; then
+                INSTANCE_ID=$(get_instance_id)
+                signal FAILURE "ProxyClient (instance ${!INSTANCE_ID}) UserData failed before signaling verification" || true
+              fi
+            }
+            trap signal_failure EXIT
+
+            BUILD_IMAGE_PROXY="${EnableBuildImageProxy}"
+
+            # apt's built-in retry for transient fetch failures (e.g., Ubuntu mirror sync glitches),
+            # plus a lock timeout so apt-get waits for a boot-time apt/unattended-upgrade process
+            # (holding /var/lib/dpkg/lock-frontend) to release, instead of failing immediately.
+            # Acquire::Retries only covers network fetches, not the dpkg lock.
+            APT_RETRY="-o Acquire::Retries=5 -o DPkg::Lock::Timeout=300"
+
+            # Disable Ubuntu's boot-time apt jobs (same used in ParallelCluster build-image component).
+            # flock waits for any in-flight apt-daily, then we disable the units and unattended-upgrades.
+            # unattended-upgrades.service is a separate boot unit (not driven by apt-daily.timer), so it
+            # is disabled explicitly too — otherwise it can hold the dpkg lock during our apt-get install.
+            flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock \
+              systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service unattended-upgrades.service || true
+            sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" \
+              /etc/apt/apt.conf.d/20auto-upgrades > /etc/apt/apt.conf.d/51pcluster-unattended-upgrades || true
+
+            # Finish any transaction interrupted before we start installing.
+            dpkg --configure -a
+
+            apt-get $APT_RETRY update -y
+
+            if [ "$BUILD_IMAGE_PROXY" = "true" ]; then
+              PROXY="http://${ProxyPrivateIp}:${ProxyPort}"
+
+              # Endpoints the build instance reaches through the proxy
+              ENDPOINTS="https://api.snapcraft.io/v2/snaps/info/core"
+              for RELEASEVER in 8 9; do
+                MIRRORS=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -s $CURL_OPTS \
+                  "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-$RELEASEVER&arch=x86_64")
+                for URL in $MIRRORS; do
+                  case "$URL" in http*) ;; *) continue ;; esac
+                  ENDPOINTS="$ENDPOINTS $(echo "$URL" | sed 's#/*$#/#')repodata/repomd.xml"
+                done
+              done
+
+              # Fail only if the proxy blocks an endpoint, not on a glitch/unresponsive origin.
+              DENIED=""
+              for URL in $ENDPOINTS; do
+                RESP=$(https_proxy="$PROXY" http_proxy="$PROXY" curl -sS -v $CURL_OPTS -o /dev/null "$URL" 2>&1 || true)
+                if proxy_denied "$RESP"; then
+                  echo "==> DENIED by proxy: $URL"
+                  DENIED="$DENIED $URL"
+                else
+                  echo "==> Allowed by proxy: $URL"
+                fi
+              done
+              if [ -n "$DENIED" ]; then
+                echo "==> ERROR: the proxy blocked endpoints that should have been allowlisted:$DENIED"
+                exit 1
+              fi
+
+              echo "==> Signaling success"
+              signal SUCCESS "Proxy verification passed"
+            else
+              echo "==> Testing explicit proxy"
+              echo "http_proxy=\"http://${ProxyPrivateIp}:${ProxyPort}\" wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip" > /home/ubuntu/test-proxy.sh
+              echo "wget https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip" >> /home/ubuntu/test-proxy.sh
+              chmod +x /home/ubuntu/test-proxy.sh
+              bash -ex /home/ubuntu/test-proxy.sh
+              echo "==> Explicit proxy test passed"
+              echo "==> Signaling success"
+              signal SUCCESS "Proxy verification passed"
+            fi
 
           - {
               ProxyPrivateIp: !GetAtt Proxy.PrivateIp,
@@ -350,10 +693,12 @@ Resources:
 
   ProxyVerificationWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
+    DependsOn:
+      - ProxyClient
     Properties:
       Count: 1
       Handle: !Ref ProxyVerificationWaitConditionHandle
-      Timeout: 600
+      Timeout: 900
 
 
 Outputs:
@@ -366,4 +711,8 @@ Outputs:
   ProxyAddress:
     Value: !Sub [ "http://${ProxyPrivateIp}:8888", { ProxyPrivateIp: !GetAtt Proxy.PrivateIp } ]
   ProxyClientSecurityGroup:
+    Condition: IsClusterProxy
     Value: !Ref ProxyClientSecurityGroup
+  DefaultSecurityGroupId:
+    Condition: IsBuildImageProxy
+    Value: !GetAtt Vpc.DefaultSecurityGroup

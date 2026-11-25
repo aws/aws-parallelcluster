@@ -27,7 +27,13 @@ from conftest_networking import unmarshal_az_override
 from framework.tests_configuration.config_renderer import dump_rendered_config_file, read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
-from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from reports_generator import (
+    generate_cw_report,
+    generate_json_report,
+    generate_junitxml_merged_report,
+    generate_launch_time_report,
+    generate_performance_report,
+)
 from retrying import retry
 from utils import InstanceTypesData
 
@@ -50,6 +56,7 @@ TEST_DEFAULTS = {
     "instances": [],
     "dry_run": False,
     "reports": [],
+    "generate_historical_report": False,
     "cw_region": "us-east-1",
     "cw_namespace": "ParallelCluster/IntegrationTests",
     "cw_timestamp_day_start": False,
@@ -57,6 +64,7 @@ TEST_DEFAULTS = {
     "output_dir": "tests_outputs",
     "custom_node_url": None,
     "custom_cookbook_url": None,
+    "extra_chef_attributes": None,
     "createami_custom_cookbook_url": None,
     "cookbook_git_ref": None,
     "node_git_ref": None,
@@ -103,8 +111,10 @@ TEST_DEFAULTS = {
     "retain_ad_stack": False,
     "global_build_number": 0,
     "proxy_stack": None,
+    "patch_ami_stack": None,
     "build_image_roles_stack": None,
     "capacity_reservation_id": None,
+    "skip_ddb_metadata": False,
 }
 
 
@@ -221,6 +231,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("reports"),
     )
     reports_group.add_argument(
+        "--generate-historical-report",
+        help="Generate historical report for launch time and performance",
+        action="store_true",
+        default=TEST_DEFAULTS.get("generate_historical_report"),
+    )
+    reports_group.add_argument(
         "--cw-region", help="Region where to publish CloudWatch metrics", default=TEST_DEFAULTS.get("cw_region")
     )
     reports_group.add_argument(
@@ -250,6 +266,12 @@ def _init_argparser():
         help="URL to a custom cookbook package.",
         default=TEST_DEFAULTS.get("custom_cookbook_url"),
         type=_is_url,
+    )
+    custom_group.add_argument(
+        "--extra-chef-attributes",
+        help="Base64-encoded ExtraChefAttributes JSON to inject into "
+        "DevSettings.Cookbook.ExtraChefAttributes of test clusters.",
+        default=TEST_DEFAULTS.get("extra_chef_attributes"),
     )
     custom_group.add_argument(
         "--createami-custom-cookbook-url",
@@ -405,6 +427,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("no_delete"),
     )
     debug_group.add_argument(
+        "--retain-on-failure",
+        type=int,
+        help="Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests (0=disabled, max 5).",
+        default=TEST_DEFAULTS.get("retain_on_failure"),
+    )
+    debug_group.add_argument(
         "--delete-logs-on-success",
         help="delete CloudWatch logs when a test succeeds",
         action="store_true",
@@ -487,6 +515,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("proxy_stack"),
     )
     debug_group.add_argument(
+        "--patch-ami-stack",
+        help="Name of an existing CFN stack that builds the patched AMI. "
+        "When provided, the patching tests reuse this stack instead of creating and deleting a new one.",
+        default=TEST_DEFAULTS.get("patch_ami_stack"),
+    )
+    debug_group.add_argument(
         "--build-image-roles-stack",
         help="Name of CFN stack providing build image permissions.",
         default=TEST_DEFAULTS.get("build_image_roles_stack"),
@@ -500,6 +534,12 @@ def _init_argparser():
         "--capacity-reservation-id",
         help="Use an existing capacity reservation.",
         default=TEST_DEFAULTS.get("capacity_reservation_id"),
+    )
+    debug_group.add_argument(
+        "--skip-ddb-metadata",
+        action="store_true",
+        help="Skip the setup and push of DDB metadata.",
+        default=TEST_DEFAULTS.get("skip_ddb_metadata"),
     )
 
     return parser
@@ -654,14 +694,14 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.custom_cookbook_url:
         pytest_args.extend(["--custom-chef-cookbook", args.custom_cookbook_url])
 
+    if args.extra_chef_attributes:
+        pytest_args.extend(["--extra-chef-attributes", args.extra_chef_attributes])
+
     if args.createami_custom_cookbook_url:
         pytest_args.extend(["--createami-custom-chef-cookbook", args.createami_custom_cookbook_url])
 
     if args.createami_custom_node_url:
         pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
-
-    if args.custom_awsbatchcli_url:
-        pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
 
     if args.pcluster_installer_path:
         pytest_args.extend(["--pcluster-installer-path", args.pcluster_installer_path])
@@ -706,6 +746,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
     if args.no_delete:
         pytest_args.append("--no-delete")
 
+    if args.retain_on_failure:
+        pytest_args.extend(["--retain-on-failure", str(args.retain_on_failure)])
+
     if args.force_run_instances:
         pytest_args.append("--force-run-instances")
 
@@ -736,6 +779,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
     if args.proxy_stack:
         pytest_args.extend(["--proxy-stack", args.proxy_stack])
 
+    if args.patch_ami_stack:
+        pytest_args.extend(["--patch-ami-stack", args.patch_ami_stack])
+
     if args.build_image_roles_stack:
         pytest_args.extend(["--build-image-roles-stack", args.build_image_roles_stack])
 
@@ -744,6 +790,9 @@ def _set_custom_stack_args(args, pytest_args):  # noqa: C901
 
     if args.capacity_reservation_id:
         pytest_args.extend(["--capacity-reservation-id", args.capacity_reservation_id])
+
+    if args.skip_ddb_metadata:
+        pytest_args.append("--skip-ddb-metadata")
 
 
 def _set_validate_instance_type_args(args, pytest_args):
@@ -822,16 +871,16 @@ def _make_logging_dirs(base_dir):
 
 def _run_parallel(args):
     jobs = []
-    if args.regions:
-        enabled_regions = args.regions
-    else:
-        enabled_regions = get_all_regions(args.tests_config)
+    enabled_regions = get_all_regions(args.tests_config)
 
     # unmarshal az and collect unique regions
     unique_regions = set()
     for az in enabled_regions:
         unmarshalled_region = unmarshal_az_override(az)
         unique_regions.add(unmarshalled_region)
+
+    if args.regions:
+        unique_regions = unique_regions & set(args.regions)
 
     for region in unique_regions:
         p = multiprocessing.Process(target=_run_test_in_region, args=(region, args, OUT_DIR, LOGS_DIR))
@@ -922,6 +971,12 @@ def main():
     if "json" in args.reports:
         logger.info("Generating tests report")
         generate_json_report(reports_output_dir)
+    if args.generate_historical_report:
+        today_number = (datetime.date.today() - datetime.date(2020, 1, 1)).days
+        if today_number % 5 == 0:
+            # Launch time report is generated once every 5 days
+            generate_launch_time_report(reports_output_dir)
+        generate_performance_report(reports_output_dir)
 
     if "cw" in args.reports:
         logger.info("Publishing CloudWatch metrics")

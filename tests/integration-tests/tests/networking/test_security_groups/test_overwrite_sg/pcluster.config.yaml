@@ -12,19 +12,13 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 1
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 2
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[1] }}
@@ -34,7 +28,7 @@ SharedStorage:
   - MountDir: efs
     Name: {{ efs_name }}
     StorageType: Efs
-  {% if "us-isob" not in region and scheduler != "awsbatch" %}
+  {% if "us-isob" not in region %}
   - MountDir: fsx
     Name: {{ fsx_name }}
     StorageType: FsxLustre

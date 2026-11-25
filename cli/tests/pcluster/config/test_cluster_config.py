@@ -101,9 +101,9 @@ network_test_parameters = [
             },
         ],
         2,
-        [1, 0],
+        [0, 1],
         2,
-        [1, 0],
+        [0, 1],
     ),
     (
         [
@@ -123,9 +123,9 @@ network_test_parameters = [
             },
         ],
         3,
-        [2, 0, 1],
+        [0, 1, 2],
         3,
-        [2, 0, 1],
+        [0, 1, 2],
     ),
     (
         [
@@ -165,7 +165,7 @@ network_test_parameters = [
             },
         ],
         4,
-        [7, 3, 5, 0],
+        [0, 3, 5, 7],
         3,
         [0, 3, 5],
     ),
@@ -338,7 +338,7 @@ class TestBaseClusterConfig:
     def base_cluster_config(self):
         return BaseClusterConfig(
             cluster_name="clustername",
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
         )
 
@@ -346,7 +346,7 @@ class TestBaseClusterConfig:
     def base_slurm_cluster_config(self):
         return SlurmClusterConfig(
             cluster_name="clustername",
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(
                 [
@@ -367,7 +367,7 @@ class TestBaseClusterConfig:
         cluster_config = SlurmClusterConfig(
             cluster_name="clustername",
             login_nodes=None,
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
             scheduling=SlurmScheduling(
                 [
@@ -507,7 +507,7 @@ class TestBaseClusterConfig:
         assert_that(ami_id).is_equal_to(expected_ami)
 
         if not (global_custom_ami or head_node_custom_ami):
-            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2", "x86_64", ami_filters)
+            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2023", "x86_64", ami_filters)
         else:
             aws_api_mock.ec2.get_official_image_id.assert_not_called()
 
@@ -539,7 +539,7 @@ class TestBaseClusterConfig:
             assert_that(image_dict[queue.name]).is_equal_to(expected_ami)
 
         if not (global_custom_ami or compute_custom_ami):
-            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2", "x86_64", ami_filters)
+            aws_api_mock.ec2.get_official_image_id.assert_called_with("alinux2023", "x86_64", ami_filters)
         else:
             aws_api_mock.ec2.get_official_image_id.assert_not_called()
 
@@ -723,7 +723,7 @@ class TestBaseClusterConfig:
 
         cluster_config = BaseClusterConfig(
             cluster_name="clustername",
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
         )
 
@@ -760,7 +760,7 @@ class TestBaseClusterConfig:
             instance_type="t3.xlarge",
             image=LoginNodesImage(custom_ami="ami-0222222222222222"),
             networking=LoginNodesNetworking(subnet_ids=["subnet-0222222222222222"]),
-            ssh=LoginNodesSsh(key_name="mykey"),
+            ssh=LoginNodesSsh(),
         )
 
         login_nodes = LoginNodes(pools=[login_node_pool])
@@ -804,31 +804,31 @@ class TestBaseClusterConfig:
         assert_that(queue.job_exclusive_allocation).is_equal_to(expected_value)
 
     @pytest.mark.parametrize(
-        "head_node_ssh, login_node_ssh, expected_values",
+        "head_node_ssh, login_node_ssh, expected_allowed_ips",
         [
             (
                 HeadNodeSsh(key_name="head-node-key", allowed_ips="1.2.3.4/24"),
-                LoginNodesSsh(key_name="login-node-key", allowed_ips="6.5.4.3/24"),
-                {"key_name": "login-node-key", "allowed_ips": "6.5.4.3/24"},
+                LoginNodesSsh(allowed_ips="6.5.4.3/24"),
+                "6.5.4.3/24",
             ),
             (
                 HeadNodeSsh(key_name="head-node-key", allowed_ips="1.2.3.4/24"),
-                LoginNodesSsh(key_name=None),
-                {"key_name": "head-node-key", "allowed_ips": "1.2.3.4/24"},
+                LoginNodesSsh(),
+                "1.2.3.4/24",
             ),
             (
                 HeadNodeSsh(key_name="head-node-key", allowed_ips="1.2.3.4/24"),
                 None,
-                {"key_name": "head-node-key", "allowed_ips": "1.2.3.4/24"},
+                "1.2.3.4/24",
             ),
             (
                 None,
-                LoginNodesSsh(key_name="login-node-key"),
-                {"key_name": "login-node-key", "allowed_ips": "0.0.0.0/0"},
+                LoginNodesSsh(allowed_ips="6.5.4.3/24"),
+                "6.5.4.3/24",
             ),
         ],
     )
-    def test_login_nodes_ssh_default_values(self, head_node_ssh, login_node_ssh, expected_values, mocker):
+    def test_login_nodes_ssh_default_values(self, head_node_ssh, login_node_ssh, expected_allowed_ips, mocker):
         cluster_config = SlurmClusterConfig(
             cluster_name="clustername",
             login_nodes=LoginNodes(
@@ -842,7 +842,7 @@ class TestBaseClusterConfig:
                     )
                 ]
             ),
-            image=Image("alinux2"),
+            image=Image("alinux2023"),
             head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet"), ssh=head_node_ssh),
             scheduling=SlurmScheduling(
                 [
@@ -863,9 +863,7 @@ class TestBaseClusterConfig:
             ),
         )
         print(cluster_config.head_node.ssh.key_name)
-        print(cluster_config.login_nodes.pools[0].ssh.key_name)
-        assert_that(cluster_config.login_nodes.pools[0].ssh.key_name).is_equal_to(expected_values["key_name"])
-        assert_that(cluster_config.login_nodes.pools[0].ssh.allowed_ips).is_equal_to(expected_values["allowed_ips"])
+        assert_that(cluster_config.login_nodes.pools[0].ssh.allowed_ips).is_equal_to(expected_allowed_ips)
 
 
 class TestSharedEbs:

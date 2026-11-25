@@ -64,30 +64,18 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
     validate_cluster(cluster)
 
     status = update_compute_fleet_request_content.status
-    if cluster.stack.scheduler == "awsbatch":
-        if status == RequestedComputeFleetStatus.ENABLED:
-            cluster.start()
-        elif status == RequestedComputeFleetStatus.DISABLED:
-            cluster.stop()
-        else:
-            raise BadRequestException(
-                "the update compute fleet status can only be set to"
-                " `ENABLED` or `DISABLED` for AWS Batch scheduler clusters."
-            )
+    if status == RequestedComputeFleetStatus.START_REQUESTED:
+        cluster.start()
+    elif status == RequestedComputeFleetStatus.STOP_REQUESTED:
+        cluster.stop()
     else:
-        if status == RequestedComputeFleetStatus.START_REQUESTED:
-            cluster.start()
-        elif status == RequestedComputeFleetStatus.STOP_REQUESTED:
-            cluster.stop()
-        else:
-            # A nosec comment is appended to the following line in order to disable the false positive B608 check.
-            # False positive since it is not a SQL query.
-            # [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.
-            raise BadRequestException(
-                "the update compute fleet status can only be set to"  # nosec B608
-                " `START_REQUESTED` or `STOP_REQUESTED` for %s scheduler clusters."
-                % cluster.stack.scheduler.capitalize()
-            )
+        # A nosec comment is appended to the following line in order to disable the false positive B608 check.
+        # False positive since it is not a SQL query.
+        # [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.
+        raise BadRequestException(
+            "the update compute fleet status can only be set to"  # nosec B608
+            " `START_REQUESTED` or `STOP_REQUESTED` for %s scheduler clusters." % cluster.stack.scheduler.capitalize()
+        )
     status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
     last_status_updated_time = last_status_updated_time and to_utc_datetime(last_status_updated_time)
     return UpdateComputeFleetResponseContent(last_status_updated_time=last_status_updated_time, status=status.value)

@@ -24,7 +24,7 @@ from tests.pcluster.utils import get_head_node_policy, get_statement_by_sid
 
 
 @pytest.mark.parametrize(
-    "config_file_name,",
+    "config_file_name",
     ["config.yaml"],
 )
 def test_capacity_reservation_id_permissions(mocker, test_datadir, config_file_name):
@@ -60,9 +60,9 @@ def test_capacity_reservation_id_permissions(mocker, test_datadir, config_file_n
 
 
 @pytest.mark.parametrize(
-    "config_file_name,",
+    "config_file_name",
     [
-        ("config.yaml"),
+        "config.yaml",
     ],
 )
 def test_capacity_reservation_group_arns_permissions(mocker, test_datadir, config_file_name):

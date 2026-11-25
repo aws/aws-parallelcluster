@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ head_node_instance }}
+  InstanceType: {{ head_node_instance_type }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
@@ -21,7 +21,7 @@ Scheduling:
       Networking:
         PlacementGroup:
           Enabled: {{ placement_group_enabled }}
-          {% if placement_group_enabled %}
+          {% if placement_group_enabled and capacity_reservation_framework_placement_group %}
           Name: {{ capacity_reservation_framework_placement_group }}
           {% endif %}
         SubnetIds:
@@ -32,8 +32,10 @@ Scheduling:
           MaxCount: {{ max_queue_size }}
           MinCount: {{ max_queue_size }}
           DisableSimultaneousMultithreading: true
+          {% if instance_efa_supported %}
           Efa:
             Enabled: true
+          {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: name1

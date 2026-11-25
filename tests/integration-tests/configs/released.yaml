@@ -11,7 +11,7 @@ test-suites:
   basic:
     test_essential_features.py::test_essential_features:
       dimensions:
-        - regions: ["af-south-1"]
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_3_HOURS_NOPG_rhel8 }}]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
@@ -20,7 +20,7 @@ test-suites:
       dimensions:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
@@ -52,7 +52,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-5"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   create:
     test_create.py::test_create_wrong_os:
@@ -78,35 +78,57 @@ test-suites:
       dimensions:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
     test_createami.py::test_build_image:
       dimensions:
-        - regions: ["eu-west-3"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_6_INSTANCES_4_HOURS_NOPG_rhel9 }} ]  # Each test requires 3 instances (1 head node + 2 compute nodes)
+          instances: [ "g4dn.2xlarge" ]
+          oss: {{ RHEL_OS_X86 }}
           schedulers: [ "slurm" ]
-          oss: ["ubuntu2404", "alinux2", "alinux2023"]
-        - regions: ["us-east-1"] # This region has to have first stage AMIs.
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          schedulers: ["slurm"]
-          oss: ["rocky8", "rhel8", "rhel9", "rocky9", "ubuntu2204"]
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_15_INSTANCES_4_HOURS_NOPG_ubuntu2404 }} ]
+          instances: [ "g4dn.2xlarge" ]
+          oss: {{ NO_RHEL_OS_X86 }}
+          schedulers: [ "slurm" ]
     test_createami.py::test_build_image_custom_components:
-      # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
-      # Test script custom component with combination (ap-southeast-2, c5.xlarge, ubuntu2004)
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
         - regions: ["cn-northwest-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
     test_createami.py::test_build_image_wrong_pcluster_version:
       dimensions:
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
+  # The patching test is currently expected to fail; it will be reintroduced once the
+  # failure is fixed.
+  # The block is wrapped in a Jinja comment because the renderer ignores YAML comments
+  # and would still create its capacity reservations.
+  {#
+  # patching:
+  #   test_patching.py::test_patching_cluster:
+  #     dimensions:
+  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_ubuntu2404 }}]
+  #         instances: ["g4dn.8xlarge"]
+  #         oss: [{{ UBUNTU_OS_X86_0 }}]
+  #         schedulers: ["slurm"]
+  #         flags: ["patching:full-capped"]
+  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_rhel9 }}]
+  #         instances: ["g4dn.8xlarge"]
+  #         oss: [{{ RHEL_OS_X86_0 }}]
+  #         schedulers: ["slurm"]
+  #         flags: ["patching:full-capped"]
+  #       - regions: [{{ g4dn_8xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_NOPG_alinux2023 }}]
+  #         instances: ["g4dn.8xlarge"]
+  #         oss: ["alinux2023"]
+  #         schedulers: ["slurm"]
+  #         flags: ["patching:full"]
+  #}
   custom_resource:
     test_cluster_custom_resource.py::test_cluster_1_click:
       dimensions:
@@ -114,7 +136,7 @@ test-suites:
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
+        - regions: [{{ g4dn_2xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_rhel8 }}] # 1 head node + 1 login node + 1 compute node
           instances: ["g4dn.2xlarge"]
           oss: ["rhel8"]
           schedulers: ["slurm"]
@@ -128,9 +150,9 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: ["use1-az6"]  # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: ["alinux2"]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2023 }}]
+          instances: [ "c5n.18xlarge" ]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   iam:
     test_iam.py::test_s3_read_write_resource:
@@ -142,7 +164,7 @@ test-suites:
   networking:
     test_cluster_networking.py::test_existing_eip:
       dimensions:
-        - regions: ["me-south-1"]
+        - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
@@ -171,24 +193,12 @@ test-suites:
     test_api.py::test_custom_image:
       dimensions:
         - regions: ["sa-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          instances: ["c5.2xlarge"]
+          oss: ["alinux2023"]
     test_api.py::test_official_images:
       dimensions:
         - regions: ["sa-east-1"]
   schedulers:
-    test_awsbatch.py::test_awsbatch:
-      dimensions:
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
-    test_awsbatch.py::test_awsbatch_defaults:
-      dimensions:
-        - regions: ["eu-west-3"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
     test_slurm.py::test_slurm:
       dimensions:
         - regions: ["eu-central-1"]
@@ -222,7 +232,7 @@ test-suites:
   spot:
     test_spot.py::test_spot_default:
       dimensions:
-        - regions: ["me-south-1"]
+        - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2404"]
           schedulers: ["slurm"]
@@ -243,7 +253,7 @@ test-suites:
       dimensions:
         - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_fsx_lustre.py::test_fsx_lustre_backup:
       dimensions:
@@ -251,9 +261,10 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["rhel8"]
           schedulers: ["slurm"]
+    # This test must be executed in regions with 3+ AZs allowlisted
     test_efs.py::test_multiple_efs:
       dimensions:
-        - regions: [ "ca-central-1" ]
+        - regions: [ "ap-southeast-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["ubuntu2204"]
           schedulers: [ "slurm" ]
@@ -267,7 +278,7 @@ test-suites:
       dimensions:
         - regions: ["ap-east-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     # Ephemeral test requires instance type with instance store
     test_ephemeral.py::test_head_node_stop:
@@ -281,14 +292,40 @@ test-suites:
       dimensions:
         - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["slurm", "awsbatch"]
+          oss: ["alinux2023"]
+          schedulers: ["slurm"]
+  tutorials:
+    test_upgrade_nvidia_software.py::test_upgrade_nvidia_software:
+      dimensions:
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_4_HOURS_NOPG_alinux2023 }} ]
+          instances: [ "g4dn.2xlarge" ]
+          oss: ["alinux2023"]
+          schedulers: [ "slurm" ]
+          flags: ["component"]
+        - regions: [ {{ g4dn_2xlarge_CAPACITY_RESERVATION_2_INSTANCES_4_HOURS_NOPG_alinux2023 }} ]
+          instances: [ "g4dn.2xlarge" ]
+          oss: ["alinux2023"]
+          schedulers: [ "slurm" ]
+          flags: ["devsettings"]
   update:
     test_update.py::test_update_slurm:
       dimensions:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu2204"]
+    test_head_node_instance_type_change.py::test_head_node_instance_type_change:
+      dimensions:
+        # Reserve the head node initial (c5.xlarge) and new (c5.2xlarge) instance types.
+        - regions: [{{ c5_xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_ubuntu2404__c5_2xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_ubuntu2404 }}]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2404"]
+          schedulers: ["slurm"]
+    test_update_race_conditions.py::test_update_race_conditions:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2404"]
+          schedulers: ["slurm"]
   ultraserver:
     test_gb200.py::test_gb200:
       dimensions:

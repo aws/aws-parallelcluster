@@ -11,23 +11,60 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
+import random
 import re
+import time
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 import boto3
 import yaml
+from botocore.exceptions import ClientError
+from conftest_networking import AVAILABLE_AVAILABILITY_ZONE
 from jinja2 import FileSystemLoader, meta
 from jinja2.sandbox import SandboxedEnvironment
-from utils import InstanceTypesData
+from utils import EXCLUDED_INSTANCE_TYPE_PREFIXES, InstanceTypesData
 
 from pcluster.constants import (
     SUPPORTED_OSES,
-    SUPPORTED_OSES_FOR_SCHEDULER,
     UNSUPPORTED_ARM_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_DCV,
     UNSUPPORTED_OSES_FOR_LUSTRE,
-    UNSUPPORTED_OSES_FOR_NON_GPU_DCV,
 )
+
+# Declared here rather than imported from pcluster.constants, which does not have it in the older ParallelCluster
+# versions the Slurm upgrade suite runs against.
+UNSUPPORTED_OSES_FOR_NON_GPU_DCV = ["rocky9", "rhel9"]
+# An instant capacity block starts ~30 minutes after the request; allow some slack when telling
+# instant offerings apart from standard ones (which start at the next 11:30 UTC boundary).
+INSTANT_CAPACITY_BLOCK_START_MINUTES = 45
+
+# Never buy more than the remainder of one capacity-block day: instant offerings can span several
+# days (ending on a later 11:30 UTC boundary) and cost a multiple of what a test run needs.
+MAX_CAPACITY_BLOCK_HOURS = 24
+
+# Set this to render capacity block variables without looking for (or buying) any capacity. Config
+# validation renders every file under configs/, and that must never spend money.
+CAPACITY_BLOCK_DRY_RUN_ENV_VAR = "PCLUSTER_SKIP_CAPACITY_BLOCK_PURCHASE"
+
+CAPACITY_BLOCK_INSTANCE_TYPE_SEPARATOR = "_OR_"
+
+
+def _get_global_build_number(config=None, args=None):
+    """
+    Gets the global build number from args or pytest config.
+    Returns the build number as an int, or 0 if not provided.
+    """
+    global_build_number = 0
+    if args:
+        args_dict = vars(args)
+        global_build_number = args_dict.get("global_build_number", 0)
+    elif config:
+        global_build_number = config.getoption("--global-build-number", default=0)
+    try:
+        return int(global_build_number)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _get_os_parameters(config=None, args=None):
@@ -40,9 +77,17 @@ def _get_os_parameters(config=None, args=None):
     available_amis_oss_x86 = _get_available_amis_oss("x86", config=config, args=args)
     available_amis_oss_arm = _get_available_amis_oss("arm", config=config, args=args)
     result = {"AVAILABLE_AMIS_OSS_X86": available_amis_oss_x86, "AVAILABLE_AMIS_OSS_ARM": available_amis_oss_arm}
-    today_number = (date.today() - date(2020, 1, 1)).days
 
-    _propagate_os_jinja_variables("", result, today_number, SUPPORTED_OSES)
+    # Use global-build-number as the rotation seed if available and non-zero.
+    # This allows the OS rotation to advance on every build, enabling full coverage
+    # when running tests multiple times per day. Falls back to day-based rotation otherwise.
+    global_build_number = _get_global_build_number(config=config, args=args)
+    if global_build_number:
+        rotation_seed = global_build_number
+    else:
+        rotation_seed = (date.today() - date(2020, 1, 1)).days
+
+    _propagate_os_jinja_variables("", result, rotation_seed, SUPPORTED_OSES)
 
     # DCV doesn't support AL2023. Therefore, the following logic makes sure the DCV jinja parameter is not AL2023
     dcv_supported_oses = [
@@ -53,26 +98,26 @@ def _get_os_parameters(config=None, args=None):
         for os in SUPPORTED_OSES
         if os not in UNSUPPORTED_OSES_FOR_DCV + UNSUPPORTED_ARM_OSES_FOR_DCV + UNSUPPORTED_OSES_FOR_NON_GPU_DCV
     ]
-    _propagate_os_jinja_variables("DCV_", result, today_number, dcv_supported_oses, dcv_supported_arm_oses)
-
-    batch_supported_oses = SUPPORTED_OSES_FOR_SCHEDULER["awsbatch"]
-    _propagate_os_jinja_variables("BATCH_", result, today_number, batch_supported_oses)
+    _propagate_os_jinja_variables("DCV_", result, rotation_seed, dcv_supported_oses, dcv_supported_arm_oses)
 
     lustre_supported_oses = [os for os in SUPPORTED_OSES if os not in UNSUPPORTED_OSES_FOR_LUSTRE]
-    _propagate_os_jinja_variables("LUSTRE_", result, today_number, lustre_supported_oses)
+    _propagate_os_jinja_variables("LUSTRE_", result, rotation_seed, lustre_supported_oses)
 
     no_rhel_oss = [os for os in SUPPORTED_OSES if "rhel" not in os]
-    _propagate_os_jinja_variables("NO_RHEL_", result, today_number, no_rhel_oss)
+    _propagate_os_jinja_variables("NO_RHEL_", result, rotation_seed, no_rhel_oss)
 
     no_rocky_oss = [os for os in SUPPORTED_OSES if "rocky" not in os]
-    _propagate_os_jinja_variables("NO_ROCKY_", result, today_number, no_rocky_oss)
+    _propagate_os_jinja_variables("NO_ROCKY_", result, rotation_seed, no_rocky_oss)
 
     rhel_oss = [os for os in SUPPORTED_OSES if "rhel" in os]
-    _propagate_os_jinja_variables("RHEL_", result, today_number, rhel_oss)
+    _propagate_os_jinja_variables("RHEL_", result, rotation_seed, rhel_oss)
+
+    ubuntu_oss = [os for os in SUPPORTED_OSES if "ubuntu" in os]
+    _propagate_os_jinja_variables("UBUNTU_", result, rotation_seed, ubuntu_oss)
     return result
 
 
-def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_oses, supported_arm_oses=None):
+def _propagate_os_jinja_variables(prefix, result, rotation_seed, supported_x86_oses, supported_arm_oses=None):
     available_amis_oss_x86 = result["AVAILABLE_AMIS_OSS_X86"]
     available_amis_oss_arm = result["AVAILABLE_AMIS_OSS_ARM"]
     if supported_arm_oses is None:
@@ -84,8 +129,12 @@ def _propagate_os_jinja_variables(prefix, result, today_number, supported_x86_os
     result[f"{prefix}OS_X86"] = available_amis_oss_x86
     result[f"{prefix}OS_ARM"] = available_amis_oss_arm
     for index in range(len(supported_x86_oses)):
-        result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[(today_number + index) % len(available_amis_oss_x86)]
-        result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[(today_number + index) % len(available_amis_oss_arm)]
+        result[f"{prefix}OS_X86_{index}"] = available_amis_oss_x86[
+            (rotation_seed + index) % len(available_amis_oss_x86)
+        ]
+        result[f"{prefix}OS_ARM_{index}"] = available_amis_oss_arm[
+            (rotation_seed + index) % len(available_amis_oss_arm)
+        ]
 
 
 def _get_instance_type_parameters():  # noqa: C901
@@ -95,92 +144,84 @@ def _get_instance_type_parameters():  # noqa: C901
         return _get_instance_type_parameters._cache
 
     result = {}
-    excluded_instance_type_prefixes = [
-        "m1",
-        "m2",
-        "m3",
-        "m4",
-        "t1",
-        "t2",
-        "c1",
-        "c3",
-        "c4",
-        "r3",
-        "r4",
-        "x1",
-        "x1e",
-        "d2",
-        "h1",
-        "i2",
-        "i3",
-        "f1",
-        "g3",
-        "p2",
-        "p3",
-    ]
+
     for region in ["us-east-1", "us-west-2"]:  # Only populate instance type for big regions
         ec2_client = boto3.client("ec2", region_name=region)
         # The following conversion is required becase Python jinja doesn't like "-"
         region_jinja = region.replace("-", "_").upper()
         try:
-            xlarge_instances = []
-            instance_type_availability_zones = {}
-            # Use describe_instance_types with pagination
+            xlarge_instances = set()
+            all_gpu_instances = set()
+            instance_type_availability_zones = defaultdict(list)
+            # Get instance type offerings and build AZ mapping
             paginator = ec2_client.get_paginator("describe_instance_type_offerings")
 
             for page in paginator.paginate(LocationType="availability-zone"):
-                for instance_type in page["InstanceTypeOfferings"]:
+                for offering in page["InstanceTypeOfferings"]:
+                    instance_type_name = offering["InstanceType"]
+                    instance_type_availability_zones[instance_type_name].append(offering["Location"])
                     # Check if instance type ends with '.xlarge'
-                    if instance_type["InstanceType"].endswith(".xlarge") and _is_current_instance_type_generation(
-                        excluded_instance_type_prefixes, instance_type
+                    if instance_type_name.endswith(".xlarge") and _is_current_instance_type_generation(
+                        EXCLUDED_INSTANCE_TYPE_PREFIXES, offering
                     ):
-                        xlarge_instances.append(instance_type["InstanceType"])
-                    if instance_type_availability_zones.get(instance_type["InstanceType"]):
-                        instance_type_availability_zones[instance_type["InstanceType"]].append(
-                            instance_type["Location"]
-                        )
-                    else:
-                        instance_type_availability_zones[instance_type["InstanceType"]] = [instance_type["Location"]]
-
-            xlarge_instances = list(set(xlarge_instances))  # Remove redundancy.
-            gpu_instances = []
-            paginator = ec2_client.get_paginator("describe_instance_types")
-            for page in paginator.paginate(InstanceTypes=xlarge_instances):
-                for instance_type in page["InstanceTypes"]:
-                    if _is_nvidia_gpu_instance_type(instance_type) and "g6f" not in instance_type["InstanceType"]:
-                        gpu_instances.append(instance_type["InstanceType"])
-
-            for page in paginator.paginate():
-                for instance_type in page["InstanceTypes"]:
+                        xlarge_instances.add(instance_type_name)
+                    # Get a list of only GPU instances of any size available in the region
                     if (
-                        _is_nvidia_gpu_instance_type(instance_type)
-                        and instance_type.get("GpuInfo").get("Gpus")[0].get("Count") >= 4
-                        and _is_current_instance_type_generation(excluded_instance_type_prefixes, instance_type)
-                    ):
-                        # Find instance types with 4 or more GPUs. Number of GPUs can change test behavior.
-                        # For example, it takes longer for DCGM health check to diagnose multiple GPUs.
-                        instance_size = instance_type["InstanceType"].split(".")[1][: -len("xlarge")]
-                        if instance_size and int(instance_size) < 20:
-                            # Avoid using very expensive instance types
-                            gpu_instances.append(instance_type["InstanceType"])
+                        instance_type_name.startswith("p") or instance_type_name.startswith("g")
+                    ) and _is_current_instance_type_generation(EXCLUDED_INSTANCE_TYPE_PREFIXES, offering):
+                        all_gpu_instances.add(instance_type_name)
 
-            xlarge_instances.sort()
-            gpu_instances.sort()
+            # Get GPU instance details in batches of 100
+            all_gpu_list = list(all_gpu_instances)
+            gpu_instances = []
+            fractional_gpu_instances = set()
+            paginator = ec2_client.get_paginator("describe_instance_types")
+            # DescribeInstanceType API Limit of 100 instances
+            batch_size = 100
+
+            for i in range(0, len(all_gpu_list), batch_size):
+                gpu_instance_type_batch = all_gpu_list[i : i + batch_size]  # noqa: E203
+                for page in paginator.paginate(InstanceTypes=gpu_instance_type_batch):
+                    for instance_type in page["InstanceTypes"]:
+                        if _is_fractional_gpu_instance_type(instance_type):
+                            fractional_gpu_instances.add(instance_type["InstanceType"])
+                            continue
+                        if _is_nvidia_gpu_instance_type(instance_type):
+                            if instance_type.get("GpuInfo").get("Gpus")[0].get(
+                                "Count"
+                            ) >= 4 and _is_current_instance_type_generation(
+                                EXCLUDED_INSTANCE_TYPE_PREFIXES, instance_type
+                            ):
+                                # Find instance types with 4 or more GPUs. Number of GPUs can change test behavior.
+                                # For example, it takes longer for DCGM health check to diagnose multiple GPUs.
+                                instance_size = instance_type["InstanceType"].split(".")[1][: -len("xlarge")]
+                                if instance_size and int(instance_size) < 20:
+                                    # Avoid using very expensive instance types
+                                    gpu_instances.append(instance_type["InstanceType"])
+                            else:
+                                gpu_instances.append(instance_type["InstanceType"])
+
+            xlarge_instances -= fractional_gpu_instances
+
+            xlarge_sorted = sorted(xlarge_instances)
+            gpu_sorted = sorted(gpu_instances)
+
+            logging.info(f"Selected .xlarge instance types: {xlarge_sorted}")
+            logging.info(f"Selected GPU instance types: {gpu_sorted}")
+
             today_number = (date.today() - date(2020, 1, 1)).days
-            for index in range(len(xlarge_instances)):
-                instance_type = xlarge_instances[(today_number + index) % len(xlarge_instances)]
+            for index, _ in enumerate(xlarge_sorted):
+                instance_type = xlarge_sorted[(today_number + index) % len(xlarge_sorted)]
+                azs = instance_type_availability_zones[instance_type]
                 result[f"{region_jinja}_INSTANCE_TYPE_{index}"] = instance_type[: -len(".xlarge")]
-                availability_zones = instance_type_availability_zones[instance_type]
-                result[f"{region_jinja}_INSTANCE_TYPE_{index}_AZ"] = (
-                    availability_zones[0] if len(availability_zones) <= 2 else region
-                )
-            for index in range(len(gpu_instances)):
-                instance_type = gpu_instances[(today_number + index) % len(gpu_instances)]
+                result[f"{region_jinja}_INSTANCE_TYPE_{index}_AZ"] = azs[0] if len(azs) <= 2 else region
+
+            for index, _ in enumerate(gpu_sorted):
+                instance_type = gpu_sorted[(today_number + index) % len(gpu_sorted)]
+                azs = instance_type_availability_zones[instance_type]
                 result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}"] = instance_type
-                availability_zones = instance_type_availability_zones[instance_type]
-                result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}_AZ"] = (
-                    availability_zones[0] if len(availability_zones) <= 2 else region
-                )
+                result[f"{region_jinja}_GPU_INSTANCE_TYPE_{index}_AZ"] = azs[0] if len(azs) <= 2 else region
+
         except Exception as e:
             print(f"Error getting instance types: {str(e)}. Using c5 and g4dn as the default instance type")
             for index in range(100):
@@ -196,11 +237,24 @@ def _get_instance_type_parameters():  # noqa: C901
 
 
 def _is_nvidia_gpu_instance_type(instance_type):
-    return (
-        instance_type.get("GpuInfo")
-        and instance_type.get("GpuInfo").get("Gpus")
-        and instance_type.get("GpuInfo").get("Gpus")[0].get("Manufacturer") == "NVIDIA"
-    )
+    """
+    Return True if the instance type exposes a full NVIDIA GPU.
+
+    Fractional-GPU instances (e.g. g6f, gr6f) are filtered out.
+    """
+    gpu = next(iter((instance_type.get("GpuInfo") or {}).get("Gpus") or []), {})
+    return gpu.get("Manufacturer") == "NVIDIA" and (gpu.get("Count") or 0) >= 1
+
+
+def _is_fractional_gpu_instance_type(instance_type):
+    """
+    Return True if the instance type exposes a fractional NVIDIA GPU (e.g. g6f, gr6f).
+
+    Fractional-GPU instances report an NVIDIA GPU in GpuInfo with a Count of 0 (a slice of a
+    physical GPU), unlike full-GPU instances which report a Count of 1 or more.
+    """
+    gpu = next(iter((instance_type.get("GpuInfo") or {}).get("Gpus") or []), {})
+    return gpu.get("Manufacturer") == "NVIDIA" and (gpu.get("Count") or 0) < 1
 
 
 def _is_current_instance_type_generation(excluded_instance_type_prefixes, instance_type):
@@ -246,13 +300,13 @@ def read_config_file(config_file, print_rendered=False, config=None, args=None, 
     logging.info("Parsing config file: %s", config_file)
     os_parameters = _get_os_parameters(config=config, args=args)
     instance_type_parameters = _get_instance_type_parameters()
-    rendered_config = _render_config_file(
-        config_file,
+    render_parameters = {
         **kwargs,
         **os_parameters,
         **instance_type_parameters,
         **_check_or_create_capacity_reservations(config_file, os_parameters, instance_type_parameters),
-    )
+    }
+    rendered_config = _render_config_file(config_file, **render_parameters)
     try:
         return yaml.safe_load(rendered_config)
     except Exception:
@@ -304,41 +358,409 @@ def _check_or_create_capacity_reservations(config_file, os_parameters, instance_
     """Check/Create capacity reservations for all the instances in the config file."""
     variables = _get_all_jinja_variables(config_file)
     az_for_capacity_reservation = {}
+    instance_types_for_capacity_reservation = {}
     for var in variables:
-        if "CAPACITY_RESERVATION" in var:
+        if "CAPACITY_BLOCK" in var:
+            _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters)
+        elif "CAPACITY_RESERVATION" in var:
             logging.info("Checking capacity reservation for %s", var)
-            count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(var)
-            instance_type, os_platform = _resolve_instance_type_and_os(
-                instance_type, instance_type_parameters, os, os_parameters
-            )
-            end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
-            candidate_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1"]
-            if _find_and_modify_existing_capacity_reservation(
-                az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
-            ):
-                continue
-            capacity_reservation_created = False
-            try:
-                for region in candidate_regions:
-                    ec2_client = boto3.client("ec2", region_name=region)
-                    capacity_reservation_created = _create_capacity_reservation(
-                        az_for_capacity_reservation,
-                        count,
-                        ec2_client,
-                        end_date,
+            specs = []
+            parsed_placeholders = []
+            for part in var.split("__"):  # Support multiple instance types separated by __
+                count, enable_placement_group, hours, instance_type, os = _parse_capacity_reservation_variable(part)
+                _, os_platform = _resolve_instance_type_and_os(
+                    instance_type, instance_type_parameters, os, os_parameters
+                )
+                parsed = _parse_indexed_instance_type_placeholder(instance_type)
+                instance_types = _get_indexed_instance_type_candidates(
+                    parsed, instance_type, instance_type_parameters, os, os_parameters
+                )
+                end_date = datetime.now(timezone.utc) + timedelta(hours=hours)
+                specs.append((instance_types, os_platform, count, end_date, enable_placement_group))
+                parsed_placeholders.append(parsed)
+            candidate_regions = [
+                "ap-northeast-2",
+                "ap-southeast-2",
+                "ap-southeast-1",
+                "ap-northeast-1",
+                "ap-south-1",
+                "ca-central-1",
+                "eu-north-1",
+                "eu-west-2",
+                "eu-central-1",
+                "eu-west-1",
+                "sa-east-1",
+                "us-east-2",
+                "us-west-2",
+                "us-east-1",
+            ]
+            random.shuffle(candidate_regions)
+            successful_specs = _create_capacity_reservations(az_for_capacity_reservation, candidate_regions, specs, var)
+            if successful_specs:
+                for parsed, successful_spec in zip(parsed_placeholders, successful_specs):
+                    if parsed:
+                        prefix, selected_index, _ = parsed
+                        placeholder_key = f"{prefix}_{selected_index}"
+                        instance_types_for_capacity_reservation[placeholder_key] = _placeholder_render_value(
+                            parsed, successful_spec[0]
+                        )
+            else:
+                # If failed to create reservation, use use1-az6 to avoid making the test yaml syntactically wrong.
+                logging.info("Failed to create capacity reservation for %s. Using use1-az6", var)
+                az_for_capacity_reservation[var] = "use1-az6"
+    return {**az_for_capacity_reservation, **instance_types_for_capacity_reservation}
+
+
+def _check_or_buy_capacity_block(az_for_capacity_reservation, var, os_parameters, instance_type_parameters):
+    """Resolve a ``*_CAPACITY_BLOCK_*`` variable to the ``az`` and ``instance_type`` of a usable capacity block.
+
+    Some instance types (notably the p6 family) can realistically only be obtained through capacity
+    blocks. A block already owned is reused when it still covers the run; otherwise an "instant"
+    block is bought, sweeping the regions offering the instance type until one has an offering. The
+    variable lists one or more instance types separated by CAPACITY_BLOCK_INSTANCE_TYPE_SEPARATOR, in
+    order of preference. The test config renders ``.az`` and ``.instance_type`` of the variable, so
+    the test runs where the capacity actually is, on the instance type it was obtained for.
+
+    Buying a capacity block is an upfront, non-refundable charge, hence only one is ever bought and
+    only for variables explicitly declared as capacity blocks in the test config.
+
+    Raises when no capacity block can be obtained for any of the instance types in any region.
+    """
+    logging.info("Checking capacity block for %s", var)
+    count, hours, instance_types_expression, os_name = _parse_capacity_block_variable(var)
+    instance_types = []
+    for instance_type in instance_types_expression.split(CAPACITY_BLOCK_INSTANCE_TYPE_SEPARATOR):
+        instance_type, os_platform = _resolve_instance_type_and_os(
+            instance_type, instance_type_parameters, os_name, os_parameters
+        )
+        instance_types.append(instance_type)
+    if os.environ.get(CAPACITY_BLOCK_DRY_RUN_ENV_VAR):
+        # Config validation renders every file under configs/, which must not spend money. Render a
+        # placeholder AZ and the preferred instance type just to keep the test yaml valid.
+        logging.info("%s set: not looking for a capacity block for %s", CAPACITY_BLOCK_DRY_RUN_ENV_VAR, var)
+        az_for_capacity_reservation[var] = {"az": "use1-az6", "instance_type": instance_types[0]}
+        return
+
+    candidate_regions = {}
+    for instance_type in instance_types:
+        candidate_regions[instance_type] = _get_regions_offering(instance_type)
+        random.shuffle(candidate_regions[instance_type])
+    capacity_block = _find_or_buy_capacity_block(candidate_regions, os_platform, count, hours)
+    if capacity_block:
+        az_id, instance_type = capacity_block
+        az_for_capacity_reservation[var] = {"az": az_id, "instance_type": instance_type}
+        return
+    # Tests declaring a capacity block cannot run anywhere else, so there is nothing to gain from
+    # carrying on with a config that cannot possibly work: fail loudly instead of skipping later on.
+    raise Exception(
+        f"Could not find or buy a capacity block ({os_platform}, {count} instances, >={hours}h) for any of "
+        f"{candidate_regions}. Capacity blocks are only sold until 05:00 UTC for same-day use; retry within "
+        "the selling window or pick another instance type."
+    )
+
+
+def _get_regions_offering(instance_type):
+    """Return the regions enabled in the account where *instance_type* is offered."""
+    enabled_regions = boto3.client("ec2", region_name="us-east-1").describe_regions()["Regions"]
+    regions = []
+    for region in [enabled_region["RegionName"] for enabled_region in enabled_regions]:
+        try:
+            offerings = boto3.client("ec2", region_name=region).describe_instance_type_offerings(
+                LocationType="region", Filters=[{"Name": "instance-type", "Values": [instance_type]}]
+            )["InstanceTypeOfferings"]
+        except Exception as e:
+            logging.info("Could not check whether %s is offered in %s: %s", instance_type, region, e)
+            continue
+        if offerings:
+            regions.append(region)
+    logging.info("Regions offering %s: %s", instance_type, regions)
+    return regions
+
+
+def _find_or_buy_capacity_block(candidate_regions, os_platform, count, min_hours):
+    """Reuse or buy a capacity block, returning its (AZ ID, instance type), else None."""
+    for instance_type, regions in candidate_regions.items():
+        for region in regions:
+            ec2_client = boto3.client("ec2", region_name=region)
+            reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
+            if reservation:
+                az_id = _wait_for_capacity_block_active(
+                    ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
+                )
+                return az_id, instance_type
+    for instance_type, regions in candidate_regions.items():
+        for region in regions:
+            ec2_client = boto3.client("ec2", region_name=region)
+            az_id = _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours)
+            if az_id:
+                return az_id, instance_type
+    return None
+
+
+def _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count):
+    """Return an already-owned capacity block the tests can run on, or None.
+
+    Such a block has been paid for already, so it is worth using no matter how little of it is left:
+    at worst the tests run out of time, which is still better than buying a second block. A block
+    bought ahead of time is still `scheduled` rather than `active`, and is taken as well: the caller
+    waits for it to start. Its instance count is read from ``TotalInstanceCount``, because EC2 only
+    reports instances as available once the block is active.
+    """
+    now = datetime.now(timezone.utc)
+    try:
+        for page in ec2_client.get_paginator("describe_capacity_reservations").paginate():
+            for reservation in page.get("CapacityReservations", []):
+                if (
+                    reservation.get("ReservationType") == "capacity-block"
+                    and reservation.get("InstanceType") == instance_type
+                    and reservation.get("InstancePlatform") == os_platform
+                    and reservation.get("State") in ("active", "scheduled")
+                    and reservation.get("TotalInstanceCount", 0) >= count
+                ):
+                    end_date = reservation.get("EndDate")
+                    remaining = (end_date - now).total_seconds() / 3600 if end_date else float("inf")
+                    logging.info(
+                        "Reusing %s capacity block %s for %s in %s (%.1fh remaining)",
+                        reservation["State"],
+                        reservation["CapacityReservationId"],
                         instance_type,
-                        var,
-                        os_platform,
-                        enable_placement_group,
+                        reservation.get("AvailabilityZoneId"),
+                        remaining,
                     )
-                    if capacity_reservation_created:
+                    return reservation
+    except Exception as e:
+        logging.info("Could not list capacity reservations in %s: %s", region, e)
+    return None
+
+
+def _is_usable_instant_offering(offering, min_hours, instance_type, region):
+    """Return True if *offering* is an instant block long enough for the run but no longer than a day."""
+    starts_in = (offering["StartDate"] - datetime.now(timezone.utc)).total_seconds() / 60
+    hours = (offering["EndDate"] - offering["StartDate"]).total_seconds() / 3600
+    # A standard block starts at the next 11:30 UTC boundary, so it would be paid for now and only
+    # become usable tomorrow.
+    if starts_in > INSTANT_CAPACITY_BLOCK_START_MINUTES:
+        return False
+    # Instant offerings also come in multi-day flavours, ending on a later 11:30 UTC boundary. Those
+    # cost a multiple of a single day for capacity the tests cannot use.
+    if hours > MAX_CAPACITY_BLOCK_HOURS:
+        logging.info(
+            "Ignoring %.0fh capacity block offering %s (%s %s): longer than the %dh cap",
+            hours,
+            offering["CapacityBlockOfferingId"],
+            instance_type,
+            region,
+            MAX_CAPACITY_BLOCK_HOURS,
+        )
+        return False
+    return hours >= min_hours
+
+
+def _buy_instant_capacity_block(ec2_client, region, instance_type, os_platform, count, min_hours):
+    """Buy the cheapest instant capacity block covering *min_hours*, returning its AZ ID or None.
+
+    Instant blocks start ~30 minutes from now and end at the next capacity-block day boundary
+    (11:30 UTC), so their duration is whatever is left of the current block day and they are priced
+    pro-rata. Picking the cheapest offering therefore buys the shortest block that still fits the
+    run, which is what keeps the cost down.
+    """
+    # The API only accepts whole-day durations, but answers with the partial-day instant offerings
+    # alongside the standard block, which is what we are after. Asking for a single day is enough:
+    # an instant block always ends on a 11:30 UTC boundary, so asking for more days only adds
+    # offerings longer than MAX_CAPACITY_BLOCK_HOURS.
+    try:
+        offerings = ec2_client.describe_capacity_block_offerings(
+            InstanceType=instance_type, InstanceCount=count, CapacityDurationHours=MAX_CAPACITY_BLOCK_HOURS
+        )["CapacityBlockOfferings"]
+    except Exception as e:
+        logging.info("No capacity block offerings for %s in %s: %s", instance_type, region, e)
+        return None
+
+    candidates = [
+        (float(offering["UpfrontFee"]), offering)
+        for offering in offerings
+        if _is_usable_instant_offering(offering, min_hours, instance_type, region)
+    ]
+    if not candidates:
+        logging.info(
+            "No instant capacity block offering for %s (%d-%dh) in %s",
+            instance_type,
+            min_hours,
+            MAX_CAPACITY_BLOCK_HOURS,
+            region,
+        )
+        return None
+
+    fee, offering = min(candidates, key=lambda item: item[0])
+    try:
+        reservation = ec2_client.purchase_capacity_block(
+            CapacityBlockOfferingId=offering["CapacityBlockOfferingId"], InstancePlatform=os_platform
+        )["CapacityReservation"]
+    except ClientError as e:
+        # EC2 rejected the purchase (expired offering, capacity taken meanwhile, ...): nothing was
+        # charged, so another region can safely be tried.
+        logging.warning("Failed to purchase capacity block %s: %s", offering["CapacityBlockOfferingId"], e)
+        return None
+    except Exception as e:
+        # Anything else (timeout, connection reset) leaves the purchase in an unknown state: it may
+        # well have gone through and been charged. Look for the reservation instead of buying again.
+        logging.warning(
+            "Purchase of capacity block %s in %s got no clear answer from EC2 (%s): checking whether it "
+            "went through anyway",
+            offering["CapacityBlockOfferingId"],
+            region,
+            e,
+        )
+        reservation = _find_usable_capacity_block(ec2_client, region, instance_type, os_platform, count)
+        if reservation:
+            return _wait_for_capacity_block_active(
+                ec2_client, reservation["CapacityReservationId"], reservation["StartDate"], reservation["EndDate"]
+            )
+        # Nothing was charged after all, so the other regions can still be tried.
+        logging.warning("Purchase of %s did not go through, moving on", offering["CapacityBlockOfferingId"])
+        return None
+    logging.info(
+        "Purchased capacity block %s: %s x%d on %s in %s, %s -> %s, upfront fee %s %s",
+        reservation["CapacityReservationId"],
+        instance_type,
+        count,
+        os_platform,
+        offering["AvailabilityZone"],
+        offering["StartDate"],
+        offering["EndDate"],
+        fee,
+        offering["CurrencyCode"],
+    )
+    return _wait_for_capacity_block_active(
+        ec2_client, reservation["CapacityReservationId"], offering["StartDate"], offering["EndDate"]
+    )
+
+
+def _wait_for_capacity_block_active(ec2_client, reservation_id, start_date, end_date):
+    """Block until the capacity block is active, then return its AZ ID.
+
+    A freshly bought instant block only starts ~30 minutes later: until then it is `scheduled` and
+    instances cannot be launched against it, so the tests have to wait for it here. The AZ is read
+    back here too, since EC2 does not report one until the block has been allocated.
+
+    The block is paid for whatever happens, so this keeps waiting for as long as the block exists:
+    whatever time is left of it is worth attempting the tests with. The wait ends by itself because
+    EC2 moves the reservation to `expired` once its end date passes.
+
+    Raises if the block never becomes usable.
+    """
+    logging.info(
+        "Waiting for capacity block %s to become active (starts at %s, expires at %s)",
+        reservation_id,
+        start_date,
+        end_date,
+    )
+    while True:
+        try:
+            reservation = ec2_client.describe_capacity_reservations(CapacityReservationIds=[reservation_id])[
+                "CapacityReservations"
+            ][0]
+        except Exception as e:
+            # The reservation can briefly be unreadable right after purchase.
+            logging.info("Could not read state of capacity block %s yet: %s", reservation_id, e)
+            reservation = {"State": "unknown"}
+        state = reservation["State"]
+        if state == "active":
+            az_id = reservation["AvailabilityZoneId"]
+            logging.info("Capacity block %s is active in %s", reservation_id, az_id)
+            return az_id
+        if state in ("cancelled", "expired", "failed", "payment-failed"):
+            raise Exception(
+                f"Capacity block {reservation_id} reached unusable state {state} before the tests could "
+                "run against it."
+            )
+        logging.info("Capacity block %s is %s, checking again in a minute", reservation_id, state)
+        time.sleep(60)
+
+
+def _parse_capacity_block_variable(var):
+    # Example variables:
+    # {{ p6_b200_48xlarge_CAPACITY_BLOCK_2_INSTANCES_6_HOURS_alinux2023.az }}
+    # With a fallback instance type, returned as is in the instance type expression:
+    # {{ p6_b200_48xlarge_OR_p6_b300_48xlarge_CAPACITY_BLOCK_2_INSTANCES_6_HOURS_alinux2023.az }}
+    pattern = re.compile("(.*)_CAPACITY_BLOCK_(.*)_INSTANCES_(.*)_HOURS_?(.*)?")
+    match = pattern.match(var)
+    instance_type = match.group(1)
+    count = int(match.group(2))
+    hours = int(match.group(3))
+    os = match.group(4) or "alinux2023"
+    return count, hours, instance_type, os
+
+
+def _create_capacity_reservations(az_for_cr, regions, specs, var):
+    """Find or create reservations, trying each GPU candidate across all regions and AZs first."""
+    candidate_count = max(len(instance_types) for instance_types, *_ in specs)
+    for candidate_index in range(candidate_count):
+        candidate_specs = [
+            (
+                instance_types[min(candidate_index, len(instance_types) - 1)],
+                os_platform,
+                count,
+                end_date,
+                enable_placement_group,
+            )
+            for instance_types, os_platform, count, end_date, enable_placement_group in specs
+        ]
+        if _create_capacity_reservations_for_instance_types(az_for_cr, regions, candidate_specs, var):
+            return candidate_specs
+    return False
+
+
+def _create_capacity_reservations_for_instance_types(az_for_cr, regions, specs, var):  # noqa C901
+    """Find or create reservations for a fixed set of instance types in the same AZ."""
+    for region in regions:
+        try:
+            ec2_client = boto3.client("ec2", region_name=region)
+            # Honor the AZ allowlist: the shared test VPC is only built in the allowlisted AZs, so a
+            # reservation placed outside them would pin the test to an AZ with no matching subnet.
+            # No entry for the region means all its available AZs are eligible; an entry restricts
+            # placement to exactly the listed AZs.
+            allowlisted_az_ids = AVAILABLE_AVAILABILITY_ZONE.get(region)
+            for az in ec2_client.describe_availability_zones()["AvailabilityZones"]:
+                if az["ZoneType"] != "availability-zone":
+                    continue
+                zone_id = az["ZoneId"]
+                if allowlisted_az_ids is not None and zone_id not in allowlisted_az_ids:
+                    continue
+                created_capacity_reservation_ids = []
+                success = True
+                for instance_type, os_platform, count, end_date, enable_placement_group in specs:
+                    reservation_id = _create_single_capacity_reservation(
+                        zone_id, count, ec2_client, end_date, instance_type, os_platform, enable_placement_group
+                    )
+                    if reservation_id:
+                        created_capacity_reservation_ids.append(reservation_id)
+                    else:
+                        success = False
                         break
-            except Exception:
-                az_for_capacity_reservation[var] = "use1-az6"
-            if not capacity_reservation_created:
-                # Assign arbitrary zone if no reservations can be made
-                az_for_capacity_reservation[var] = "use1-az6"
-    return az_for_capacity_reservation
+                if success:
+                    az_for_cr[var] = zone_id
+                    logging.info("Created reservations for all instance types in %s", zone_id)
+                    return True
+                for reservation_id in created_capacity_reservation_ids:
+                    try:
+                        logging.info(
+                            "Some instance types cannot be reserved in %s, cancelling back reservation %s",
+                            az,
+                            reservation_id,
+                        )
+                        ec2_client.cancel_capacity_reservation(CapacityReservationId=reservation_id)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.info("Failed creating reservations in %s: %s", region, e)
+    return False
+
+
+def _replace_last(string, old, new):
+    """Replaces the last occurrence of a substring in a string."""
+    parts = string.rsplit(old, 1)
+    return new.join(parts)
 
 
 def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, os_parameters):
@@ -354,7 +776,8 @@ def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, o
         else:
             instance_type = instance_type_parameters.get(instance_type)
     else:
-        instance_type = instance_type.replace("_", ".")
+        instance_type = _replace_last(instance_type, "_", ".")
+        instance_type = instance_type.replace("_", "-")
     os_platform = "Linux/UNIX"
     if os is not None:
         if "OS" in os:
@@ -362,6 +785,68 @@ def _resolve_instance_type_and_os(instance_type, instance_type_parameters, os, o
         if "rhel" in os.lower():
             os_platform = "Red Hat Enterprise Linux"
     return instance_type, os_platform
+
+
+def _parse_indexed_instance_type_placeholder(instance_type_expression):
+    """Return (prefix, selected_index, size_suffix) for an indexed placeholder, else None.
+
+    Handles ``<region>_<group>_INSTANCE_TYPE_<n>`` where ``<group>`` is an optional arbitrary segment (e.g. GPU),
+    with an optional ``_<size>`` suffix. The size suffix (e.g. ``xlarge``) is present when the config appends the
+    size in the variable name instead of the placeholder value.
+
+    Examples:
+        US_WEST_2_GPU_INSTANCE_TYPE_0    -> ("US_WEST_2_GPU_INSTANCE_TYPE", 0, None)
+        US_EAST_1_INSTANCE_TYPE_0        -> ("US_EAST_1_INSTANCE_TYPE", 0, None)
+        US_EAST_1_INSTANCE_TYPE_0_xlarge -> ("US_EAST_1_INSTANCE_TYPE", 0, "xlarge")
+        US_WEST_2_ARM_INSTANCE_TYPE_2    -> ("US_WEST_2_ARM_INSTANCE_TYPE", 2, None)
+        c5_xlarge                        -> None
+    """
+    match = re.fullmatch(r"(.+_INSTANCE_TYPE)_(\d+)(?:_([a-z0-9]+))?", instance_type_expression)
+    if not match:
+        return None
+    return match.group(1), int(match.group(2)), match.group(3)
+
+
+def _get_indexed_instance_type_candidates(
+    parsed_placeholder, instance_type_expression, instance_type_parameters, os, os_parameters
+):
+    """Return resolved instance-type candidates, rotated to start at the requested index.
+
+    ``parsed_placeholder`` is the pre-computed _parse_indexed_instance_type_placeholder result, so parsing happens
+    once in the caller. Candidates are every contiguous index generated for the placeholder group, rotated so the
+    requested index is attempted first with wraparound. Each candidate is resolved to a full instance type so both
+    GPU (full type value) and INSTANCE_TYPE (family value plus appended size) work.
+    """
+    if not parsed_placeholder:
+        resolved, _ = _resolve_instance_type_and_os(
+            instance_type_expression, instance_type_parameters, os, os_parameters
+        )
+        return [resolved]
+
+    prefix, selected_index, size_suffix = parsed_placeholder
+    candidates = []
+    index = 0
+    while f"{prefix}_{index}" in instance_type_parameters:
+        placeholder = f"{prefix}_{index}" + (f"_{size_suffix}" if size_suffix else "")
+        resolved, _ = _resolve_instance_type_and_os(placeholder, instance_type_parameters, os, os_parameters)
+        candidates.append(resolved)
+        index += 1
+
+    # Modulo keeps the rotation in range without raising when the config references a larger index.
+    selected_index %= len(candidates)
+    return candidates[selected_index:] + candidates[:selected_index]
+
+
+def _placeholder_render_value(parsed_placeholder, resolved_instance_type):
+    """Return the value to overwrite an indexed placeholder with, matching how the config renders it.
+
+    GPU placeholders render the full instance type. INSTANCE_TYPE placeholders that append the size in the config
+    (e.g. ``{{ ..._INSTANCE_TYPE_0 }}.xlarge``) render only the family, so the appended size is stripped here.
+    """
+    _, _, size_suffix = parsed_placeholder
+    if size_suffix and resolved_instance_type.endswith(f".{size_suffix}"):
+        return resolved_instance_type[: -len(f".{size_suffix}")]
+    return resolved_instance_type
 
 
 def _parse_capacity_reservation_variable(var):
@@ -380,121 +865,41 @@ def _parse_capacity_reservation_variable(var):
     return count, enable_placement_group, hours, instance_type, os
 
 
-def _create_capacity_reservation(
-    az_for_capacity_reservation, count, ec2_client, end_date, instance_type, var, os_platform, enable_placement_group
+def _create_single_capacity_reservation(
+    zone_id, count, ec2_client, end_date, instance_type, os_platform, enable_placement_group
 ):
-    capacity_reservation_created = False
-    for availability_zone in ec2_client.describe_availability_zones()["AvailabilityZones"]:
-        if availability_zone["ZoneType"] == "availability-zone":
+    try:
+        reservation_args = {
+            "InstanceType": instance_type,
+            "InstancePlatform": os_platform,
+            "AvailabilityZoneId": zone_id,
+            "InstanceCount": count,
+            "EndDateType": "limited",
+            "EndDate": end_date,
+            "Tenancy": "default",
+        }
+        if enable_placement_group:
+            placement_group_name = f"{instance_type}_placement_group_{zone_id}"
             try:
-                zone_id = availability_zone["ZoneId"]
-                reservation_args = {
-                    "InstanceType": instance_type,
-                    "InstancePlatform": os_platform,
-                    "AvailabilityZoneId": zone_id,
-                    "InstanceCount": count,
-                    "EndDateType": "limited",
-                    "EndDate": end_date,
-                    "Tenancy": "default",
-                }
-                if enable_placement_group:
-                    placement_group_name = f"{instance_type}_placement_group_{zone_id}"
-                    try:
-                        placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
-                            "PlacementGroups"
-                        ][0]["GroupArn"]
-                    except Exception:
-                        placement_group_arn = ec2_client.create_placement_group(
-                            GroupName=placement_group_name, Strategy="cluster"
-                        )["PlacementGroup"]["GroupArn"]
-                    reservation_args["PlacementGroupArn"] = placement_group_arn
-                ec2_client.create_capacity_reservation(**reservation_args)
-                logging.info(
-                    "Capacity reservation for %s %s on %s created in %s", count, instance_type, os_platform, zone_id
-                )
-                capacity_reservation_created = True
-                az_for_capacity_reservation[var] = zone_id
-                break
-            except Exception as e:
-                logging.info(
-                    "Capacity reservation for %s %s failed to create in %s",
-                    count,
-                    instance_type,
-                    zone_id,
-                )
-                logging.info(e)
-    return capacity_reservation_created
-
-
-def _find_and_modify_existing_capacity_reservation(  # noqa: C901
-    az_for_capacity_reservation, candidate_regions, count, end_date, instance_type, var, os_platform
-):
-    """Find existing capacity reservation. Modify the reservation if more capacity or time is needed."""
-    found_existing_capacity_reservation = False
-    for region in candidate_regions:
+                placement_group_arn = ec2_client.describe_placement_groups(GroupNames=[placement_group_name])[
+                    "PlacementGroups"
+                ][0]["GroupArn"]
+            except Exception:
+                placement_group_arn = ec2_client.create_placement_group(
+                    GroupName=placement_group_name, Strategy="cluster"
+                )["PlacementGroup"]["GroupArn"]
+            reservation_args["PlacementGroupArn"] = placement_group_arn
+        reservation_id = ec2_client.create_capacity_reservation(**reservation_args)["CapacityReservation"][
+            "CapacityReservationId"
+        ]
+        logging.info("Capacity reservation for %s %s on %s created in %s", count, instance_type, os_platform, zone_id)
+        return reservation_id
+    except Exception as e:
         logging.info(
-            "Checking existing capacity reservations for %s %s on %s in %s", count, instance_type, os_platform, region
+            "Capacity reservation for %s %s failed to create in %s",
+            count,
+            instance_type,
+            zone_id,
         )
-        try:
-            ec2_client = boto3.client("ec2", region_name=region)
-            paginator = ec2_client.get_paginator("describe_capacity_reservations")
-            page_iterator = paginator.paginate(
-                Filters=[
-                    {"Name": "instance-type", "Values": [instance_type]},
-                    {"Name": "state", "Values": ["active", "pending"]},
-                    {"Name": "instance-platform", "Values": [os_platform]},
-                ]
-            )
-            for page in page_iterator:
-                for capacity_reservation in page["CapacityReservations"]:
-                    if capacity_reservation["TotalInstanceCount"] >= count and (
-                        capacity_reservation["EndDateType"] == "unlimited" or capacity_reservation["EndDate"] > end_date
-                    ):
-                        az_for_capacity_reservation[var] = capacity_reservation["AvailabilityZoneId"]
-                        found_existing_capacity_reservation = True
-                        logging.info(
-                            "Found existing capacity reservation for %s %s in %s",
-                            count,
-                            instance_type,
-                            capacity_reservation["AvailabilityZoneId"],
-                        )
-                        break
-                    else:
-                        logging.info(
-                            "Found existing capacity reservation for %s %s in %s. "
-                            "Modifing the capacity reservation for more instances/time",
-                            count,
-                            instance_type,
-                            capacity_reservation["AvailabilityZoneId"],
-                        )
-                        try:
-                            if capacity_reservation["EndDateType"] == "unlimited":
-                                new_end_date = None
-                            else:
-                                new_end_date = (
-                                    end_date
-                                    if end_date > capacity_reservation["EndDate"]
-                                    else capacity_reservation["EndDate"]
-                                )
-                            ec2_client.modify_capacity_reservation(
-                                CapacityReservationId=capacity_reservation["CapacityReservationId"],
-                                EndDate=new_end_date,
-                                EndDateType=capacity_reservation["EndDateType"],
-                                InstanceCount=max(count, capacity_reservation["TotalInstanceCount"]),
-                            )
-                            az_for_capacity_reservation[var] = capacity_reservation["AvailabilityZoneId"]
-                            found_existing_capacity_reservation = True
-                            logging.info(
-                                "Modified capacity reservation for %s %s in %s",
-                                count,
-                                instance_type,
-                                capacity_reservation["AvailabilityZoneId"],
-                            )
-                            break
-                        except Exception as e:
-                            logging.info("Failed to modify capacity reservation %s", e)
-            if found_existing_capacity_reservation:
-                break
-        except Exception as e:
-            logging.info("Failed to find existing capacity reservation %s", e)
-    return found_existing_capacity_reservation
+        logging.info(e)
+        return None

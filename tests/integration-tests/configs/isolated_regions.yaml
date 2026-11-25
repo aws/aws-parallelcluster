@@ -8,7 +8,7 @@
 {% if OSS  %}
 {%- set OSS = [ OSS ] -%}
 {% else %}
-{%- set OSS = ["alinux2"] -%}
+{%- set OSS = ["alinux2023"] -%}
 {% endif %}
 {%- set SCHEDULERS = ["slurm"] -%}
 ---
@@ -174,6 +174,7 @@ test-suites:
           instances: ["c5n.9xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
+          flags: ["any-efa-instances"]
 # This test cannot be executed in US isolated regions
 # because its logic relies on downloading an external
 # dependency from GitHub, which is not possible
@@ -234,6 +235,12 @@ test-suites:
 #          oss: {{ OSS }}
 #          schedulers: {{ SCHEDULERS }}
   networking:
+    test_cluster_networking.py::test_cluster_with_subnet_prioritization:
+      dimensions:
+        - regions: {{ REGIONS }}
+          instances: {{ INSTANCES }}
+          oss: {{ OSS }}
+          schedulers: {{ SCHEDULERS }}
     test_cluster_networking.py::test_cluster_in_private_subnet:
       dimensions:
         - regions: {{ REGIONS }}
@@ -593,18 +600,28 @@ test-suites:
           instances: {{ INSTANCES }}
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
-  proxy:
-    test_proxy.py::test_proxy:
+# This test has never passed in isolated regions because our proxy instance setup logic in the test needs to be adjusted
+# If proxy instance is set up correctly, pcluster should be able to use proxy in isolated regions
+#  proxy:
+#    test_proxy.py::test_proxy:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+# This test has never passed in isolated regions because Docker image registry not available
+#  pyxis:
+#    test_pyxis.py::test_pyxis:
+#      dimensions:
+#        - regions: {{ REGIONS }}
+#          instances: {{ INSTANCES }}
+#          oss: {{ OSS }}
+#          schedulers: {{ SCHEDULERS }}
+  ultraserver:
+    test_gb200.py::test_gb200:
       dimensions:
         - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
-          oss: {{ OSS }}
-          schedulers: {{ SCHEDULERS }}
-  pyxis:
-    test_pyxis.py::test_pyxis:
-      dimensions:
-        - regions: {{ REGIONS }}
-          instances: {{ INSTANCES }}
+          instances:  ["g4dn.2xlarge"]
           oss: {{ OSS }}
           schedulers: {{ SCHEDULERS }}
 # These tests cannot be executed in US isolated regions

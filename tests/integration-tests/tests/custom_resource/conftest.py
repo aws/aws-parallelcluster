@@ -15,7 +15,6 @@ from pathlib import Path
 
 import boto3
 import cfn_tools
-import pkg_resources
 import pytest
 import yaml
 from cfn_stacks_factory import CfnStack
@@ -34,7 +33,7 @@ def cfn_fixture(region):
 
 @pytest.fixture(scope="session", name="resources_dir")
 def resources_dir_fixture():
-    return Path(pkg_resources.resource_filename(__name__, "/../../resources"))
+    return Path(__file__).parent.parent.parent / "resources"
 
 
 @pytest.fixture(scope="session", name="cluster_custom_resource_template")
@@ -141,7 +140,7 @@ def cluster_custom_resource_factory_fixture(
     created_stacks = []
 
     def _produce_cluster_custom_resource_stack(
-        cluster_config_path, cluster_name=None, deletion_policy="Delete", service_token=None
+        cluster_config_path, cluster_name=None, deletion_policy="Delete", service_token=None, tags=None
     ):
         cluster_name = cluster_name or generate_stack_name(
             "integ-test-custom-resource-c", request.config.getoption("stackname_suffix")
@@ -159,7 +158,8 @@ def cluster_custom_resource_factory_fixture(
             template=template.to_yaml(),
             parameters=[{"ParameterKey": k, "ParameterValue": v} for k, v in parameters.items()],
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-            tags=[
+            tags=tags
+            or [
                 {"Key": "cluster_name", "Value": cluster_name},
                 {"Key": "inside_configuration_key", "Value": "stack_level_value"},
             ],  # For testing, add tags to the stack

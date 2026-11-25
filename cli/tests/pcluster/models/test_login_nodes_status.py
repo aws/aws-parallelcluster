@@ -32,55 +32,6 @@ class TestLoginNodesStatus:
         "Scheme": dummy_scheme_2,
         "State": {"Code": dummy_status},
     }
-    dummy_load_balancer_3 = {
-        "LoadBalancerArn": "dummy_load_balancer_arn_3",
-        "DNSName": "dummy_dns_name_3",
-        "LoadBalancerName": "dummy-load-balancer-3",
-        "Scheme": dummy_scheme_2,
-        "State": {"Code": "provisioning"},
-    }
-
-    dummy_tags_description = [
-        {
-            "ResourceArn": dummy_load_balancer_arn_1,
-            "Tags": [
-                {
-                    "Key": "parallelcluster:cluster-name",
-                    "Value": dummy_stack_name,
-                },
-                {
-                    "Key": "parallelcluster:login-nodes-pool",
-                    "Value": dummy_pool_name_1,
-                },
-            ],
-        },
-        {
-            "ResourceArn": dummy_load_balancer_arn_2,
-            "Tags": [
-                {
-                    "Key": "parallelcluster:cluster-name",
-                    "Value": dummy_stack_name,
-                },
-                {
-                    "Key": "parallelcluster:login-nodes-pool",
-                    "Value": dummy_pool_name_2,
-                },
-            ],
-        },
-        {
-            "ResourceArn": "another_dummy_load_balancer_arn",
-            "Tags": [
-                {
-                    "Key": "parallelcluster:cluster-name",
-                    "Value": "pcluster-name-2",
-                },
-                {
-                    "Key": "parallelcluster:login-nodes-pool",
-                    "Value": "dummy_pool_name_3",
-                },
-            ],
-        },
-    ]
 
     dummy_target_groups = [
         {
@@ -128,13 +79,50 @@ class TestLoginNodesStatus:
         },
     ]
 
-    def test_full_login_nodes_status(self, mocker):
-        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
+    @staticmethod
+    def _mock_tagging_api(mocker, arn_by_pool):
+        """Mock the resource groups tagging api so it returns the NLB ARN for each pool."""
         mocker.patch(
-            "pcluster.aws.elb.ElbClient.list_load_balancers",
-            return_value=[self.dummy_load_balancer_1, self.dummy_load_balancer_2, self.dummy_load_balancer_3],
+            "pcluster.aws.resource_groups_tagging_api.ResourceGroupsTaggingApiClient.__init__", return_value=None
         )
-        mocker.patch("pcluster.aws.elb.ElbClient.describe_tags", return_value=self.dummy_tags_description)
+
+        def get_resources(tag_filters, resource_type_filters=None):
+            pool_name = tag_filters.get("parallelcluster:login-nodes-pool")
+            arn = arn_by_pool.get(pool_name)
+            return [arn] if arn else []
+
+        mocker.patch(
+            "pcluster.aws.resource_groups_tagging_api.ResourceGroupsTaggingApiClient.get_resources",
+            side_effect=get_resources,
+        )
+
+    @staticmethod
+    def _mock_describe_load_balancer(mocker, load_balancers_by_arn):
+        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
+
+        def describe_load_balancer(arn):
+            return load_balancers_by_arn.get(arn)
+
+        mocker.patch(
+            "pcluster.aws.elb.ElbClient.describe_load_balancer",
+            side_effect=describe_load_balancer,
+        )
+
+    def test_full_login_nodes_status(self, mocker):
+        self._mock_tagging_api(
+            mocker,
+            {
+                self.dummy_pool_name_1: self.dummy_load_balancer_arn_1,
+                self.dummy_pool_name_2: self.dummy_load_balancer_arn_2,
+            },
+        )
+        self._mock_describe_load_balancer(
+            mocker,
+            {
+                self.dummy_load_balancer_arn_1: self.dummy_load_balancer_1,
+                self.dummy_load_balancer_arn_2: self.dummy_load_balancer_2,
+            },
+        )
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_health", return_value=self.dummy_targets_health)
 
@@ -173,38 +161,28 @@ class TestLoginNodesStatus:
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_false()
 
     def test_no_load_balancers_available(self, mocker):
-        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
-        mocker.patch("pcluster.aws.elb.ElbClient.list_load_balancers", return_value=[])
-        login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
-        login_nodes_status.retrieve_data([self.dummy_pool_name_1, self.dummy_pool_name_2])
-        assert_that(login_nodes_status.get_login_nodes_pool_available()).is_false()
-
-    def test_wrong_load_balancer_available(self, mocker):
-        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
-        mocker.patch("pcluster.aws.elb.ElbClient.list_load_balancers", return_value=[self.dummy_load_balancer_2])
-        dummy_tags_description = [
-            {
-                "ResourceArn": "another_dummy_load_balancer_arn",
-                "Tags": [
-                    {
-                        "Key": self.dummy_load_balancer_arn_2,
-                        "Value": "pcluster-name-2",
-                    },
-                ],
-            },
-        ]
-        mocker.patch("pcluster.aws.elb.ElbClient.describe_tags", return_value=dummy_tags_description)
+        # The tagging API returns no ARNs for any pool (e.g. cluster not yet created or already deleted).
+        self._mock_tagging_api(mocker, {})
+        self._mock_describe_load_balancer(mocker, {})
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
         login_nodes_status.retrieve_data([self.dummy_pool_name_1, self.dummy_pool_name_2])
         assert_that(login_nodes_status.get_login_nodes_pool_available()).is_false()
 
     def test_target_group_arn_not_available(self, mocker):
-        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
-        mocker.patch(
-            "pcluster.aws.elb.ElbClient.list_load_balancers",
-            return_value=[self.dummy_load_balancer_1, self.dummy_load_balancer_2, self.dummy_load_balancer_3],
+        self._mock_tagging_api(
+            mocker,
+            {
+                self.dummy_pool_name_1: self.dummy_load_balancer_arn_1,
+                self.dummy_pool_name_2: self.dummy_load_balancer_arn_2,
+            },
         )
-        mocker.patch("pcluster.aws.elb.ElbClient.describe_tags", return_value=self.dummy_tags_description)
+        self._mock_describe_load_balancer(
+            mocker,
+            {
+                self.dummy_load_balancer_arn_1: self.dummy_load_balancer_1,
+                self.dummy_load_balancer_arn_2: self.dummy_load_balancer_2,
+            },
+        )
         mocker.patch(
             "pcluster.aws.elb.ElbClient.describe_target_groups", side_effect=Exception("Target Group Not Available")
         )
@@ -215,12 +193,20 @@ class TestLoginNodesStatus:
         assert_that(login_nodes_status.get_unhealthy_nodes()).is_equal_to(0)
 
     def test_target_group_health_not_available(self, mocker):
-        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
-        mocker.patch(
-            "pcluster.aws.elb.ElbClient.list_load_balancers",
-            return_value=[self.dummy_load_balancer_1, self.dummy_load_balancer_2],
+        self._mock_tagging_api(
+            mocker,
+            {
+                self.dummy_pool_name_1: self.dummy_load_balancer_arn_1,
+                self.dummy_pool_name_2: self.dummy_load_balancer_arn_2,
+            },
         )
-        mocker.patch("pcluster.aws.elb.ElbClient.describe_tags", return_value=self.dummy_tags_description)
+        self._mock_describe_load_balancer(
+            mocker,
+            {
+                self.dummy_load_balancer_arn_1: self.dummy_load_balancer_1,
+                self.dummy_load_balancer_arn_2: self.dummy_load_balancer_2,
+            },
+        )
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
         mocker.patch(
             "pcluster.aws.elb.ElbClient.describe_target_health", side_effect=Exception("Target Group Not Available")
@@ -241,28 +227,23 @@ class TestLoginNodesStatus:
         ],
     )
     def test_login_nodes_pool_state(self, mocker, load_balancer_status, expected_status):
-        mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
-        dummy_load_balancers = [
+        dummy_load_balancer_1 = {**self.dummy_load_balancer_1, "State": {"Code": load_balancer_status}}
+        dummy_load_balancer_2 = {**self.dummy_load_balancer_2, "State": {"Code": load_balancer_status}}
+
+        self._mock_tagging_api(
+            mocker,
             {
-                "LoadBalancerArn": self.dummy_load_balancer_arn_1,
-                "DNSName": self.dummy_dns_name_1,
-                "LoadBalancerName": "dummy-load-balancer-1",
-                "Scheme": self.dummy_scheme_1,
-                "State": {"Code": load_balancer_status},
+                self.dummy_pool_name_1: self.dummy_load_balancer_arn_1,
+                self.dummy_pool_name_2: self.dummy_load_balancer_arn_2,
             },
-            {
-                "LoadBalancerArn": self.dummy_load_balancer_arn_2,
-                "DNSName": self.dummy_dns_name_2,
-                "LoadBalancerName": "dummy-load-balancer-2",
-                "Scheme": self.dummy_scheme_2,
-                "State": {"Code": load_balancer_status},
-            },
-        ]
-        mocker.patch(
-            "pcluster.aws.elb.ElbClient.list_load_balancers",
-            return_value=dummy_load_balancers,
         )
-        mocker.patch("pcluster.aws.elb.ElbClient.describe_tags", return_value=self.dummy_tags_description)
+        self._mock_describe_load_balancer(
+            mocker,
+            {
+                self.dummy_load_balancer_arn_1: dummy_load_balancer_1,
+                self.dummy_load_balancer_arn_2: dummy_load_balancer_2,
+            },
+        )
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
         mocker.patch("pcluster.aws.elb.ElbClient.describe_target_health", return_value=self.dummy_targets_health)
         login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
@@ -276,3 +257,48 @@ class TestLoginNodesStatus:
 
         assert_that(pool_1_status.get_status()).is_equal_to(expected_status)
         assert_that(pool_2_status.get_status()).is_equal_to(expected_status)
+
+    def test_tagging_api_called_with_expected_filters(self, mocker):
+        """Verify the tag filters and resource type filter passed to the Resource Groups Tagging API."""
+        mocker.patch(
+            "pcluster.aws.resource_groups_tagging_api.ResourceGroupsTaggingApiClient.__init__", return_value=None
+        )
+        get_resources_mock = mocker.patch(
+            "pcluster.aws.resource_groups_tagging_api.ResourceGroupsTaggingApiClient.get_resources",
+            return_value=[],
+        )
+        self._mock_describe_load_balancer(mocker, {})
+
+        LoginNodesStatus(self.dummy_stack_name).retrieve_data([self.dummy_pool_name_1])
+
+        get_resources_mock.assert_called_once_with(
+            tag_filters={
+                "parallelcluster:cluster-name": self.dummy_stack_name,
+                "parallelcluster:login-nodes-pool": self.dummy_pool_name_1,
+            },
+            resource_type_filters=["elasticloadbalancing:loadbalancer"],
+        )
+
+    def test_load_balancer_deleted_between_tag_lookup_and_describe(self, mocker):
+        """Race where the NLB is deleted between the tagging lookup and describe_load_balancer.
+
+        The tagging API returns an ARN, but the subsequent describe_load_balancer returns None because the NLB
+        no longer exists. The pool should still be considered available (ARN was found) but without status/DNS info.
+        """
+        self._mock_tagging_api(
+            mocker,
+            {self.dummy_pool_name_1: self.dummy_load_balancer_arn_1},
+        )
+        # describe_load_balancer returns None for this ARN, simulating a concurrent deletion.
+        self._mock_describe_load_balancer(mocker, {})
+        mocker.patch("pcluster.aws.elb.ElbClient.describe_target_groups", return_value=self.dummy_target_groups)
+        mocker.patch("pcluster.aws.elb.ElbClient.describe_target_health", return_value=self.dummy_targets_health)
+
+        login_nodes_status = LoginNodesStatus(self.dummy_stack_name)
+        login_nodes_status.retrieve_data([self.dummy_pool_name_1])
+
+        pool_status = login_nodes_status.get_pool_status_dict().get(self.dummy_pool_name_1)
+        assert_that(pool_status.get_pool_available()).is_true()
+        assert_that(pool_status.get_status()).is_none()
+        assert_that(pool_status.get_address()).is_none()
+        assert_that(pool_status.get_scheme()).is_none()

@@ -26,6 +26,7 @@ from tags_utils import (
     get_shared_volume_tags,
 )
 from time_utils import minutes, seconds
+from utils import wait_for_computefleet_changed
 
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import get_installed_parallelcluster_version
@@ -53,21 +54,33 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     _check_tag_propagation(cluster, scheduler, os, volume_name)
 
     cluster.stop()
-
+    if scheduler == "slurm":
+        wait_for_computefleet_changed(cluster, "STOPPED")
     # Updates cluster with new configuration
     updated_cluster_config = pcluster_config_reader(config_file="pcluster.config.update.yaml", volume_name=volume_name)
-    cluster.update(str(updated_cluster_config), force_update="true")
+    force_update = None
+    if scheduler != "slurm":
+        force_update = "true"
+    cluster.update(str(updated_cluster_config), force_update=force_update)
 
     cluster.start()
 
     # Makes sure that the compute nodes have started before checking tags
     _wait_for_compute_fleet_start(cluster)
 
-    # Checks for tag propagation
-    _check_tag_propagation(cluster, scheduler, os, volume_name)
+    # Checks for tag propagation.
+    # In ADC regions, CloudFormation doesn't properly update stack tags during a cluster update (see the
+    # SUPPORTED_UNLESS_ADC update policy), so AdditionalConfigTag is intentionally
+    # not added to the updated configuration and we skip asserting it here.
+    _check_tag_propagation(
+        cluster,
+        scheduler,
+        os,
+        volume_name,
+        add_additional_config_tags="us-iso" not in cluster.region,
+    )
 
-    if scheduler == "slurm":
-        _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
+    _test_queue_and_compute_resources_tags(cluster, pcluster_config_reader, scheduler, os, volume_name)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -76,12 +89,17 @@ def _wait_for_compute_fleet_start(cluster):
     assert_that(compute_nodes).is_length(1)
 
 
-def _check_tag_propagation(cluster, scheduler, os, volume_name, queue_tags=None, compute_resource_tags=None):
+def _check_tag_propagation(
+    cluster, scheduler, os, volume_name, queue_tags=None, compute_resource_tags=None, add_additional_config_tags=None
+):
     config_file_tags = {
         "ConfigFileTag": "ConfigFileTagValue",
         "QueueOverrideTag": "ClusterLevelValue",
         "ComputeOverrideTag": "ClusterLevelValue",
     }
+    additional_config_tags = {}
+    if add_additional_config_tags:
+        additional_config_tags = {"AdditionalConfigTag": "AdditionalConfigTagValue"}
     if not queue_tags:
         queue_tags = {
             "QueueTag": "QueueValue",
@@ -100,21 +118,30 @@ def _check_tag_propagation(cluster, scheduler, os, volume_name, queue_tags=None,
         {
             "resource": "Main CloudFormation Stack",
             "tag_getter": get_main_stack_tags,
-            "expected_tags": (version_tags, config_file_tags, cluster_name_tags),
+            "expected_tags": (version_tags, config_file_tags, cluster_name_tags, additional_config_tags),
         },
         {
             "resource": "Head Node",
             "tag_getter": get_head_node_tags,
             "expected_tags": (
+                version_tags,
+                config_file_tags,
                 cluster_name_tags,
+                additional_config_tags,
                 {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"},
             ),
         },
         {
             "resource": "Head Node Root Volume",
             "tag_getter": get_head_node_root_volume_tags,
-            "expected_tags": (cluster_name_tags, {"parallelcluster:node-type": "HeadNode"}),
+            "expected_tags": (
+                version_tags,
+                config_file_tags,
+                cluster_name_tags,
+                {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"},
+            ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
+            "skip": "us-iso" in cluster.region,  # TODO: remove this line once ADC supports tag propagation
         },
         {
             "resource": "Compute Node",
@@ -122,9 +149,8 @@ def _check_tag_propagation(cluster, scheduler, os, volume_name, queue_tags=None,
             "expected_tags": (
                 cluster_name_tags,
                 {"Name": "Compute", "parallelcluster:node-type": "Compute"},
-                {**config_file_tags, **queue_tags, **compute_resource_tags},
+                {**config_file_tags, **queue_tags, **compute_resource_tags, **additional_config_tags},
             ),
-            "skip": scheduler == "awsbatch",
         },
         {
             "resource": "Compute Node Root Volume",
@@ -132,16 +158,15 @@ def _check_tag_propagation(cluster, scheduler, os, volume_name, queue_tags=None,
             "expected_tags": (
                 cluster_name_tags,
                 {"parallelcluster:node-type": "Compute"},
-                {**config_file_tags, **queue_tags, **compute_resource_tags},
+                {**config_file_tags, **queue_tags, **compute_resource_tags, **additional_config_tags},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
-            "skip": scheduler == "awsbatch",
         },
         {
             "resource": "Shared EBS Volume",
             "tag_getter": get_shared_volume_tags,
             "tag_getter_kwargs": {"cluster": cluster, "volume_name": volume_name},
-            "expected_tags": (version_tags, config_file_tags, cluster_name_tags),
+            "expected_tags": (version_tags, config_file_tags, cluster_name_tags, additional_config_tags),
         },
     ]
 

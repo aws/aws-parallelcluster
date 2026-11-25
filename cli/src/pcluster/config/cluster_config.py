@@ -16,7 +16,6 @@ import logging
 from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum
-from importlib.resources import files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 from typing import Dict, List, Union
 
 from pcluster.aws.aws_api import AWSApi
@@ -31,12 +30,10 @@ from pcluster.config.common import (
     DefaultUserHomeType,
 )
 from pcluster.config.common import Imds as TopLevelImds
-from pcluster.config.common import (
-    Resource,
-    SharedStorageType,
-)
+from pcluster.config.common import Resource, SharedStorageType
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    COMPUTE_INSTANCE_INFO_TIMEOUT,
     CW_ALARMS_ENABLED_DEFAULT,
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
@@ -45,6 +42,7 @@ from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
+    DEFAULT_MOUNT_DIR_PERMISSIONS,
     DELETE_POLICY,
     DETAILED_MONITORING_ENABLED_DEFAULT,
     EBS_ROOT_VOLUME_SIZE_DEFAULT,
@@ -67,15 +65,11 @@ from pcluster.constants import (
     Feature,
 )
 from pcluster.utils import (
+    create_hash_suffix,
+    get_attr,
     get_partition,
     get_resource_name_from_resource_arn,
     to_snake_case,
-)
-from pcluster.validators.awsbatch_validators import (
-    AwsBatchComputeInstanceTypeValidator,
-    AwsBatchComputeResourceSizeValidator,
-    AwsBatchFsxValidator,
-    AwsBatchInstancesArchitectureCompatibilityValidator,
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -95,17 +89,18 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     HeadNodeMemorySizeValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
-    LoginNodesSchedulerValidator,
+    ManagedFsxCrossAzValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MountDirPermissionsFsxOpenZfsValidator,
+    MountDirPermissionsValidator,
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
@@ -115,8 +110,6 @@ from pcluster.validators.cluster_validators import (
     RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
-    SchedulerDisableSudoAccessForDefaultUserValidator,
-    SchedulerOsValidator,
     SchedulerValidator,
     SharedEbsPerformanceBottleNeckValidator,
     SharedFileCacheNotHomeValidator,
@@ -188,9 +181,9 @@ from pcluster.validators.instances_validators import (
     InstancesEFAValidator,
     InstancesMemorySchedulingWarningValidator,
     InstancesNetworkingValidator,
+    LaunchTemplateValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.login_nodes_validators import LoginNodesSshKeyNameDeprecatedValidator
 from pcluster.validators.monitoring_validators import DetailedMonitoringValidator, LogRotationValidator
 from pcluster.validators.networking_validators import (
     ElasticIpValidator,
@@ -301,6 +294,20 @@ class LocalStorage(Resource):
         self.ephemeral_volume = ephemeral_volume
 
 
+class MountDirPermissions(Resource):
+    """Represent the permissions ParallelCluster sets on the mount directory of a shared storage."""
+
+    def __init__(self, set_permissions: bool = None, permissions: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.set_permissions = Resource.init_param(set_permissions, default=True)
+        self.permissions = Resource.init_param(permissions, default=DEFAULT_MOUNT_DIR_PERMISSIONS)
+
+    @property
+    def configured_permissions(self):
+        """Return Permissions if it is set in the configuration, None otherwise."""
+        return None if self.is_implied("permissions") else self.permissions
+
+
 class SharedEbs(Ebs):
     """Represent a shared EBS, inherits from both _SharedStorage and Ebs classes."""
 
@@ -314,9 +321,11 @@ class SharedEbs(Ebs):
         volume_id: str = None,
         raid: Raid = None,
         deletion_policy: str = None,
+        mount_dir_permissions: MountDirPermissions = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.mount_dir_permissions = mount_dir_permissions or MountDirPermissions(implied=True)
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.mount_dir = Resource.init_param(mount_dir)
@@ -344,6 +353,12 @@ class SharedEbs(Ebs):
         )
         self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
         self._register_validator(DeletionPolicyValidator, deletion_policy=self.deletion_policy, name=self.name)
+        self._register_validator(
+            MountDirPermissionsValidator,
+            set_permissions=self.mount_dir_permissions.set_permissions,
+            permissions=self.mount_dir_permissions.configured_permissions,
+            name=self.name,
+        )
 
     @property
     def is_managed(self):
@@ -376,10 +391,12 @@ class SharedEfs(Resource):
         encryption_in_transit: bool = None,
         iam_authorization: bool = None,
         access_point_id: str = None,
+        mount_dir_permissions: MountDirPermissions = None,
     ):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
         self.name = Resource.init_param(name)
+        self.mount_dir_permissions = mount_dir_permissions or MountDirPermissions(implied=True)
         self.shared_storage_type = SharedStorageType.EFS
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
@@ -412,20 +429,33 @@ class SharedEfs(Resource):
             file_system_id=self.file_system_id,
             encryption_in_transit=self.encryption_in_transit,
         )
+        self._register_validator(
+            MountDirPermissionsValidator,
+            set_permissions=self.mount_dir_permissions.set_permissions,
+            permissions=self.mount_dir_permissions.configured_permissions,
+            name=self.name,
+        )
 
 
 class BaseSharedFsx(Resource):
     """Represent the shared FSX resource."""
 
-    def __init__(self, mount_dir: str, name: str):
+    def __init__(self, mount_dir: str, name: str, mount_dir_permissions: MountDirPermissions = None):
         super().__init__()
         self.mount_dir = Resource.init_param(mount_dir)
         self.name = Resource.init_param(name)
+        self.mount_dir_permissions = mount_dir_permissions or MountDirPermissions(implied=True)
         self.shared_storage_type = SharedStorageType.FSX
         self.__file_system_data = None
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
         self._register_validator(SharedStorageNameValidator, name=self.name)
+        self._register_validator(
+            MountDirPermissionsValidator,
+            set_permissions=self.mount_dir_permissions.set_permissions,
+            permissions=self.mount_dir_permissions.configured_permissions,
+            name=self.name,
+        )
 
     @property
     def is_unmanaged(self):
@@ -621,6 +651,14 @@ class ExistingFsxOpenZfs(BaseSharedFsx):
         super().__init__(**kwargs)
         self.volume_id = volume_id
         self.file_system_type = OPENZFS
+
+    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
+        super()._register_validators(context)
+        self._register_validator(
+            MountDirPermissionsFsxOpenZfsValidator,
+            set_permissions=not self.mount_dir_permissions.implied and self.mount_dir_permissions.set_permissions,
+            name=self.name,
+        )
 
     @property
     def file_system_id(self):
@@ -819,13 +857,6 @@ class SlurmQueueNetworking(_QueueNetworking):
         self.proxy = proxy
 
 
-class AwsBatchQueueNetworking(_QueueNetworking):
-    """Represent the networking configuration for the aws batch Queue."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
 class _BaseSsh(Resource):
     """Represent the base SSH configuration, with the fields in common between all the Ssh."""
 
@@ -842,25 +873,14 @@ class HeadNodeSsh(_BaseSsh):
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
-class LoginNodesSsh(_BaseSsh):
+class LoginNodesSsh(Resource):
     """Represent the SSH configuration for LoginNodes."""
 
     def __init__(self, allowed_ips: str = None, **kwargs):
-        key_name_explicitly_set = kwargs.pop("key_name_explicitly_set", False)
         super().__init__(**kwargs)
         # If AllowedIPs is not specified for the login node pool, then allowed_ips will default to the same settings
         # in the HeadNode to restrict SSH access from a specific CIDR or prefix-list.
         self.allowed_ips = Resource.init_param(allowed_ips)
-        # Track whether the key_name was explicitly set in the configuration.
-        self._key_name_explicitly_set = key_name_explicitly_set
-
-    def _register_validators(self, context=None):
-        super()._register_validators(context)
-        self._register_validator(
-            LoginNodesSshKeyNameDeprecatedValidator,
-            key_name=self.key_name,
-            key_name_explicitly_set=self._key_name_explicitly_set,
-        )
 
 
 class SharedStorageEfsSettings(Resource):
@@ -888,6 +908,15 @@ class Efa(Resource):
         super().__init__(**kwargs)
         self.enabled = enabled
         self.gdr_support = Resource.init_param(gdr_support, default=False)
+
+
+class LaunchTemplateOverrides(Resource):
+    """Represent the Launch Template Overrides configuration."""
+
+    def __init__(self, launch_template_id: str = None, version: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.launch_template_id = Resource.init_param(launch_template_id)
+        self.version = Resource.init_param(version)
 
 
 # ---------------------- Health Checks ---------------------- #
@@ -1199,22 +1228,31 @@ class AdditionalPackages(Resource):
 class AmiSearchFilters(Resource):
     """Represent the configuration for AMI search filters."""
 
-    def __init__(self, tags: List[Tag] = None, owner: str = None):
+    def __init__(self, tags: List[Tag] = None, owner: str = None, name_prefix: str = None):
         super().__init__()
         self.tags = tags
         self.owner = owner
+        self.name_prefix = name_prefix
 
 
 class Timeouts(Resource):
     """Represent the configuration for node boostrap timeout."""
 
-    def __init__(self, head_node_bootstrap_timeout: int = None, compute_node_bootstrap_timeout: int = None):
+    def __init__(
+        self,
+        head_node_bootstrap_timeout: int = None,
+        compute_node_bootstrap_timeout: int = None,
+        compute_instance_info_timeout: int = None,
+    ):
         super().__init__()
         self.head_node_bootstrap_timeout = Resource.init_param(
             head_node_bootstrap_timeout, default=NODE_BOOTSTRAP_TIMEOUT
         )
         self.compute_node_bootstrap_timeout = Resource.init_param(
             compute_node_bootstrap_timeout, default=NODE_BOOTSTRAP_TIMEOUT
+        )
+        self.compute_instance_info_timeout = Resource.init_param(
+            compute_instance_info_timeout, default=COMPUTE_INSTANCE_INFO_TIMEOUT
         )
 
 
@@ -1237,6 +1275,7 @@ class ClusterDevSettings(BaseDevSettings):
         instance_types_data: str = None,
         timeouts: Timeouts = None,
         compute_startup_time_metric_enabled: bool = None,
+        efa_interface_type: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1247,6 +1286,7 @@ class ClusterDevSettings(BaseDevSettings):
         self.compute_startup_time_metric_enabled = Resource.init_param(
             compute_startup_time_metric_enabled, default=False
         )
+        self.efa_interface_type = Resource.init_param(efa_interface_type)
 
     def _register_validators(self, context: ValidatorContext = None):
         super()._register_validators(context)
@@ -1629,6 +1669,16 @@ class BaseClusterConfig(Resource):
         self.deployment_settings = deployment_settings
         self.managed_head_node_security_group = None
         self.managed_compute_security_group = None
+        # Dictionary {mount target logical id: subnet id} with an entry for each EFS mount target of the deployed stack,
+        # e.g. {"EFS2395b171bc347024MTuswest2a": "subnet-12345678"}.
+        # It is set during update to keep each mount target in its current subnet: EFS allows a single mount target
+        # per AZ, so moving a mount target to another subnet of the same AZ would make the stack update fail.
+        self.existing_efs_mount_target_subnets = {}
+        # Dictionary {file system logical id: subnet ids} with an entry for each FSx file system of the deployed stack,
+        # e.g. {"FSX3c9d7e6a8c2b1f05": ["subnet-12345678"]}.
+        # It is set during update to keep each managed FSx in its current subnet: changing the subnet of an FSx
+        # replaces the file system, deleting the existing one and its data.
+        self.existing_fsx_file_system_subnets = {}
         self.instance_types_data_version = ""
 
     def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
@@ -1679,10 +1729,6 @@ class BaseClusterConfig(Resource):
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
         self._register_validator(SchedulerValidator, scheduler=self.scheduling.scheduler)
-        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
-        self._register_validator(
-            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
-        )
         ami_volume_size = AWSApi.instance().ec2.describe_image(self.head_node_ami).volume_size
         root_volume = self.head_node.local_storage.root_volume
         root_volume_size = root_volume.size
@@ -1703,10 +1749,6 @@ class BaseClusterConfig(Resource):
             volume_iops=root_volume.iops,
         )
         self._register_validator(KeyPairValidator, key_name=self.head_node.ssh.key_name, os=self.image.os)
-        if self.deployment_settings and self.deployment_settings.disable_sudo_access_default_user:
-            self._register_validator(
-                SchedulerDisableSudoAccessForDefaultUserValidator, scheduler=self.scheduling.scheduler
-            )
 
     def _register_additional_package_validator(self):
         if self.additional_packages and self.additional_packages.intel_software:
@@ -1815,6 +1857,18 @@ class BaseClusterConfig(Resource):
                     queues=queues,
                     fsx_az_list=storage.file_system_availability_zones,
                 )
+            if isinstance(storage, SharedFsxLustre) and not storage.is_unmanaged:
+                # During update, the existing file system is kept in its subnets, see existing_fsx_file_system_subnets
+                existing_subnet_ids = self.existing_fsx_file_system_subnets.get(
+                    f"{SharedStorageType.FSX.name}{create_hash_suffix(storage.name)}"
+                )
+                if existing_subnet_ids:
+                    self._register_validator(
+                        ManagedFsxCrossAzValidator,
+                        fsx_name=storage.name,
+                        fsx_subnet_ids=existing_subnet_ids,
+                        compute_subnet_ids=compute_subnet_ids,
+                    )
             if isinstance(storage, SharedEbs):
                 ebs_volumes.append(storage)
 
@@ -2084,11 +2138,6 @@ class BaseClusterConfig(Resource):
         return self.dev_settings.node_package if self.dev_settings else None
 
     @property
-    def custom_aws_batch_cli_package(self):
-        """Return custom custom aws batch cli package value or None."""
-        return self.dev_settings.aws_batch_cli_package if self.dev_settings else None
-
-    @property
     def official_ami(self):
         """Return official ParallelCluster AMI by filter."""
         if not self._official_ami:
@@ -2116,111 +2165,6 @@ class BaseClusterConfig(Resource):
         return {}
 
 
-class AwsBatchComputeResource(BaseComputeResource):
-    """Represent the AwsBatch Compute Resource."""
-
-    def __init__(
-        self,
-        instance_types: List[str] = None,
-        max_vcpus: int = None,
-        min_vcpus: int = None,
-        desired_vcpus: int = None,
-        spot_bid_percentage: float = None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.instance_types = Resource.init_param(instance_types)
-        self.max_vcpus = Resource.init_param(max_vcpus, default=DEFAULT_MAX_COUNT)
-        self.min_vcpus = Resource.init_param(min_vcpus, default=DEFAULT_MIN_COUNT)
-        self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
-        self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(
-            AwsBatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
-        )
-        self._register_validator(
-            AwsBatchComputeResourceSizeValidator,
-            min_vcpus=self.min_vcpus,
-            max_vcpus=self.max_vcpus,
-            desired_vcpus=self.desired_vcpus,
-        )
-
-
-class AwsBatchQueue(BaseQueue):
-    """Represent the AwsBatch Queue resource."""
-
-    def __init__(self, compute_resources: List[AwsBatchComputeResource], networking: AwsBatchQueueNetworking, **kwargs):
-        super().__init__(**kwargs)
-        self.compute_resources = compute_resources
-        self.networking = networking
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(
-            DuplicateNameValidator,
-            name_list=[compute_resource.name for compute_resource in self.compute_resources],
-            resource_name="Compute resource",
-        )
-
-
-class AwsBatchSettings(Resource):
-    """Represent the AwsBatchSettings resource."""
-
-    pass
-
-
-class AwsBatchScheduling(Resource):
-    """Represent a AwsBatch Scheduling resource."""
-
-    def __init__(self, queues: List[AwsBatchQueue], settings: AwsBatchSettings = None):
-        super().__init__()
-        self.scheduler = "awsbatch"
-        self.queues = queues
-        self.settings = settings
-
-    def _register_validators(self, context: ValidatorContext = None):  # noqa: D102 #pylint: disable=unused-argument
-        self._register_validator(
-            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
-        )
-
-
-class AwsBatchClusterConfig(BaseClusterConfig):
-    """Represent the full AwsBatch Cluster configuration."""
-
-    def __init__(self, cluster_name: str, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__(cluster_name, **kwargs)
-        self.scheduling = scheduling
-
-    def _register_validators(self, context: ValidatorContext = None):
-        super()._register_validators(context)
-        self._register_validator(FeatureRegionValidator, feature=Feature.BATCH, region=self.region)
-        # TODO add InstanceTypesBaseAMICompatibleValidator
-
-        # Check that all subnets in the cluster (head node subnet included) are in the same VPC and support DNS.
-        self._register_validator(
-            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
-        )
-        if self.shared_storage:
-            for storage in self.shared_storage:
-                if isinstance(storage, BaseSharedFsx):
-                    self._register_validator(AwsBatchFsxValidator)
-
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                self._register_validator(
-                    AwsBatchInstancesArchitectureCompatibilityValidator,
-                    instance_types=compute_resource.instance_types,
-                    architecture=self.head_node.architecture,
-                )
-
-    @property
-    def scheduler_resources(self):
-        """Return scheduler specific resources."""
-        return str(files(__package__).parent / "resources" / "batch")
-
-
 class _BaseSlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
@@ -2239,6 +2183,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         tags: List[Tag] = None,
         static_node_priority: int = None,
         dynamic_node_priority: int = None,
+        launch_template_overrides: LaunchTemplateOverrides = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2259,6 +2204,7 @@ class _BaseSlurmComputeResource(BaseComputeResource):
         self.tags = tags
         self.static_node_priority = Resource.init_param(static_node_priority, default=1)
         self.dynamic_node_priority = Resource.init_param(dynamic_node_priority, default=1000)
+        self.launch_template_overrides = launch_template_overrides
 
     @abstractmethod
     def is_flexible(self) -> bool:
@@ -2302,6 +2248,11 @@ class _BaseSlurmComputeResource(BaseComputeResource):
     @abstractmethod
     def max_network_cards(self) -> int:
         """Return max number of NICs for the instance."""
+
+    @property
+    @abstractmethod
+    def max_efa_interfaces(self) -> int:
+        """Return max number of EFA interfaces for the instance."""
 
     @property
     @abstractmethod
@@ -2361,6 +2312,13 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
             ec2memory=min_memory,
             instance_type=smallest_type,
         )
+        if self.launch_template_overrides:
+            self._register_validator(
+                LaunchTemplateValidator,
+                compute_resource_name=self.name,
+                launch_template_id=self.launch_template_overrides.launch_template_id,
+                launch_template_version=self.launch_template_overrides.version,
+            )
 
     def is_flexible(self):
         """Return True because the ComputeResource can contain multiple instance types."""
@@ -2386,6 +2344,11 @@ class SlurmFlexibleComputeResource(_BaseSlurmComputeResource):
                 max_nics = instance_type_info.max_network_cards()
                 least_max_nics = min(least_max_nics, max_nics)
         return least_max_nics
+
+    @property
+    def max_efa_interfaces(self) -> int:
+        """Return max number of EFA interfaces for the compute resource."""
+        return min(self.instance_type_info_map[it].max_efa_interfaces() for it in self.instance_types)
 
     @property
     def network_cards_list(self) -> list:
@@ -2448,6 +2411,13 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
             ec2memory=self._instance_type_info.ec2memory_size_in_mib(),
             instance_type=self.instance_type,
         )
+        if self.launch_template_overrides:
+            self._register_validator(
+                LaunchTemplateValidator,
+                compute_resource_name=self.name,
+                launch_template_id=self.launch_template_overrides.launch_template_id,
+                launch_template_version=self.launch_template_overrides.version,
+            )
 
     @property
     def architecture(self) -> str:
@@ -2463,6 +2433,11 @@ class SlurmComputeResource(_BaseSlurmComputeResource):
     def max_network_cards(self) -> int:
         """Return max number of NICs for the instance."""
         return self._instance_type_info.max_network_cards()
+
+    @property
+    def max_efa_interfaces(self) -> int:
+        """Return max number of EFA interfaces for the instance."""
+        return self._instance_type_info.max_efa_interfaces()
 
     @property
     def network_cards_list(self) -> list:
@@ -2706,6 +2681,7 @@ class SlurmQueue(_CommonQueue):
                 is False,
                 multi_az_enabled=self.multi_az_enabled,
                 capacity_type=self.capacity_type,
+                queue_name=self.name,
             )
             self._register_validator(
                 ComputeResourceSizeValidator,
@@ -2936,16 +2912,9 @@ class SlurmClusterConfig(BaseClusterConfig):
             # Create a LocalStorage for the LoginNodesPool and ensure that encrypted = true
             for pool in self.login_nodes.pools:
                 pool.local_storage = LocalStorage(implied=True)
-                # If there's no customer ssh key for LoginNodes pool, set a default value as HeadNode's ssh key
-                if pool.ssh and not pool.ssh.key_name:
-                    pool.ssh.key_name = self.head_node.ssh.key_name
-                    # Mark that this key was not explicitly set by the user
-                    pool.ssh._key_name_explicitly_set = False
-                elif not pool.ssh:
-                    pool.ssh = LoginNodesSsh(key_name=self.head_node.ssh.key_name, key_name_explicitly_set=False)
-                else:
-                    # SSH config exists and has a key_name, mark it as explicitly set
-                    pool.ssh._key_name_explicitly_set = True
+                # If the login node pool SSH config is not specified, create one
+                if not pool.ssh:
+                    pool.ssh = LoginNodesSsh()
                 # If the login node pool allowed IPs is not specified, forces the source allowed IP for the
                 # SSH connection to the one defined in the HeadNode
                 if not pool.ssh.allowed_ips:
@@ -3062,7 +3031,6 @@ class SlurmClusterConfig(BaseClusterConfig):
             SubnetsValidator,
             subnet_ids=self.login_nodes_subnet_ids + self.compute_subnet_ids + [self.head_node.networking.subnet_id],
         )
-        self._register_validator(LoginNodesSchedulerValidator, scheduler=self.scheduling.scheduler)
 
         self._register_validator(
             MaxCountValidator,
@@ -3117,7 +3085,11 @@ class SlurmClusterConfig(BaseClusterConfig):
             )
 
         instance_types_data = self.get_instance_types_data()
-        self._register_validator(MultiNetworkInterfacesInstancesValidator, queues=self.scheduling.queues)
+        self._register_validator(
+            MultiNetworkInterfacesInstancesValidator,
+            queues=self.scheduling.queues,
+            efa_interface_type=get_attr(self, "dev_settings.efa_interface_type"),
+        )
         checked_images = []
         capacity_reservation_id_max_count_map = {}
         total_max_compute_nodes = 0
@@ -3211,7 +3183,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                         subnet=queue.networking.subnet_ids[0],
                         instance_types=compute_resource.instance_types,
                         multi_az_enabled=queue.multi_az_enabled,
-                        subnet_id_az_mapping=queue.networking.subnet_id_az_mapping,
                     )
                 for instance_type in compute_resource.instance_types:
                     if self.scheduling.settings.enable_memory_based_scheduling:

@@ -21,3 +21,5 @@ tests_outputs/
 .python-version
 test.yaml
 .vscode
+.kiro/specs
+.claude/logs

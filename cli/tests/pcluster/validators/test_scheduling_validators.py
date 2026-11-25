@@ -8,7 +8,6 @@ from tests.pcluster.validators.utils import assert_failure_level, assert_failure
     "scheduler, expected_failure_level, expected_message",
     [
         ("slurm", None, None),
-        ("awsbatch", None, None),
     ],
 )
 def test_scheduler_validator(scheduler, expected_failure_level, expected_message):

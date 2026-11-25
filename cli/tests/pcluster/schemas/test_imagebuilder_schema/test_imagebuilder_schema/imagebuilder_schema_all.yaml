@@ -50,7 +50,6 @@ DevSettings:
     ExtraChefAttributes: |
       {"cluster": {"scheduler_slots": "cores"}}
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
-  AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   DistributionConfiguration:
     Regions: us-east-2,eu-south-1
     LaunchPermission: |

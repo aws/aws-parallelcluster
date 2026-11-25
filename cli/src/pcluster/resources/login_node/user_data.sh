@@ -48,7 +48,17 @@ datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/ttyS0"
 write_files:
-  - path: /tmp/bootstrap.sh
+  - path: ${PclusterTmpDir}/dna.json
+    permissions: '0644'
+    owner: root:root
+    content: |
+      ${DnaJson}
+  - path: ${PclusterTmpDir}/extra.json
+    permissions: '0644'
+    owner: root:root
+    content: |
+      ${ExtraJson}
+  - path: ${PclusterTmpDir}/bootstrap.sh
     permissions: '0744'
     owner: root:root
     content: |
@@ -77,8 +87,6 @@ write_files:
       [ -f /etc/parallelcluster/pcluster_cookbook_environment.sh ] && . /etc/parallelcluster/pcluster_cookbook_environment.sh
 
       [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
-
-      $CFN_BOOTSTRAP_VIRTUALENV_PATH/cfn-init -s ${AWS::StackName} -v -c deployFiles -r ${LaunchTemplateResourceId} --region ${AWS::Region} --url ${CloudFormationUrl} --role ${CfnInitRole} || error_exit 'Failed to bootstrap the login node. Please check /var/log/cfn-init.log in the login node or in CloudWatch logs. Please refer to https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting-v3.html#troubleshooting-v3-get-logs for more details on ParallelCluster logs.'
 
       # Configure AWS CLI using the expected overrides, if any.
       [ -f /etc/profile.d/aws-cli-default-config.sh ] && . /etc/profile.d/aws-cli-default-config.sh
@@ -120,11 +128,19 @@ write_files:
         error_exit "This AMI was not baked by ParallelCluster. Please use pcluster build-image command to create an AMI by providing your AMI as parent image."
       fi
       if [ "${!custom_cookbook}" != "NONE" ]; then
-        curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
+        delays=(1 2 4 8 16 32 64 128 256)
+        for i in {0..8}; do
+          curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url} && break
+          echo "Curl attempt $((i+1)) failed, retrying in ${!delays[$i]}s..."
+          sleep ${!delays[$i]}
+        done
         vendor_cookbook
       fi
-      cd /tmp
+      cd ${PclusterTmpDir}
+      mkdir -p /etc/chef/ohai/hints
+      touch /etc/chef/ohai/hints/ec2.json
 
+      jq -s ".[0] * .[1]" ${PclusterTmpDir}/dna.json ${PclusterTmpDir}/extra.json > /etc/chef/dna.json || ( echo "jq not installed"; cp ${PclusterTmpDir}/dna.json /etc/chef/dna.json )
       {
         CINC_CMD="cinc-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
         pushd /etc/chef &&
@@ -159,9 +175,9 @@ function error_exit
 }
 
 if [ "${Timeout}" == "NONE" ]; then
-  /tmp/bootstrap.sh
+  ${PclusterTmpDir}/bootstrap.sh
 else
-  timeout ${Timeout} /tmp/bootstrap.sh || error_exit
+  timeout ${Timeout} ${PclusterTmpDir}/bootstrap.sh || error_exit
 fi
 
 # Notify the AutoScalingGroup about the successful bootstrap

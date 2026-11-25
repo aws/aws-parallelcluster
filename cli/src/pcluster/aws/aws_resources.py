@@ -268,8 +268,10 @@ class InstanceTypeInfo:
         return len(self.network_cards())
 
     def network_cards_list(self) -> list:
-        """List of NICs for the instance."""
-        return [NetworkCardInfo(nic) for nic in self.network_cards() if nic.get("NetworkCardIndex") is not None]
+        """List of NICs for the instance, sorted by NetworkCardIndex."""
+        cards = [NetworkCardInfo(nic) for nic in self.network_cards() if nic.get("NetworkCardIndex") is not None]
+        cards.sort(key=lambda c: c.network_card_index())
+        return cards
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
@@ -325,6 +327,18 @@ class InstanceTypeInfo:
         """Return the amount of memory in MiB."""
         return self.instance_type_data.get("MemoryInfo", {}).get("SizeInMiB")
 
+    def max_efa_interfaces(self) -> int:
+        """Return the maximum number of EFA interfaces for the instance.
+
+        If EfaInfo/MaximumEfaInterfaces is not present in the API response (older API versions),
+        fall back to 1 if EfaSupported is true, 0 otherwise.
+        """
+        efa_info = self.instance_type_data.get("NetworkInfo", {}).get("EfaInfo", {})
+        max_efa = efa_info.get("MaximumEfaInterfaces")
+        if max_efa is not None:
+            return max_efa
+        return 1 if self.is_efa_supported() else 0
+
 
 class FsxStorageInfo:
     """Data object wrapping the result of a describe_file_systems and describe_file_caches call."""
@@ -377,7 +391,7 @@ class FsxStorageInfo:
     @property
     def network_interface_ids(self):
         """Return network interface ids of the file system."""
-        return self.file_storage_info.get("NetworkInterfaceIds")
+        return self.file_storage_info.get("NetworkInterfaceIds", [])
 
     @property
     def subnet_ids(self):

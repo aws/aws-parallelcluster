@@ -5,3 +5,7 @@ Build:
   ParentImage: {{ parent_image }}
   UpdateOsPackages:
     Enabled: true
+  Installation:
+    LustreClient:
+      # Disable Lustre installation because these newer operating systems release new kernels more often. Lustre usually does not support the latest kernels
+      Enabled: False

@@ -59,7 +59,7 @@ class TestListClusterLogStreamsCommand:
         assert_that(out + err).contains(error_message)
 
     @pytest.mark.parametrize(
-        "args, ",
+        "args",
         [
             {},
             {"filters": ["Name=private-dns-name,Values=ip-10-10-10-10"], "next_token": "123"},

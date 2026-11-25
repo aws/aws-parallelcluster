@@ -1,8 +1,145 @@
-# Performance Test
+# Performance Tests
 
-Performance tests allow you to compare the performance of a given cluster configuration with respect to a pre-defined baseline.
+## Available Test Suites
 
-The outcomes of a performance test are:
+| Test | Purpose | Instance Requirements |
+|------|---------|----------------------|
+| `test_osu.py` | MPI latency and bandwidth benchmarks | EFA-enabled (c5n.18xlarge, p5, p6) |
+| `test_starccm.py` | Real CFD workload performance | EFA-enabled (hpc6a.48xlarge) |
+| `test_scaling.py` | Cluster scale-up/down timing | Any instance type |
+| `test_startup_time.py` | Compute node bootstrap time | Any instance type |
+| `test_simple.py` | Job scheduling metrics | Any instance type |
+| `test_openfoam.py` | OpenFOAM CFD workload | EFA-enabled |
+
+---
+
+## Choosing the Right Test Configuration
+
+### Instance Type Selection
+
+| Goal | Recommended Instance       | Why |
+|------|----------------------------|-----|
+| MPI latency/bandwidth baseline | EFA-enabled (c5n.18xlarge) | Measures true network performance |
+| System-level jitter detection | Any (e.g. c5.xlarge)       | Issue is CPU-bound, not network-bound |
+| Scaling/bootstrap tests | Any (e.g. c5.large)        | Network performance not relevant |
+
+### Node Count Selection
+
+| Benchmark Type | Recommended Nodes | Rationale |
+|----------------|-------------------|-----------|
+| pt2pt (osu_latency, osu_bibw) | 2 | Only 2 ranks communicate|
+| Collective (osu_allreduce, osu_barrier) | 200-500 | More nodes increase probability of detecting issues |
+| StarCCM/OpenFOAM | 8-32 | Matches typical customer usage; diminishing returns beyond |
+| Scaling tests | 1000+ | Tests scheduler and infrastructure at scale |
+
+### Placement Group
+
+| Scenario | Use Placement Group? | Why |
+|----------|---------------------|-----|
+| MPI performance baseline | Yes | Reduces network variance, cleaner signal |
+| System jitter detection | Yes | Lower baseline makes jitter more visible |
+| Scaling tests | Optional | May hit capacity limits at large scale |
+
+---
+
+## OSU Benchmarks Deep Dive
+
+### Benchmark Categories
+
+**Point-to-Point (pt2pt)**
+- `osu_latency`: Measures round-trip latency between 2 ranks
+- `osu_bibw`: Measures bidirectional bandwidth between 2 ranks
+- Always uses exactly 2 nodes regardless of cluster size
+
+**Collective**
+- `osu_allreduce`: All ranks contribute and receive result
+- `osu_allgather`: All ranks gather data from all other ranks
+- `osu_barrier`: Pure synchronization (most sensitive to jitter)
+- `osu_bcast`: One-to-all broadcast
+- `osu_alltoall`: All-to-all personalized exchange
+- Performance depends on the **slowest node** - scales with node count
+
+### When to Use Each
+
+| Issue to Detect | Best Benchmark | Node Count |
+|-----------------|----------------|------------|
+| EFA driver regression | osu_latency, osu_bibw | 2 |
+| Network baseline | osu_latency | 2 |
+| System daemon interference | osu_allreduce, osu_barrier | 200-500 |
+| MPI library scaling bugs | osu_allreduce | 100+ |
+| Multi-NIC bandwidth | osu_mbw_mr | 2 |
+
+---
+
+## Detecting System-Level Performance Issues
+
+Some performance regressions are caused by system-level interference (daemons, background processes) rather than network issues.
+
+### Characteristics of System-Level Issues
+
+- Affects collective operations more than pt2pt
+- More visible at scale (more nodes = higher probability of hitting the issue)
+- Causes latency spikes/jitter rather than sustained degradation
+- May be periodic (e.g., processes running on timers)
+
+### Recommended Test Strategy
+
+1. **Use collective benchmarks** (osu_allreduce, osu_barrier) - they're bottlenecked by the slowest node
+2. **Scale to 200-500 nodes** - increases probability of detection
+3. **Run multiple iterations** - captures variance
+4. **Measure percentiles (p95, p99)** - not just averages
+5. **Use placement group** - reduces network noise, makes system jitter more visible
+
+### Example: Detecting Periodic Daemon Impact
+
+If a daemon runs every 60 seconds on each node, and each time it consumes 1 second:
+- With 2 nodes: ~3% chance of hitting it during a benchmark
+- With 100 nodes: ~81% chance
+- With 500 nodes: ~99.8% chance
+
+---
+
+## StarCCM and Real Workload Tests
+
+### When StarCCM is Appropriate
+
+| Use Case | Appropriate? |
+|----------|--------------|
+| Validating real HPC performance | Yes |
+| Detecting network regressions | Yes |
+| Detecting system jitter | No (metric too coarse) |
+
+### Scaling Considerations
+
+Current baselines (8/16/32 nodes) are sufficient for most regression detection. Scaling to 100+ nodes makes it harder to maintain stable baselines.
+
+---
+
+## NCCL Tests
+
+NCCL tests measure GPU-to-GPU communication performance.
+
+### When NCCL Tests Are Useful
+
+| Issue Type | NCCL Useful? |
+|------------|--------------|
+| EFA driver regression | Yes |
+| NCCL library bugs | Yes |
+| GPU driver issues | Yes |
+| System daemon interference | No (GPU ops are async from CPU) |
+
+### Current Configuration
+
+- Runs on 2 GPU nodes (p4d, p5, p6)
+- Measures `all_reduce_perf` bandwidth
+- Validates multi-NIC EFA configuration
+
+
+---
+
+## Job Scheduling Metrics
+
+The outcomes of a job time statistics:
 1. statistics from the observed metrics
 2. box-plots comparing the candidate configuration under tests with respect to the baseline
 3. test failure if the candidate configuration under test

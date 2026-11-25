@@ -27,5 +27,3 @@ LoginNodes:
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
-      Ssh:
-        KeyName: {{ key_name }}

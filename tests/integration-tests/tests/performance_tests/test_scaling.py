@@ -311,10 +311,19 @@ def _scale_up_and_down(
         target_cluster_size=scaling_target,
     )
 
-    test_job = {"command": "srun sleep 5", "nodes": scaling_target}
-    scheduler_commands.submit_command_and_assert_job_succeeded(test_job)
+    # From the head node: at these node counts a batch host of this test's cheap instance type cannot take
+    # every slurmstepd's stdio, and the step fails for reasons unrelated to scaling.
+    scheduler_commands.run_command_and_assert_job_succeeded("sleep 5", nodes=scaling_target)
 
     get_bootstrap_errors(remote_command_executor, cluster.name, request.config.getoption("output_dir"), region)
+
+    # Guard against the EC2 eventual-consistency regression: instances must be matched by InstanceId, not
+    # discarded for missing PrivateIpAddress.
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        log_files=["/var/log/parallelcluster/clustermgtd"],
+        log_msg=["because not all EC2 info are available"],
+    )
 
     # Extract scale up duration and timestamp from the monitoring metrics collected above
     _, scale_up_time_ec2, _ = _get_scaling_time(ec2_capacity_time_series_up, timestamps, scaling_target, start_time)
@@ -324,12 +333,8 @@ def _scale_up_and_down(
 
     # Scale down cluster
     if is_static:
-        # Check that a simple job succeeds
-        scaling_job = {
-            "command": "srun sleep 10",
-            "nodes": scaling_target,
-        }
-        scheduler_commands.submit_command_and_assert_job_succeeded(scaling_job)
+        # Check that a simple job succeeds. Run it from the head node for the same reason as above.
+        scheduler_commands.run_command_and_assert_job_succeeded("sleep 10", nodes=scaling_target)
 
         # Scale down the cluster
         cluster.update(str(downscale_cluster_config), force_update="true", wait=False, raise_on_error=False)

@@ -558,11 +558,6 @@ class Pcluster3ConfigConverter(object):
         _add_if(networking, "AdditionalSecurityGroups", additional_security_groups)
         return networking
 
-    def convert_batch_queue_networking(self, queue):
-        """Convert awsbatch queue networking."""
-        networking = self.convert_base_queue_networking()
-        _add_if(queue, "Networking", networking)
-
     def convert_instance_type(self, headnode, param_name):
         """Convert HeadNode or SIT compute resource InstanceType."""
         instance_type = self.cluster_config_get(param_name)
@@ -681,12 +676,8 @@ class Pcluster3ConfigConverter(object):
         """Convert Scheduling section."""
         scheduling = dict()
         self.convert_single_field(self.cluster_section_name, "scheduler", scheduling, "Scheduler")
-        scheduler = self.cluster_config_get("scheduler")
-        if scheduler == "slurm":
-            self.convert_slurm_settings(scheduling, "SlurmSettings")
-            self.convert_slurm_queues(scheduling, "SlurmQueues")
-        elif scheduler == "awsbatch":
-            self.convert_batch_queues(scheduling, "AwsBatchQueues")
+        self.convert_slurm_settings(scheduling, "SlurmSettings")
+        self.convert_slurm_queues(scheduling, "SlurmQueues")
 
         _add_if(self.pcluster3_configuration, section_name, scheduling)
 
@@ -747,54 +738,17 @@ class Pcluster3ConfigConverter(object):
             _append_if(compute_resources, compute_resource)
         _add_if(queue, "ComputeResources", compute_resources)
 
-    def convert_batch_queues(self, scheduling, param):
-        """Convert AwsBatch Queue."""
-        batch_queues = []
-        queue = dict()
-        queue["Name"] = "batch-queue"
-        self.convert_single_field(self.cluster_section_name, "cluster_type", queue, "CapacityType")
-        if "CapacityType" in queue:
-            queue["CapacityType"] = queue["CapacityType"].upper()
-        self.convert_batch_queue_networking(queue)
-        self.convert_batch_compute_resources(queue)
-
-        _append_if(batch_queues, queue)
-        _add_if(scheduling, param, batch_queues)
-
-    def convert_batch_compute_resources(self, queue):
-        """Convert all compute resources under a AwsBatch queue."""
-        compute_resources = []
-        compute_resource = dict()
-        compute_resource["Name"] = "batch-compute"
-        for item in [
-            (self.cluster_section_name, "min_vcpus", compute_resource, "MinvCpus", "getint"),
-            (self.cluster_section_name, "max_vcpus", compute_resource, "MaxvCpus", "getint"),
-            (self.cluster_section_name, "desired_vcpus", compute_resource, "DesiredvCpus", "getint"),
-            (self.cluster_section_name, "spot_bid_percentage", compute_resource, "SpotBidPercentage", "getfloat"),
-        ]:
-            self.convert_single_field(*item)
-        instance_types = []
-        compute_instance_type = self.cluster_config_get("compute_instance_type")
-        if compute_instance_type:
-            for instance_type in compute_instance_type.split(","):
-                instance_types.append(instance_type.strip())
-        else:
-            instance_types.append("t3.micro")
-        _add_if(compute_resource, "InstanceTypes", instance_types)
-        _append_if(compute_resources, compute_resource)
-        _add_if(queue, "ComputeResources", compute_resources)
-
     def validate_scheduler(self):
         """Validate if the Scheduler is the one supported by AWS ParallelCluster version 3."""
         scheduler = self.cluster_config_get("scheduler")
         if not scheduler:
             _error("scheduler must be provided in the config.")
-        elif scheduler in ["sge", "torque"]:
+        elif scheduler in ["sge", "torque", "awsbatch"]:
             _error(
                 "The provided scheduler is no longer supported in AWS ParallelCluster version 3, please check "
                 "https://docs.aws.amazon.com/parallelcluster/latest/ug/schedulers-v3.html for supported schedulers."
             )
-        elif scheduler not in ["slurm", "awsbatch"]:
+        elif scheduler not in ["slurm"]:
             _error(f"Wrong value for scheduler: {scheduler}.")
 
     def validate_single_field(self, section, field, message):
@@ -922,8 +876,6 @@ class Pcluster3ConfigConverter(object):
     def convert_imds(self, headnode):
         """Convert HeadNode Imds section."""
         imds = dict()
-        if self.cluster_config_get("scheduler") == "awsbatch":
-            imds["Secured"] = False
         _add_if(headnode, "Imds", imds)
 
     def convert_single_slurm_compute_resource(self, compute_resource_label, queue_section):

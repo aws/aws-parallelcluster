@@ -24,6 +24,7 @@ from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
 from pcluster.aws.logs import LogsClient
 from pcluster.aws.resource_groups import ResourceGroupsClient
+from pcluster.aws.resource_groups_tagging_api import ResourceGroupsTaggingApiClient
 from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
@@ -107,11 +108,11 @@ class _DummyAWSApi(AWSApi):
         self._sts = _DummyStsClient()
         self._s3_resource = _DummyS3Resource()
         self._iam = _DummyIamClient()
-        self._batch = _DummyBatchClient()
         self._logs = _DummyLogsClient()
         self._ddb_resource = _DummyDynamoResource()
         self._route53 = _DummyRoute53Client()
         self._resource_groups = _DummyResourceGroupsClient()
+        self._resource_groups_tagging_api = _DummyResourceGroupsTaggingApiClient()
         self._secretsmanager = _DummySecretsManagerClient()
         self._ssm = _DummySsmClient()
 
@@ -121,7 +122,7 @@ class _DummyCfnClient(CfnClient):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
-    def describe_stack_resources(self, stack_name: str):
+    def describe_stack_resources(self, stack_name: str, logical_resource_id: str = None):
         return {}
 
 
@@ -135,6 +136,10 @@ class _DummyEc2Client(Ec2Client):
             "cr-234": {"InstanceType": "t3.micro", "AvailabilityZone": "string"},
         }
         self.security_groups_cache = {}
+
+    def describe_launch_template_version(self, launch_template_id, version):
+        """Return mock launch template data."""
+        return {"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]}
 
     def get_official_image_id(self, os, architecture, filters=None):
         return "dummy-ami-id"
@@ -386,6 +391,16 @@ class _DummyResourceGroupsClient(ResourceGroupsClient):
         )
 
 
+class _DummyResourceGroupsTaggingApiClient(ResourceGroupsTaggingApiClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+    def get_resources(self, tag_filters, resource_type_filters=None):
+        """Return an empty list of resource ARNs by default."""
+        return []
+
+
 class _DummySecretsManagerClient(SecretsManagerClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
@@ -429,6 +444,40 @@ def mock_aws_api(mocker, mock_instance_type_info=True):
     mocker.patch(
         "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo({"BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 35}}]}),
+    )
+
+    # Mock example b300 override to stress template size limits
+    mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_launch_template_version",
+        return_value={
+            "NetworkInterfaces": [
+                {
+                    "NetworkCardIndex": 0,
+                    "DeviceIndex": 0,
+                    "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                    "SubnetId": "subnet-123456789",
+                }
+            ]
+            + [
+                eni
+                for card in range(1, 17)
+                for eni in (
+                    {
+                        "NetworkCardIndex": card,
+                        "DeviceIndex": 0,
+                        "InterfaceType": "efa-only",
+                        "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                        "SubnetId": "subnet-123456789",
+                    },
+                    {
+                        "NetworkCardIndex": card,
+                        "DeviceIndex": 1,
+                        "Groups": ["sg-abcd1234", "sg-abcd1235", "sg-abcd1236", "sg-abcd1237", "sg-abcd1238"],
+                        "SubnetId": "subnet-123456789",
+                    },
+                )
+            ]
+        },
     )
     if mock_instance_type_info:
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_type_info", side_effect=_DummyInstanceTypeInfo)

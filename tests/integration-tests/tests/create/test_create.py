@@ -159,7 +159,7 @@ def test_cluster_creation_with_problematic_preinstall_script(
     assert_lines_in_logs(
         remote_command_executor,
         ["/var/log/cfn-init.log"],
-        [f"Failed to execute OnNodeStart script 1 s3://{ bucket_name }/scripts/{script_name}"],
+        [f"Failed to execute OnNodeStart script 1 s3://{bucket_name}/scripts/{script_name}"],
     )
     logging.info("Verifying error in cloudformation failure reason")
     stack_events = cluster.get_stack_events().get("events")
@@ -173,7 +173,7 @@ def test_cluster_creation_with_problematic_preinstall_script(
     )
 
     assert_that(cfn_failure_reason).contains(expected_cfn_failure_reason)
-    assert_that(cfn_failure_reason).does_not_contain(f"s3://{ bucket_name }/scripts/{script_name}")
+    assert_that(cfn_failure_reason).does_not_contain(f"s3://{bucket_name}/scripts/{script_name}")
 
     logging.info("Verifying failures in describe-clusters output")
     expected_failures = [

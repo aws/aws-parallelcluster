@@ -107,10 +107,6 @@ test-suites:
           instances: ["c5n.9xlarge"]
           oss: {{ NEW_OS }}
           schedulers: ["slurm"]
-        - regions: ["use1-az6"]   # do not move, unless capacity reservation is moved as well
-          instances: ["p4d.24xlarge"]
-          oss: {{ NEW_OS }}
-          schedulers: ["slurm"]
         - regions: ["us-east-1"]
           instances: ["c6gn.16xlarge"]
           oss: {{ NEW_OS }}
@@ -154,7 +150,7 @@ test-suites:
         - regions: [ "us-west-2" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
+          schedulers: ["slurm"]
         - regions: [ "cn-north-1" ]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ NEW_OS }}
@@ -164,12 +160,6 @@ test-suites:
           oss: {{ NEW_OS }}
           schedulers: [ "slurm" ]
   schedulers:
-    test_awsbatch.py::test_awsbatch:
-      dimensions:
-        - regions: ["eu-north-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ NEW_OS }}
-          schedulers: ["awsbatch"]
     test_slurm.py::test_slurm:
       dimensions:
         - regions: ["eu-central-1"]

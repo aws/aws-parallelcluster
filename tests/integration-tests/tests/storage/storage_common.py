@@ -17,6 +17,7 @@ import boto3
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnVpcStack
 from clusters_factory import Cluster
+from conftest_networking import AVAILABLE_AVAILABILITY_ZONE
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
@@ -32,6 +33,7 @@ from troposphere.fsx import (
 from troposphere.iam import InstanceProfile, Policy, Role
 from utils import generate_stack_name, random_alphanumeric, retrieve_cfn_outputs
 
+from tests.common.login_nodes_utils import get_login_node_executors_by_pool
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import CLASSIC_AWS_DOMAIN, get_aws_domain, retrieve_latest_ami
 
@@ -42,10 +44,7 @@ def get_cluster_subnet_ids_groups(cluster: Cluster, scheduler: str, include_head
     Example: [[HeadNode SubnetId], [<queue-0-SubnetIds>], [<queue-1-SubnetIds>], ...]
     """
     head_node_subnet_id = cluster.config.get("HeadNode", {}).get("Networking", {}).get("SubnetId")
-    if scheduler == "slurm":
-        queues = cluster.config.get("Scheduling", {}).get("SlurmQueues", [])
-    else:
-        queues = cluster.config.get("Scheduling", {}).get("AwsBatchQueues", [])
+    queues = cluster.config.get("Scheduling", {}).get("SlurmQueues", [])
 
     compute_subnet_ids = [queue.get("Networking", {}).get("SubnetIds", []) for queue in queues]
     if include_head_node:
@@ -105,7 +104,13 @@ def test_directory_correctly_shared_between_ln_and_hn(
 
 
 def verify_directory_correctly_shared(
-    remote_command_executor, mount_dir, scheduler_commands, partitions=None, run_sudo=False
+    remote_command_executor,
+    mount_dir,
+    scheduler_commands,
+    partitions=None,
+    run_sudo=False,
+    cluster=None,
+    login_node_pools=None,
 ):
     """
     Confirm nodes can read and write to the FileSystem
@@ -117,6 +122,10 @@ def verify_directory_correctly_shared(
     While Reading:
         "A" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
         "B" reads files: ["A-<random_alphanumeric_characters>", "B-<random_alphanumeric_characters>"]
+
+    When `login_node_pools` is provided, the login nodes belonging to those pools are verified the same way
+    as the head node: each writes its own file (shared with the other nodes) and reads back all the files.
+    `cluster` is required to resolve the login nodes of the given pools.
     """
     executor_node_file = random_alphanumeric()
     logging.info(f"{remote_command_executor.get_target_host_type()}: Writing File: {executor_node_file}")
@@ -145,6 +154,19 @@ def verify_directory_correctly_shared(
         scheduler_commands.assert_job_succeeded(job_id)
         files_to_read.append(compute_file)
 
+    # For each login pool, a login node writes a new file to the shared folder
+    login_node_executors = get_login_node_executors_by_pool(cluster, login_node_pools)
+    for login_node_executor in login_node_executors:
+        login_node_file = random_alphanumeric()
+        logging.info(f"{login_node_executor.get_target_host_type()}: Writing File: {login_node_file}")
+        login_node_executor.run_remote_command(
+            ("sudo " if run_sudo else "")
+            + "touch {mount_dir}/{login_node_file} && cat {mount_dir}/{login_node_file}".format(
+                mount_dir=mount_dir, login_node_file=login_node_file
+            )
+        )
+        files_to_read.append(login_node_file)
+
     read_all_files_command = "cat {files_to_read}".format(
         files_to_read=" ".join([f"{mount_dir}/{target_file}" for target_file in files_to_read]),
     )
@@ -160,6 +182,11 @@ def verify_directory_correctly_shared(
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)
 
+    # For each login pool, a login node reads all the shared files
+    for login_node_executor in login_node_executors:
+        logging.info(f"{login_node_executor.get_target_host_type()}: Reading Files: {files_to_read}")
+        login_node_executor.run_remote_command(read_all_files_command)
+
 
 # for EBS
 
@@ -173,6 +200,27 @@ def test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     assert_that(result.stdout).matches(r"UUID=.* {mount_dir} ext4 _netdev 0 0".format(mount_dir=mount_dir))
+
+
+def assert_head_node_nfs_serves_v4_only(remote_command_executor):
+    """
+    Verify the head node NFS server is configured for NFSv4-only.
+
+    nfsd reports the versions it serves in /proc/fs/nfsd/versions, e.g. "-2 -3 +4 +4.1 +4.2"
+    ('+' enabled, '-' disabled).
+
+    Also assert the lock manager (nlockmgr/lockd) is not registered with rpcbind. Lock manager is used by v3, not v4.
+    """
+    logging.info("Checking the head node NFS server serves NFSv4 only")
+    versions = remote_command_executor.run_remote_command("sudo cat /proc/fs/nfsd/versions").stdout
+    # NFSv4 must be enabled and NFSv2/NFSv3 must be disabled.
+    assert_that(versions).contains("+4")
+    assert_that(versions).does_not_match(r"\+2(\s|$)")
+    assert_that(versions).does_not_match(r"\+3(\s|$)")
+
+    # lockd must not be brought up: no nlockmgr registered with rpcbind on the head node.
+    rpcinfo = remote_command_executor.run_remote_command("rpcinfo -p localhost").stdout
+    assert_that(rpcinfo).does_not_contain("nlockmgr")
 
 
 # for RAID
@@ -250,8 +298,8 @@ def write_file_into_efs(
         package_update: true
         package_upgrade: true
         runcmd:
-        - yum install -y nfs-utils
-        - yum install -y amazon-efs-utils
+        - dnf install -y nfs-utils
+        - dnf install -y amazon-efs-utils
         {write_file_user_data}
         - opt/aws/bin/cfn-signal -e $? --stack ${{AWS::StackName}} --resource InstanceToWriteEFS --region ${{AWS::Region}}
         """  # noqa: E501
@@ -296,7 +344,7 @@ def write_file_into_efs(
         Instance(
             "InstanceToWriteEFS",
             CreationPolicy={"ResourceSignal": {"Timeout": "PT10M"}},
-            ImageId=retrieve_latest_ami(region, "alinux2"),
+            ImageId=retrieve_latest_ami(region, "alinux2023"),
             InstanceType="c5.xlarge",
             LaunchTemplate=LaunchTemplateSpecification(
                 LaunchTemplateId=Ref(launch_template), Version=GetAtt(launch_template, "LatestVersionNumber")
@@ -497,9 +545,12 @@ def assert_subnet_az_relations_from_config(
     if expected_in_same_az:
         assert_that(set(cluster_avail_zones)).is_length(1)
     # If caller does not expect same az, we expect more availability zones.
-    elif region == "us-isob-east-1":
-        # us-isob-east-1 provides 2 availability zones.
-        assert_that(len(set(cluster_avail_zones))).is_equal_to(2)
+    elif region in AVAILABLE_AVAILABILITY_ZONE:
+        # This region has a restricted AZ allowlist (see conftest_networking.AVAILABLE_AVAILABILITY_ZONE),
+        # so the cluster config can only span as many AZs as are allowlisted. Expect one distinct AZ per
+        # subnet, capped at the number of allowlisted AZs (e.g. ca-central-1 and us-isob-east-1 allow 2).
+        allowlisted_az_count = len(AVAILABLE_AVAILABILITY_ZONE[region])
+        assert_that(len(set(cluster_avail_zones))).is_equal_to(min(allowlisted_az_count, len(cluster_avail_zones)))
     else:
         # For other regions, we impose a strong check to make sure each subnet is in a different availability zone.
         assert_that(len(set(cluster_avail_zones))).is_equal_to(len(cluster_avail_zones))
@@ -535,6 +586,57 @@ def assert_fsx_ontap_correctly_mounted(remote_command_executor, mount_dir, volum
 def check_fstab_file(remote_command_executor, expected_entry):
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     assert_that(result.stdout).matches(expected_entry)
+
+
+def assert_client_lockd_uses_port(remote_command_executor, ontap_volume_id, expected_port=4045):
+    """
+    Verify the client-side NFS lock manager (lockd/NLM) uses the pinned, non-ephemeral port.
+
+    ParallelCluster mounts everything it manages over NFSv4, so lockd is only exercised when a
+    customer mounts an external NFSv3 server. We reproduce that here by explicitly mounting an
+    FSx ONTAP volume with `vers=3` (ParallelCluster itself would mount ONTAP as v4 by default).
+
+    We then assert lockd bound the pinned port 4045 rather than the historical port 32768.
+    """
+    logging.info("Checking client-side lockd binds port %s on an NFSv3 mount", expected_port)
+    mount_dir = "/mnt/nfsv3_lockd_check"
+    fsx_client = boto3.client("fsx")
+    volume = fsx_client.describe_volumes(VolumeIds=[ontap_volume_id]).get("Volumes")[0]
+    junction_path = volume["OntapConfiguration"]["JunctionPath"]
+    svm_id = volume["OntapConfiguration"]["StorageVirtualMachineId"]
+    dns_name = fsx_client.describe_storage_virtual_machines(StorageVirtualMachineIds=[svm_id])[
+        "StorageVirtualMachines"
+    ][0]["Endpoints"]["Nfs"]["DNSName"]
+
+    remote_command_executor.run_remote_command(f"sudo mkdir -p {mount_dir}")
+    # Retry the v3 mount a few times to make the test robust.
+    remote_command_executor.run_remote_command(
+        f"for i in $(seq 1 6); do sudo mount -t nfs -o vers=3 {dns_name}:{junction_path} {mount_dir} "
+        f"&& break || {{ echo 'mount attempt '$i' failed, retrying'; sleep 10; }}; done"
+    )
+    try:
+        # Confirm the mount is actually NFSv3.
+        mounts = remote_command_executor.run_remote_command(f"mount | grep ' {mount_dir} '").stdout
+        assert_that(mounts).matches(r"vers=3|nfsvers=3")
+
+        # A POSIX (fcntl) lock over NFSv3 triggers NLM, bringing lockd up so it binds its port.
+        remote_command_executor.run_remote_command(
+            f"sudo timeout 30 python3 -c \"import fcntl; f=open('{mount_dir}/.lockd_probe','w'); "
+            'fcntl.lockf(f, fcntl.LOCK_EX); fcntl.lockf(f, fcntl.LOCK_UN)" || true'
+        )
+
+        # nlockmgr must be registered on the pinned port, and never on 32768.
+        rpcinfo = remote_command_executor.run_remote_command("rpcinfo -p localhost").stdout
+        assert_that(rpcinfo).matches(rf"\b{expected_port}\s+nlockmgr")
+        assert_that(rpcinfo).does_not_match(r"\b32768\s+nlockmgr")
+
+        # lockd should be listening on the pinned port and nothing should be on 32768.
+        listening = remote_command_executor.run_remote_command(
+            f"sudo ss -tuln | grep -E ':{expected_port}(\\s|$)' || true"
+        ).stdout
+        assert_that(listening).is_not_empty()
+    finally:
+        remote_command_executor.run_remote_command(f"sudo umount {mount_dir} || true")
 
 
 def assert_fsx_open_zfs_correctly_mounted(remote_command_executor, mount_dir, volume_id):
@@ -746,7 +848,7 @@ def get_mount_name(fsx_fs_id, region):
 
 def create_fsx_ontap(fsx_factory, num, vpc=None, subnet=None):
     return fsx_factory(
-        ports=[111, 635, 2049, 4046],
+        ports=[111, 635, 2049, 4045, 4046],
         ip_protocols=["tcp", "udp"],
         num=num,
         vpc=vpc,

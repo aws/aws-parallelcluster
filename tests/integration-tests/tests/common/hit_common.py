@@ -79,6 +79,34 @@ def wait_for_compute_nodes_states(
     )
 
 
+def wait_for_compute_nodes_to_be_observed_in_states(
+    scheduler_commands,
+    compute_nodes,
+    expected_states,
+    wait_fixed_secs=20,
+    stop_max_delay_secs=300,
+):
+    """
+    Wait until every node has been observed in one of the expected states.
+
+    Unlike wait_for_compute_nodes_states(), nodes do not need to be in an expected state simultaneously. Once a node
+    has been observed in an expected state, a later transition does not invalidate that observation.
+    """
+    observed_nodes = set()
+    expected_nodes = set(compute_nodes)
+
+    def assert_all_nodes_observed():
+        for node in expected_nodes - observed_nodes:
+            try:
+                assert_compute_node_states(scheduler_commands, [node], expected_states)
+            except AssertionError:
+                continue
+            observed_nodes.add(node)
+        assert_that(observed_nodes).is_equal_to(expected_nodes)
+
+    retry(wait_fixed=seconds(wait_fixed_secs), stop_max_delay=seconds(stop_max_delay_secs))(assert_all_nodes_observed)()
+
+
 def assert_compute_node_reasons(scheduler_commands, compute_nodes, expected_reason):
     for node in compute_nodes:
         node_info = scheduler_commands.get_node_info(node)

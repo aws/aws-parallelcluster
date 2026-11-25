@@ -8,7 +8,7 @@ from constructs import Construct
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import SlurmClusterConfig, SlurmComputeResource, SlurmQueue
-from pcluster.config.common import DefaultUserHomeType, SharedStorageType
+from pcluster.config.common import DefaultUserHomeType, SharedStorageType, merge_tags
 from pcluster.constants import (
     DEFAULT_EPHEMERAL_DIR,
     NODE_BOOTSTRAP_TIMEOUT,
@@ -24,17 +24,40 @@ from pcluster.templates.cdk_builder_utils import (
     create_hash_suffix,
     dict_to_cfn_tags,
     get_common_user_data_env,
-    get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_user_data_content,
-    scheduler_is_slurm,
     to_comma_separated_string,
 )
 from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_attr, get_http_tokens_setting
+
+
+def _apply_launch_template_overrides(launch_template, compute_resource):
+    """
+    Apply user-specified launch template overrides to the generated launch template.
+
+    For each property in the user's launch template, applies it using add_property_override.
+    This replaces the specific property while CDK handles the rest normally.
+
+    Args:
+        launch_template: The CDK CfnLaunchTemplate construct
+        compute_resource: The compute resource configuration
+    """
+    launch_template_overrides = getattr(compute_resource, "launch_template_overrides", None)
+    if not launch_template_overrides or not launch_template_overrides.launch_template_id:
+        return
+
+    version = str(launch_template_overrides.version)
+    override_lt_data = AWSApi.instance().ec2.describe_launch_template_version(
+        launch_template_overrides.launch_template_id, version
+    )
+
+    # Apply each property from the override launch template
+    for key, value in override_lt_data.items():
+        launch_template.add_property_override(f"LaunchTemplateData.{key}", value)
 
 
 class QueuesStack(NestedStack):
@@ -113,11 +136,10 @@ class QueuesStack(NestedStack):
             )
         self._compute_instance_profiles = {k: v.instance_profile for k, v in iam_resources.items()}
         self.managed_compute_instance_roles = {k: v.instance_role for k, v in iam_resources.items()}
-        if scheduler_is_slurm(self._config):
-            self._slurm_construct.register_policies_with_role(
-                scope=Stack.of(self),
-                managed_compute_instance_roles=self.managed_compute_instance_roles,
-            )
+        self._slurm_construct.register_policies_with_role(
+            scope=Stack.of(self),
+            managed_compute_instance_roles=self.managed_compute_instance_roles,
+        )
 
     def _add_launch_templates(self):
         self.compute_launch_templates = {}
@@ -137,10 +159,8 @@ class QueuesStack(NestedStack):
 
     def _get_custom_compute_resource_tags(self, queue_config, compute_resource_config):
         """Compute resource tags and Queue Tags value on Cluster level tags if there are duplicated keys."""
-        tags = get_custom_tags(self._config, raw_dict=True)
-        queue_tags = get_custom_tags(queue_config, raw_dict=True)
-        compute_resource_tags = get_custom_tags(compute_resource_config, raw_dict=True)
-        return dict_to_cfn_tags({**tags, **queue_tags, **compute_resource_tags})
+        merged = merge_tags(self._config.get_tags(), queue_config.get_tags(), compute_resource_config.get_tags())
+        return dict_to_cfn_tags({tag.key: tag.value for tag in merged})
 
     def _add_compute_resource_launch_template(
         self,
@@ -151,7 +171,12 @@ class QueuesStack(NestedStack):
         instance_profiles,
         is_detailed_monitoring_enabled,
     ):
-        compute_lt_nw_interfaces = add_network_interfaces(queue, compute_resource, queue_lt_security_groups)
+        compute_lt_nw_interfaces = add_network_interfaces(
+            queue,
+            compute_resource,
+            queue_lt_security_groups,
+            efa_interface_type=get_attr(self._config, "dev_settings.efa_interface_type"),
+        )
 
         conditional_template_properties = {}
         if compute_resource.is_ebs_optimized:
@@ -173,6 +198,9 @@ class QueuesStack(NestedStack):
                     ),
                     "cluster_config_version": self._config.config_version,
                     "enable_efa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
+                    "raid_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.RAID]["MountDirPermissions"]
+                    ),
                     "raid_shared_dir": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.RAID]
                     ),
@@ -191,6 +219,9 @@ class QueuesStack(NestedStack):
                         else DefaultUserHomeType.SHARED.value.lower()
                     ),
                     "efs_fs_ids": get_shared_storage_ids_by_type(self._shared_storage_infos, SharedStorageType.EFS),
+                    "efs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EFS]["MountDirPermissions"]
+                    ),
                     "efs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EFS]
                     ),
@@ -219,6 +250,9 @@ class QueuesStack(NestedStack):
                     "fsx_fs_types": to_comma_separated_string(
                         self._shared_storage_attributes[SharedStorageType.FSX]["FileSystemTypes"]
                     ),
+                    "fsx_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.FSX]["MountDirPermissions"]
+                    ),
                     "fsx_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.FSX]
                     ),
@@ -227,6 +261,9 @@ class QueuesStack(NestedStack):
                         queue.compute_settings.local_storage.ephemeral_volume.mount_dir
                         if isinstance(queue, SlurmQueue) and queue.compute_settings.local_storage.ephemeral_volume
                         else DEFAULT_EPHEMERAL_DIR
+                    ),
+                    "ebs_mount_dir_permissions": to_comma_separated_string(
+                        self._shared_storage_attributes[SharedStorageType.EBS]["MountDirPermissions"]
                     ),
                     "ebs_shared_dirs": to_comma_separated_string(
                         self._shared_storage_mount_dirs[SharedStorageType.EBS]
@@ -249,7 +286,6 @@ class QueuesStack(NestedStack):
                         "compute" if compute_resource.efa and compute_resource.efa.gdr_support else "NONE"
                     ),
                     "custom_node_package": self._config.custom_node_package or "",
-                    "custom_awsbatchcli_package": self._config.custom_aws_batch_cli_package or "",
                     "use_private_hostname": str(
                         get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                     ).lower(),
@@ -359,6 +395,8 @@ class QueuesStack(NestedStack):
             ),
         )
 
+        _apply_launch_template_overrides(launch_template, compute_resource)
+
         return launch_template
 
 
@@ -366,34 +404,97 @@ def add_network_interfaces(
     queue,
     compute_resource,
     queue_lt_security_groups,
+    efa_interface_type=None,
 ):
-    """Generate launch template network interfaces list."""
-    is_gb200 = compute_resource.instance_types[0].split(".")[0] == P6E_GB200
+    """Generate launch template network interfaces list.
+
+    When EFA is enabled, use `interface` + `efa-only` on NCI-0 and `efa-only` on NCI-1+.
+    The legacy `efa` combined type is only used as a fallback when NCI-0 cannot hold 2 ENIs (MaxENIs=1),
+    or when the DevSettings opt-out `EfaInterfaceType: efa` is set.
+
+    Whether NCI-0 supports EFA is inferred from the DescribeInstanceTypes API:
+    - MaximumEfaInterfaces == MaximumNetworkCards → NCI-0 supports EFA
+    - MaximumEfaInterfaces < MaximumNetworkCards → NCI-0 does NOT support EFA (e.g., B300, GB200)
+
+    GB200 retains hardcoded secondary card configuration (odd/even pattern).
+    """
+    instance_family = compute_resource.instance_types[0].split(".")[0]
+    is_gb200 = instance_family == P6E_GB200
     efa_enabled = compute_resource.efa and compute_resource.efa.enabled
-    interface_type = "efa" if efa_enabled and not is_gb200 else None
+    use_legacy_efa = efa_interface_type == "efa"
+
+    # Determine NCI-0 MaxENIs to decide if we can fit 2 ENIs (interface + efa-only)
+    nci0_max_enis = (
+        compute_resource.network_cards_list[0].maximum_network_interfaces()
+        if compute_resource.network_cards_list
+        else 1
+    )
+
+    # Infer whether NCI-0 supports EFA from API data
+    max_efa = compute_resource.max_efa_interfaces
+    max_cards = compute_resource.max_network_cards
+    nci0_supports_efa = max_efa == max_cards
+
+    # --- NCI-0 configuration ---
+    if efa_enabled and use_legacy_efa and nci0_supports_efa:
+        # Legacy opt-out: use combined efa on NCI-0 (only when NCI-0 actually supports EFA)
+        nci0_interface_type = "efa"
+    elif efa_enabled and not use_legacy_efa and nci0_supports_efa and nci0_max_enis < 2:
+        # NCI-0 supports EFA but can't hold 2 ENIs — fall back to combined efa
+        # (known to be misconfigured API limits on hpc5a/hpc6id, per EFA team)
+        nci0_interface_type = "efa"
+    else:
+        # New default and instances where NCI-0 doesn't support EFA: NCI-0 is always `interface` (None in CDK = ENA)
+        nci0_interface_type = None
 
     compute_lt_nw_interfaces = [
         ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
             device_index=0,
             network_card_index=0,
             associate_public_ip_address=queue.networking.assign_public_ip,
-            interface_type=interface_type,
+            interface_type=nci0_interface_type,
             groups=queue_lt_security_groups,
             subnet_id=(queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None),
         )
     ]
 
+    # --- NCI-0 additional efa-only ENI (new default) ---
+    # Add efa-only on NCI-0 when: EFA enabled, not legacy opt-out, NCI-0 supports EFA,
+    # and NCI-0 can hold 2 ENIs
+    if efa_enabled and not use_legacy_efa and nci0_supports_efa and nci0_max_enis >= 2:
+        compute_lt_nw_interfaces.append(
+            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
+                device_index=1,
+                network_card_index=0,
+                associate_public_ip_address=False,
+                interface_type="efa-only",
+                groups=queue_lt_security_groups,
+                subnet_id=(
+                    queue.networking.subnet_ids[0] if isinstance(compute_resource, SlurmComputeResource) else None
+                ),
+            )
+        )
+
+    # --- NCI-1+ configuration ---
     for network_card in compute_resource.network_cards_list[1:]:
         even = network_card.network_card_index() % 2 == 0
-        # if efa is disabled, and we have a gb200 instance we skip configuring odd numbered indexes because they only
-        # support efa-only interface type
+
+        # GB200 EFA-disabled: skip odd cards (they only support efa-only)
         if is_gb200 and not efa_enabled and not even:
             continue
 
-        interface_type = "efa" if efa_enabled else None
-        # if efa is enabled with a gb200 instance, even indexes are configured as efa and the odd as efa-only
-        if is_gb200 and efa_enabled:
-            interface_type = "efa" if even else "efa-only"
+        if efa_enabled:
+            if use_legacy_efa and is_gb200:
+                # Legacy opt-out for GB200: restore PC 3.14 behavior (even=efa, odd=efa-only)
+                interface_type = "efa" if even else "efa-only"
+            elif use_legacy_efa:
+                # Legacy opt-out: all secondary cards get combined efa
+                interface_type = "efa"
+            else:
+                # New default: all secondary cards get efa-only
+                interface_type = "efa-only"
+        else:
+            interface_type = None
 
         compute_lt_nw_interfaces.append(
             ec2.CfnLaunchTemplate.NetworkInterfaceProperty(

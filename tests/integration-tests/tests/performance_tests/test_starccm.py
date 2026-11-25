@@ -5,8 +5,13 @@ import boto3
 import pytest
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 
-from tests.common.utils import assert_no_file_handler_leak, fetch_instance_slots, get_compute_ip_to_num_files
-from tests.performance_tests.common import _log_output_performance_difference, push_result_to_dynamodb
+from tests.common.utils import (
+    assert_no_file_handler_leak,
+    fetch_instance_slots,
+    get_compute_ip_to_num_files,
+    push_result_to_dynamodb,
+)
+from tests.performance_tests.common import _log_output_performance_difference
 
 # timeout in seconds
 STARCCM_INSTALLATION_TIMEOUT = 1800
@@ -14,7 +19,6 @@ STARCCM_JOB_TIMEOUT = 600
 STARCCM_LICENCE_SECRET = "starccm-license-secret"
 BASELINE_CLUSTER_SIZE_ELAPSED_SECONDS = {
     "alinux2023": {8: 62.414, 16: 31.998, 32: 20.422},  # v3.10.0
-    "alinux2": {8: 64.475, 16: 33.173, 32: 17.899},  # v3.1.3
     "ubuntu2404": {8: 75.502, 16: 36.353, 32: 19.688},  # v3.13.0
     "ubuntu2204": {8: 75.502, 16: 36.353, 32: 19.688},  # v3.7.0
     "ubuntu2004": {8: 67.384, 16: 36.434, 32: 19.449},  # v3.1.3
@@ -57,7 +61,6 @@ def calculate_observed_value(result, remote_command_executor, scheduler_commands
     return observed_value
 
 
-@pytest.mark.usefixtures("serial_execution_by_instance")
 @pytest.mark.flaky(reruns=0)
 def test_starccm(
     vpc_stack,

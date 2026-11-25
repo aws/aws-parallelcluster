@@ -5,7 +5,7 @@ schemaVersion: 1.0
 constants:
   - ChefVersion:
       type: string
-      value: 18.7.10
+      value: 19.4.46
   - FailExitCode:
       type: string
       value: 1
@@ -19,14 +19,14 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /etc/os-release
               RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               case "$RELEASE" in
-                amzn.2) echo 'alinux2' ;;
                 amzn.2023) echo 'alinux2023' ;;
                 ubuntu.22*) echo 'ubuntu2204' ;;
                 ubuntu.24*) echo 'ubuntu2404' ;;
+                ubuntu.26*) echo 'ubuntu2604' ;;
                 rhel.8*) echo 'rhel8' ;;
                 rocky.8*) echo 'rocky8' ;;
                 rhel.9*) echo 'rhel9' ;;
@@ -34,16 +34,28 @@ phases:
                 *) echo "Unsupported OS: $RELEASE" && exit {{ FailExitCode }} ;;
               esac
 
-      # Initialize system information and URLs
+      # Disable snap refresh to prevent background updates during build (Ubuntu only)
+      - name: DisableSnapRefresh
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -euxo pipefail
+              OS="{{ build.OperatingSystemName.outputs.stdout }}"
+              if [[ $OS =~ ^ubuntu ]] && command -v snap &>/dev/null; then
+                snap watch --last=auto-refresh 2>/dev/null || true
+                snap refresh --hold && mkdir -p /opt/parallelcluster && touch /opt/parallelcluster/pcluster_build_image_snap_hold
+              fi
+
+      # Initialize system information and URLs. RELEASE is like amzn.2023 | ubuntu.24.04 | rhel.9.8 | rocky.9.9
       - name: SystemInfo
         action: ExecuteBash
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               # Get OS info
               . /etc/os-release
-              # Check input base AMI OS and get OS information, the output should be like amzn.2 | ubuntu.20.04 | ubuntu.22.04 | rhel.8.7 | rocky.8.8
               RELEASE="${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               
               # Use OS name from previous step
@@ -82,7 +94,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
 
               # Pin kernel versions and install packages
@@ -95,7 +107,7 @@ phases:
                 
                 PACKAGE_LIST="${!KERNEL_PACKAGES_PREFIX}-headers-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-devel-$(uname -r) ${!KERNEL_PACKAGES_PREFIX}-modules-extra-$(uname -r)"
                 Repository="BaseOS"
-                [[ ! $OS =~ (rocky8|rhel8) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
+                [[ $OS =~ (rocky9|rhel9) ]] && PACKAGE_LIST+=" ${!KERNEL_PACKAGES_PREFIX}-devel-matched-$(uname -r)" && Repository="AppStream"
                 
                 if [[ $OS =~ rocky ]]; then
                   for PACKAGE in ${!PACKAGE_LIST}
@@ -128,8 +140,12 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock redhat-release
               else
-                apt-get -y install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
-                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
+                # Refresh the package index first: the index inherited from the base AMI can still
+                # reference package versions already rotated out of the pool, which fails the fetch.
+                apt-get -y update
+                # Kernel 7.0+ has no linux-modules-extra package. Hold the linux-modules-extra-aws* meta packages that exist
+                apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r))
+                apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws $(apt-cache pkgnames linux-modules-extra-aws)
               fi
               echo "Kernel version is $(uname -a)"
 
@@ -139,7 +155,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
               
               # Disable Nouveau driver
@@ -152,21 +168,21 @@ phases:
 
               # Install prerequisites
               if [[ $PLATFORM == RHEL ]]; then
-                yum -y groupinstall development && sudo yum -y install wget jq
+                yum -y groupinstall development
+                yum -y install wget jq
                 # Do not install curl on al2023 since curl-minimal-8.5.0-1.amzn2023* is already shipped and conflicts.
-                [[ $OS != alinux2023 ]] && yum -y install curl
+                [[ $OS == alinux2023 ]] || yum -y install curl
               else
                 [[ "${CfnParamUpdateOsAndReboot}" == "false" ]] && {
                   # disable apt-daily.timer to avoid dpkg lock
                   flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
                   # disable unattended upgrades
-                  sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
+                  [ ! -f /etc/apt/apt.conf.d/20auto-upgrades ] || sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
                 }
                 apt-get clean
                 apt-get -y update
                 apt-get -y install build-essential curl wget jq
               fi
-              exit 0
 
       - name: RebootStep
         action: Reboot
@@ -181,7 +197,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
               
               # Update CA certificates and install Cinc
@@ -195,7 +211,7 @@ phases:
               
               OS="{{ build.OperatingSystemName.outputs.stdout }}"
               ChefVersion={{ ChefVersion }}
-              [[ $OS == alinux2 ]] && ChefVersion=18.4.12
+              [ -n "${CfnParamCincVersion}" ] && ChefVersion="${CfnParamCincVersion}"
               
               curl --retry 3 -L $CINC_URL | bash -s -- -v $ChefVersion
               
@@ -205,10 +221,24 @@ phases:
               }
               
               # Download cookbook
-              mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL"
+              mkdir -p /etc/chef
+              chown -R root:root /etc/chef
+              delays=(1 2 4 8 16 32 64 128 256)
+              for i in {0..8}; do
+                HTTP_CODE=$(curl -sS -L -w '%{http_code}' -o /etc/chef/aws-parallelcluster-cookbook.tgz "$COOKBOOK_URL") || true
+                if [[ "$HTTP_CODE" == 200 ]]; then
+                  echo "Cookbook download succeeded (HTTP $HTTP_CODE)"
+                  break
+                fi
+                echo "Cookbook download attempt $((i+1)) failed with HTTP $HTTP_CODE. Response body:"
+                cat /etc/chef/aws-parallelcluster-cookbook.tgz 2>/dev/null || true
+                echo ""
+                sleep ${!delays[$i]}
+              done
+              [[ "$HTTP_CODE" == 200 ]] || { echo "Cookbook download failed after ${!#delays[@]} attempts: $COOKBOOK_URL"; exit {{ FailExitCode }}; }
               
-              cd /etc/chef && tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz --strip-components 1 && rm -f aws-parallelcluster-cookbook.tgz
+              tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz -C /etc/chef --strip-components 1
+              rm -f /etc/chef/aws-parallelcluster-cookbook.tgz
 
       - name: CreateChefFiles
         action: CreateFile
@@ -227,8 +257,13 @@ phases:
         inputs:
           commands:
             - |
-              set -ex
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
+
+              # Validate cookbook version matches expected ParallelCluster version
+              ACTUAL_COOKBOOK_VER=$(awk -F\' '/^version/{print $2}' /etc/chef/cookbooks/aws-parallelcluster-entrypoints/metadata.rb)
+              [ "${!ACTUAL_COOKBOOK_VER}" = "${CfnParamCookbookVersion}" ] || { echo "Cookbook version mismatch: expected ${CfnParamCookbookVersion}, found ${!ACTUAL_COOKBOOK_VER}"; exit 1; }
+
               echo "Calling chef-client with /etc/parallelcluster/image_dna.json"
               cat /etc/parallelcluster/image_dna.json
               cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster-entrypoints::install
@@ -240,7 +275,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -euxo pipefail
               . /opt/parallelcluster/system_info
               
               # Remove kernel version lock
@@ -249,7 +284,7 @@ phases:
                 [[ $OS =~ rocky ]] && yum versionlock delete rocky-release rocky-repos
                 [[ $OS =~ rhel ]] && yum versionlock delete redhat-release
               else
-                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws linux-modules-extra-aws
+                apt-mark unhold linux-aws linux-base linux-headers-aws linux-image-aws $(apt-cache pkgnames linux-modules-extra-aws)
               fi
               
               # Handle SSM agent
@@ -260,15 +295,11 @@ phases:
                  echo "SSM agent is installed by default"
               fi
               
+              if [[ -f /opt/parallelcluster/pcluster_build_image_snap_hold ]]; then
+                snap refresh --unhold 2>/dev/null || true
+                rm -rf /opt/parallelcluster/pcluster_build_image_snap_hold
+              fi
+              
               # Final cleanup
               rm -f /opt/parallelcluster/system_info
               /usr/local/sbin/ami_cleanup.sh "${CfnParamIsOfficialAmiBuild}"
-
-  - name: validate
-    steps:
-      - name: PClusterValidate
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              echo "Check ParallelCluster software stack has been installed"

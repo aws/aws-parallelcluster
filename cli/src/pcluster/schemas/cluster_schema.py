@@ -26,12 +26,6 @@ from pcluster.config.cluster_config import (
     Alarms,
     AllocationStrategy,
     AmiSearchFilters,
-    AwsBatchClusterConfig,
-    AwsBatchComputeResource,
-    AwsBatchQueue,
-    AwsBatchQueueNetworking,
-    AwsBatchScheduling,
-    AwsBatchSettings,
     CapacityReservationTarget,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -64,6 +58,7 @@ from pcluster.config.cluster_config import (
     Image,
     Imds,
     IntelSoftware,
+    LaunchTemplateOverrides,
     LocalStorage,
     LoginNodes,
     LoginNodesIam,
@@ -74,6 +69,7 @@ from pcluster.config.cluster_config import (
     LogRotation,
     Logs,
     Monitoring,
+    MountDirPermissions,
     PlacementGroup,
     Proxy,
     QueueImage,
@@ -99,6 +95,7 @@ from pcluster.config.cluster_config import (
 from pcluster.config.common import BaseTag, CapacityType, DefaultUserHomeType
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
+    ACCEPTED_OSES,
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
     FILE_CACHE,
@@ -117,7 +114,6 @@ from pcluster.constants import (
     ONTAP,
     OPENZFS,
     PCLUSTER_AMI_ID_REGEX,
-    SUPPORTED_OSES,
 )
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
@@ -276,7 +272,7 @@ class QueueEphemeralVolumeSchema(BaseSchema):
 class HeadNodeStorageSchema(BaseSchema):
     """Represent the schema of storage attached to a node."""
 
-    root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     ephemeral_volume = fields.Nested(
         HeadNodeEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
@@ -418,7 +414,7 @@ class FsxLustreSettingsSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
     automatic_backup_retention_days = fields.Int(
-        validate=validate.Range(min=0, max=35), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+        validate=validate.Range(min=0, max=90), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
     copy_tags_to_backups = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     daily_automatic_backup_start_time = fields.Str(
@@ -527,6 +523,38 @@ class FileCacheSettingsSchema(BaseSchema):
     )
 
 
+class FileModeField(fields.Str):
+    """
+    Represent a file mode, for example 755 or 1777.
+
+    A mode written without quotes is read from the YAML file as an integer, so integers are accepted and kept with
+    their digits. The YAML loader keeps a mode with a leading zero, for example 0755, as a string, see yaml_load.
+    """
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        if isinstance(value, int) and not isinstance(value, bool):
+            value = str(value)
+        return super()._deserialize(value, attr, data, **kwargs)
+
+
+class MountDirPermissionsSchema(BaseSchema):
+    """Represent the permissions ParallelCluster sets on the mount directory of a shared storage."""
+
+    # The mode is stored in the file system, so the head node changes it without mounting the storage again
+    set_permissions = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    permissions = FileModeField(
+        validate=validate.Regexp(
+            r"^[0-7]?[0-7]{3}$", error="Permissions must be an octal mode of 3 or 4 digits, for example 755 or 1777."
+        ),
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return MountDirPermissions(**data)
+
+
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
@@ -536,6 +564,7 @@ class SharedStorageSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY},
     )
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    mount_dir_permissions = fields.Nested(MountDirPermissionsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     storage_type = fields.Str(
         required=True,
         validate=validate.OneOf(["Ebs", FSX_LUSTRE, FSX_OPENZFS, FSX_ONTAP, "Efs", FILE_CACHE]),
@@ -589,7 +618,11 @@ class SharedStorageSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FsxLustre)."""
         storage_type = data.get("storage_type")
-        shared_volume_attributes = {"mount_dir": data.get("mount_dir"), "name": data.get("name")}
+        shared_volume_attributes = {
+            "mount_dir": data.get("mount_dir"),
+            "name": data.get("name"),
+            "mount_dir_permissions": data.get("mount_dir_permissions"),
+        }
         settings = (
             data.get("efs_settings", None)
             or data.get("ebs_settings", None)
@@ -760,22 +793,6 @@ class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
         return SlurmQueueNetworking(**data)
 
 
-class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
-    """Represent the schema of the Networking, child of aws batch Queue."""
-
-    subnet_ids = fields.List(
-        fields.Str(validate=get_field_validator("subnet_id")),
-        required=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.MANAGED_FSX},
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchQueueNetworking(**data)
-
-
 class BaseSshSchema(BaseSchema):
     """Represent the schema of common Ssh parameters used by head and login nodes."""
 
@@ -827,6 +844,25 @@ class EfaSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Efa(**data)
+
+
+class LaunchTemplateOverridesSchema(BaseSchema):
+    """Represent the schema of LaunchTemplateOverrides for a Compute Resource."""
+
+    launch_template_id = fields.Str(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+    version = fields.Int(
+        validate=validate.Range(min=1),
+        required=True,
+        metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LaunchTemplateOverrides(**data)
 
 
 # ---------------------- Monitoring ---------------------- #
@@ -1088,6 +1124,7 @@ class AmiSearchFiltersSchema(BaseSchema):
         TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
     )
     owner = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    name_prefix = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -1102,6 +1139,9 @@ class TimeoutsSchema(BaseSchema):
         validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     compute_node_bootstrap_timeout = fields.Int(
+        validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
+    compute_instance_info_timeout = fields.Int(
         validate=validate.Range(min=1), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
 
@@ -1145,6 +1185,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     timeouts = fields.Nested(TimeoutsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     compute_startup_time_metric_enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    efa_interface_type = fields.Str(metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1205,7 +1246,7 @@ class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
     os = fields.Str(
-        required=True, validate=validate.OneOf(SUPPORTED_OSES), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        required=True, validate=validate.OneOf(ACCEPTED_OSES), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     custom_ami = fields.Str(
         validate=validate.Regexp(PCLUSTER_AMI_ID_REGEX),
@@ -1369,7 +1410,7 @@ class HeadNodeSchema(BaseSchema):
         HeadNodeNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
     ssh = fields.Nested(HeadNodeSshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     shared_storage_type = fields.Str(
         required=False,
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
@@ -1404,20 +1445,28 @@ class LoginNodesImageSchema(BaseSchema):
         return LoginNodesImage(**data)
 
 
-class LoginNodesSshSchema(BaseSshSchema):
+class LoginNodesSshSchema(BaseSchema):
     """Represent the Ssh schema of LoginNodes."""
 
-    key_name = fields.Str(metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP})
     allowed_ips = fields.Str(
         validate=is_cidr_or_prefix_list, metadata={"update_policy": UpdatePolicy.LOGIN_NODES_POOL_STOP}
     )
 
+    def handle_error(self, error, data, **kwargs):
+        """Provide a helpful error message if the removed KeyName field is used."""
+        if isinstance(data, dict) and "KeyName" in data:
+            if hasattr(error, "messages") and isinstance(error.messages, dict) and "KeyName" in error.messages:
+                # Replace the generic "Unknown field" message for KeyName with a helpful message
+                error.messages["KeyName"] = [
+                    "Starting with ParallelCluster 3.15, the KeyName parameter is no longer supported for Login Nodes. "
+                    "Remove from the configuration and try again."
+                ]
+        raise error
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        # If KeyName is present in the user configuration, mark it as explicitly set
-        key_name_explicitly_set = "key_name" in data
-        return LoginNodesSsh(key_name_explicitly_set=key_name_explicitly_set, **data)
+        return LoginNodesSsh(**data)
 
 
 class LoginNodesNetworkingSchema(BaseNetworkingSchema):
@@ -1575,6 +1624,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         validate=validate.Range(min=MIN_SLURM_NODE_PRIORITY, max=MAX_SLURM_NODE_PRIORITY),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
+    launch_template_overrides = fields.Nested(
+        LaunchTemplateOverridesSchema, metadata={"update_policy": UpdatePolicy.QUEUE_UPDATE_STRATEGY}
+    )
 
     @validates_schema
     def no_coexist_instance_type_flexibility(self, data, **kwargs):
@@ -1620,33 +1672,6 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
         if data.get("instances"):
             return SlurmFlexibleComputeResource(**data)
         return SlurmComputeResource(**data)
-
-
-class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
-    """Represent the schema of the Batch ComputeResource."""
-
-    instance_types = fields.List(
-        fields.Str(), required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-    max_vcpus = fields.Int(
-        data_key="MaxvCpus",
-        validate=validate.Range(min=1),
-        metadata={"update_policy": UpdatePolicy.AWSBATCH_CE_MAX_RESIZE},
-    )
-    min_vcpus = fields.Int(
-        data_key="MinvCpus", validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
-    desired_vcpus = fields.Int(
-        data_key="DesiredvCpus", validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.IGNORED}
-    )
-    spot_bid_percentage = fields.Int(
-        validate=validate.Range(min=0, max=100, min_inclusive=False), metadata={"update_policy": UpdatePolicy.SUPPORTED}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchComputeResource(**data)
 
 
 class ComputeSettingsSchema(BaseSchema):
@@ -1718,25 +1743,6 @@ class SlurmQueueSchema(_CommonQueueSchema):
         """Validate tags."""
         validate_no_reserved_tag(tags)
         validate_no_duplicate_tag(tags)
-
-
-class AwsBatchQueueSchema(BaseQueueSchema):
-    """Represent the schema of a Batch Queue."""
-
-    compute_resources = fields.Nested(
-        AwsBatchComputeResourceSchema,
-        many=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-    networking = fields.Nested(
-        AwsBatchQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchQueue(**data)
 
 
 class DnsSchema(BaseSchema):
@@ -1814,21 +1820,12 @@ class SlurmSettingsSchema(BaseSchema):
         return SlurmSettings(**data)
 
 
-class AwsBatchSettingsSchema(BaseSchema):
-    """Represent the schema of the AwsBatch Scheduling Settings."""
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AwsBatchSettings(**data)
-
-
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch"]),
+        validate=validate.OneOf(["slurm"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     scaling_strategy = fields.Str(
@@ -1841,75 +1838,24 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
+        required=True,
         metadata={"update_policy": UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE, "update_key": "Name"},
     )
-    # Awsbatch schema:
-    aws_batch_queues = fields.Nested(
-        AwsBatchQueueSchema,
-        many=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-    aws_batch_settings = fields.Nested(
-        AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
-
-    @validates_schema
-    def no_coexist_schedulers(self, data, **kwargs):
-        """Validate that *_settings and *_queues for different schedulers do not co-exist."""
-        scheduler = data.get("scheduler")
-        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings"], **kwargs):
-            raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
-        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues"], one_required=True, **kwargs):
-            if scheduler == "awsbatch":
-                scheduler_prefix = "AwsBatch"
-            else:
-                scheduler_prefix = scheduler.capitalize()
-            raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
-
-    @validates_schema
-    def right_scheduler_schema(self, data, **kwargs):
-        """Validate that *_settings field is associated to the right scheduler."""
-        for scheduler, settings, queues in [
-            ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
-            ("slurm", "slurm_settings", "slurm_queues"),
-        ]:
-            # Verify the settings section is associated to the right scheduler type
-            configured_scheduler = data.get("scheduler")
-            if settings in data and scheduler != configured_scheduler:
-                raise ValidationError(
-                    f"Scheduling > *Settings section is not appropriate to the Scheduler: {configured_scheduler}."
-                )
-            if queues in data and scheduler != configured_scheduler:
-                raise ValidationError(
-                    f"Scheduling > *Queues section is not appropriate to the Scheduler: {configured_scheduler}."
-                )
 
     @post_load
     def make_resource(self, data, **kwargs):
-        """Generate the right type of scheduling according to the child type (Slurm vs AwsBatch vs Custom)."""
-        scheduler = data.get("scheduler")
-        if scheduler == "slurm":
-            return SlurmScheduling(
-                queues=data.get("slurm_queues"),
-                settings=data.get("slurm_settings", None),
-                scaling_strategy=data.get("scaling_strategy", None),
-            )
-        if scheduler == "awsbatch":
-            # scaling_strategy is ignored by AWS Batch plugin
-            return AwsBatchScheduling(
-                queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
-            )
-        return None
+        """Generate resource."""
+        return SlurmScheduling(
+            queues=data.get("slurm_queues"),
+            settings=data.get("slurm_settings", None),
+            scaling_strategy=data.get("scaling_strategy", None),
+        )
 
     @pre_dump
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema, see post_load action."""
         adapted_data = copy.deepcopy(data)
-        if adapted_data.scheduler == "awsbatch":
-            scheduler_prefix = "aws_batch"
-        else:
-            scheduler_prefix = adapted_data.scheduler
+        scheduler_prefix = adapted_data.scheduler
         setattr(adapted_data, f"{scheduler_prefix}_queues", copy.copy(getattr(adapted_data, "queues", None)))
         setattr(adapted_data, f"{scheduler_prefix}_settings", copy.copy(getattr(adapted_data, "settings", None)))
         return adapted_data
@@ -1962,8 +1908,10 @@ class ClusterSchema(BaseSchema):
     monitoring = fields.Nested(MonitoringSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     tags = fields.Nested(
-        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
-    )
+        TagSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED_UNLESS_ADC, "update_key": "Key"},
+    )  # TODO: Support tags update once ADC region supports it
     iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.IGNORED})
     directory_service = fields.Nested(
         DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_AND_LOGIN_NODES_STOP}
@@ -1987,35 +1935,9 @@ class ClusterSchema(BaseSchema):
         validate_no_reserved_tag(tags)
         validate_no_duplicate_tag(tags)
 
-    @validates_schema
-    def no_settings_for_batch(self, data, **kwargs):
-        """Ensure IntelSoftware and DirectoryService section is not included when AWS Batch is the scheduler."""
-        scheduling = data.get("scheduling")
-        head_node = data.get("head_node")
-        if scheduling and scheduling.scheduler == "awsbatch":
-            error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
-            additional_packages = data.get("additional_packages")
-            if (
-                additional_packages
-                and additional_packages.intel_software
-                and additional_packages.intel_software.intel_hpc_platform
-            ):
-                raise ValidationError(error_message.format("IntelSoftware"))
-            if head_node.custom_actions and head_node.custom_actions.on_node_updated:
-                raise ValidationError(error_message.format("OnNodeUpdated"))
-            if data.get("directory_service"):
-                raise ValidationError(error_message.format("DirectoryService"))
-
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):
         """Generate cluster according to the scheduler. Save original configuration."""
-        scheduler = data.get("scheduling").scheduler
-        if scheduler == "slurm":
-            cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
-        elif scheduler == "awsbatch":
-            cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
-        else:
-            raise ValidationError(f"Unsupported scheduler {scheduler}.")
-
+        cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         cluster.source_config = original_data
         return cluster

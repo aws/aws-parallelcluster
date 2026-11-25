@@ -55,8 +55,6 @@ MAX_RESOURCES_PER_TEMPLATE = 500
     [
         "slurm.required.yaml",
         "slurm.full.yaml",
-        "awsbatch.simple.yaml",
-        "awsbatch.full.yaml",
     ],
 )
 def test_cluster_builder_from_configuration_file(
@@ -250,8 +248,7 @@ def test_add_efs_shared_storage(mocker, test_datadir, config_file_name, expected
     [
         "slurm.required.yaml",
         "slurm.full.yaml",
-        "awsbatch.simple.yaml",
-        "awsbatch.full.yaml",
+        "slurm.logging_disabled.yaml",
     ],
 )
 def test_add_alarms(mocker, config_file_name):
@@ -271,20 +268,112 @@ def test_add_alarms(mocker, config_file_name):
     simple_type = "AWS::CloudWatch::Alarm"
     composite_type = "AWS::CloudWatch::CompositeAlarm"
 
-    head_node_alarms = [
-        {"name": "clustername-HeadNode", "type": composite_type},
-        {"name": "clustername-HeadNode-Health", "type": simple_type},
-        {"name": "clustername-HeadNode-Cpu", "type": simple_type},
-        {"name": "clustername-HeadNode-Mem", "type": simple_type},
-        {"name": "clustername-HeadNode-Disk", "type": simple_type},
-    ]
+    # Expected alarm configurations with details
+    expected_alarms = {
+        "Health": {
+            "name": "clustername-HeadNode-Health",
+            "metric_name": "StatusCheckFailed",
+            "namespace": "AWS/EC2",
+            "threshold": 0,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+        "Cpu": {
+            "name": "clustername-HeadNode-Cpu",
+            "metric_name": "CPUUtilization",
+            "namespace": "AWS/EC2",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+        "Mem": {
+            "name": "clustername-HeadNode-Mem",
+            "metric_name": "mem_used_percent",
+            "namespace": "CWAgent",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+        "Disk": {
+            "name": "clustername-HeadNode-Disk",
+            "metric_name": "disk_used_percent",
+            "namespace": "CWAgent",
+            "threshold": 90,
+            "comparison_operator": "GreaterThanThreshold",
+            "evaluation_periods": 1,
+            "datapoints_to_alarm": 1,
+            "treat_missing_data": "missing",
+        },
+    }
+
+    if cluster.is_cw_logging_enabled:
+        expected_alarms["Clustermgtd-Heartbeat"] = {
+            "name": "clustername-HeadNode-ClustermgtdHeartbeat",
+            "metric_name": "ClustermgtdHeartbeat",
+            "namespace": "ParallelCluster",
+            "threshold": 1,
+            "comparison_operator": "LessThanThreshold",
+            "evaluation_periods": 10,
+            "datapoints_to_alarm": 10,
+            "treat_missing_data": "breaching",
+        }
 
     if cluster.are_alarms_enabled:
-        for alarm in head_node_alarms:
+        # Find the HeadNode wait condition resource name
+        wait_condition_resources = get_resources(
+            generated_template, type="AWS::CloudFormation::WaitCondition", name_pattern="^HeadNodeWaitCondition"
+        )
+        assert_that(wait_condition_resources).is_length(1)
+        wait_condition_name = list(wait_condition_resources.keys())[0]
+
+        # Collect simple alarm resource names for composite alarm rule verification
+        simple_alarm_resource_names = []
+
+        # Verify each simple alarm exists with correct details and depends on wait condition
+        for _alarm_key, expected in expected_alarms.items():
             matched_resources = get_resources(
-                generated_template, type=alarm["type"], properties={"AlarmName": alarm["name"]}
+                generated_template, type=simple_type, properties={"AlarmName": expected["name"]}
             )
             assert_that(matched_resources).is_length(1)
+
+            alarm_resource_name = list(matched_resources.keys())[0]
+            simple_alarm_resource_names.append(alarm_resource_name)
+
+            alarm_resource = list(matched_resources.values())[0]
+            alarm_properties = alarm_resource["Properties"]
+            assert_that(alarm_properties.get("AlarmName")).is_equal_to(expected["name"])
+            assert_that(alarm_properties.get("MetricName")).is_equal_to(expected["metric_name"])
+            assert_that(alarm_properties.get("Namespace")).is_equal_to(expected["namespace"])
+            assert_that(alarm_properties.get("Threshold")).is_equal_to(expected["threshold"])
+            assert_that(alarm_properties.get("ComparisonOperator")).is_equal_to(expected["comparison_operator"])
+            assert_that(alarm_properties.get("EvaluationPeriods")).is_equal_to(expected["evaluation_periods"])
+            assert_that(alarm_properties.get("DatapointsToAlarm")).is_equal_to(expected["datapoints_to_alarm"])
+            assert_that(alarm_properties.get("TreatMissingData")).is_equal_to(expected["treat_missing_data"])
+            assert_that(alarm_resource.get("DependsOn")).contains(wait_condition_name)
+
+        # Verify composite alarm exists with correct properties
+        composite_alarms = get_resources(generated_template, type=composite_type)
+        assert_that(composite_alarms).is_length(1)
+        composite_alarm_resource = list(composite_alarms.values())[0]
+        composite_alarm_properties = composite_alarm_resource["Properties"]
+        assert_that(composite_alarm_properties["AlarmName"]).is_equal_to("clustername-HeadNode")
+        assert_that(composite_alarm_resource.get("DependsOn")).contains(wait_condition_name)
+
+        # Verify composite alarm rule triggers on ANY of the simple alarms (OR logic)
+        alarm_rule = composite_alarm_properties.get("AlarmRule")
+        assert_that(alarm_rule).is_not_none()
+        alarm_rule_str = str(alarm_rule)
+        for alarm_resource_name in simple_alarm_resource_names:
+            assert_that(alarm_rule_str).contains(alarm_resource_name)
+        expected_or_count = len(simple_alarm_resource_names) - 1
+        actual_or_count = alarm_rule_str.count(" OR ")
+        assert_that(actual_or_count).is_equal_to(expected_or_count)
     else:
         matched_simple_alarms = get_resources(generated_template, type=simple_type)
         matched_composite_alarms = get_resources(generated_template, type=composite_type)
@@ -501,8 +590,14 @@ class LoginNodeLTAssertion:
         if self.custom_tags:
             for tag in self.custom_tags:
                 assert tag in properties["LaunchTemplateData"]["TagSpecifications"][0]["Tags"]
+        # The new login node bootstrap delivers dna.json/extra.json via cloud-init write_files
+        # rather than cfn-init, so the LT should not carry any AWS::CloudFormation::Init metadata
+        # and the user_data substitutions must include DnaJson/ExtraJson.
+        assert "Metadata" not in resources or "AWS::CloudFormation::Init" not in resources.get("Metadata", {})
+        lt_user_data_variables = properties["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]
+        assert "DnaJson" in lt_user_data_variables
+        assert "ExtraJson" in lt_user_data_variables
         if self.user_data_variables:
-            lt_user_data_variables = properties["LaunchTemplateData"]["UserData"]["Fn::Base64"]["Fn::Sub"][1]
             for k, v in self.user_data_variables.items():
                 assert_that(lt_user_data_variables[k]).is_equal_to(v)
 
@@ -521,10 +616,11 @@ class LoginNodeLTAssertion:
                     # Managed instance profile
                     iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the managed role name within the managed instance profile
-                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -542,10 +638,11 @@ class LoginNodeLTAssertion:
                     # Custom instance profile
                     iam_instance_profile_name="INSTANCE_PROFILE_NAME",
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the custom role within the custom instance profile
-                        "CfnInitRole": "Mocked-RoleName",
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -563,10 +660,11 @@ class LoginNodeLTAssertion:
                     # Managed instance profile containing the custom instance role
                     iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the custom role
-                        "CfnInitRole": "ROLE_NAME",
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -584,10 +682,11 @@ class LoginNodeLTAssertion:
                     # Managed instance profile
                     iam_instance_profile_name={"Ref": "InstanceProfileA50bdea9651dc48c"},
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the managed role name within the managed instance profile
-                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -609,10 +708,11 @@ class LoginNodeLTAssertion:
                         {"Key": "rs:project", "Value": "solutions"},
                     ],
                     user_data_variables={
-                        "CloudFormationUrl": "https://cloudformation.us-east-1.amazonaws.com",
-                        "LaunchTemplateResourceId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
-                        # Name of the managed role name within the managed instance profile
-                        "CfnInitRole": {"Ref": "RoleA50bdea9651dc48c"},
+                        "ProxyServer": "NONE",
+                        "AutoScalingGroupName": "clustername-testloginnodespool1-AutoScalingGroup",
+                        "LaunchingLifecycleHookName": (
+                            "clustername-testloginnodespool1-LoginNodesLaunchingLifecycleHook"
+                        ),
                     },
                 ),
                 NetworkInterfaceLTAssertion(no_of_network_interfaces=1, subnet_id="subnet-12345678"),
@@ -932,16 +1032,6 @@ def test_login_nodes_traffic_management_resources_values_properties(
             {"scheduler": "slurm", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1000},
         ),
         (
-            "awsbatch-imds-secured-false.yaml",
-            {"scheduler": "awsbatch", "head_node_imds_secured": "false", "compute_node_bootstrap_timeout": 1201},
-        ),
-        (
-            "awsbatch-headnode-hooks-partial.yaml",
-            {
-                "scheduler": "awsbatch",
-            },
-        ),
-        (
             "slurm-headnode-hooks-full.yaml",
             {
                 "scheduler": "slurm",
@@ -973,7 +1063,11 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     )
 
     generated_head_node_dna_json = json.loads(
-        _get_cfn_init_file_content(template=generated_template, resource="HeadNodeLaunchTemplate", file="/tmp/dna.json")
+        _get_cfn_init_file_content(
+            template=generated_template,
+            resource="HeadNodeLaunchTemplate",
+            file="/opt/parallelcluster/tmp/dna.json",
+        )
     )
     slurm_specific_settings = {
         "ddb_table": "{'Ref': 'DynamoDBTable'}",
@@ -983,12 +1077,43 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
         "use_private_hostname": "false",
     }
 
-    if expected_head_node_dna_json_fields["scheduler"] == "slurm":
-        default_head_node_dna_json["cluster"].update(slurm_specific_settings)
+    default_head_node_dna_json["cluster"].update(slurm_specific_settings)
 
     default_head_node_dna_json["cluster"].update(expected_head_node_dna_json_fields)
 
     assert_that(generated_head_node_dna_json).is_equal_to(default_head_node_dna_json)
+
+
+# Datetime mocking is required because some template values depend on the current datetime value
+@freeze_time("2021-01-01T01:01:01")
+def test_head_node_dna_json_mount_dir_permissions(mocker, test_datadir):
+    mock_aws_api(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / "config.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    generated_head_node_dna_json = json.loads(
+        _get_cfn_init_file_content(
+            template=generated_template,
+            resource="HeadNodeLaunchTemplate",
+            file="/opt/parallelcluster/tmp/dna.json",
+        )
+    )["cluster"]
+
+    # One value per storage, in the same order as the mount directories
+    assert_that(generated_head_node_dna_json["ebs_shared_dirs"]).is_equal_to("/ebs1,/ebs2")
+    assert_that(generated_head_node_dna_json["ebs_mount_dir_permissions"]).is_equal_to("DEFAULT,0755")
+    assert_that(generated_head_node_dna_json["efs_shared_dirs"]).is_equal_to("/efs1,/efs2")
+    assert_that(generated_head_node_dna_json["efs_mount_dir_permissions"]).is_equal_to("NONE,DEFAULT")
+    assert_that(generated_head_node_dna_json["fsx_shared_dirs"]).is_equal_to("/fsx1")
+    assert_that(generated_head_node_dna_json["fsx_mount_dir_permissions"]).is_equal_to("NONE")
+    assert_that(generated_head_node_dna_json["raid_shared_dir"]).is_equal_to("/raid")
+    assert_that(generated_head_node_dna_json["raid_mount_dir_permissions"]).is_equal_to("0750")
 
 
 @freeze_time("2021-01-01T01:01:01")
@@ -997,8 +1122,6 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
     [
         ("slurm.required.yaml", "2100"),
         ("slurm.full.yaml", "1201"),
-        ("awsbatch.simple.yaml", "2100"),
-        ("awsbatch.full.yaml", "1000"),
     ],
 )
 def test_head_node_bootstrap_timeout(mocker, config_file_name, expected_head_node_bootstrap_timeout):
@@ -1030,79 +1153,53 @@ def _get_cfn_init_file_content(template, resource, file):
     return content_separator.join(str(elem) for elem in content_elements)
 
 
-@freeze_time("2021-01-01T01:01:01")
 @pytest.mark.parametrize(
-    "config_file_name, expected_instance_tags, expected_volume_tags,",
+    "config_file_name, expected_login_pools",
     [
         (
-            "slurm.full.yaml",
-            {},
+            "test-login-nodes-stack.yaml",
             {
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
+                "testloginnodespool1": {
+                    "LaunchTemplate": {
+                        "Name": "clustername-testloginnodespool1",
+                        "Version": "$Latest",
+                        "LogicalId": "LoginNodeLaunchTemplateA50bdea9651dc48c",
+                    }
+                }
             },
         ),
-        (
-            "awsbatch.full.yaml",
-            {},
-            {
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
+        ("no-login-nodes-stack.yaml", None),
     ],
 )
-def test_head_node_tags_from_launch_template(
-    mocker,
-    config_file_name,
-    expected_instance_tags,
-    expected_volume_tags,
+def test_launch_templates_config_login_pools(
+    mocker, pcluster_config_reader, test_datadir, config_file_name, expected_login_pools
 ):
-    mock_aws_api(mocker)
-    mock_bucket(mocker)
-    mock_bucket_object_utils(mocker)
-    mocker.patch(
-        "pcluster.aws.ec2.Ec2Client.get_instance_type_and_reservation_type_from_capacity_reservation",
-        return_value=("t3.micro", "capacity-reservation"),
-    )
-    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
-    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-    tags_specifications = (
-        generated_template.get("Resources")
-        .get("HeadNodeLaunchTemplate")
-        .get("Properties")
-        .get("LaunchTemplateData")
-        .get("TagSpecifications", [])
-    )
+    """The head node launch-templates-config.json carries LoginPools with Name/Version/LogicalId."""
+    rendered_config_file = pcluster_config_reader(config_file_name)
+    generated_template, _ = get_generated_template_and_cdk_assets(mocker, rendered_config_file, test_datadir)
 
-    instance_tags = next((specs for specs in tags_specifications if specs["ResourceType"] == "instance"), {}).get(
-        "Tags", []
-    )
-    actual_instance_tags = {tag["Key"]: tag["Value"] for tag in instance_tags}
-    assert_that(actual_instance_tags).is_equal_to(expected_instance_tags)
-
-    volume_tags = next((specs for specs in tags_specifications if specs["ResourceType"] == "volume"), {}).get(
-        "Tags", []
-    )
-    actual_volume_tags = {tag["Key"]: tag["Value"] for tag in volume_tags}
-    assert_that(actual_volume_tags).is_equal_to(expected_volume_tags)
+    cfn_init = generated_template["Resources"]["HeadNodeLaunchTemplate"]["Metadata"]["AWS::CloudFormation::Init"]
+    content = cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch-templates-config.json"][
+        "content"
+    ]
+    # The content embeds CFN tokens (Ref/GetAtt) for the compute fleet, so CDK serializes it
+    # as an Fn::Join. Stringify the whole content and assert on the LoginPools literals, which
+    # are plain strings preserved verbatim.
+    content_blob = json.dumps(content, default=str)
+    if expected_login_pools is None:
+        assert_that(content_blob).does_not_contain("LoginPools")
+    else:
+        for _, pool in expected_login_pools.items():
+            lt = pool["LaunchTemplate"]
+            assert_that(content_blob).contains("LoginPools")
+            assert_that(content_blob).contains(lt["Name"])
+            assert_that(content_blob).contains(lt["Version"])
+            assert_that(content_blob).contains(lt["LogicalId"])
 
 
 @freeze_time("2021-01-01T01:01:01")
 @pytest.mark.parametrize(
-    "config_file_name, expected_tags",
+    "config_file_name, expected_head_node_tags",
     [
         (
             "slurm.full.yaml",
@@ -1110,7 +1207,7 @@ def test_head_node_tags_from_launch_template(
                 "Name": "HeadNode",
                 "parallelcluster:cluster-name": "clustername",
                 "parallelcluster:node-type": "HeadNode",
-                "parallelcluster:attributes": "alinux2, slurm, [0-9\\.A-Za-z]+, x86_64",
+                "parallelcluster:attributes": "alinux2023, slurm, [0-9\\.A-Za-z]+, x86_64",
                 "parallelcluster:filesystem": "efs=2, multiebs=1, raid=0, fsx=3",
                 "parallelcluster:networking": "EFA=NONE",
                 # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
@@ -1120,25 +1217,9 @@ def test_head_node_tags_from_launch_template(
                 "two": "two22",
             },
         ),
-        (
-            "awsbatch.full.yaml",
-            {
-                "Name": "HeadNode",
-                "parallelcluster:cluster-name": "clustername",
-                "parallelcluster:node-type": "HeadNode",
-                "parallelcluster:attributes": "alinux2, awsbatch, [0-9\\.A-Za-z]+, x86_64",
-                "parallelcluster:filesystem": "efs=1, multiebs=0, raid=2, fsx=0",
-                "parallelcluster:networking": "EFA=NONE",
-                # TODO The tag 'parallelcluster:version' is actually included within head node volume tags,
-                #  but some refactoring is required to check it within this test.
-                # "parallelcluster:version": "[0-9\\.A-Za-z]+",
-                "String": "String",
-                "two": "two22",
-            },
-        ),
     ],
 )
-def test_head_node_tags_from_instance_definition(mocker, config_file_name, expected_tags):
+def test_head_node_tags(mocker, config_file_name, expected_head_node_tags):
     mock_aws_api(mocker)
     mock_bucket(mocker)
     mock_bucket_object_utils(mocker)
@@ -1150,12 +1231,28 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     generated_template, _ = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
-    tags = generated_template.get("Resources").get("HeadNode").get("Properties").get("Tags", [])
 
-    actual_tags = {tag["Key"]: tag["Value"] for tag in tags}
-    assert_that(actual_tags.keys()).is_equal_to(expected_tags.keys())
-    for key in actual_tags.keys():
-        assert_that(actual_tags[key]).matches(expected_tags[key])
+    # Verify no volume TagSpecifications in the launch template.
+    # Volume tags are propagated via PropagateTagsToVolumeOnCreation on the HeadNode instance.
+    tags_specifications = (
+        generated_template.get("Resources")
+        .get("HeadNodeLaunchTemplate")
+        .get("Properties")
+        .get("LaunchTemplateData")
+        .get("TagSpecifications", [])
+    )
+    volume_tag_specs = [specs for specs in tags_specifications if specs["ResourceType"] == "volume"]
+    assert_that(volume_tag_specs).is_empty()
+
+    # Verify PropagateTagsToVolumeOnCreation is enabled and instance tags are correct.
+    head_node_props = generated_template.get("Resources").get("HeadNode").get("Properties")
+    assert_that(head_node_props.get("PropagateTagsToVolumeOnCreation")).is_true()
+
+    tags = head_node_props.get("Tags", [])
+    head_node_actual_tags = {tag["Key"]: tag["Value"] for tag in tags}
+    assert_that(head_node_actual_tags.keys()).is_equal_to(expected_head_node_tags.keys())
+    for key in head_node_actual_tags.keys():
+        assert_that(head_node_actual_tags[key]).matches(expected_head_node_tags[key])
 
 
 @freeze_time("2021-01-01T01:01:01")
@@ -1163,11 +1260,8 @@ def test_head_node_tags_from_instance_definition(mocker, config_file_name, expec
     "config_file_name, imds_support, http_tokens",
     [
         ("slurm.required.yaml", "v1.0", "optional"),
-        ("awsbatch.simple.yaml", "v1.0", "optional"),
         ("slurm.required.yaml", None, "required"),
-        ("awsbatch.simple.yaml", None, "required"),
         ("slurm.required.yaml", "v2.0", "required"),
-        ("awsbatch.simple.yaml", "v2.0", "required"),
     ],
 )
 def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_tokens):
@@ -1197,9 +1291,7 @@ def test_cluster_imds_settings(mocker, config_file_name, imds_support, http_toke
     "config_file_name, vpc_config",
     [
         ("slurm.required.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
-        ("awsbatch.simple.yaml", {"SubnetIds": ["subnet-8e482ce8"], "SecurityGroupIds": ["sg-028d73ae220157d96"]}),
         ("slurm.required.yaml", None),
-        ("awsbatch.simple.yaml", None),
     ],
 )
 def test_cluster_lambda_functions_vpc_config(mocker, config_file_name, vpc_config):
@@ -1374,3 +1466,44 @@ def test_resource_combination_name(
         hash_length=hash_length,
     )
     assert_that(combination_name).is_equal_to(expected_combination_name)
+
+
+def test_storage_security_group_deduplication(mocker, test_datadir):
+    """
+    Test that storage security group rules are deduplicated when head, compute, and login nodes share the same SG.
+
+    When head node, compute nodes, and login nodes all use the same security group (sg-12345678),
+    only one set of ingress/egress rules should be created for that security group, not three separate sets.
+    The deduplicated rule uses the first occurrence's settings (Head node), which uses all protocols (-1).
+    """
+    mock_aws_api(mocker)
+    mock_bucket(mocker)
+    mock_bucket_object_utils(mocker)
+
+    input_yaml = load_yaml_dict(test_datadir / "config-shared-sg.yaml")
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
+
+    generated_template, _ = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+
+    # Test both EFS and FSx storage types
+    for storage_type in ["EFS", "FSX"]:
+        storage_sg_ingress_rules = [
+            (name, resource)
+            for name, resource in generated_template["Resources"].items()
+            if resource["Type"] == "AWS::EC2::SecurityGroupIngress"
+            and name.startswith(storage_type)
+            and "SecurityGroup" in name
+        ]
+
+        # Verify deduplication: only 2 rules instead of 4 (Head, Compute, Login share same SG + Storage SG)
+        assert_that(len(storage_sg_ingress_rules)).is_equal_to(2)
+
+        # Verify each unique source security group has exactly one ingress rule
+        source_sgs = {
+            str(rule["Properties"].get("SourceSecurityGroupId"))
+            for _, rule in storage_sg_ingress_rules
+            if rule["Properties"].get("SourceSecurityGroupId")
+        }
+        assert_that(len(storage_sg_ingress_rules)).is_equal_to(len(source_sgs))

@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import datetime
+import logging
 import math
 import time
 
@@ -17,8 +18,13 @@ import boto3
 import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes
+
+from tests.common.assertions import assert_no_errors_in_service_log
+
+CUSTOM_CW_AGENT_CONFIG_SCRIPT = "custom_cw_agent_config.sh"
 
 
 # TODO This test should be converted into a unit test validating the content of the CFN template +
@@ -33,14 +39,23 @@ def test_monitoring(
     cw_log_enabled,
     alarms_enabled,
     region,
+    scheduler,
     pcluster_config_reader,
+    s3_bucket_factory,
     clusters_factory,
     test_datadir,
 ):
+    # Upload custom CloudWatch agent config script to S3
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / CUSTOM_CW_AGENT_CONFIG_SCRIPT), CUSTOM_CW_AGENT_CONFIG_SCRIPT)
+
     cluster_config = pcluster_config_reader(
         dashboard_enabled=str(dashboard_enabled).lower(),
         cw_log_enabled=str(cw_log_enabled).lower(),
         alarms_enabled=str(alarms_enabled).lower(),
+        bucket_name=bucket_name,
+        custom_cw_agent_script_url=f"s3://{bucket_name}/{CUSTOM_CW_AGENT_CONFIG_SCRIPT}",
     )
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
@@ -48,13 +63,14 @@ def test_monitoring(
     headnode_instance_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
     compute_instance_ids = cluster.get_cluster_instance_ids(node_type="Compute")
     # the MinCount is set to 1, so we should have at least one compute node
+    logging.info(f"Retrieved compute nodes: {compute_instance_ids}")
     assert_that(compute_instance_ids).is_not_empty()
 
     # test CWAgent metrics
     # we only perform this test for one of the 3 test conditions
     # because this test could be time-consuming (we allow some retries to ensure we can get metrics data)
     if dashboard_enabled and cw_log_enabled:
-        _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_ids[0])
+        _test_metrics(cw_client, headnode_instance_id, compute_instance_ids[0], cluster.cfn_name, scheduler)
 
     # test dashboard and alarms
     _test_dashboard(cw_client, cluster.cfn_name, region, dashboard_enabled, cw_log_enabled)
@@ -63,30 +79,81 @@ def test_monitoring(
     # test detailed monitoring
     _test_detailed_monitoring(region, compute_instance_ids)
 
+    # test custom CWAgent metric from OnNodeConfigured custom action
+    _test_custom_metrics(cw_client, headnode_instance_id)
+
+    # verify no errors in CloudWatch agent log
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    assert_no_errors_in_service_log(remote_command_executor, "amazon-cloudwatch-agent")
+
 
 @retry(stop_max_attempt_number=8, wait_fixed=minutes(2))
-def _test_cw_agent_metrics(cw_client, headnode_instance_id, compute_instance_id):
+def _test_metrics(cw_client, headnode_instance_id, compute_instance_id, cluster_name, scheduler):
     # query for the past 20 minutes
     start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
 
-    # test memory and disk metrics are collected for the head node
-    metrics_response_headnode = _get_metric_data(headnode_instance_id, cw_client, start_timestamp, end_timestamp)
+    # test memory, disk, and clustermgtd heartbeat metrics are collected for the head node
+    logging.info(f"Retrieving head node metrics from {start_timestamp} to {end_timestamp}")
+    metrics_response_headnode = _get_metric_data(
+        cw_client, start_timestamp, end_timestamp, instance_id=headnode_instance_id, cluster_name=cluster_name
+    )
+    logging.info("Head node metrics retrieved")
     mem_values = _get_metric_data_values(metrics_response_headnode, "mem")
     disk_values = _get_metric_data_values(metrics_response_headnode, "disk")
+    clustermgtd_heartbeat_values = _get_metric_data_values(metrics_response_headnode, "clustermgtd_heartbeat")
     assert_that(mem_values).is_not_empty()
     assert_that(disk_values).is_not_empty()
 
+    assert_that(clustermgtd_heartbeat_values).is_not_empty()
+
     # wait for additional 1 minute to reduce the chance of false negative result for compute nodes
-    time.sleep(60)
+    sleep_seconds = 60
+    logging.info(f"Waiting {sleep_seconds} seconds for compute node metrics")
+    time.sleep(sleep_seconds)
+
     # test memory and disk metrics are not collected for compute nodes
-    metrics_response_compute = _get_metric_data(compute_instance_id, cw_client, start_timestamp, end_timestamp)
+    metrics_response_compute = _get_metric_data(cw_client, start_timestamp, end_timestamp, compute_instance_id)
     mem_values = _get_metric_data_values(metrics_response_compute, "mem")
     disk_values = _get_metric_data_values(metrics_response_compute, "disk")
     assert_that(mem_values).is_empty()
     assert_that(disk_values).is_empty()
 
 
+@retry(stop_max_attempt_number=10, wait_fixed=minutes(1))
+def _test_custom_metrics(cw_client, headnode_instance_id):
+    """Verify that the custom cpu_usage_idle metric from the OnNodeStart CWAgent config is available."""
+    start_timestamp, end_timestamp = _get_start_end_timestamp(minutes=20)
+
+    logging.info(f"Retrieving custom cpu_usage_idle metric for head node {headnode_instance_id}")
+    response = cw_client.get_metric_data(
+        MetricDataQueries=[
+            {
+                "Id": "cpu_idle",
+                "MetricStat": {
+                    "Metric": {
+                        "Namespace": "CWAgent",
+                        "MetricName": "cpu_usage_idle",
+                        "Dimensions": [
+                            {"Name": "InstanceId", "Value": headnode_instance_id},
+                            {"Name": "cpu", "Value": "cpu-total"},
+                        ],
+                    },
+                    "Period": 60,
+                    "Stat": "Average",
+                },
+            },
+        ],
+        StartTime=start_timestamp,
+        EndTime=end_timestamp,
+    )
+    cpu_idle_values = _get_metric_data_values(response, "cpu_idle")
+    logging.info(f"cpu_usage_idle values: {cpu_idle_values}")
+    assert_that(cpu_idle_values).is_not_empty()
+
+
 def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_enabled):
+    # TODO: This assertion can be removed because the content of cluster dashboard is covered by unit tests.
+    #       At least let's not expand this assertion with more conditions.
     dashboard_name = "{0}-{1}".format(cluster_name, region)
     if dashboard_enabled:
         dashboard_response = cw_client.get_dashboard(DashboardName=dashboard_name)
@@ -108,6 +175,8 @@ def _test_dashboard(cw_client, cluster_name, region, dashboard_enabled, cw_log_e
 
 
 def _test_alarms(cw_client, cluster_name, headnode_instance_id, alarms_enabled):
+    # TODO: This assertion can be removed because the settings of cluster alarms are covered by unit tests.
+    #       At least let's not expand this assertion with more conditions.
     alarm_response = cw_client.describe_alarms(AlarmNamePrefix=cluster_name)
     if alarms_enabled:
         health_alarm_name = f"{cluster_name}-HeadNode-Health"
@@ -144,49 +213,71 @@ def _get_start_end_timestamp(minutes):
     return start_timestamp, end_timestamp_ceil
 
 
-def _get_metric_data(instance_id, cw_client, start_timestamp, end_timestamp):
-    metrics_response = cw_client.get_metric_data(
-        MetricDataQueries=[
+def _get_metric_data(cw_client, start_timestamp, end_timestamp, instance_id, cluster_name=None):
+    """
+    Query CloudWatch metrics.
+
+    Args:
+        cw_client: CloudWatch client
+        start_timestamp: Start time for the query
+        end_timestamp: End time for the query
+        instance_id: EC2 instance ID for CWAgent metrics
+        cluster_name: Cluster name for ParallelCluster metrics (optional)
+    """
+    queries = [
+        {
+            "Id": "mem",
+            "MetricStat": {
+                "Metric": {
+                    "Namespace": "CWAgent",
+                    "MetricName": "mem_used_percent",
+                    "Dimensions": [{"Name": "InstanceId", "Value": instance_id}],
+                },
+                "Period": 60,
+                "Stat": "Maximum",
+            },
+        },
+        {
+            "Id": "disk",
+            "MetricStat": {
+                "Metric": {
+                    "Namespace": "CWAgent",
+                    "MetricName": "disk_used_percent",
+                    "Dimensions": [
+                        {"Name": "InstanceId", "Value": instance_id},
+                        {"Name": "path", "Value": "/"},
+                    ],
+                },
+                "Period": 60,
+                "Stat": "Maximum",
+            },
+        },
+    ]
+
+    if cluster_name:
+        queries.append(
             {
-                "Id": "mem",
+                "Id": "clustermgtd_heartbeat",
                 "MetricStat": {
                     "Metric": {
-                        "Namespace": "CWAgent",
-                        "MetricName": "mem_used_percent",
+                        "Namespace": "ParallelCluster",
+                        "MetricName": "ClustermgtdHeartbeat",
                         "Dimensions": [
-                            {
-                                "Name": "InstanceId",
-                                "Value": instance_id,
-                            }
+                            {"Name": "ClusterName", "Value": cluster_name},
+                            {"Name": "InstanceId", "Value": instance_id},
                         ],
                     },
                     "Period": 60,
-                    "Stat": "Maximum",
+                    "Stat": "Sum",
                 },
-            },
-            {
-                "Id": "disk",
-                "MetricStat": {
-                    "Metric": {
-                        "Namespace": "CWAgent",
-                        "MetricName": "disk_used_percent",
-                        "Dimensions": [
-                            {
-                                "Name": "InstanceId",
-                                "Value": instance_id,
-                            },
-                            {"Name": "path", "Value": "/"},
-                        ],
-                    },
-                    "Period": 60,
-                    "Stat": "Maximum",
-                },
-            },
-        ],
+            }
+        )
+
+    return cw_client.get_metric_data(
+        MetricDataQueries=queries,
         StartTime=start_timestamp,
         EndTime=end_timestamp,
     )
-    return metrics_response
 
 
 def _get_metric_data_values(response, query_id):

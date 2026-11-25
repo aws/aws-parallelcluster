@@ -568,6 +568,113 @@ def test_instances_efa_validator(
             True,
             "",
         ),
+        # Mismatched MaximumEfaInterfaces across instance types
+        (
+            "TestQueue12",
+            "TestComputeResource",
+            {
+                "p5.48xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "p5.48xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 32,
+                            "EfaInfo": {"MaximumEfaInterfaces": 32},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 2}
+                                for i in range(32)
+                            ],
+                        },
+                    }
+                ),
+                "p4d.24xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "p4d.24xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 4,
+                            "EfaInfo": {"MaximumEfaInterfaces": 4},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 15}
+                                for i in range(4)
+                            ],
+                        },
+                    }
+                ),
+            },
+            False,
+            "Compute Resource TestComputeResource has instance types with varying numbers of maximum EFA "
+            "interfaces (Min: 4, Max: 32). EFA network configuration will be based on "
+            "the instance type with the fewest EFA interfaces (4).",
+        ),
+        # Same MaximumEfaInterfaces — no warning
+        (
+            "TestQueue13",
+            "TestComputeResource",
+            {
+                "c5n.18xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "c5n.18xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 1,
+                            "EfaInfo": {"MaximumEfaInterfaces": 1},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 15},
+                            ],
+                        },
+                    }
+                ),
+                "c6i.32xlarge": InstanceTypeInfo(
+                    {
+                        "InstanceType": "c6i.32xlarge",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 1,
+                            "EfaInfo": {"MaximumEfaInterfaces": 1},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": 0, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 15},
+                            ],
+                        },
+                    }
+                ),
+            },
+            False,
+            "",
+        ),
+        # Mixed NCI-0 EFA support: InstanceA has MaxEfa==MaxCards, InstanceB has MaxEfa<MaxCards
+        (
+            "TestQueue14",
+            "TestComputeResource",
+            {
+                "instanceA": InstanceTypeInfo(
+                    {
+                        "InstanceType": "instanceA",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 5,
+                            "EfaInfo": {"MaximumEfaInterfaces": 5},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 2}
+                                for i in range(5)
+                            ],
+                        },
+                    }
+                ),
+                "instanceB": InstanceTypeInfo(
+                    {
+                        "InstanceType": "instanceB",
+                        "NetworkInfo": {
+                            "MaximumNetworkCards": 6,
+                            "EfaInfo": {"MaximumEfaInterfaces": 5},
+                            "NetworkCards": [
+                                {"NetworkCardIndex": i, "NetworkPerformance": "High", "MaximumNetworkInterfaces": 2}
+                                for i in range(6)
+                            ],
+                        },
+                    }
+                ),
+            },
+            False,
+            "Compute Resource TestComputeResource mixes instance types where NCI-0 supports EFA "
+            "(instanceA) with instance types where it does not (instanceB). "
+            "This may result in a suboptimal EFA network configuration for some instance types.",
+        ),
     ],
 )
 def test_instances_networking_validator(
@@ -759,5 +866,92 @@ def test_instances_memory_scheduling_validator(
 ):
     actual_failures = InstancesMemorySchedulingWarningValidator().execute(
         compute_resource_name, instance_types_info, memory_scheduling_enabled
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_resource_name, launch_template_id, launch_template_version, "
+    "mock_lt_data, mock_exception, expected_message",
+    [
+        # Launch template not found
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            None,
+            Exception("Launch template not found"),
+            "Launch template 'lt-12345678901234567' version '1' specified in Compute Resource "
+            "'TestComputeResource' could not be found or accessed",
+            id="Launch template not found",
+        ),
+        # Launch template with only allowed properties (NetworkInterfaces)
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            {"NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "subnet-123"}]},
+            None,
+            "",
+            id="Only NetworkInterfaces - allowed",
+        ),
+        # Launch template with disallowed property
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            {"NetworkInterfaces": [{"DeviceIndex": 0}], "MetadataOptions": {"HttpTokens": "required"}},
+            None,
+            "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
+            "properties that are not allowed: MetadataOptions. "
+            "Allowed properties are: NetworkInterfaces.",
+            id="MetadataOptions not allowed",
+        ),
+        # Launch template with multiple disallowed properties
+        pytest.param(
+            "TestComputeResource",
+            "lt-12345678901234567",
+            1,
+            {"UserData": "base64data", "ImageId": "ami-12345"},
+            None,
+            "Launch template 'lt-12345678901234567' in Compute Resource 'TestComputeResource' contains "
+            "properties that are not allowed: ImageId, UserData. "
+            "Allowed properties are: NetworkInterfaces.",
+            id="Multiple disallowed properties",
+        ),
+        # No launch template specified (should pass without validation)
+        pytest.param(
+            "TestComputeResource",
+            None,
+            None,
+            None,
+            None,
+            "",
+            id="No launch template specified",
+        ),
+    ],
+)
+def test_launch_template_validator(
+    mocker,
+    compute_resource_name,
+    launch_template_id,
+    launch_template_version,
+    mock_lt_data,
+    mock_exception,
+    expected_message,
+):
+    from pcluster.validators.instances_validators import LaunchTemplateValidator
+
+    if launch_template_id:
+        mock_ec2 = mocker.patch("pcluster.validators.instances_validators.AWSApi")
+        if mock_exception:
+            mock_ec2.instance().ec2.describe_launch_template_version.side_effect = mock_exception
+        else:
+            mock_ec2.instance().ec2.describe_launch_template_version.return_value = mock_lt_data
+
+    actual_failures = LaunchTemplateValidator().execute(
+        compute_resource_name=compute_resource_name,
+        launch_template_id=launch_template_id,
+        launch_template_version=launch_template_version,
     )
     assert_failure_messages(actual_failures, expected_message)

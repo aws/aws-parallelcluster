@@ -1,5 +1,5 @@
 Image:
-  Os: alinux2
+  Os: alinux2023
   CustomAmi: ami-12345678
 HeadNode:
   InstanceType: t3.micro  # t3.micro
@@ -70,6 +70,9 @@ Scheduling:
           CustomSlurmSettings:
             Param1: Value1
             Param2: Value2
+          LaunchTemplateOverrides:
+            LaunchTemplateId: lt-01234567890abcdef
+            Version: 1
         - Name: compute_resource2
           InstanceType: c4.xlarge
       CustomActions:
@@ -148,6 +151,9 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+          LaunchTemplateOverrides:
+            LaunchTemplateId: lt-1234567890abcdef0
+            Version: 1
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
@@ -239,7 +245,6 @@ DevSettings:
     ChefCookbook: https://tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
       {"cluster": {"scheduler_slots": "cores"}}
-  AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
 DeploymentSettings:
   LambdaFunctionsVpcConfig:

@@ -79,15 +79,13 @@ class SshCommand(CliCommand):
         "Run ssh command with the cluster username and IP address pre-populated. "
         "Arbitrary arguments are appended to the end of the ssh command."
     )
-    epilog = textwrap.dedent(
-        """Example:
+    epilog = textwrap.dedent("""Example:
 
   pcluster ssh --cluster-name mycluster -i ~/.ssh/id_rsa
 
 Returns an ssh command with the cluster username and IP address pre-populated:
 
-  ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa"""
-    )
+  ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa""")
 
     def __init__(self, subparsers):
         super().__init__(

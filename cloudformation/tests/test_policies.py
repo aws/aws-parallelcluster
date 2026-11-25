@@ -16,7 +16,6 @@ TEMPLATE = "../policies/parallelcluster-policies.yaml"
         ({"EnableFSxS3Access": "false"}),
         ({"EnableIamAdminAccess": "true"}),
         ({"EnableFSxS3Access": "true", "FsxS3Buckets": "arn:aws:s3:::bucket"}),
-        ({"EnableBatchAccess": "true"}),
     ],
 )
 @pytest.mark.local

@@ -192,3 +192,56 @@ def test_describe_target_health(boto3_stubber, generate_error):
     else:
         return_value = ElbClient().describe_target_health(dummy_target_arn)
         assert_that(return_value).is_equal_to(dummy_targets_health)
+
+
+@pytest.mark.parametrize("generate_error", [True, False])
+def test_describe_load_balancer(boto3_stubber, generate_error):
+    """Verify that describe_load_balancer behaves as expected."""
+    dummy_load_balancer_arn = "dummy_load_balancer_arn"
+    dummy_message = "dummy error message"
+    dummy_load_balancer = {
+        "LoadBalancerArn": dummy_load_balancer_arn,
+        "DNSName": "dummy_dns_name",
+        "LoadBalancerName": "dummy-load-balancer",
+        "Scheme": "internet-facing",
+        "State": {"Code": "active"},
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_load_balancers",
+            expected_params={"LoadBalancerArns": [dummy_load_balancer_arn]},
+            response=(
+                dummy_message if generate_error else {"LoadBalancers": [dummy_load_balancer], "ResponseMetadata": {}}
+            ),
+            generate_error=generate_error,
+        )
+    ]
+    boto3_stubber("elbv2", mocked_requests)
+    if generate_error:
+        with pytest.raises(BaseException, match=dummy_message):
+            ElbClient().describe_load_balancer(dummy_load_balancer_arn)
+    else:
+        return_value = ElbClient().describe_load_balancer(dummy_load_balancer_arn)
+        assert_that(return_value).is_equal_to(dummy_load_balancer)
+
+
+def test_describe_load_balancer_not_found(boto3_stubber):
+    """Verify that describe_load_balancer returns None when the API returns no load balancers."""
+    dummy_load_balancer_arn = "dummy_load_balancer_arn"
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_load_balancers",
+            expected_params={"LoadBalancerArns": [dummy_load_balancer_arn]},
+            response={"LoadBalancers": [], "ResponseMetadata": {}},
+            generate_error=False,
+        )
+    ]
+    boto3_stubber("elbv2", mocked_requests)
+    assert_that(ElbClient().describe_load_balancer(dummy_load_balancer_arn)).is_none()
+
+
+def test_describe_load_balancer_empty_arn(mocker):
+    """Verify that describe_load_balancer short-circuits to None when no ARN is provided, without calling the API."""
+    mocker.patch("pcluster.aws.elb.ElbClient.__init__", return_value=None)
+    assert_that(ElbClient().describe_load_balancer(None)).is_none()
+    assert_that(ElbClient().describe_load_balancer("")).is_none()

@@ -19,6 +19,7 @@ import socket
 import string
 import subprocess
 from datetime import datetime, timedelta
+from functools import cache
 from hashlib import sha1
 
 import boto3
@@ -28,6 +29,40 @@ from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
 from retrying import retry
 from time_utils import minutes, seconds
+
+# Declared here rather than imported from pcluster.constants, which does not have it in the older ParallelCluster
+# versions the Slurm upgrade suite runs against.
+EXCLUDED_INSTANCE_TYPE_PREFIXES = (
+    "a1",  # a1 is based on Graviton 1 which is not supported by the newer version of Amazon Linux 2023
+    "m1",
+    "m2",
+    "m3",
+    "m4",
+    "t1",
+    "t2",
+    "c1",
+    "c3",
+    "c4",
+    "cc1",
+    "cc2",
+    "cr1",
+    "r3",
+    "r4",
+    "x1",
+    "x1e",
+    "d2",
+    "h1",
+    "hi1",
+    "hs1",
+    "i2",
+    "i3",
+    "f1",
+    "cg1",
+    "g2",
+    "g3",
+    "p2",
+    "p3",
+)
 
 DEFAULT_PARTITION = "aws"
 PARTITION_MAP = {
@@ -122,9 +157,15 @@ class StackSetupError(SetupError):
 class ClusterCreationError(SetupError):
     """Exception to throw when cluster creation fails during test setup."""
 
-    def __init__(self, message, stack_events=None, cluster_details=None):
+    def __init__(self, message, stack_events=None, cluster_details=None, rca_details=None):
         message = message if message else "ClusterCreationError has been raised"
-        super().__init__(_format_stack_error(message, stack_events=stack_events, cluster_details=cluster_details))
+        formatted_message = _format_stack_error(message, stack_events=stack_events, cluster_details=cluster_details)
+        if rca_details:
+            formatted_message += "\n\n=== ROOT CAUSE ANALYSIS ==="
+            for item, content in rca_details.items():
+                formatted_message += f"\n\n--- {item} ---\n{content}"
+        super().__init__(formatted_message)
+        self.diagnosis_info = rca_details
 
     def __str__(self):
         return f"ClusterCreationError: {self.message}"
@@ -228,10 +269,11 @@ def run_command(
         if raise_on_error:
             raise
     except subprocess.TimeoutExpired:
+        # On timeout subprocess.run raises before `result` is assigned, so there is nothing to return to the caller:
+        # re-raise even when raise_on_error is False.
         if log_error:
             logging.error("Command {0} timed out after {1} sec".format(log_command, timeout))
-        if raise_on_error:
-            raise
+        raise
 
     return result
 
@@ -415,11 +457,12 @@ def describe_cluster_instances(
     filter_by_instance_types=None,
     filter_by_queue_name=None,
     filter_by_compute_resource_name=None,
+    filter_by_instance_states=("running",),
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
         {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
-        {"Name": "instance-state-name", "Values": ["running"]},
+        {"Name": "instance-state-name", "Values": list(filter_by_instance_states)},
     ]
     if filter_by_node_type:
         filters.append({"Name": "tag:parallelcluster:node-type", "Values": [filter_by_node_type]})
@@ -561,6 +604,7 @@ def get_username_for_os(os):
     usernames = {
         "alinux2": "ec2-user",
         "alinux2023": "ec2-user",
+        "ubuntu2004": "ubuntu",
         "ubuntu2204": "ubuntu",
         "ubuntu2404": "ubuntu",
         "rhel8": "ec2-user",
@@ -571,9 +615,35 @@ def get_username_for_os(os):
     return usernames.get(os)
 
 
+def get_instance_public_ip_by_private_ip(private_ip, region):
+    """Return the public IP of the running instance that has the given private IP.
+
+    Assumes a single instance matches the given private IP.
+    """
+    ec2 = boto3.client("ec2", region_name=region)
+    reservations = ec2.describe_instances(
+        Filters=[
+            {"Name": "private-ip-address", "Values": [private_ip]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+        ]
+    ).get("Reservations")
+    return reservations[0].get("Instances")[0].get("PublicIpAddress")
+
+
 def add_keys_to_known_hosts(hostname, host_keys_file):
-    """Add ssh key for a host to a known_hosts file."""
-    os.system("ssh-keyscan -t ed25519 {0} >> {1}".format(hostname, host_keys_file))
+    """Add ssh key for a host to a known_hosts file, retrying if the host is not yet reachable."""
+
+    @retry(wait_fixed=seconds(5), stop_max_attempt_number=3)
+    def _scan_and_verify():
+        os.system("ssh-keyscan -t ed25519 {0} >> {1} 2>/dev/null".format(hostname, host_keys_file))
+        result = subprocess.run(["ssh-keygen", "-F", hostname, "-f", host_keys_file], capture_output=True, text=True)
+        if result.returncode != 0 or not result.stdout.strip():
+            raise Exception(f"ssh-keyscan for {hostname} returned no keys")
+
+    try:
+        _scan_and_verify()
+    except Exception:
+        logging.warning(f"Failed to add host keys for {hostname} to {host_keys_file} after retries")
 
 
 def remove_keys_from_known_hosts(hostname, host_keys_file, env):
@@ -763,10 +833,38 @@ def check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=No
 
     stream_names = cluster.get_all_log_stream_names()
     if not expected_log_streams:
+        syslog = "syslog" if os.startswith("ubuntu") else "system-messages"
         expected_log_streams = {
-            "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
-            "ComputeNode": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
-            "LoginNode": {"cfn-init", "cloud-init", "chef-client", "supervisord"},
+            "HeadNode": {
+                "cfn-hup",
+                "cfn-init",
+                "chef-client",
+                "cloud-init",
+                "clustermgtd",
+                "clustermgtd_events",
+                "clusterstatusmgtd",
+                "slurmctld",
+                "supervisord",
+                syslog,
+            },
+            "ComputeNode": {
+                "chef-client",
+                "cloud-init",
+                "cloud-init-output",
+                "computemgtd",
+                "pcluster-check-update",
+                "slurmd",
+                "supervisord",
+                syslog,
+            },
+            "LoginNode": {
+                "chef-client",
+                "cloud-init",
+                "cloud-init-output",
+                "pcluster-check-update",
+                "supervisord",
+                syslog,
+            },
         }
 
     # check there are the logs of all the instances
@@ -910,6 +1008,16 @@ def retrieve_clustermgtd_conf_path(remote_command_executor):
     return clustermgtd_conf_path
 
 
+def retrieve_supervisorctl_path(remote_command_executor):
+    """Return the path to supervisorctl on the head node."""
+    supervisorctl_path = remote_command_executor.run_remote_command(
+        "find /opt/parallelcluster -name supervisorctl -type f 2>/dev/null | head -1"
+    ).stdout.strip()
+    if not supervisorctl_path:
+        supervisorctl_path = "/opt/parallelcluster/pyenv/versions/3.12.11/envs/cookbook_virtualenv/bin/supervisorctl"
+    return supervisorctl_path
+
+
 def disable_protected_mode(remote_command_executor):
     """Disable protected mode by setting protected_failure_count to -1."""
     set_protected_failure_count(remote_command_executor, -1)
@@ -997,6 +1105,17 @@ def or_regex(items: list):
     return "|".join(map(re.escape, items))
 
 
+def _get_gpu_spec(instance_type_data):
+    """Return the GPU configuration as a frozenset of (manufacturer, count) pairs.
+
+    This captures the full GPU structure so that instances match only when they have
+    the same count for each manufacturer (e.g. NVIDIA:1 won't match NVIDIA:0).
+    """
+    gpu_info = instance_type_data.get("GpuInfo", {})
+    return frozenset((gpu.get("Manufacturer", ""), gpu.get("Count", 0)) for gpu in gpu_info.get("Gpus", []))
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(1))
 def get_similar_instance_types(instance_type: str, region: str = None, max_items: int = None):
     ec2 = boto3.client("ec2", region_name=region)
 
@@ -1011,7 +1130,7 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
     target_vcpus = target["VCpuInfo"]["DefaultVCpus"]
     target_threads = target["VCpuInfo"]["DefaultThreadsPerCore"]
     target_has_efa = target.get("NetworkInfo", {}).get("EfaSupported", False)
-    target_has_gpu = "GpuInfo" in target
+    target_gpu_spec = _get_gpu_spec(target)
     target_inference_accelerators = target.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
 
     # Now query for similar instances using filters
@@ -1023,20 +1142,197 @@ def get_similar_instance_types(instance_type: str, region: str = None, max_items
             {"Name": "processor-info.supported-architecture", "Values": [target_arch]},
             {"Name": "vcpu-info.default-vcpus", "Values": [str(target_vcpus)]},
             {"Name": "vcpu-info.default-threads-per-core", "Values": [str(target_threads)]},
+            {"Name": "supported-usage-class", "Values": ["on-demand", "spot"]},
         ],
     ):
-        # Filter for EFA support, GPU presence, and inference accelerator types
+        # Filter for EFA support, GPU configuration, and inference accelerator types
         for instance in page["InstanceTypes"]:
+            instance_prefix = instance["InstanceType"].split(".")[0]
             instance_has_efa = instance.get("NetworkInfo", {}).get("EfaSupported", False)
-            instance_has_gpu = "GpuInfo" in instance
+            instance_gpu_spec = _get_gpu_spec(instance)
             instance_inference_accelerators = instance.get("InferenceAcceleratorInfo", {}).get("Accelerators", [])
             if (
-                instance_has_efa == target_has_efa
-                and instance_has_gpu == target_has_gpu
+                instance_prefix not in EXCLUDED_INSTANCE_TYPE_PREFIXES
+                and instance_has_efa == target_has_efa
+                and instance_gpu_spec == target_gpu_spec
                 and instance_inference_accelerators == target_inference_accelerators
             ):
                 similar_instances.append(instance["InstanceType"])
-                if max_items and len(similar_instances) >= max_items:
-                    return similar_instances
+
+    # Sort before truncating so that multiple calls always return the same instance types in the same order,
+    # regardless of the order in which the API returns them.
+    similar_instances = sorted(similar_instances)
+    if max_items:
+        similar_instances = similar_instances[:max_items]
+
+    logging.info(f"Retrieved instance types equivalent to {instance_type} in {region}: {similar_instances}")
 
     return similar_instances
+
+
+@cache
+def get_flexible_gpu_instance_types(instance, region):
+    """Return a list of NVIDIA GPU instance types compatible with ``instance``'s architecture."""
+    architecture = get_architecture_supported_by_instance_type(instance, region)
+    gpu_instance_type = "g4dn.2xlarge" if architecture == "x86_64" else "g5g.2xlarge"
+    return list({gpu_instance_type, *get_similar_instance_types(gpu_instance_type, region, 5)})
+
+
+def verify_cluster_node_config_version_in_ddb(region, cluster_name, instance_id, expected_version):
+    """
+    Verify that a cluster node has the correct config version in DynamoDB.
+
+    DynamoDB key format: CLUSTER_CONFIG.{instance_id}
+    Data structure: Data.M.cluster_config_version.S
+
+    Args:
+        region: AWS region
+        cluster_name: Name of the cluster
+        instance_id: EC2 instance ID of the node
+        expected_version: Expected config version string
+    """
+    logging.info(f"Verifying config version for instance {instance_id} in DynamoDB...")
+
+    dynamodb = boto3.client("dynamodb", region_name=region)
+    table_name = f"parallelcluster-{cluster_name}"
+    ddb_key = f"CLUSTER_CONFIG.{instance_id}"
+
+    try:
+        response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
+
+        if "Item" in response:
+            item = response["Item"]
+            data = item.get("Data", {}).get("M", {})
+            config_version = data.get("cluster_config_version", {}).get("S", "")
+            status = data.get("status", {}).get("S", "")
+
+            logging.info(f"Instance {instance_id} DDB record:")
+            logging.info(f"  - config_version: {config_version}")
+            logging.info(f"  - status: {status}")
+            logging.info(f"  - expected_version: {expected_version}")
+
+            assert_that(config_version).is_equal_to(expected_version)
+            logging.info(f"Node {instance_id} has correct config version ✓")
+            return config_version
+
+    except Exception as e:
+        logging.warning(f"Error querying DynamoDB: {e}")
+
+    # Fallback: try scanning if direct query fails
+    logging.warning("Direct DDB query failed, trying scan...")
+    response = dynamodb.scan(
+        TableName=table_name,
+        FilterExpression="contains(Id, :instance_id)",
+        ExpressionAttributeValues={":instance_id": {"S": instance_id}},
+    )
+
+    if response.get("Items"):
+        for item in response["Items"]:
+            data = item.get("Data", {}).get("M", {})
+            config_version = data.get("cluster_config_version", {}).get("S", "")
+            logging.info(f"Instance {instance_id} config version in DDB (via scan): {config_version}")
+            assert_that(config_version).is_equal_to(expected_version)
+            logging.info(f"Node {instance_id} has correct config version ✓")
+            return config_version
+
+    raise AssertionError(f"No DynamoDB record found for instance {instance_id}")
+
+
+def get_file_mtime_age_seconds(remote_command_executor, file_path):
+    """
+    Get the age of a file in seconds (time since last modification).
+
+    Args:
+        remote_command_executor: RemoteCommandExecutor instance
+        file_path: Path to the file on the remote node
+
+    Returns:
+        Age of the file in seconds
+    """
+    result = remote_command_executor.run_remote_command(f"sudo stat -c %Y {file_path}")
+    mtime = int(result.stdout.strip())
+    current_time = int(remote_command_executor.run_remote_command("date +%s").stdout.strip())
+    return current_time - mtime
+
+
+# Matches ISO-like timestamps at the start of a log line, with or without brackets.
+# Examples: [2026-03-19T02:44:01+00:00], 2026-03-19 02:44:01, 2026-03-19T02:44:01.000Z
+_LOG_TIMESTAMP_RE = re.compile(r"^\[?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})")
+
+
+def get_log_after_timestamp(log_content: str, after_utc: str) -> str:
+    after_utc_prefix = after_utc[:19].replace(" ", "T")
+    lines = log_content.splitlines()
+    for i, line in enumerate(lines):
+        m = _LOG_TIMESTAMP_RE.match(line)
+        if m and m.group(1).replace(" ", "T") >= after_utc_prefix:
+            return "\n".join(lines[i:])
+    return ""
+
+
+def match_regex_in_log(
+    rce,
+    log_file: str,
+    pattern: str,
+    nlines: int = 50,
+    after_utc: str = None,
+    nlines_after_match: int = 0,
+) -> tuple[bool, str]:
+    """
+    Search for a regex pattern in a remote log file, optionally filtering to lines after a UTC timestamp.
+
+    Args:
+        rce: Remote command executor instance to run commands on the target host.
+        log_file: Absolute path to the log file on the remote host.
+        pattern: Regular expression pattern to search for in the log content.
+        nlines: Number of lines from the end of the log to return if pattern is not found. Defaults to 50.
+        after_utc: Optional UTC timestamp string in ISO format (e.g. "2026-03-10T15:00:00.000Z"). Only lines at or after
+           this timestamp are considered. If None, searches the entire log.
+        nlines_after_match: Number of lines to include after the matched line when the pattern is found. Defaults to 0
+           (only the matched line is returned).
+
+    Returns:
+        A tuple containing:
+            - bool: True if the pattern was found, False otherwise.
+            - str: If found, the full line containing the match plus the next `nlines_after_match` lines.
+                   If not found, the last `nlines` lines of the log.
+    """
+    result = rce.run_remote_command(f"sudo cat {log_file}")
+    log_content = result.stdout
+
+    if after_utc:
+        log_content = get_log_after_timestamp(log_content, after_utc)
+
+    match = re.search(pattern, log_content)
+    if match:
+        # Find the start of the line containing the match, then take nlines_after_match additional lines
+        match_line_start = log_content.rfind("\n", 0, match.start()) + 1
+        result_lines = log_content[match_line_start:].splitlines()[: 1 + nlines_after_match]
+        return True, "\n".join(result_lines)
+    else:
+        last_lines = "\n".join(log_content.splitlines()[-nlines:])
+        return False, last_lines
+
+
+def find_all_matches_in_log(
+    rce, log_file: str, pattern: str, nlines: int = 10, case_sensitive: bool = False
+) -> list[str]:
+    """
+    Find lines matching a regex pattern in a remote log file.
+
+    :param rce: Remote command executor instance.
+    :param log_file: Path to the log file on the remote host.
+    :param pattern: Regex pattern to search for.
+    :param nlines: Max matching lines to return.
+    :param case_sensitive: If True, match case-sensitively.
+    :return: Last `nlines` matches, or empty list if none found.
+    """
+    result = rce.run_remote_command(f"sudo cat {log_file}", raise_on_error=False, log_error=False)
+    if result.failed:
+        return []
+
+    log_content = result.stdout
+    flags = 0 if case_sensitive else re.IGNORECASE
+    matching_lines = [line for line in log_content.splitlines() if re.search(pattern, line, flags)]
+
+    return matching_lines[-nlines:]

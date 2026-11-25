@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import boto3
 import pytest
 from assertpy import assert_that
+from packaging import version as packaging_version
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from tags_utils import convert_tags_dicts_to_tags_list, get_compute_node_tags
@@ -26,7 +27,9 @@ from utils import (
     check_status,
     get_compute_nodes_instance_ids,
     get_instance_info,
+    get_username_for_os,
     retrieve_clustermgtd_conf_path,
+    retrieve_supervisorctl_path,
     set_protected_failure_count,
     test_cluster_health_metric,
     wait_for_computefleet_changed,
@@ -36,6 +39,8 @@ from tests.basic import structured_log_event_utils
 from tests.common.assertions import (
     assert_lines_in_logs,
     assert_msg_in_log,
+    assert_msg_in_log_at_least,
+    assert_msg_in_log_at_most,
     assert_no_errors_in_logs,
     assert_no_msg_in_logs,
     assert_no_node_in_ec2,
@@ -53,10 +58,32 @@ from tests.common.hit_common import (
     get_partition_nodes,
     submit_initial_job,
     wait_for_compute_nodes_states,
+    wait_for_compute_nodes_to_be_observed_in_states,
     wait_for_num_nodes_in_scheduler,
 )
-from tests.common.scaling_common import setup_ec2_launch_override_to_emulate_ice
+from tests.common.scaling_common import (
+    recover_create_fleet_override_from_ice,
+    setup_ec2_launch_override_to_emulate_ice,
+)
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.slurm_upgrade import (
+    assert_slurm_state_preserved,
+    run_scheduler_smoke_test,
+    select_slurm_upgrade_target,
+    snapshot_slurm_state,
+    upgrade_slurm_with_stopped_compute_nodes,
+)
+from tests.common.utils import (
+    get_installed_parallelcluster_base_version,
+    installed_parallelcluster_version_is_at_least,
+    skip_if_parallelcluster_version_below,
+)
+
+
+def _cancel_jobs_and_wait_for_queue(remote_command_executor, scheduler_commands):
+    """Cancel every job of the current user, including the ones submitted without being waited on."""
+    remote_command_executor.run_remote_command("scancel --user=$(id -un)", raise_on_error=False)
+    scheduler_commands.wait_job_queue_empty()
 
 
 @pytest.mark.usefixtures("instance", "os")
@@ -124,6 +151,19 @@ def test_slurm(
     # Tests below must run on HeadNode or need HeadNode participate.
     head_node_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(head_node_command_executor, "slurm", skip_ice=True)
+
+    # Before the bootstrap timeout test below, after which no compute node can join.
+    slurm_upgrade_target = select_slurm_upgrade_target(head_node_command_executor)
+    if slurm_upgrade_target:
+        _cancel_jobs_and_wait_for_queue(head_node_command_executor, slurm_commands)
+        slurm_state_snapshot = snapshot_slurm_state(head_node_command_executor, slurm_commands)
+        upgrade_slurm_with_stopped_compute_nodes(head_node_command_executor, cluster, target=slurm_upgrade_target)
+        assert_slurm_state_preserved(head_node_command_executor, slurm_state_snapshot)
+        # A fresh session on the login nodes, which stayed up while /opt/slurm was replaced.
+        remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=use_login_node)
+        slurm_commands = scheduler_commands_factory(remote_command_executor)
+        run_scheduler_smoke_test(slurm_commands, partition="ondemand")
+
     # Test compute node bootstrap timeout
     clustermgtd_conf_path = retrieve_clustermgtd_conf_path(head_node_command_executor)
     _test_compute_node_bootstrap_timeout(
@@ -169,7 +209,7 @@ def test_slurm_ticket_17399(
             "partition": "gpu",
             "test_only": True,
             "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
-            f"--cpus-per-task={cpus_per_instance//gpus_per_instance}",
+            f"--cpus-per-task={cpus_per_instance // gpus_per_instance}",
         }
     )
 
@@ -180,7 +220,7 @@ def test_slurm_ticket_17399(
             "partition": "gpu",
             "test_only": True,
             "other_options": f"--gpus {gpus_per_instance} --nodes 1 --ntasks-per-node 1 "
-            f"--cpus-per-task={cpus_per_instance//gpus_per_instance + 1}",
+            f"--cpus-per-task={cpus_per_instance // gpus_per_instance + 1}",
         }
     )
 
@@ -380,11 +420,16 @@ def test_slurm_custom_partitions(
     cluster.start()
     wait_for_num_instances_in_cluster(cluster.name, region, len(static_nodes))
     logging.info("Checking pcluster start does not manage custom partitions...")
+    # Before aws-parallelcluster-node 3.16.0 (aws/aws-parallelcluster-node#707), there was an intermittent failure,
+    # So skip the check of failing partition start
+    older_than_3_16_0 = packaging_version.parse(get_installed_parallelcluster_base_version()) < (
+        packaging_version.parse("3.16.0")
+    )
     for partition in all_partitions:
-        if partition in custom_partitions:
-            expected_state = "INACTIVE"
-        else:
-            expected_state = "UP"
+        if partition == failing_partition and older_than_3_16_0:
+            logging.info(f"Skipping state check of {partition}: it may be disabled again by protected mode")
+            continue
+        expected_state = "INACTIVE" if partition in custom_partitions else "UP"
         assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(expected_state)
 
 
@@ -435,6 +480,303 @@ def test_error_handling(
         num_dynamic_nodes=1,
         dynamic_instance_type=instance,
     )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.clustermgtd_instance_id_matching
+def test_clustermgtd_instance_id_matching(
+    region, os, instance, pcluster_config_reader, clusters_factory, test_datadir, scheduler_commands_factory
+):
+    """
+    Test that clustermgtd matches EC2 instances to Slurm nodes by InstanceId, not by private IP.
+
+    When DescribeInstances returns an instance with a missing PrivateIpAddress (EC2 eventual consistency),
+    clustermgtd must keep the instance, match it by InstanceId and leave the healthy node in place,
+    instead of replacing the node by IP matching.
+    """
+    # Instance-ID matching arrived in ParallelCluster 3.16.0.
+    skip_if_parallelcluster_version_below("3.16.0", "clustermgtd instance-ID matching for incomplete EC2 info")
+
+    num_static_nodes = 2
+    cluster_config = pcluster_config_reader(num_static_nodes=num_static_nodes)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    # Trigger file consumed by setup_missing_private_ip_override.sh to toggle the simulated fault.
+    trigger_file = "/tmp/ec2_eventual_consistency_instances"
+
+    partition = "queue1"
+    static_nodes, _ = assert_initial_conditions(scheduler_commands, num_static_nodes, 0, partition)
+
+    instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
+    node_to_instance_id = _assert_slurm_nodes_have_instance_id(scheduler_commands, static_nodes, instance_ids)
+
+    target_node = static_nodes[0]
+    target_instance_id = node_to_instance_id[target_node]
+    logging.info("Simulating missing PrivateIpAddress for node %s (instance %s)", target_node, target_instance_id)
+
+    # Shorten the clustermgtd loop so a regression (the node being replaced) surfaces within the test window.
+    loop_time = 30
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/^loop_time /d' {clustermgtd_conf_path}; "
+        f"echo 'loop_time = {loop_time}' | sudo tee -a {clustermgtd_conf_path}"
+    )
+
+    remote_command_executor.clear_clustermgtd_log()
+
+    # Restart clustermgtd because it does not hot-reload python code.
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "setup_missing_private_ip_override.sh"), run_as_root=True
+    )
+    remote_command_executor.run_remote_command(f"echo '{target_instance_id}' | sudo tee {trigger_file}")
+    supervisorctl_path = retrieve_supervisorctl_path(remote_command_executor)
+    remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} restart clustermgtd")
+
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(1))(assert_lines_in_logs)(
+        remote_command_executor, ["/var/log/parallelcluster/clustermgtd"], ["ClusterManager Startup"]
+    )
+    # clustermgtd logs this once per iteration for the faulty instance. Waiting until it appears several
+    # times is direct evidence that multiple matching iterations processed the instance with a missing IP.
+    incomplete_ec2_info_msg = (
+        f"Incomplete EC2 info for instance {target_instance_id}, keeping it for instance-ID matching"
+    )
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_msg_in_log_at_least)(
+        remote_command_executor, "/var/log/parallelcluster/clustermgtd", incomplete_ec2_info_msg, count=4
+    )
+
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        log_files=["/var/log/parallelcluster/clustermgtd"],
+        log_msg=[
+            f"no corresponding instance in EC2 for node {target_node}",
+            "because not all EC2 info are available",
+            "Updating compute fleet status from RUNNING to PROTECTED",
+        ],
+    )
+    assert_compute_node_states(scheduler_commands, [target_node], expected_states=["idle", "mixed", "allocated"])
+    # A replacement would have terminated the instance and launched a new id; assert the original survives.
+    current_instance_ids = assert_num_instances_in_cluster(cluster.cfn_name, region, num_static_nodes)
+    assert_that(current_instance_ids).contains(target_instance_id)
+
+    # Once eventual consistency resolves, the node stays healthy with no replacement.
+    logging.info("Resolving simulated eventual consistency for node %s", target_node)
+    remote_command_executor.run_remote_command(f"sudo rm -f {trigger_file}")
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_compute_node_states)(
+        scheduler_commands, [target_node], expected_states=["idle", "mixed", "allocated"]
+    )
+    assert_that(get_compute_nodes_instance_ids(cluster.cfn_name, region)).contains(target_instance_id)
+
+
+def _assert_slurm_nodes_have_instance_id(scheduler_commands, nodes, expected_instance_ids):
+    """Assert each Slurm node reports a real EC2 InstanceId; return the {node: instance_id} mapping."""
+    node_to_instance_id = {}
+    for node in nodes:
+        node_info = scheduler_commands.get_node_info(node)
+        match = re.search(r"InstanceId=(\S+)", node_info)
+        assert_that(match, f"InstanceId not set on Slurm node {node}").is_not_none()
+        instance_id = match.group(1)
+        assert_that(instance_id).is_not_equal_to("(null)")
+        assert_that(expected_instance_ids).contains(instance_id)
+        node_to_instance_id[node] = instance_id
+    return node_to_instance_id
+
+
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_slurm_maintenance_reservation(
+    region, os, pcluster_config_reader, clusters_factory, scheduler_commands_factory
+):
+    """
+    Test that a user-created Slurm reservation with the maint flag follows standard Slurm semantics.
+
+    A reservation created with flags=maint is a scheduling/accounting construct: it keeps unreserved jobs off the
+    reserved nodes but does not change node power state or prevent launching. Per the design decision (clustermgtd
+    treats nodes normally) ParallelCluster does not special-case reserved nodes, so on a single cluster we check
+    both node types:
+    - static node: unreserved jobs stay pending on it, but when it becomes unhealthy clustermgtd replaces it and
+      lets the replacement bootstrap back to idle while keeping its reservation;
+    - dynamic node: unreserved jobs stay pending and the node is not powered up, a job submitted with
+      --reservation resumes the node and runs to completion, and after the reservation is deleted the node
+      accepts unreserved jobs again.
+    """
+    num_static_nodes = 1
+    num_dynamic_nodes = 2
+    scaledown_idletime = 3
+    cluster_config = pcluster_config_reader(
+        num_static_nodes=num_static_nodes, num_dynamic_nodes=num_dynamic_nodes, scaledown_idletime=scaledown_idletime
+    )
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+    partition = "queue1"
+
+    # Wait for the static nodes to register (dynamic nodes are defined up front), then split by type.
+    wait_for_num_nodes_in_scheduler(scheduler_commands, num_static_nodes, filter_by_partition=partition)
+    static_nodes, dynamic_nodes = get_partition_nodes(scheduler_commands.get_compute_nodes(partition, all_nodes=True))
+    wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"], stop_max_delay_secs=300)
+    _shorten_clustermgtd_loop(remote_command_executor)
+    static_node = static_nodes[0]
+    dynamic_node = dynamic_nodes[0]
+    reservation_user = get_username_for_os(os)
+
+    # Static node: unreserved jobs are blocked, an unhealthy node is still replaced, and once the reservation is
+    # removed the pending job runs.
+    _create_user_maintenance_reservation(
+        remote_command_executor, scheduler_commands, "usermaint_st", static_node, users=reservation_user
+    )
+    static_job_id = _submit_job_pinned_to_node(scheduler_commands, static_node, partition)
+    _assert_job_stays_pending(scheduler_commands, static_job_id)
+    # Replacing an unhealthy reserved static node only works from ParallelCluster 3.16.0
+    if installed_parallelcluster_version_is_at_least("3.16.0"):
+        _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node)
+    else:
+        logging.warning(
+            "Skipping the unhealthy reserved static node replacement check: it loops terminate/relaunch before "
+            "ParallelCluster 3.16.0. The rest of the reservation coverage still runs."
+        )
+    _delete_slurm_reservation(remote_command_executor, "usermaint_st")
+    _assert_reservation_cleared(scheduler_commands, static_node)
+    scheduler_commands.wait_job_completed(static_job_id)
+    scheduler_commands.assert_job_succeeded(static_job_id)
+
+    # Dynamic node: unreserved jobs are blocked without powering the node up, a --reservation job resumes and
+    # runs it, and once the reservation is removed the pending job runs.
+    _create_user_maintenance_reservation(
+        remote_command_executor, scheduler_commands, "usermaint_dy", dynamic_node, users=reservation_user
+    )
+    dynamic_job_id = _submit_job_pinned_to_node(scheduler_commands, dynamic_node, partition)
+    _assert_job_stays_pending(scheduler_commands, dynamic_job_id)
+    assert_num_instances_constant(cluster.cfn_name, region, desired=num_static_nodes, timeout=2)
+    assert_that(_get_node_state_flags(scheduler_commands, dynamic_node)).does_not_contain("POWERING_UP")
+    _assert_reservation_job_runs_on_reserved_node(
+        scheduler_commands, cluster, region, dynamic_node, partition, "usermaint_dy", num_static_nodes
+    )
+    _delete_slurm_reservation(remote_command_executor, "usermaint_dy")
+    _assert_reservation_cleared(scheduler_commands, dynamic_node)
+    scheduler_commands.wait_job_completed(dynamic_job_id)
+    scheduler_commands.assert_job_succeeded(dynamic_job_id)
+
+    assert_no_errors_in_logs(remote_command_executor, "slurm", skip_ice=True)
+
+
+def _assert_unhealthy_reserved_static_node_is_replaced(remote_command_executor, scheduler_commands, static_node):
+    """Set the reserved static node DOWN and confirm clustermgtd replaces it once, back to idle, keeping reserved."""
+    clustermgtd_log = "/var/log/parallelcluster/clustermgtd"
+    # Set it DOWN as a prolog/health failure would; bound the wait so a kill/relaunch regression fails fast.
+    scheduler_commands.set_nodes_state([static_node], state="down")
+
+    # "settled IDLE" excludes these transient/busy flags; the replacement must bootstrap fully, not just appear.
+    unsettled_flags = {"DOWN", "POWERING_UP", "ALLOCATED", "MIXED", "COMPLETING", "DRAIN"}
+    recovered_flags = None
+    for _ in range(30):
+        state_flags = _get_node_state_flags(scheduler_commands, static_node)
+        if "IDLE" in state_flags and not (state_flags & unsettled_flags):
+            recovered_flags = state_flags
+            break
+        time.sleep(30)
+    assert_that(recovered_flags).described_as("static node bootstrapped back to idle while reserved").is_not_none()
+    # The reservation must survive the replacement, not be dropped along with the old instance.
+    assert_that(recovered_flags).contains("MAINTENANCE", "RESERVED")
+
+    # clustermgtd logs this once per replacement round: expect one legitimate replacement, not a relaunch loop.
+    replacement_msg = "Terminating instances backing unhealthy static nodes"
+    assert_msg_in_log_at_least(remote_command_executor, clustermgtd_log, replacement_msg, count=1)
+    assert_msg_in_log_at_most(remote_command_executor, clustermgtd_log, replacement_msg, count=2)
+
+
+def _shorten_clustermgtd_loop(remote_command_executor, loop_time=30):
+    """Reduce the clustermgtd loop interval and restart the daemon so node maintenance actions surface quickly."""
+    clustermgtd_log = "/var/log/parallelcluster/clustermgtd"
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        f"sudo sed -i '/^loop_time /d' {clustermgtd_conf_path}; "
+        f"echo 'loop_time = {loop_time}' | sudo tee -a {clustermgtd_conf_path}"
+    )
+    remote_command_executor.clear_clustermgtd_log()
+    supervisorctl_path = retrieve_supervisorctl_path(remote_command_executor)
+    remote_command_executor.run_remote_command(f"sudo {supervisorctl_path} restart clustermgtd")
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_lines_in_logs)(
+        remote_command_executor, [clustermgtd_log], ["ClusterManager Startup"]
+    )
+
+
+def _create_user_maintenance_reservation(remote_command_executor, scheduler_commands, reservation_name, node, users):
+    """Create a user-owned maintenance reservation on a node and wait for the node to enter MAINTENANCE+RESERVED."""
+    logging.info("Creating user maintenance reservation %s on node %s for users %s", reservation_name, node, users)
+    remote_command_executor.run_remote_command(
+        "sudo -i scontrol create reservation "
+        f"ReservationName={reservation_name} user={users} starttime=now duration=infinite "
+        f"flags=maint nodes={node}"
+    )
+    result = remote_command_executor.run_remote_command(f"scontrol show ReservationName={reservation_name}")
+    assert_that(result.stdout).contains("Flags=MAINT")
+
+    # The MAINTENANCE+RESERVED flags do not propagate to the node instantly, so poll for them.
+    @retry(wait_fixed=seconds(5), stop_max_delay=seconds(60))
+    def _wait_reserved():
+        assert_that(_get_node_state_flags(scheduler_commands, node)).contains("MAINTENANCE", "RESERVED")
+
+    _wait_reserved()
+
+
+def _delete_slurm_reservation(remote_command_executor, reservation_name):
+    logging.info("Deleting Slurm reservation %s", reservation_name)
+    remote_command_executor.run_remote_command(f"sudo -i scontrol delete ReservationName={reservation_name}")
+
+
+def _get_node_state_flags(scheduler_commands, node):
+    """Return the set of scontrol State flags for a node, e.g. {'IDLE', 'CLOUD', 'MAINTENANCE', 'RESERVED'}.
+
+    Uses scontrol (not sinfo state codes) because reserved/maintenance nodes render with version-dependent
+    suffix symbols in sinfo, whereas scontrol always reports the '+'-separated flag set.
+    """
+    node_info = scheduler_commands.get_node_info(node)
+    # Negative lookbehind avoids matching the NextState= field that scontrol also prints.
+    match = re.search(r"(?<!Next)State=(\S+)", node_info)
+    assert_that(match, f"State not found for node {node}").is_not_none()
+    return set(match.group(1).split("+"))
+
+
+def _submit_job_pinned_to_node(scheduler_commands, node, partition):
+    """Submit an unreserved job pinned to a single node and return its job id."""
+    result = scheduler_commands.submit_command("hostname", nodes=1, partition=partition, host=node)
+    return scheduler_commands.assert_job_submitted(result.stdout)
+
+
+def _assert_job_stays_pending(scheduler_commands, job_id):
+    """Confirm a job stays pending across a few polls, so a transient pending does not pass for a lasting block."""
+    for _ in range(4):
+        assert_that(scheduler_commands.get_job_info(job_id, field="JobState")).is_equal_to("PENDING")
+        time.sleep(15)
+
+
+def _assert_reservation_cleared(scheduler_commands, node):
+    """Wait for the MAINTENANCE+RESERVED flags to clear from a node after the reservation is deleted."""
+
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(1))
+    def _check():
+        assert_that(_get_node_state_flags(scheduler_commands, node)).does_not_contain("MAINTENANCE", "RESERVED")
+
+    _check()
+
+
+def _assert_reservation_job_runs_on_reserved_node(
+    scheduler_commands, cluster, region, reserved_node, partition, reservation_name, num_static_nodes
+):
+    """A job targeting the reservation must run on the reserved node: Slurm resumes it, then powers it back down."""
+    logging.info("Submitting a --reservation job that should run on reserved node %s", reserved_node)
+    result = scheduler_commands.submit_command(
+        "hostname", nodes=1, partition=partition, host=reserved_node, other_options=f"--reservation={reservation_name}"
+    )
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    # The reservation did not block the resume path: the node was powered up to run the job.
+    assert_that(scheduler_commands.get_job_info(job_id, field="NodeList")).contains(reserved_node)
+    # Once idle past ScaledownIdletime the node powers back down, returning to the static-node instance count.
+    wait_for_num_instances_in_cluster(cluster.cfn_name, region, num_static_nodes)
+    # Once idle past ScaledownIdletime the node powers back down, returning to the static-node instance count.
+    wait_for_num_instances_in_cluster(cluster.cfn_name, region, num_static_nodes)
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -616,6 +958,162 @@ def test_fast_capacity_failover(
     )
 
 
+def _submit_jobs_and_simulate_ice(common_cluster_details, jobs):
+    """
+    Set up ICE simulation, submit jobs, and wait for ICE to be detected.
+
+    Each entry in jobs is a dict with "label" (str) and "expedited" (bool).
+    Returns a list of job IDs in the same order as the input jobs.
+    """
+    rce = common_cluster_details["remote_command_executor"]
+    scheduler_commands = common_cluster_details["scheduler_commands"]
+    target_nodes = common_cluster_details["target_nodes"]
+
+    # Set up ICE simulation
+    setup_ec2_launch_override_to_emulate_ice(
+        common_cluster_details["cluster"],
+        multi_instance_types_ice_cr=common_cluster_details["ice_compute_res"],
+    )
+
+    # Clear logs for clean state
+    rce.clear_slurm_resume_log()
+    rce.clear_clustermgtd_log()
+
+    # Submit all jobs
+    job_ids = []
+    for job in jobs:
+        requeue_opt = "--requeue=expedite " if job["expedited"] else ""
+        job_type = "expedited" if job["expedited"] else "normal"
+        jid = scheduler_commands.submit_command_and_assert_job_accepted(
+            submit_command_args={
+                "command": f'echo "START_TIME=$(date +%s)"; sleep 30; echo "{job["label"]} done"',
+                "nodes": 1,
+                "partition": common_cluster_details["partition"],
+                "host": target_nodes[0],
+                "other_options": f"{requeue_opt}--exclusive",
+            }
+        )
+        logging.info("Submitted %s (%s) ID: %s", job["label"], job_type, jid)
+        job_ids.append(jid)
+
+    # Wait for ICE to be detected
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(3))(assert_lines_in_logs)(
+        rce,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["The following compute resources are in down state due to insufficient capacity"],
+    )
+
+    # Verify target nodes are down due to ICE
+    assert_compute_node_states(scheduler_commands, target_nodes, expected_states=["down#", "down~"])
+
+    return job_ids
+
+
+def _recover_from_ice_and_wait_for_jobs(common_cluster_details, job_ids):
+    """Recover from ICE simulation, wait for nodes to reset, and wait for all jobs to complete."""
+    rce = common_cluster_details["remote_command_executor"]
+    scheduler_commands = common_cluster_details["scheduler_commands"]
+    target_nodes = common_cluster_details["target_nodes"]
+
+    # Recover from ICE by removing the gate so the next CreateFleet passes through to EC2
+    recover_create_fleet_override_from_ice(rce)
+
+    # Wait for insufficient_capacity_timeout to expire and nodes to reset
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(4))(assert_lines_in_logs)(
+        rce,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Reset the following compute resources because insufficient capacity timeout expired"],
+    )
+
+    # Wait for target nodes to be power-saved (reset)
+    wait_for_compute_nodes_states(
+        scheduler_commands, target_nodes, expected_states=["idle~"], wait_fixed_secs=5, stop_max_delay_secs=600
+    )
+
+    # Wait for all jobs to complete
+    for jid in job_ids:
+        scheduler_commands.wait_job_completed(jid, timeout=15)
+        scheduler_commands.assert_job_succeeded(jid)
+
+
+def _collect_start_epochs(remote_command_executor, job_ids):
+    """Read START_TIME epoch from slurm output files and return as a list in the same order."""
+    epochs = []
+    for jid in job_ids:
+        output = remote_command_executor.run_remote_command(f"cat ~/slurm-{jid}.out").stdout
+        logging.info("Job %s output: %s", jid, output)
+        epoch = int(re.search(r"START_TIME=(\d+)", output).group(1))
+        epochs.append(epoch)
+    return epochs
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.expedited_requeue
+def test_expedited_requeue(
+    pcluster_config_reader,
+    clusters_factory,
+    scheduler_commands_factory,
+    vpc_stack,
+):
+    """
+    Test Slurm 25.11+ expedited requeue behavior with recoverable ICE simulation.
+
+    Submits 2 exclusive jobs to a single ICE node:
+      job1 (expedited requeue) submitted first, job2 (normal) submitted second.
+    With --exclusive, only job1 gets allocated and requeued during ICE.
+    After ICE recovery, verifies job1 retains highest priority and executes before job2.
+    """
+    # sbatch --requeue=expedite only exists from Slurm 25.11, first shipped in ParallelCluster 3.15.0.
+    skip_if_parallelcluster_version_below("3.15.0", "Slurm expedited requeue (sbatch --requeue=expedite)")
+
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    clustermgtd_conf_path = retrieve_clustermgtd_conf_path(remote_command_executor)
+    scheduler_commands = scheduler_commands_factory(remote_command_executor)
+
+    partition = "queue"
+    ice_compute_res = "ice-cr"
+
+    # Set insufficient_capacity_timeout to 180s for quick reset of iced-ompute resource
+    _set_insufficient_capacity_timeout(remote_command_executor, 180, clustermgtd_conf_path)
+
+    # Get node lists — all nodes in ice-cr are dynamic
+    nodes_in_scheduler = scheduler_commands.get_compute_nodes(partition, all_nodes=True)
+    _, dynamic_nodes = get_partition_nodes(nodes_in_scheduler)
+    ice_dynamic_nodes = [n for n in dynamic_nodes]
+    logging.info("ICE CR dynamic nodes: %s", ice_dynamic_nodes)
+    # Pick a specific dynamic node to target
+    target_node = ice_dynamic_nodes[0]
+    logging.info("Target dynamic node for ICE test: %s", target_node)
+
+    common_cluster_details = {
+        "remote_command_executor": remote_command_executor,
+        "cluster": cluster,
+        "scheduler_commands": scheduler_commands,
+        "partition": partition,
+        "ice_compute_res": ice_compute_res,
+        "target_nodes": [target_node],
+    }
+
+    # Submit 2 jobs with --exclusive to a single ICE node:
+    # job1 (expedited) submitted first, job2 (normal) submitted second.
+    # With --exclusive, only job1 gets allocated and requeued during ICE.
+    # After recovery, job1 should still have the highest priority and run first.
+    jobs = [
+        {"label": "job1", "expedited": True},
+        {"label": "job2", "expedited": False},
+    ]
+    job_ids = _submit_jobs_and_simulate_ice(common_cluster_details, jobs)
+    _recover_from_ice_and_wait_for_jobs(common_cluster_details, job_ids)
+    start_epochs = _collect_start_epochs(remote_command_executor, job_ids)
+
+    # Expected: job1 (expedited) runs before job2 (normal) after ICE recovery
+    logging.info("Start epochs: %s", dict(zip([j["label"] for j in jobs], start_epochs)))
+    assert_that(start_epochs[0]).is_less_than_or_equal_to(start_epochs[1])  # job1 (expedited) before job2 (normal)
+    logging.info("Verified: expedited job (job1) ran before normal job (job2) after requeue")
+
+
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.slurm_config_update
 def test_slurm_config_update(
@@ -636,6 +1134,32 @@ def test_slurm_config_update(
         remote_command_executor,
         config_file="pcluster.config.update_scheduling.yaml",
     )
+
+
+def _assert_updated_custom_slurm_settings(slurm_commands):
+    """Assert the custom Slurm settings of pcluster.config.update.yaml are in effect."""
+    # Bulk Settings
+    debug_flags = slurm_commands.get_conf_param("DebugFlags")
+    # must check them individually because they can be reordered
+    assert "Steps" in debug_flags
+    assert "Power" in debug_flags
+    assert "CpuFrequency" in debug_flags
+    assert "BurstBuffer" in debug_flags
+    assert "Network" in debug_flags
+    assert "high" == slurm_commands.get_conf_param("GpuFreqDef")
+    assert "10000" == slurm_commands.get_conf_param("MaxStepCount")
+
+    # Partition
+    assert "15" == slurm_commands.get_partition_info("q1", "GraceTime")
+    assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
+
+    # ComputeResource 1
+    assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
+    assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
+
+    # ComputeResource 2
+    assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
+    assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
 
 
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -700,28 +1224,13 @@ def test_slurm_custom_config_parameters(
     wait_for_computefleet_changed(cluster, "RUNNING")
 
     # then we expect updated custom values to be set in slurm config
-    # Bulk Settings
-    debug_flags = slurm_commands.get_conf_param("DebugFlags")
-    # must check them individually because they can be reordered
-    assert "Steps" in debug_flags
-    assert "Power" in debug_flags
-    assert "CpuFrequency" in debug_flags
-    assert "BurstBuffer" in debug_flags
-    assert "Network" in debug_flags
-    assert "high" == slurm_commands.get_conf_param("GpuFreqDef")
-    assert "10000" == slurm_commands.get_conf_param("MaxStepCount")
+    _assert_updated_custom_slurm_settings(slurm_commands)
 
-    # Partition
-    assert "15" == slurm_commands.get_partition_info("q1", "GraceTime")
-    assert "1500" == slurm_commands.get_partition_info("q1", "MaxMemPerNode")
-
-    # ComputeResource 1
-    assert "20000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Port")
-    assert "4000" == slurm_commands.get_node_attribute("q1-dy-cr1-1", "Memory")
-
-    # ComputeResource 2
-    assert "25000" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Port")
-    assert "4100" == slurm_commands.get_node_attribute("q1-dy-cr2-1", "Memory")
+    if upgrade_slurm_with_stopped_compute_nodes(remote_command_executor, cluster):
+        # The upgrade must leave /opt/slurm/etc untouched.
+        _assert_updated_custom_slurm_settings(slurm_commands)
+        # Below the MaxMemPerNode=1500 of q1: without --mem a job asks for the whole node and is rejected.
+        run_scheduler_smoke_test(slurm_commands, partition="q1", other_options="--mem=1000")
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
@@ -1428,10 +1937,10 @@ def _wait_for_node_reset(
     if static_nodes:
         logging.info("Assert static nodes are placed in DOWN during replacement")
         # DRAIN+DOWN = drained
-        wait_for_compute_nodes_states(
+        wait_for_compute_nodes_to_be_observed_in_states(
             scheduler_commands,
             static_nodes,
-            expected_states=["down", "down*", "drained", "drained*"],
+            expected_states=["down", "down*", "draining", "draining*", "drained", "drained*"],
             wait_fixed_secs=wait_fixed_secs,
             stop_max_delay_secs=stop_max_delay_secs,
         )
@@ -1557,20 +2066,22 @@ def _wait_compute_cloudinit_done(remote_command_executor, compute_node):
     """Wait till cloud-init complete on a given compute node"""
     compute_node_private_ip = compute_node.get("privateIpAddress")
     compute_cloudinit_status_output = remote_command_executor.run_remote_command(
-        f"ssh -q {compute_node_private_ip} sudo cloud-init status"
+        f"ssh -q {compute_node_private_ip} sudo cloud-init status --long"
     ).stdout
     assert_that(compute_cloudinit_status_output).contains("status: done")
 
 
-def _assert_mpi_process_completion(
-    remote_command_executor, slurm_commands, num_nodes, after_completion, check_proc_file
-):
-    result = slurm_commands.submit_command(
-        f'ps aux | grep "mpiexec.hydra.*sleep" | grep -v "grep" >> {check_proc_file}', nodes=num_nodes
+def _assert_mpi_process_completion(remote_command_executor, num_nodes, after_completion):
+    proc_track_result = remote_command_executor.run_remote_command(
+        f'srun -N {num_nodes} bash -c \'ps aux | grep "mpiexec.hydra.*sleep" | grep -v "grep" || true\''
     )
-    job_id = slurm_commands.assert_job_submitted(result.stdout)
-    slurm_commands.wait_job_completed(job_id)
-    proc_track_result = remote_command_executor.run_remote_command(f"cat {check_proc_file}")
+    logging.info(
+        "MPI process check (after_completion=%s) on %d nodes:\nstdout:\n%s\nstderr:\n%s",
+        after_completion,
+        num_nodes,
+        proc_track_result.stdout,
+        proc_track_result.stderr,
+    )
     if after_completion:
         assert_that(proc_track_result.stdout).does_not_match(".*mpiexec.hydra.*sleep")
     else:
@@ -1579,13 +2090,8 @@ def _assert_mpi_process_completion(
 
 def _check_mpi_process(remote_command_executor, slurm_commands, num_nodes, after_completion):
     """Submit script and check for MPI processes."""
-    # Clean up old datafiles
-    check_proc_file = "/shared/check_proc.out"
-
-    # Check completion status of MPI process using the shared datafile
-    remote_command_executor.run_remote_command(f"rm -f {check_proc_file}")
     retry(wait_fixed=seconds(10), stop_max_attempt_number=4)(_assert_mpi_process_completion)(
-        remote_command_executor, slurm_commands, num_nodes, after_completion, check_proc_file
+        remote_command_executor, num_nodes, after_completion
     )
 
 
@@ -2480,7 +2986,12 @@ def _test_memory_based_scheduling_enabled_true(
     )
     assert_that(result.stdout).is_equal_to("allocation failure: Requested node configuration is not available")
 
-    wait_for_compute_nodes_states(slurm_commands, ["queue1-st-ondemand1-i1-1"], ["idle"])
+    # The previous sub-test deliberately makes two jobs contend for memory on queue1-st-ondemand1-i1-1, which can
+    # leave the node DRAINED (for example when Slurm fails to kill the out-of-memory step) or DOWN once clustermgtd
+    # has terminated the instance behind it. The sub-tests below submit jobs to that exact node, so the node is
+    # waited for here: clustermgtd replaces an unhealthy static node on its own, which takes a boot and a
+    # registration, hence the longer delay.
+    wait_for_compute_nodes_states(slurm_commands, ["queue1-st-ondemand1-i1-1"], ["idle"], stop_max_delay_secs=15 * 60)
 
     # Check that now `--mem` also defines the amount of memory used by the job
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
@@ -2547,32 +3058,31 @@ def _test_memory_based_scheduling_with_multiple_instance_types(
 ):
     """Test Slurm memory-based scheduling with multimple instance types configured on a compute resource"""
 
-    jiff = 2
     # Here two jobs that require 2G of memory are submitted in an instance with 8000 MiB memory
-
+    # The first job runs long enough to still be there when the second one starts: Slurm can take up to a full
+    # scheduling cycle to allocate the second job, so a shorter job would leave nothing to run alongside it.
     job_id_1 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
             "slots": 1,
-            "command": "sleep 30",
+            "command": "sleep 120",
             "other_options": "--mem=2000 -w queue1-st-ondemand1-i2-1",
             "raise_on_error": False,
         }
     )
-    time.sleep(jiff)
+    slurm_commands.wait_job_running(job_id_1)
     job_id_2 = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "nodes": 1,
             "slots": 2,
-            "command": "sleep 10",
+            "command": "sleep 20",
             "other_options": "-c 1 --mem-per-cpu=1000 -w queue1-st-ondemand1-i2-1",
             "raise_on_error": False,
         }
     )
-    time.sleep(jiff)
-    # Both should be running
+    # Both jobs fit in the memory of the node, so the second one must start while the first one is still running
+    slurm_commands.wait_job_running(job_id_2)
     assert_that(slurm_commands.get_job_info(job_id_1, field="JobState")).is_equal_to("RUNNING")
-    assert_that(slurm_commands.get_job_info(job_id_2, field="JobState")).is_equal_to("RUNNING")
     # Check that memory appears in the TRES allocated for the job
     assert_that(slurm_commands.get_job_info(job_id_1, field="ReqTRES")).contains("mem=2000M")
     assert_that(slurm_commands.get_job_info(job_id_2, field="ReqTRES")).contains("mem=2000M")
@@ -2594,7 +3104,7 @@ def _test_slurm_behavior_when_updating_schedulable_memory_with_already_running_j
         submit_command_args={
             "nodes": 1,
             "slots": 1,
-            "command": "srun ./a.out 3000000000 390",
+            "command": "srun ./a.out 2000000000 390",
             "other_options": "-w queue1-st-ondemand1-i1-1",
             "raise_on_error": False,
         }

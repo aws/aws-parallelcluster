@@ -21,8 +21,8 @@ class TestListOfficialImagesCommand:
         [
             (["--os"], "error: argument --os: expected one argument"),
             (["--architecture"], "error: argument --architecture: expected one argument"),
-            (["--os", "alinux2", "--invalid"], "Invalid arguments ['--invalid']"),
-            (["--os", "alinux2", "--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
+            (["--os", "alinux2023", "--invalid"], "Invalid arguments ['--invalid']"),
+            (["--os", "alinux2023", "--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):

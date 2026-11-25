@@ -13,6 +13,7 @@
 import logging
 import os
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
@@ -42,10 +43,19 @@ def add_properties_to_report(item: pytest.Item):
     props = []
 
     # Add properties for test dimensions, obtained from fixtures passed to tests
+    # Try funcargs first, fall back to callspec.params (needed for @pytest.mark.usefixtures)
     for dimension in DIMENSIONS_MARKER_ARGS:
         value = item.funcargs.get(dimension)
+        if value and dimension == "region":
+            logging.info(f"region={value} (from funcargs) for {item.nodeid}")
+        if not value and hasattr(item, "callspec"):
+            value = item.callspec.params.get(dimension)
+            if value and dimension == "region":
+                logging.info(f"region={value} (from callspec.params) for {item.nodeid}")
         if value:
             props.append((dimension, value))
+        elif dimension == "region":
+            logging.warning(f"region=None for {item.nodeid}")
 
     # Add property for feature tested, obtained from filename containing the test
     props.append(("feature", extract_tested_component_from_filename(item)))
@@ -335,7 +345,10 @@ def _get_launch_time(logs, instance_id):
 
 
 def get_reporting_region(region: str):
-    """Get partition for the given region. If region is None, consider the region set in the environment."""
+    """Get partition for the given region. If region is None, fall back to DEFAULT_REPORTING_REGION."""
+    if not region:
+        logging.warning("Region is None in get_reporting_region, falling back to default reporting region")
+        return DEFAULT_REPORTING_REGION
     curr_partition = next(
         (partition for region_prefix, partition in PARTITION_MAP.items() if region.startswith(region_prefix)),
         DEFAULT_PARTITION,
@@ -344,3 +357,164 @@ def get_reporting_region(region: str):
         (region for partition, region in REPORTING_REGION_MAP.items() if partition == curr_partition),
         DEFAULT_REPORTING_REGION,
     )
+
+
+def _any_test_failed_in_session(request):
+    """Return True if any test in the session has recorded a failure (used for scope>function fixtures)."""
+    return bool(getattr(request.session, "_pcluster_failed_tests", None))
+
+
+def _current_test_failed(request):
+    """Return True if the current test item has failed during setup or call phases."""
+    for phase in ("setup", "call"):
+        rep = getattr(request.node, f"rep_{phase}", None)
+        if rep is not None and rep.failed:
+            return True
+    return False
+
+
+def _get_retain_counter_path(request):
+    """Return the path to the shared file used to track retained test failures across xdist workers.
+
+    The file is placed in the parent of output_dir to ensure it is shared across regions,
+    since each region gets its own output_dir subdirectory.
+    """
+    output_dir = request.config.getoption("output_dir", default=tempfile.gettempdir())
+    # output_dir is typically <base>/OUT_DIR/<region>; go up to the base so all regions share the file
+    parent_dir = os.path.dirname(output_dir) if output_dir else tempfile.gettempdir()
+    return os.path.join(parent_dir, ".retain_on_failure_tests")
+
+
+def _get_retained_stacks_path(request):
+    """Return the path to the file listing stack names that should not be deleted by cleanup."""
+    output_dir = request.config.getoption("output_dir", default=tempfile.gettempdir())
+    parent_dir = os.path.dirname(output_dir) if output_dir else tempfile.gettempdir()
+    return os.path.join(parent_dir, ".retained_stacks")
+
+
+def register_retained_stack(request, stack_arn):
+    """Register a stack ARN as retained so the Jenkins cleanup script skips it."""
+    stacks_path = _get_retained_stacks_path(request)
+    lock_path = stacks_path + ".lock"
+
+    with FileLock(lock_path):
+        if os.path.exists(stacks_path):
+            with open(stacks_path, "r") as f:
+                retained_stacks = set(line.strip() for line in f if line.strip())
+        else:
+            retained_stacks = set()
+
+        retained_stacks.add(stack_arn)
+        with open(stacks_path, "w") as f:
+            f.write("\n".join(retained_stacks) + "\n")
+
+    logging.info("Registered stack %s for retention", stack_arn)
+
+
+def _record_test_id_for_retention(request, test_id):
+    """Check if this test is already registered for retention, or register it if within the limit.
+
+    Uses a file lock to coordinate across xdist workers.
+    Returns (recorded, current_count, max_retain).
+    """
+    max_retain = request.config.getoption("retain_on_failure")
+    counter_path = _get_retain_counter_path(request)
+    lock_path = counter_path + ".lock"
+
+    with FileLock(lock_path):
+        if os.path.exists(counter_path):
+            with open(counter_path, "r") as f:
+                retained_tests = set(line.strip() for line in f if line.strip())
+        else:
+            retained_tests = set()
+
+        # Already registered — allow retention without incrementing
+        if test_id in retained_tests:
+            return True, len(retained_tests), max_retain
+
+        # Limit reached — deny
+        if len(retained_tests) >= max_retain:
+            return False, len(retained_tests), max_retain
+
+        # Register this test
+        retained_tests.add(test_id)
+        with open(counter_path, "w") as f:
+            f.write("\n".join(retained_tests) + "\n")
+
+        return True, len(retained_tests), max_retain
+
+
+def is_stack_retained(request, stack_arn):
+    """Check if a specific stack ARN is registered in the retained stacks file."""
+    stacks_path = _get_retained_stacks_path(request)
+    lock_path = stacks_path + ".lock"
+
+    with FileLock(lock_path):
+        if os.path.exists(stacks_path):
+            with open(stacks_path, "r") as f:
+                retained_stacks = set(line.strip() for line in f if line.strip())
+            return stack_arn in retained_stacks
+    return False
+
+
+def is_region_retained(request, region):
+    """Check if any retained stack belongs to the given region.
+
+    Stack ARNs contain the region: arn:aws:cloudformation:<region>:<account>:stack/...
+    """
+    stacks_path = _get_retained_stacks_path(request)
+    lock_path = stacks_path + ".lock"
+
+    with FileLock(lock_path):
+        if os.path.exists(stacks_path):
+            with open(stacks_path, "r") as f:
+                retained_stacks = set(line.strip() for line in f if line.strip())
+            for arn in retained_stacks:
+                # ARN format: arn:aws:cloudformation:<region>:<account>:stack/<name>/<id>
+                parts = arn.split(":")
+                if len(parts) >= 4 and parts[3] == region:
+                    return True
+    return False
+
+
+def retain_resources_on_teardown(request, scope="function"):
+    """Return True when resources should be retained on teardown based on CLI options.
+
+    - Always True when --no-delete is set.
+    - True when --retain-on-failure > 0 and there is a failure in the current scope,
+      but only up to --retain-on-failure failed tests (shared across xdist workers):
+        * For function/class-scoped fixtures, the failure is taken from the current test item
+          and the test is registered in the shared retain file.
+    """
+    if request.config.getoption("no_delete"):
+        return True
+    if request.config.getoption("retain_on_failure"):
+        # For function/class-scoped fixtures, check if the current test failed
+        # and register it for retention if within the limit.
+        if scope == "function":
+            failed = _current_test_failed(request)
+            test_id = request.node.nodeid
+        else:
+            failed = _any_test_failed_in_session(request)
+            failed_tests = getattr(request.session, "_pcluster_failed_tests", None)
+            test_id = next(iter(failed_tests)) if failed_tests else "unknown"
+
+        if not failed:
+            return False
+
+        within_limit, current_count, max_retain = _record_test_id_for_retention(request, test_id)
+        if within_limit:
+            logging.warning(
+                "Retaining resources because --retain-on-failure is set and a test failed (%d/%d)",
+                current_count,
+                max_retain,
+            )
+            return True
+        else:
+            logging.info(
+                "Not retaining resources: retain-on-failure limit reached (%d/%d)",
+                current_count,
+                max_retain,
+            )
+            return False
+    return False

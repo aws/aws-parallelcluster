@@ -1,0 +1,201 @@
+name: Cherry-pick to branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_numbers:
+        description: "Space-separated list of PR numbers to cherry-pick"
+        required: true
+        type: string
+      target_branches:
+        description: "Space-separated list of target branches to cherry-pick into"
+        required: true
+        type: string
+
+jobs:
+  cherry-pick:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Get PR details
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBERS: ${{ inputs.pr_numbers }}
+          TARGET_BRANCHES: ${{ inputs.target_branches }}
+          REPO: ${{ github.repository }}
+        run: |
+          # workflow_dispatch has no PR event payload, so fetch everything we need
+          # about each PR from the API.
+
+          # Space-separated list of PR numbers. PRs are processed in the order
+          # they are provided, so commits are cherry-picked in that same order.
+          PR_LIST=$(echo "${PR_NUMBERS}" | tr -s ' ' | sed 's/^ *//;s/ *$//')
+          for PR in ${PR_LIST}; do
+            if ! echo "${PR}" | grep -qE '^[0-9]+$'; then
+              echo "::error::Invalid PR number '${PR}' — must be numeric"
+              exit 1
+            fi
+          done
+
+          if [ -z "${PR_LIST// }" ]; then
+            echo "::error::No PR numbers provided"
+            exit 1
+          fi
+
+          # Validate target branches contain only safe characters
+          for BRANCH in ${TARGET_BRANCHES}; do
+            if ! echo "${BRANCH}" | grep -qE '^[a-zA-Z0-9._/-]+$'; then
+              echo "::error::Invalid branch name '${BRANCH}' — must match [a-zA-Z0-9._/-]+"
+              exit 1
+            fi
+          done
+
+          ALL_COMMITS=""
+          PR_DETAILS=""
+          PR_DISPLAY=""
+          FIRST_TITLE=""
+          for PR in ${PR_LIST}; do
+            PR_JSON=$(gh pr view "${PR}" --repo "${REPO}" \
+              --json baseRefName,title,author)
+            BASE_BRANCH=$(echo "${PR_JSON}" | jq -r '.baseRefName')
+            PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
+            PR_AUTHOR=$(echo "${PR_JSON}" | jq -r '.author.login')
+
+            # A PR can contain merges from its base branch. Those commits should not be cherry-picked.
+            # The types of commit are distinguished by the number of parents:
+            # 1 parent = non-merge commits, 2 parents = merge commit
+            COMMITS=$(gh api --paginate \
+              "repos/${REPO}/pulls/${PR}/commits?per_page=100" \
+              --jq '.[] | select((.parents | length) < 2) | .sha' | tr '\n' ' ')
+
+            if [ -z "${COMMITS// }" ]; then
+              echo "::error::PR #${PR} contains no non-merge commits to cherry-pick"
+              exit 1
+            fi
+
+            ALL_COMMITS="${ALL_COMMITS} ${COMMITS}"
+            PR_DETAILS="${PR_DETAILS}- #${PR} \"${PR_TITLE}\" by @${PR_AUTHOR} (from \`${BASE_BRANCH}\`)"$'\n'
+
+            if [ -z "${PR_DISPLAY}" ]; then
+              PR_DISPLAY="#${PR}"
+              FIRST_TITLE="${PR_TITLE}"
+            else
+              PR_DISPLAY="${PR_DISPLAY}, #${PR}"
+            fi
+          done
+
+          # Trim leading whitespace from the accumulated commit list
+          ALL_COMMITS=$(echo "${ALL_COMMITS}" | sed 's/^ *//')
+
+          # Drop the trailing newline so the rendered body has no blank last line
+          PR_DETAILS="${PR_DETAILS%$'\n'}"
+
+          # A single PR (no space in the list) keeps its title in the PR name;
+          # multiple PRs reference the first one followed by "and more".
+          FIRST_PR="${PR_LIST%% *}"
+          case "${PR_LIST}" in
+            *" "*) NEW_PR_TITLE="Cherry-pick #${FIRST_PR} and more" ;;
+            *)     NEW_PR_TITLE="Cherry-pick ${PR_DISPLAY}: ${FIRST_TITLE}" ;;
+          esac
+
+          echo "commits=${ALL_COMMITS}" >> "$GITHUB_OUTPUT"
+          echo "pr_numbers=${PR_LIST}" >> "$GITHUB_OUTPUT"
+          echo "pr_display=${PR_DISPLAY}" >> "$GITHUB_OUTPUT"
+          echo "pr_title=${NEW_PR_TITLE}" >> "$GITHUB_OUTPUT"
+          {
+            echo "pr_details<<CHERRY_PICK_EOF"
+            echo "${PR_DETAILS}"
+            echo "CHERRY_PICK_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Cherry-pick and create PR(s)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMITS: ${{ steps.pr-info.outputs.commits }}
+          PR_NUMBERS: ${{ steps.pr-info.outputs.pr_numbers }}
+          PR_DISPLAY: ${{ steps.pr-info.outputs.pr_display }}
+          PR_TITLE: ${{ steps.pr-info.outputs.pr_title }}
+          PR_DETAILS: ${{ steps.pr-info.outputs.pr_details }}
+          TARGET_BRANCHES: ${{ inputs.target_branches }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Fetch each PR's commits. They may live in a fork (different account),
+          # so they are not present in the base repo checkout. The refs/pull/*/head
+          # ref makes them available regardless of which fork the PR came from.
+          for PR in ${PR_NUMBERS}; do
+            git fetch origin "refs/pull/${PR}/head"
+          done
+
+          # Name the branch after the first and last PR in the set (a single PR
+          # keeps the plain pr-<n> form) so it stays within git's ref length limit
+          # regardless of how many PRs are cherry-picked.
+          FIRST_PR="${PR_NUMBERS%% *}"
+          LAST_PR="${PR_NUMBERS##* }"
+          case "${PR_NUMBERS}" in
+            *" "*) BRANCH_PR="pr-${FIRST_PR}-and-${LAST_PR}" ;;
+            *)     BRANCH_PR="pr-${FIRST_PR}" ;;
+          esac
+
+          HAS_FAILURE=false
+          for TARGET_BRANCH in ${TARGET_BRANCHES}; do
+            CHERRY_PICK_BRANCH="cherry-pick/${BRANCH_PR}-to-${TARGET_BRANCH}"
+
+            echo "Cherry-picking commits from PR(s) ${PR_DISPLAY} to ${TARGET_BRANCH}"
+            echo "Commits: ${COMMITS}"
+
+            git fetch origin "${TARGET_BRANCH}"
+            git checkout -b "${CHERRY_PICK_BRANCH}" "origin/${TARGET_BRANCH}"
+
+            # Cherry-pick all commits in order (works for both squash and rebase)
+            CHERRY_PICK_FAILED=false
+            for COMMIT in ${COMMITS}; do
+              if ! git cherry-pick "${COMMIT}" --no-edit; then
+                CHERRY_PICK_FAILED=true
+                git cherry-pick --abort
+                break
+              fi
+            done
+
+            if [ "${CHERRY_PICK_FAILED}" = "false" ]; then
+              git push origin "${CHERRY_PICK_BRANCH}"
+              PR_BODY=$(printf '%s\n\nIncluded PRs:\n%s' \
+                "Automated cherry-pick of ${PR_DISPLAY} to \`${TARGET_BRANCH}\`." \
+                "${PR_DETAILS}")
+              NEW_PR_URL=$(gh pr create \
+                --base "${TARGET_BRANCH}" \
+                --head "${CHERRY_PICK_BRANCH}" \
+                --title "${PR_TITLE}" \
+                --body "${PR_BODY}" \
+                --label "cherry-pick")
+              for PR in ${PR_NUMBERS}; do
+                gh pr comment "${PR}" --repo "${REPO}" \
+                  --body "✅ Cherry-pick to \`${TARGET_BRANCH}\` opened: ${NEW_PR_URL}"
+              done
+              echo "✅ Cherry-pick PR to ${TARGET_BRANCH} created successfully: ${NEW_PR_URL}"
+            else
+              HAS_FAILURE=true
+              echo "::error::Cherry-pick to ${TARGET_BRANCH} failed due to conflicts."
+            fi
+
+            # Clean up for next iteration
+            git checkout --detach 2>/dev/null || true
+            git branch -D "${CHERRY_PICK_BRANCH}" 2>/dev/null || true
+          done
+
+          if [ "${HAS_FAILURE}" = "true" ]; then
+            exit 1
+          fi

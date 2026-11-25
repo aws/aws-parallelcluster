@@ -1,26 +1,308 @@
 CHANGELOG
 =========
 
-3.15.0
+3.17.0
+------
+
+**ENHANCEMENTS**
+- Log the diff between the deployed and new CloudFormation templates of the cluster during both a normal update and a
+  dryrun. The diff is logged in the CLI log file or the API Lambda logs.
+- Add `SharedStorage/MountDirPermissions` to set the permissions of the shared storage mount directory, or to leave
+  them unchanged with `SetPermissions: false`.
+
+**CHANGES**
+- Remove support for Python 3.9 in the `pcluster` CLI, which is in end of life.
+
+**BUG FIXES**
+- Fix `update-cluster` failing with an unhandled exception when changing a shared storage `MountDir` with running nodes.
+
+3.16.3
 ------
 
 **CHANGES**
-- Add validator that warns against the downsides of disabling in-place updates on compute and login nodes through DevSettings.
-- Upgrade jmespath to ~=1.0 (from ~=0.10).
-- Upgrade tabulate to <=0.9.0 (from <=0.8.10).
+- Upgrade EFA installer to 1.51.0 (from 1.49.0).
+  - Efa-driver: efa-3.3.1
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.7.0-1
+  - Rdma-core: rdma-core-65.0-1
+  - Open MPI: openmpi40-aws-4.1.8-1 and openmpi50-aws-5.0.9-11
+- Upgrade NVIDIA driver, Fabric Manager, and IMEX to version 595.112.07 (from 595.71.05).
+- Upgrade mysql-community-client to version 8.4.13 (from 8.4.10).
+- Upgrade the Python version used by the virtual environments in the AMIs to 3.14.10 (from 3.14.8).
+- Upgrade amazon-efs-utils to version 3.3.5 (from 3.1.3).
+- Upgrade stunnel to version 5.82 (from 5.78).
+- Upgrade Cinc Client to version 19.4.46 (from 19.3.14).
+- Upgrade Amazon DCV to version 2026.0-25174 (from 2025.0-20103).
+  - server: `2026.0.25174-1`
+  - xdcv: `2026.0.715-1`
+  - gl: `2026.0.1124-1`
+  - web_viewer: `2026.0.25174-1`
+- On Ubuntu, stop setting the kernel parameter `fs.protected_regular` to 0, so that it keeps the OS default value as on the other OSes.
+- Grant `logs:DeleteLogGroup` on the Log Group ARN instead of the Log Stream ARN to PClusterBuildImageCleanupRole
+  to prevent DELETE_FAILED of the build image stack after the upcoming CloudWatch Logs IAM change.
 
 **BUG FIXES**
-- Add validation to block updates that change tag order. Blocking such change prevents update failures.
+- Only enable NVIDIA IMEX service on GB200 compute nodes. Only enable NVIDIA Fabric Manager service on compute nodes with NVSwitch, and do not enable the `nvidia-powerd` service. Since 3.16.0 the services were enabled unnecessarily on all instance types.
+- Fix dynamic nodes getting stuck in `COMPLETING` state indefinitely, holding their jobs, when the backing instance
+  of a node with jobs is terminated and its private IP is reused by another compute node.
+- Ensure only the latest AMI is returned by `pcluster list-official-images` for a given OS and architecture.
+- Fix name collisions of the `APIGatewayExecutionRole` IAM role when multiple ParallelCluster API stacks are created
+  at the same time, by using a longer suffix derived from the stack ID (24 characters, from 8).
+
+3.16.2
+------
+
+**ENHANCEMENTS**
+- Improve `export-logs`: speed up by downloading logs in parallel, add progress reporting, support running on deleted clusters.
+- Add a `pcluster-diag` check that verifies the sudoers definitions ParallelCluster relies on.
+
+**CHANGES**
+- Add support for Python 3.14 in the `pcluster` CLI.
+- Upgrade the Python runtime of ParallelCluster Lambda functions to Python 3.14 (from 3.12).
+- Increase the default root volume size to 50 GB (from 45 GB).
+- Log the `systemctl status` output and the last journal entries of any system service that fails to start during
+  node bootstrap or cluster update to `/var/log/chef-client.log`, so that the cause of the failure is available in CloudWatch Logs.
+- Upgrade the Python version used by the virtual environments baked into the AMIs to 3.14.8 (from 3.14.6).
+- Ship only AWS CLI v2 in ParallelCluster AMIs. AWS CLI v1 is no longer installed in the cookbook Python virtual environment.
+- Remove execution permissions from the configuration files `/opt/parallelcluster/shared/computefleet-status.json`,
+  `/opt/parallelcluster/scripts/clusterstatusmgtd_logging.conf` and `/etc/dcv/dcv.conf`.
+- Log the content of the Slurm configuration files generated on the head node, to simplify troubleshooting.
+
+**BUG FIXES**
+- Fix `build-image` failing in proxied environments when `UpdateOs` is enabled.
+- Fix `ExistingFsxNetworkingValidator` failing with a generic `NoneType` error when a file system does not return
+  network interfaces. The validator now fails with a clear error message.
+- Fix IAM role and policy naming collisions by using a longer suffix derived from the stack ID (24 characters, from 8).
+- Fix `describe-cluster` reporting incomplete events when the stack has a large event history.
+- Fix cluster update failing with `mount target already exists in this AZ` when multiple subnets are in the same AZ.
+- Fix cluster update replacing the managed FSx for Lustre file system, when all the queues are replaced with new ones on a different subnet.
+- Fix login nodes failing to mount the EFS file system managed by ParallelCluster when they are in an AZ not used by
+  the head node or compute nodes. ParallelCluster now creates an EFS mount target in that AZ.
+- Fix cluster update hanging when a shared storage is unresponsive, caused by the `fuser` probe run before each unmount.
+- Fix the permissions of ParallelCluster-managed files under `/etc/sudoers.d/` by setting mode `0440` on all of them.
+- Fix EC2 throttling during compute node launch not being retried and being reported as insufficient capacity
+  when using multiple instance types or multiple subnets.
+- Fix ParallelCluster treating `key=value` text in the `Comment` and `Extra` fields of Slurm nodes and reservations
+  as actual properties.
+
+**DEPRECATIONS**
+- This is the last ParallelCluster release that supports Ubuntu 22.04.
+
+3.16.1
+------
+
+**CHANGES**
+- Upgrade Slurm to version 25.11.8 (from 25.11.6).
+
+3.16.0
+------
+
+**ENHANCEMENTS**
+- Add the `pcluster-diag` diagnostics tool to ParallelCluster AMIs for running on-demand diagnostic checks on cluster nodes.
+- Improve resilience of cluster creation by retrying EBS volume attachment on transient IMDS connectivity failures.
+- Further reduce transient build-image failures on RHEL and Rocky caused by out-of-sync repo mirrors by resetting metadata upon retry.
+- Improve resilience of cluster updates on login nodes by reusing the head-node-driven orchestration already in place on
+  compute nodes, removing the dependency on cfn-hup and cfn-init.
+- Move all ParallelCluster-managed bootstrap files off `/tmp` into a dedicated `/opt/parallelcluster/tmp`
+  directory, so that image builds, cluster creations, and updates work on custom AMIs that mount `/tmp` with noexec.
+  Image builds work on the custom AMIs only if GDRcopy installation is skipped.
+- Disable `fwupd-refresh.timer` to improve performance for tightly coupled workloads at scale.
+
+**CHANGES**
+- The validator `ClusterNameValidator` now limits cluster names to 40 characters when using `ExternalSlurmdbd`,
+  consistent with the existing limit for `Database`. This prevents runtime failures caused by MySQL's table name length limit.
+- The validator `MultiNetworkInterfacesInstancesValidator` now also covers single-network-card instances with EFA enabled, which are launched with multiple network interfaces and therefore cannot be auto-assigned a public IP.
+- The CLI now requires the additional permission `tag:GetResources`, which it uses to resolve login nodes load balancer ARNs by tags (see the related bugfix).
+- Add support for Python 3.13 in the pcluster CLI.
+- Enforce NFSv4-only on the ParallelCluster-managed NFS server (head node). The NFSv3 client stack (rpcbind, rpc-statd, lockd)
+  is unchanged, so cluster nodes can still mount external NFSv3 servers.
+- Change the default NFS lock manager (lockd) port from 32768 to 4045, to avoid collisions with the Linux ephemeral port range (32768–60999), which can cause sporadic mount failures.
+  This only affects nodes that mount an external NFSv3 server; all ParallelCluster-managed storage is mounted over NFSv4 and is unaffected.
+  If you restrict NFS ports in a firewall, you must open TCP/UDP 4045 or NFSv3 mounts will fail.
+- Install the NVIDIA driver, CUDA toolkit, Fabric Manager, NVLSM, and IMEX from the distribution package manager using NVIDIA local repo packages instead of the run file installers.
+- On RHEL-family OSes, install the Xorg driver for DCV GPU acceleration and disable Wayland so that GDM always starts Xorg.
+  This is now required after switching NVIDIA driver installation to local repo packages; previously it was needed only on Ubuntu.
+- Upgrade NVIDIA driver, Fabric Manager, and IMEX to version 595.71.05 (from 580.126.20).
+- Upgrade CUDA Toolkit to version 13.2.2 (from 13.0.2).
+- Upgrade DCGM to version 4.6.0 (from 4.5.1).
+- In GPU Health Check, skip DCGM diagnostics when NVIDIA MIG is enabled because dcgmi diag does not support MIG.
+- Upgrade Slurm to version 25.11.6 (from 25.11.4).
+- Upgrade EFA installer to 1.49.0 (from 1.47.0).
+  - Efa-driver: efa-3.1.0
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.4.0-1
+  - Rdma-core: rdma-core-63.0-1
+  - Open MPI: openmpi40-aws-4.1.7-3 and openmpi50-aws-5.0.9-11
+- Upgrade mysql-community-client to version 8.4.10 (from 8.4.8).
+- Install the aws-parallelcluster-node package from S3 in all regions instead of PyPI, to support air-gapped and proxied environments.
+- Install amazon-efs-utils from the official EFS endpoint instead of building from source.
+  Users must now allowlist the CloudFront domain `amazon-efs-utils.aws.com` in their proxy/egress configuration
+  when using `build-image` with isolated subnets.
+- Upgrade amazon-efs-utils to version 3.1.3 (from 2.4.0).
+- Upgrade Cinc Client to version 19.3.14 (from 18.8.54).
+- Upgrade GDRCopy to version 2.6 (from 2.5.2).
+- Upgrade PMIx to version 5.0.11 (from 5.0.10).
+- Upgrade Enroot to version 4.2.1 (from 3.4.1).
+- Upgrade Pyxis to version 0.24.0 (from 0.20.0).
+- Upgrade stunnel to version 5.78 (from 5.67).
+- Upgrade Python to version 3.14.6 (from 3.14.2).
+- Upgrade Intel MPI to version 2021.18.0.749 (from 2021.17.2.94).
+- Upgrade Arm Performance Libraries (ArmPL) to version 26.01.1 (from 24.10).
+- Upgrade aws-cfn-bootstrap to version 2.0-40 (from 2.0-38).
+- Upgrade third-party cookbook dependencies:
+  - line-5.0.0 (from line-4.5.21)
+  - nfs-5.1.6 (from nfs-5.1.5)
+  - openssh-2.11.17 (from openssh-2.11.14)
+  - yum-8.0.0 (from yum-7.4.20)
+  - yum-epel-5.0.9 (from yum-epel-5.0.8)
+- Raise the maximum allowed value of the FSx for Lustre `AutomaticBackupRetentionDays` parameter from 35 to 90, matching the
+  Amazon FSx service limit.
+
+**BUG FIXES**
+- Fix cluster creation failure when login nodes are used and CloudWatch logging is disabled.
+- Fix sporadic S3 bucket creation failure (for buckets named `parallelcluster-*-v1-do-not-delete`) when multiple
+  create-cluster commands run simultaneously in the same region.
+- Fix cluster creation failure caused by Slurm accounting bootstrap failing when ClusterName is overridden
+  via custom Slurm settings or when the cluster name contains uppercase letters.
+- Remove the deprecated `AccountingStorageUser` parameter from the Slurm configuration, which was causing harmless error messages.
+- Fix DCV configuration by letting the DCV server decide the display encoders for the instance type.
+- Fix DCV prerequisite installation potentially blocking on interactive prompts by exporting `DEBIAN_FRONTEND=noninteractive` to child processes.
+- Fix Xdcv segfault caused by DCV attempting GL initialization when GPU acceleration is not supported.
+- Fix slurmrestd failing to start on AL2023 because the http-parser library was not discoverable by the dynamic linker.
+- Fix compute node bootstrap hanging without a clear error when the compute subnet cannot reach DynamoDB.
+- Fix clustermgtd failing to detect compute node bootstrap timeouts, which prevented the cluster from entering protected mode.
+- Fix race condition in load balancer lookup by using `tag:GetResources` to resolve load balancer ARNs by tags,
+  which previously caused cluster update failures on clusters with login nodes.
+- Fail `pcluster build-image` early when the downloaded cookbook version does not match the ParallelCluster CLI version.
+- Fix login nodes not mounting `/opt/parallelcluster/shared` when EFS is used as the internal shared storage type.
+- Fix SELinux not being disabled on RHEL-family OSes (kernels >= 6.4) due to a deprecated mechanism being silently
+  ignored by newer kernels.
+- Fix `build-image` failure by skipping installation of `fabric-manager`, `gdrcopy`, and `dcgm` if the parent image already has a version installed.
+- Fix an issue where compute nodes are replaced when launching a large number of nodes due to eventual consistency.
+- Fix a race condition where a fleet start was not enough to exit protected mode.
+  This race condition is triggered when a fleet stop is issued on a fleet transitioning into protected mode while some of its nodes are powering up.
+- Fix an issue where static nodes in a maintenance reservation enter a terminate/relaunch loop when being replaced.
+- Fix cluster creation and update failures caused by IAM policy tag conditions that required the `parallelcluster:cluster-name`
+  tag to be the only tag on a request rather than merely present. This affected clusters with login nodes as well as stack
+  creation and updates when AWS or CloudFormation attached additional tags to the request.
+- Prevent a path traversal in `export-cluster-logs` and `export-image-logs`, where a crafted S3 object key in the
+  log export bucket could cause files to be written outside the export directory on the machine running the command.
+- Return a clear error instead of an unexpected fatal exception when the configured AWS profile does not exist.
+- Cache getPolicy API calls to reduce validation time of clusters that have additional IAM policies.
+
+**DEPRECATIONS**
+- Amazon Linux 2 is no longer supported.
+- AWS Batch as a scheduler is no longer supported.
+
+3.15.1
+------
+
+**CHANGES**
+- Patch official ParallelCluster AMIs to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+- Disable `algif_aead` kernel module on Ubuntu to address [CVE-2026-31431](https://nvd.nist.gov/vuln/detail/CVE-2026-31431).
+- Upgrade NVIDIA driver to version 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2 to address CVE-2025-33219.
+- Upgrade NVIDIA Fabric manager to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
+- Upgrade NVIDIA IMEX to 580.126.20 (from 580.105.08) for all OSs except Amazon Linux 2.
+
+3.15.0
+------
+
+**ENHANCEMENTS**
+- Add support for p6-b300 instances for all OSs except AL2.
+- Replace cfn-hup in compute nodes with systemd timer to support in place updates in order to improve performance for tightly coupled worloads at scale.
+  This new mechanism relies on shared storage to sync updates between the head node and compute nodes.
+- Disable `dnf-makecache.timer` to improve performance for tightly coupled worloads on RHEL/Rocky at scale.
+- Support updates of `Tags` during cluster-updates except in AWS Top Secret and AWS Secret Regions.
+- Add `LaunchTemplateOverrides` to cluster config to allow network interfaces to be customized by overriding the launch template of a compute resource.
+  - This overrides the parallelcluster default using a shallow merge.
+- Add alarm on missing clustermgtd heartbeat.
+
+**CHANGES**
+- When EFA is enabled, ParallelCluster now configures network interfaces as `interface` and `efa-only` instead of the combined `efa` type. NCI-0 is configured with an `interface` ENI for IP connectivity plus an `efa-only` ENI for EFA fabric. Secondary cards are configured with an `efa-only` only ENI. This reduces IP address consumption from one per network card to one per instance. EFA performance is unchanged. Customers who need the legacy `efa` behavior can set `DevSettings: EfaInterfaceType: efa`.
+- Reduce transient build-image failures in RHEL and Rocky caused by out-of-sync repo mirrors by resetting metadata upon retry.
+- Always start clustermgtd on cluster update and compute fleet status update failure, regardless the failure condition.
+- Improve resiliency of the cluster update rollback workflow.
+- Upgrade Slurm to version 25.11.4 (from 24.11.7).
+- Upgrade Pmix to 5.0.10 (from 5.0.6).
+- Upgrade EFA installer to 1.47.0 (from 1.44.0).
+  - Efa-driver: efa-3.0.0
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.4.0-1
+  - Rdma-core: rdma-core-61.0-1
+  - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.9
+- Upgrade NVIDIA driver to version 580.105.08 (from 570.172.08) for all OSs except Amazon Linux 2.
+- Upgrade GDRCopy to version 2.5.2 (from 2.4.4).
+- Upgrade DCV to version 2025.0-20103 (from 2024.0-19030).
+- Upgrade CUDA Toolkit to version 13.0.2 (from 12.8.1) for all OSs except Amazon Linux 2.
+- Upgrade NVIDIA Fabric manager to 580.105.08 for all OSs except Amazon Linux 2.
+- Upgrade Python to 3.14.2 (from 3.12.11) for all OSs except Amazon Linux 2.
+- Upgrade aws-cfn-bootstrap to version 2.0-38 (from 2.0-33).
+- Upgrade DCGM to version 4.5.1 (from 4.4.1) for all OSs except Amazon Linux 2.
+- Upgrade mysql-community-client to version 8.4.8 (from 8.0.39) for all OSs except Amazon Linux 2.
+- Upgrade Intel MPI Library to 2021.17.2 (from 2021.16.0).
+- Upgrade Cinc Client to version 18.8.54 (from 18.7.10).
+- Upgrade amazon-efs-utils to version 2.4.0 (from v2.1.0) for Amazon Linux AMI's.
+- Upgrade jmespath to ~=1.0 (from ~=0.10).
+- Upgrade tabulate to <=0.9.0 (from <=0.8.10).
+- Add a validator to warn in case in-place updates have been disabled (via DevSettings) on compute and login nodes.
+
+**BUG FIXES**
+- Fix LoginNodes NLB not being publicly accessible when using public subnet with implicit main route table association.
+  See https://github.com/aws/aws-parallelcluster/issues/7173
+- Fix a failure when creating a cluster with GPU instances and with DCV enabled but without internet access.
+- Fix an issue where cluster creation would intermittently fail due to eventual consistency when the head/compute/login nodes share the same security group.
+- Fix build-image failure during ubuntu-desktop installation on a Ubuntu parent image with outdated OS packages.
+- Fix validation of HeadNode/LocalStorage. This configuration parameter does not support updates.
+- Fix validator `PlacementGroupCapacityReservationValidator` to accept capacity reservations with cross-account placement group.
+- Fix the CloudWatch agent configuration to ensure proper parsing of timestamps across all log files.
+- Fix logging configuration to capture all Slurm health check events (updating log level from WARNING to INFO to prevent missing log entries).
+- Improve cluster update resiliency by ensuring the update does not fail on nodes completing the bootstrap during the update.
+- Prevent cluster update failure recovery process from running on AWS Batch clusters. This recovery mechanism should only execute on Slurm clusters.
+
+**DEPRECATIONS**
+- The `LoginNodes/Pools/Ssh/KeyName` configuration parameter, deprecated since 3.14.0, is no longer supported.
+- This is the last ParallelCluster release supporting Amazon Linux 2, as Amazon Linux 2 will reach end of support on June 30, 2026.
+- This is the last ParallelCluster release supporting AWS Batch CLI. Starting with v3.16.0, ParallelCluster will no longer support AWS Batch as a scheduler.
+
+3.14.2
+------
+
+**CHANGES**
+- Upgrade munge to version 0.5.18 (from 0.5.16) to address [CVE-2026-25506](https://github.com/dun/munge/security/advisories/GHSA-r9cr-jf4v-75gh).
+- Upgrade NodeJS version in installer to version 22.22.0 (from 20.18.3).
 
 3.14.1
 ------
 
 **CHANGES**
+- Improve cluster update resiliency by ensuring clustermgtd is started after updates complete successfully, or after failed updates where queue reconfiguration succeeded.
+- Add chef attribute `cluster/in_place_update_on_fleet_enabled` to disable in-place updates on compute and login nodes
+  and mitigate performance impact at scale. See https://github.com/aws/aws-parallelcluster/issues/7095
+- Upgrade Slurm to version 24.11.7 (from 24.11.6).
+- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
 - Upgrade Connexion to ~=2.15.1 (from ~=2.13.0).
 - Upgrade Flask to ~=3.1.0 (from >=2.2.5,<2.3).
-- Upgrade Werkzeug to ~=3.1 (from ~=2.0) to address [CVE-2024-34069](https://nvd.nist.gov/vuln/detail/cve-2024-34069).
+- Load kernel module `drm_client_lib` before installation of NVIDIA driver, if available on the kernel.
+- Reduce dependency footprint by installing the package `sssd-common` rather than `sssd`.
+- Upgrade libjwt to version 1.18.4 (from 1.17.0) for all OSes except Amazon Linux 2.
+- Upgrade amazon-efs-utils to version 2.4.0 (from v2.3.1).
+- Upgrade EFA installer to 1.44.0 (from 1.43.2).
+  - Efa-driver: efa-2.17.3-1
+  - Efa-config: efa-config-1.18-1
+  - Efa-profile: efa-profile-1.7-1
+  - Libfabric-aws: libfabric-aws-2.3.1-1
+  - Rdma-core: rdma-core-59.0-1
+  - Open MPI: openmpi40-aws-4.1.7-2 and openmpi50-aws-5.0.8-11
 
 **BUG FIXES**
+- Fix an issue where cfn-hup enters an endless loop on the head node after a rollback to a cluster state older than 24 hours, caused by cfn-signal failing to signal an expired wait condition handle.
+- Fix race condition where compute nodes could deploy the wrong cluster config version after an update failure.
+- Prevent cluster readiness check failures due to instances launched while the check is in progress.
+- Fix incorrect timestamp parsing for chef-client.log in CloudWatch Agent configuration.
+- Disable snap auto-refresh on Ubuntu during build image to prevent intermittent reboot failures.
 - Reduce EFA installation time for Ubuntu by ~20 minutes by only holding kernel packages for the installed kernel.
 - Add GetFunction and GetPolicy permissions to PClusterBuildImageCleanupRole to prevent AccessDenied errors during build image stack deletion.
 - Fix validation error messages when `DevSettings` is null or `DevSettings/InstanceTypesData` is missing required fields.
@@ -263,7 +545,7 @@ CHANGELOG
 
 **ENHANCEMENTS**
 - Add new configuration section `Scheduling/SlurmSettings/ExternalSlurmdbd` to connect the cluster to an external Slurmdbd.
-- Allow build-image to be run in an isolated network.
+- Add support for build-image in AWS Top Secret and AWS Secret Regions.
 - Add support for Amazon Linux 2023.
 - Add support for `price-capacity-optimized` as an `AllocationStrategy`.
 - Add validator to prevent the use of Placement Groups with Capacity Blocks.
@@ -406,7 +688,7 @@ CHANGELOG
   - This change removes support for P3, G3, P2 and G2 instances with GPU architecture not supported by OpenRM. The Open Source Nvidia only works on platforms that have the GSP (GPU System Processor).
 - Remove support of `all_or_nothing_batch` configuration parameter in the Slurm resume program, in favor of the new `Scheduling/ScalingStrategy` cluster configuration.
 - Changed cluster alarms naming convention to '[cluster-name]-[component-name]-[metric]'.
-- Change default EBS volume types in ADC regions from `gp2` to `gp3`, for both the root and additional volumes.
+- Change default EBS volume types in AWS Secret and Top Secret regions from `gp2` to `gp3`, for both the root and additional volumes.
 - The optional permissions boundary for the ParallelCluster API is now applied to every IAM role created by the API infrastructure.
 - Upgrade EFA installer to `1.29.1`.
   - Efa-driver: `efa-2.6.0-1`
@@ -486,11 +768,11 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-- Add support for Slurm accounting in US isolated regions.
+- Add support for Slurm accounting in AWS Top Secret and AWS Secret Regions..
 
 **CHANGES**
 - Avoid duplication of nodes seen by `clustermgtd` if compute nodes are added to multiple Slurm partitions.
-- ParallelCluster AMI for US isolated regions are now vended with preconfigured CA certificates to speed up node bootstrap.
+- ParallelCluster AMI for AWS Top Secret and AWS Secret regions are now vended with preconfigured CA certificates to speed up node bootstrap.
 - Replace `nvidia-persistenced` service with `parallelcluster_nvidia` service to avoid conflicts with DLAMI.
 
 **BUG FIXES**
@@ -569,7 +851,7 @@ CHANGELOG
 -----
 **ENHANCEMENTS**
 - Add a new way to distribute ParallelCluster as a self-contained executable shipped with a dedicated installer.
-- Add support for US isolated region us-isob-east-1.
+- Add support for AWS Secret region us-isob-east-1.
 
 **CHANGES**
 - Upgrade EFA installer to `1.22.0`

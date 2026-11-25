@@ -14,7 +14,6 @@ import os
 import os.path as os_path
 import re
 import time
-from collections import defaultdict
 from datetime import datetime
 
 import boto3
@@ -33,6 +32,7 @@ from utils import (
     generate_stack_name,
     get_arn_partition,
     get_root_volume_id,
+    get_similar_instance_types,
     is_filecache_supported,
     is_fsx_lustre_supported,
     is_fsx_ontap_supported,
@@ -42,7 +42,13 @@ from utils import (
     wait_for_computefleet_changed,
 )
 
-from tests.common.assertions import assert_instance_config_version_on_ddb, assert_lines_in_logs, assert_no_msg_in_logs
+from pcluster.constants import EBS_ROOT_VOLUME_SIZE_DEFAULT
+from tests.common.assertions import (
+    assert_instance_config_version_on_ddb,
+    assert_lines_in_logs,
+    assert_no_msg_in_logs,
+    wait_instance_replaced_or_terminating,
+)
 from tests.common.hit_common import (
     assert_compute_node_states,
     assert_initial_conditions,
@@ -54,6 +60,7 @@ from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get
 from tests.common.schedulers_common import SlurmCommands
 from tests.common.storage.assertions import assert_storage_existence
 from tests.common.storage.constants import StorageType
+from tests.common.storage.fsx_utils import wait_for_file_cache_available
 from tests.common.utils import generate_random_string, get_deployed_config_version, retrieve_latest_ami
 from tests.storage.storage_common import (
     assert_file_exists,
@@ -83,15 +90,14 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     ]:
         bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
-    spot_instance_types = ["t3.small", "t3.medium"]
-    try:
-        boto3.client("ec2").describe_instance_types(InstanceTypes=["t3a.small"])
-        spot_instance_types.extend(["t3a.small", "t3a.medium"])
-    except Exception:
-        pass
+    spot_instance_types = get_similar_instance_types("t3.medium", region, 5)
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, spot_instance_types=spot_instance_types)
+    init_config_file = pcluster_config_reader(
+        resource_bucket=bucket_name,
+        spot_instance_types=spot_instance_types,
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
+    )
     cluster = clusters_factory(init_config_file)
 
     # Verify that compute nodes stored the deployed config version on DDB
@@ -186,6 +192,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         output_file="pcluster.config.update.successful.yaml",
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
         postupdate_script="updated_postupdate.sh",
@@ -343,6 +350,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     failed_update_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         output_file="pcluster.config.update.failed.yaml",
+        root_volume_size=EBS_ROOT_VOLUME_SIZE_DEFAULT,
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
         postupdate_script="failed_postupdate.sh",
@@ -419,7 +427,15 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
             assert_that("InstanceType").is_not_in(launch_template_data)  # Using CreateFleet override
             assert_that("CpuOptions").is_not_in(launch_template_data)
             if compute_resource_config["enable_efa"]:
-                assert_that(launch_template_data["NetworkInterfaces"][0]["InterfaceType"]).is_equal_to("efa")
+                # Under the new default, NCI-0 uses 'interface' (no InterfaceType set) + efa-only on DI=1.
+                # Verify at least one NetworkInterface has InterfaceType 'efa-only'.
+                interface_types = [
+                    ni.get("InterfaceType")
+                    for ni in launch_template_data["NetworkInterfaces"]
+                    if ni.get("InterfaceType")
+                ]
+                assert_that(interface_types).is_not_empty()
+                assert_that(interface_types).contains("efa-only")
             else:
                 assert_that("InterfaceType").is_not_in(launch_template_data["NetworkInterfaces"][0])
 
@@ -546,30 +562,6 @@ def _check_extra_json(command_executor, slurm_commands, host, expected_value):
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-@pytest.mark.usefixtures("os", "instance")
-def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
-    # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader()
-    cluster = clusters_factory(init_config_file)
-
-    # Verify initial configuration
-    _verify_initialization(region, cluster, cluster.config)
-
-    # Update cluster with the same configuration
-    cluster.update(str(init_config_file), force_update="true")
-
-    # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
-    cluster.update(str(updated_config_file))
-
-    # Read updated configuration
-    with open(updated_config_file, encoding="utf-8") as conf_file:
-        updated_config = yaml.safe_load(conf_file)
-
-    # verify updated parameters
-    _verify_initialization(region, cluster, updated_config)
-
-
 @pytest.mark.usefixtures("instance")
 def test_update_instance_list(
     region,
@@ -692,18 +684,6 @@ def _check_instance_type(ec2, instances, expected_instance_type):
         assert_that(instance_info["InstanceType"]).is_equal_to(expected_instance_type)
 
 
-def _verify_initialization(region, cluster, config):
-    # Verify initial settings
-    _test_max_vcpus(
-        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"]
-    )
-    _test_min_vcpus(
-        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MinvCpus"]
-    )
-    spot_bid_percentage = config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["SpotBidPercentage"]
-    assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
-
-
 def _test_max_vcpus(region, stack_name, vcpus):
     ce_max_size = get_batch_ce_max_size(stack_name, region)
     assert_that(ce_max_size).is_equal_to(vcpus)
@@ -745,8 +725,8 @@ def test_queue_parameters_update(
 ):
     """Test update cluster with drain strategy."""
     # Create cluster with initial configuration
-    initial_compute_root_volume_size = 45
-    updated_compute_root_volume_size = 50
+    initial_compute_root_volume_size = EBS_ROOT_VOLUME_SIZE_DEFAULT
+    updated_compute_root_volume_size = EBS_ROOT_VOLUME_SIZE_DEFAULT + 5
     # If you are running this test in your personal account, then you must have
     # ParallelCluster AMIs following the official naming convention
     # and set allow_private_ami to True.
@@ -824,6 +804,7 @@ def _test_update_without_queue_strategy(
     pcluster_config_reader, pcluster_ami_id, pcluster_copy_ami_id, cluster, updated_compute_root_volume_size
 ):
     """Test update without setting queue strategy, update will fail."""
+    logging.info("Updating cluster without strategy. The update is expected to fail")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml",
         global_custom_ami=pcluster_ami_id,
@@ -855,7 +836,8 @@ def _test_update_queue_strategy_without_running_job(
     updated_compute_root_volume_size,
     queue_update_strategy,
 ):
-    """Test queue parameter update with drain stragegy without running job in the queue."""
+    """Test queue parameter update with drain strategy without running job in the queue."""
+    logging.info(f"Updating cluster with strategy {queue_update_strategy} without running jobs")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update_without_running_job.yaml",
         global_custom_ami=pcluster_ami_id,
@@ -900,6 +882,7 @@ def _test_update_queue_strategy_with_running_job(
     region,
     queue_update_strategy,
 ):
+    logging.info("Submitting job to queue1 before cluster update")
     queue1_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "srun sleep 3000",
@@ -908,13 +891,21 @@ def _test_update_queue_strategy_with_running_job(
         }
     )
 
+    logging.info("Submitting job to queue2 before cluster update")
     queue2_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={"command": "srun sleep 3000", "nodes": 2, "partition": "queue2"}
     )
     # Wait for the job to run
     scheduler_commands.wait_job_running(queue1_job_id)
+    logging.info(f"Job {queue1_job_id} is running on queue1")
     scheduler_commands.wait_job_running(queue2_job_id)
+    logging.info(f"Job {queue2_job_id} is running on queue2")
 
+    # Ask Slurm exactly which instance the queue2 job is running on, so that after a TERMINATE update
+    # we can assert that exact instance was terminated (the job's node was replaced).
+    queue2_instance_id = scheduler_commands.get_job_instance_id(queue2_job_id)
+
+    logging.info(f"Updating cluster with strategy {queue_update_strategy} with running jobs")
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update_with_running_job.yaml",
         global_custom_ami=pcluster_ami_id,
@@ -939,8 +930,14 @@ def _test_update_queue_strategy_with_running_job(
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
     assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=["mixed", "allocated"])
     if queue_update_strategy == "TERMINATE":
-        time.sleep(10)
-        scheduler_commands.assert_job_state(queue2_job_id, "CONFIGURING")
+        # TERMINATE forcibly terminates queue2's compute nodes and requeues the running job onto
+        # freshly launched replacement nodes. Assert the deterministic outcome (the job was requeued
+        # and is running again on the replaced instances) rather than snapshotting the transient
+        # CONFIGURING state, which can close before we sample it when replacement nodes boot quickly
+        # (the whole swap can finish inside the update-cluster --wait window).
+        scheduler_commands.wait_job_requeued(queue2_job_id)
+        wait_instance_replaced_or_terminating(queue2_instance_id, region)
+        scheduler_commands.wait_job_running(queue2_job_id)
     # check queue1 AMIs are not replaced
     _check_queue_ami(cluster, ec2, pcluster_ami_id, "queue1")
 
@@ -1016,7 +1013,9 @@ def _test_update_resize(
         assert_that(len(static_nodes)).is_equal_to(0)
         assert_that(len(dynamic_nodes)).is_equal_to(4)
         # assert that job running on static nodes removed with the update is re-queued
-        scheduler_commands.wait_job_running(queue1_job_id)
+        # Commenting the check of Job running due to slurm Bug
+        # TODO: Uncomment once slurm issue is solved
+        # scheduler_commands.wait_job_running(queue1_job_id)
 
 
 @pytest.fixture
@@ -1027,14 +1026,11 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
         if request.config.getoption(option):
             stack = CfnStack(name=request.config.getoption(option), region=region, template=None)
         else:
-            # Choose subnets from different availability zones
-            subnet_ids = vpc_stack.get_all_public_subnets() + vpc_stack.get_all_private_subnets()
-            subnets = boto3.client("ec2").describe_subnets(SubnetIds=subnet_ids)["Subnets"]
-            subnets_by_az = defaultdict(list)
-            for subnet in subnets:
-                subnets_by_az[subnet["AvailabilityZone"]].append(subnet["SubnetId"])
-            azs = [az for az in subnets_by_az.keys()]
-            one_subnet_per_az = [subnets_by_az[az][0] for az in azs]
+            # Deploy the storage in the private subnet used by the cluster compute nodes.
+            # The head node, login nodes and compute nodes all live in the same Availability Zone,
+            # so a single EFS mount target in the compute node subnet covers every node in the cluster.
+            # The other single-AZ storage resources (FSx, File Cache, EBS) are co-located there as well.
+            compute_subnet_id = vpc_stack.get_private_subnet()
 
             # The EBS volume must be placed in the same AZ where the head node is.
             # The head node is deployed in the public subnet.
@@ -1052,12 +1048,9 @@ def external_shared_storage_stack(request, test_datadir, region, vpc_stack: CfnV
             params = [
                 # Networking
                 {"ParameterKey": "Vpc", "ParameterValue": vpc},
-                {"ParameterKey": "SubnetOne", "ParameterValue": one_subnet_per_az[0]},
-                {"ParameterKey": "SubnetTwo", "ParameterValue": one_subnet_per_az[1]},
-                {
-                    "ParameterKey": "SubnetThree",
-                    "ParameterValue": "" if len(one_subnet_per_az) == 2 else one_subnet_per_az[2],
-                },
+                {"ParameterKey": "SubnetOne", "ParameterValue": compute_subnet_id},
+                {"ParameterKey": "SubnetTwo", "ParameterValue": ""},
+                {"ParameterKey": "SubnetThree", "ParameterValue": ""},
                 # EBS
                 {"ParameterKey": "CreateEbs", "ParameterValue": "true"},
                 {"ParameterKey": "EbsVolumeAz", "ParameterValue": ebs_volume_az},
@@ -1098,9 +1091,10 @@ def remove_none_items(items: list):
 
 
 @pytest.mark.usefixtures("instance")
-def test_dynamic_file_systems_update(
+def test_dynamic_file_systems_update(  # noqa: C901
     region,
     os,
+    instance,
     pcluster_config_reader,
     ami_copy,
     clusters_factory,
@@ -1112,12 +1106,32 @@ def test_dynamic_file_systems_update(
     test_datadir,
     delete_storage_on_teardown,
     external_shared_storage_stack,
+    flags,
 ):
     """Test update shared storages."""
 
+    # When the "at_scale" flag is enabled, the test runs against a large cluster, i.e. 50 queues with 10 static
+    # compute nodes each and 10 login node pools with 100 login nodes per pool.
+    # Otherwise, it runs against a minimal cluster.
+    at_scale = "at_scale" in flags
+    login_nodes_pools_count = 10 if at_scale else 1
+    running_login_nodes_count = 10 if at_scale else 1
+    static_compute_min_count = 10 if at_scale else 1
+    static_compute_max_count = static_compute_min_count + 1
+    queue_count = 50 if at_scale else 2
+    head_node_instance_type = "c5.4xlarge" if at_scale else instance
+    login_node_pools = [f"login-{i + 1}" for i in range(login_nodes_pools_count)]
+
     # Create cluster without any shared storage.
     init_config_file = pcluster_config_reader(
-        config_file="pcluster.config.yaml", output_file="pcluster.config.no-shared-storage.yaml", login_nodes_count=1
+        config_file="pcluster.config.yaml",
+        output_file="pcluster.config.no-shared-storage.yaml",
+        login_nodes_count=running_login_nodes_count,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
     cluster = clusters_factory(init_config_file, wait=False)
 
@@ -1196,7 +1210,12 @@ def test_dynamic_file_systems_update(
         existing_file_cache_id=existing_file_cache_id,
         bucket_name=bucket_name,
         queue_update_strategy="DRAIN",
-        login_nodes_count=1,
+        login_nodes_count=running_login_nodes_count,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
 
     cluster.update(update_cluster_config)
@@ -1235,7 +1254,12 @@ def test_dynamic_file_systems_update(
     )
     for mount_dir in all_mount_dirs_update_1:
         verify_directory_correctly_shared(
-            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1", "queue2"],
+            cluster=cluster,
+            login_node_pools=login_node_pools,
         )
 
     # # Update cluster to stop login nodes
@@ -1256,6 +1280,11 @@ def test_dynamic_file_systems_update(
         bucket_name=bucket_name,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
 
     cluster.update(update_cluster_config)
@@ -1296,8 +1325,23 @@ def test_dynamic_file_systems_update(
         new_lustre_deletion_policy="Retain",
         new_efs_mount_dir=new_efs_mount_dir,
         new_efs_deletion_policy="Retain",
+        # Restrict the permissions of the new EBS and leave those of the new EFS
+        # as the file system has them. The other new storage keeps the default mode (1777).
+        # The modes are written without quotes and without a leading zero: the tests framework loads and dumps the
+        # configuration with PyYAML, which would read a leading zero as an octal number.
+        new_ebs_mount_dir_permissions="750",
+        new_efs_set_mount_dir_permissions=False,
+        # Change the permissions of storage already mounted by the previous update (1777 so far): the head node
+        # changes the mode without mounting the storage again. With SetPermissions false the mode stays as it is.
+        existing_efs_mount_dir_permissions="770",
+        fsx_lustre_set_mount_dir_permissions=False,
         queue_update_strategy="DRAIN",
         login_nodes_count=0,
+        login_nodes_pools_count=login_nodes_pools_count,
+        static_compute_min_count=static_compute_min_count,
+        static_compute_max_count=static_compute_max_count,
+        queue_count=queue_count,
+        head_node_instance_type=head_node_instance_type,
     )
 
     cluster.update(update_cluster_config)
@@ -1348,10 +1392,14 @@ def test_dynamic_file_systems_update(
     logging.info("Checking the status of compute nodes in queue1")
     # Compute nodes in queue1 are expected to be in drain
     # because the static compute node has a job running.
+    queue1_expected_states = ["draining", "draining!", "drained*", "drained"]
+    if at_scale:
+        # At scale only one static node in queue1 has a running job (hence draining), while all the other
+        # static nodes have no jobs running and are therefore replaced (idle) or under replacement
+        # (drained, draining).
+        queue1_expected_states += ["idle", "idle%", "idle~"]
     queue1_nodes = scheduler_commands.get_compute_nodes("queue1")
-    assert_compute_node_states(
-        scheduler_commands, queue1_nodes, expected_states=["draining", "draining!", "drained*", "drained"]
-    )
+    assert_compute_node_states(scheduler_commands, queue1_nodes, expected_states=queue1_expected_states)
 
     logging.info("Checking the status of compute nodes in queue2")
     # All compute nodes in queue2 are expected to be in idle or drained
@@ -1359,7 +1407,7 @@ def test_dynamic_file_systems_update(
     # or under replacement (drained, draining).
     queue2_nodes = scheduler_commands.get_compute_nodes("queue2")
     assert_compute_node_states(
-        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*", "draining"]
+        scheduler_commands, queue2_nodes, expected_states=["idle", "drained", "idle%", "drained*", "draining", "idle~"]
     )
 
     logging.info("Checking that shared storage is visible on the head node")
@@ -1375,6 +1423,25 @@ def test_dynamic_file_systems_update(
         fsx_mount_dirs,
         file_cache_path,
     )
+
+    logging.info("Checking the permissions of the mount directories of the new storage")
+    _test_mount_dir_permissions(
+        remote_command_executor,
+        {
+            # MountDirPermissions/Permissions: 750
+            new_ebs_mount_dir: "750",
+            # MountDirPermissions/SetPermissions: false, so the root of a new EFS keeps its native mode
+            new_efs_mount_dir: "755",
+            # MountDirPermissions not set
+            new_raid_mount_dir: "1777",
+            new_lustre_mount_dir: "1777",
+            # Mounted by the previous update with the default mode, then changed by this update
+            existing_efs_mount_dir: "770",
+            existing_fsx_lustre_mount_dir: "1777",
+        },
+    )
+    # Non root users cannot write at the top of these mount directories
+    restricted_mount_dirs = [new_ebs_mount_dir, new_efs_mount_dir, existing_efs_mount_dir]
 
     all_mount_dirs_update_2 = remove_none_items(
         [
@@ -1404,25 +1471,46 @@ def test_dynamic_file_systems_update(
     logging.info("Checking that previously mounted storage is visible on all compute nodes")
     for mount_dir in all_mount_dirs_update_1:
         verify_directory_correctly_shared(
-            remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1", "queue2"]
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1", "queue2"],
+            run_sudo=mount_dir in restricted_mount_dirs,
         )
 
     logging.info("Checking that newly mounted storage is not visible on compute nodes with jobs running (queue1)")
-    for node_name in queue1_nodes:
+    # At scale only one static node in queue1 actually runs a job and is therefore retained (without the new
+    # storage). All the other static nodes have no jobs running and get replaced, hence they mount the new storage.
+    nodes_with_running_jobs = (
+        [scheduler_commands.get_job_info(queue1_job_id, field="NodeList")] if at_scale else queue1_nodes
+    )
+    for node_name in nodes_with_running_jobs:
         _test_directory_not_mounted(
             remote_command_executor, mount_dirs_requiring_replacement, node_type="compute", node_name=node_name
         )
 
     logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue2)")
     for mount_dir in all_mount_dirs_update_2:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue2"])
+        verify_directory_correctly_shared(
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue2"],
+            run_sudo=mount_dir in restricted_mount_dirs,
+        )
 
     logging.info("Canceling job in queue1 to trigger compute nodes replacement")
     scheduler_commands.cancel_job(queue1_job_id)
 
     logging.info("Checking that newly mounted storage is visible on replaced compute nodes (queue1)")
     for mount_dir in all_mount_dirs_update_2:
-        verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands, partitions=["queue1"])
+        verify_directory_correctly_shared(
+            remote_command_executor,
+            mount_dir,
+            scheduler_commands,
+            partitions=["queue1"],
+            run_sudo=mount_dir in restricted_mount_dirs,
+        )
 
     # update cluster to remove ebs, raid, efs and fsx with compute fleet stop
     logging.info("Updating the cluster to remove all the shared storage (managed storage will be retained)")
@@ -1674,6 +1762,10 @@ def _create_shared_storages_resources(
 
     storage_stack = external_shared_storage_stack(vpc_stack, bucket_name, file_cache_path)
 
+    file_cache_id = storage_stack.cfn_outputs.get("FileCacheId")
+    if file_cache_id:
+        wait_for_file_cache_available(region, file_cache_id)
+
     return (
         storage_stack.cfn_outputs.get("EbsId"),
         storage_stack.cfn_outputs.get("EfsId"),
@@ -1725,6 +1817,15 @@ def _test_shared_storages_unmount(
     # check storages are not on compute nodes
     for node_name in node_names:
         _test_directory_not_mounted(remote_command_executor, all_mount_dirs, node_type="compute", node_name=node_name)
+
+
+def _test_mount_dir_permissions(remote_command_executor, expected_modes):
+    """Check the mode of the mount directories on the head node."""
+    for mount_dir, expected_mode in expected_modes.items():
+        if not mount_dir:
+            continue
+        mode = remote_command_executor.run_remote_command(f"stat -c %a {mount_dir}").stdout.strip()
+        assert_that(mode).described_as(f"Mode of {mount_dir}").is_equal_to(expected_mode)
 
 
 def _test_shared_storages_mount_on_headnode(

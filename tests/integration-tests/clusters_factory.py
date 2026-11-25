@@ -19,6 +19,7 @@ import time
 import boto3
 import yaml
 from assertpy import assert_that
+from diagnosis_utils import retrieve_rca_details
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -36,7 +37,11 @@ from utils import (
     retry_if_subprocess_error,
 )
 
-from tests.common.utils import read_remote_file
+from tests.common.utils import (
+    read_remote_file,
+    serialize_by_region,
+    wait_for_no_active_export_tasks,
+)
 
 TAG_CLUSTER_NAME = "parallelcluster:cluster-name"
 TAG_NODE_TYPE = "parallelcluster:node-type"
@@ -100,9 +105,12 @@ class Cluster:
         command = ["pcluster", "update-cluster", "--cluster-configuration", config_file, "--cluster-name", self.name]
         # This changes the default behavior of the update-cluster command and makes it wait for the cluster update to
         # finish before returning.
-        if kwargs.pop("wait", True):
+        wait = kwargs.pop("wait", True)
+        if wait:
             command.append("--wait")
         for k, val in kwargs.items():
+            if val is None:
+                continue
             if isinstance(val, (list, tuple)):
                 command.extend([f"--{kebab_case(k)}"] + list(map(str, val)))
             else:
@@ -115,13 +123,15 @@ class Cluster:
         )
         logging.info("update-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
-        if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
-            error = f"Cluster update failed for {self.name}"
-            if log_error:
-                logging.error(error)
-            if raise_on_error:
-                raise Exception(error)
-        logging.info("Cluster %s updated successfully", self.name)
+        if wait:
+            if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
+                error = f"Cluster update failed for {self.name}"
+                if log_error:
+                    logging.error(error)
+                if raise_on_error:
+                    raise Exception(error)
+            else:
+                logging.info("Cluster %s updated successfully", self.name)
         # Only update config file attribute if update is successful
         self.config_file = config_file
         with open(self.config_file, encoding="utf-8") as conf_file:
@@ -189,7 +199,7 @@ class Cluster:
             logging.error("Failed starting cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def stop(self):
+    def stop(self, wait_stopped=False):
         """Run pcluster stop and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
@@ -200,7 +210,12 @@ class Cluster:
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             logging.info("Cluster {0} stopped successfully".format(self.name))
-
+            if wait_stopped:
+                retry(
+                    wait_fixed=seconds(10),
+                    stop_max_delay=minutes(2),
+                    retry_on_result=lambda describe_result: "STOPPED" != describe_result["status"],
+                )(self.describe_compute_fleet)()
             return result.stdout
         except subprocess.CalledProcessError as e:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
@@ -225,6 +240,15 @@ class Cluster:
             stop_max_delay=minutes(stop_max_delay_minute),
             retry_on_result=lambda result: result["clusterStatus"] != expected_status,
         )(self.describe_cluster)()
+
+    def wait_cluster_stack_status(self, expected_statuses: list, stop_max_delay_minute: int = 15):
+        """Wait for the cluster stack to reach the desired status."""
+        retry(
+            wait_fixed=seconds(10),
+            stop_max_delay=minutes(stop_max_delay_minute),
+            retry_on_result=lambda result: result["cloudFormationStackStatus"] not in expected_statuses,
+        )(self.describe_cluster)()
+        return self.describe_cluster()["cloudFormationStackStatus"]
 
     def describe_compute_fleet(self):
         """Run pcluster describe-compute-fleet and return the result."""
@@ -350,6 +374,14 @@ class Cluster:
 
         return None
 
+    @retry(
+        wait_random_min=seconds(10),
+        wait_random_max=seconds(20),
+        stop_max_delay=minutes(10),
+        retry_on_exception=lambda e: "Resource limit exceeded" in str(e.stderr),
+    )
+    # Only one active CloudWatch Logs export task is allowed per region.
+    @serialize_by_region("export-logs")
     def export_logs(self, bucket=None, output_file=None, bucket_prefix=None, filters=None):
         """Run pcluster export-cluster-logs and return the result."""
         cmd_args = ["pcluster", "export-cluster-logs", "--cluster-name", self.name]
@@ -361,6 +393,7 @@ class Cluster:
             cmd_args += ["--bucket-prefix", bucket_prefix]
         if filters:
             cmd_args += ["--filters", filters]
+        wait_for_no_active_export_tasks(self.region)
         try:
             result = run_pcluster_command(cmd_args, log_error=False, custom_cli_credentials=self.custom_cli_credentials)
             response = json.loads(result.stdout)
@@ -449,6 +482,14 @@ class Cluster:
         ]
         instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
         return instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
+
+    @property
+    def head_node_public_ip(self):
+        """Return the public ip of the cluster head node, or None if it does not have one."""
+        ec2 = boto3.client("ec2", region_name=self.region)
+        reservations = ec2.describe_instances(InstanceIds=[self.head_node_instance_id]).get("Reservations")
+        instance = reservations[0].get("Instances")[0]
+        return instance.get("PublicIpAddress")
 
     @property
     def head_node_instance_id(self):
@@ -567,7 +608,21 @@ class ClustersFactory:
                         # in the case where the stack has been deleted.
                         stack_id = response.get("cloudformationStackArn")
                         events = get_cfn_events(stack_name=stack_id, region=cluster.region)
-                        raise ClusterCreationError(error, stack_events=events, cluster_details=response)
+
+                        # Only attempt RCA if head node exists
+                        rca_details = None
+                        try:
+                            _ = cluster.head_node_ip
+                            rca_details = retrieve_rca_details(cluster)
+                        except Exception as e:
+                            logging.warning("Skipping RCA, head node not accessible: %s", e)
+
+                        raise ClusterCreationError(
+                            error,
+                            stack_events=events,
+                            cluster_details=response,
+                            rca_details=rca_details,
+                        )
                 else:
                     logging.info("Cluster {0} created successfully".format(name))
                     end_time = time.time()

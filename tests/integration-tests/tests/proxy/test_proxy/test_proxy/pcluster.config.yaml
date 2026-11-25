@@ -19,9 +19,9 @@ Scheduling:
       ComputeResources:
         - Name: compute1
           Instances:
-            - InstanceType: t3.medium
+            - InstanceType: {{ instance }}
           MinCount: 1
-          MaxCount: 5
+          MaxCount: 1
       Networking:
         SubnetIds:
           - {{ subnet_with_proxy }}

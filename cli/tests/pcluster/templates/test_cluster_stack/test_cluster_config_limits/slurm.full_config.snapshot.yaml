@@ -83,7 +83,7 @@ Iam:
     LambdaFunctionsRole: arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Image:
   CustomAmi: ami-12345678
-  Os: alinux2
+  Os: alinux2023
 Imds:
   ImdsSupport: v2.0
 LoginNodes:
@@ -135,7 +135,6 @@ LoginNodes:
       - subnet-12345678
     Ssh:
       AllowedIps: 1.2.3.4/32
-      KeyName: validate_key_name
 Monitoring:
   Alarms:
     Enabled: true
@@ -169,6 +168,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-00
@@ -247,6 +249,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-10
@@ -325,6 +330,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-20
@@ -403,6 +411,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-30
@@ -481,6 +492,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-40
@@ -559,6 +573,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-50
@@ -637,6 +654,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-60
@@ -715,6 +735,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-70
@@ -793,6 +816,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-80
@@ -871,6 +897,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-90
@@ -949,6 +978,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-100
@@ -1027,6 +1059,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-110
@@ -1105,6 +1140,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-120
@@ -1183,6 +1221,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-130
@@ -1261,6 +1302,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-140
@@ -1339,6 +1383,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-150
@@ -1417,6 +1464,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-160
@@ -1495,6 +1545,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-170
@@ -1573,6 +1626,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-180
@@ -1651,6 +1707,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-190
@@ -1729,6 +1788,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-200
@@ -1807,6 +1869,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-210
@@ -1885,6 +1950,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-220
@@ -1963,6 +2031,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-230
@@ -2041,6 +2112,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 10
       MinCount: 0
       Name: compute-resource-ondemand-240
@@ -2119,6 +2193,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-00
@@ -2187,6 +2264,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-10
@@ -2255,6 +2335,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-20
@@ -2323,6 +2406,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-30
@@ -2391,6 +2477,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-40
@@ -2459,6 +2548,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-50
@@ -2527,6 +2619,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-60
@@ -2595,6 +2690,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-70
@@ -2663,6 +2761,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-80
@@ -2731,6 +2832,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-90
@@ -2799,6 +2903,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-100
@@ -2867,6 +2974,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-110
@@ -2935,6 +3045,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-120
@@ -3003,6 +3116,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-130
@@ -3071,6 +3187,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-140
@@ -3139,6 +3258,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-150
@@ -3207,6 +3329,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-160
@@ -3275,6 +3400,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-170
@@ -3343,6 +3471,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-180
@@ -3411,6 +3542,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-190
@@ -3479,6 +3613,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-200
@@ -3547,6 +3684,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-210
@@ -3615,6 +3755,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-220
@@ -3683,6 +3826,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-230
@@ -3751,6 +3897,9 @@ Scheduling:
         Gpu:
           Enabled: null
       InstanceType: c5.2xlarge
+      LaunchTemplateOverrides:
+        LaunchTemplateId: lt-01234567890abcdef
+        Version: 1
       MaxCount: 15
       MinCount: 1
       Name: compute-resource-spot-240
@@ -3831,6 +3980,9 @@ SharedStorage:
     VolumeId: null
     VolumeType: gp2
   MountDir: /new/mount/efs0
+  MountDirPermissions:
+    Permissions: '0755'
+    SetPermissions: true
   Name: nameebs0
   StorageType: Ebs
 - EbsSettings:
@@ -3845,6 +3997,9 @@ SharedStorage:
     VolumeId: null
     VolumeType: gp2
   MountDir: /new/mount/efs1
+  MountDirPermissions:
+    Permissions: '0755'
+    SetPermissions: true
   Name: nameebs1
   StorageType: Ebs
 - EbsSettings:
@@ -3859,6 +4014,9 @@ SharedStorage:
     VolumeId: null
     VolumeType: gp2
   MountDir: /new/mount/efs2
+  MountDirPermissions:
+    Permissions: '0755'
+    SetPermissions: true
   Name: nameebs2
   StorageType: Ebs
 - EbsSettings:
@@ -3873,6 +4031,9 @@ SharedStorage:
     VolumeId: null
     VolumeType: gp2
   MountDir: /new/mount/efs3
+  MountDirPermissions:
+    Permissions: '0755'
+    SetPermissions: true
   Name: nameebs3
   StorageType: Ebs
 - EbsSettings:
@@ -3887,6 +4048,9 @@ SharedStorage:
     VolumeId: null
     VolumeType: gp2
   MountDir: /new/mount/efs4
+  MountDirPermissions:
+    Permissions: '0755'
+    SetPermissions: true
   Name: nameebs4
   StorageType: Ebs
 - EfsSettings:
@@ -3901,6 +4065,9 @@ SharedStorage:
     ProvisionedThroughput: 1024
     ThroughputMode: provisioned
   MountDir: /new/mount/efs0
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: efs0
   StorageType: Efs
 - EfsSettings:
@@ -3915,6 +4082,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs10
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs10
   StorageType: Efs
 - EfsSettings:
@@ -3929,6 +4099,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs11
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs11
   StorageType: Efs
 - EfsSettings:
@@ -3943,6 +4116,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs12
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs12
   StorageType: Efs
 - EfsSettings:
@@ -3957,6 +4133,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs13
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs13
   StorageType: Efs
 - EfsSettings:
@@ -3971,6 +4150,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs14
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs14
   StorageType: Efs
 - EfsSettings:
@@ -3985,6 +4167,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs15
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs15
   StorageType: Efs
 - EfsSettings:
@@ -3999,6 +4184,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs16
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs16
   StorageType: Efs
 - EfsSettings:
@@ -4013,6 +4201,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs17
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs17
   StorageType: Efs
 - EfsSettings:
@@ -4027,6 +4218,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs18
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs18
   StorageType: Efs
 - EfsSettings:
@@ -4041,6 +4235,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs19
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs19
   StorageType: Efs
 - EfsSettings:
@@ -4055,6 +4252,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs20
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs20
   StorageType: Efs
 - EfsSettings:
@@ -4069,6 +4269,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs21
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs21
   StorageType: Efs
 - EfsSettings:
@@ -4083,6 +4286,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs22
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs22
   StorageType: Efs
 - EfsSettings:
@@ -4097,6 +4303,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs23
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs23
   StorageType: Efs
 - EfsSettings:
@@ -4111,6 +4320,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs24
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs24
   StorageType: Efs
 - EfsSettings:
@@ -4125,6 +4337,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs25
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs25
   StorageType: Efs
 - EfsSettings:
@@ -4139,6 +4354,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs26
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs26
   StorageType: Efs
 - EfsSettings:
@@ -4153,6 +4371,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs27
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs27
   StorageType: Efs
 - EfsSettings:
@@ -4167,6 +4388,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs28
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs28
   StorageType: Efs
 - EfsSettings:
@@ -4181,6 +4405,9 @@ SharedStorage:
     ProvisionedThroughput: null
     ThroughputMode: bursting
   MountDir: /existing/mount/efs29
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-efs29
   StorageType: Efs
 - FsxLustreSettings:
@@ -4204,16 +4431,25 @@ SharedStorage:
     StorageType: HDD
     WeeklyMaintenanceStartTime: '1:00:00'
   MountDir: /new/mount/fsx
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: fsx0
   StorageType: FsxLustre
 - FsxOpenZfsSettings:
     VolumeId: fsvol-12345678901234567
   MountDir: /existing/mount/openzfs
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-open-zfs
   StorageType: FsxOpenZfs
 - FsxOntapSettings:
     VolumeId: fsvol-12345678901234567
   MountDir: /existing/mount/ontap
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-ontap
   StorageType: FsxOntap
 - FsxLustreSettings:
@@ -4237,6 +4473,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx10
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx10
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4260,6 +4499,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx11
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx11
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4283,6 +4525,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx12
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx12
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4306,6 +4551,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx13
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx13
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4329,6 +4577,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx14
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx14
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4352,6 +4603,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx15
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx15
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4375,6 +4629,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx16
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx16
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4398,6 +4655,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx17
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx17
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4421,6 +4681,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx18
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx18
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4444,6 +4707,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx19
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx19
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4467,6 +4733,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx20
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx20
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4490,6 +4759,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx21
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx21
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4513,6 +4785,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx22
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx22
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4536,6 +4811,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx23
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx23
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4559,6 +4837,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx24
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx24
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4582,6 +4863,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx25
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx25
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4605,6 +4889,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx26
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx26
   StorageType: FsxLustre
 - FsxLustreSettings:
@@ -4628,6 +4915,9 @@ SharedStorage:
     StorageType: null
     WeeklyMaintenanceStartTime: null
   MountDir: /existing/mount/fsx27
+  MountDirPermissions:
+    Permissions: '1777'
+    SetPermissions: true
   Name: existing-fsx27
   StorageType: FsxLustre
 Tags:

@@ -34,10 +34,12 @@ def clear_env(mocker):
 
 @pytest.fixture(autouse=True)
 def reset_aws_api():
-    """Reset AWSApi singleton to remove dependencies between tests."""
+    """Reset AWSApi singleton and caches to remove dependencies between tests."""
     from pcluster.aws.aws_api import AWSApi
+    from pcluster.aws.common import Cache
 
     AWSApi._instance = None
+    Cache.clear_all()
 
 
 @pytest.fixture
@@ -239,13 +241,28 @@ def run_cli(mocker, capsys):
 
 @pytest.fixture()
 def assert_out_err(capsys):
+    def _normalize_argparse_output(text):
+        """Normalize argparse output to handle differences across Python versions."""
+        import re
+
+        # Python 3.13 changed argparse: metavar not repeated for short options,
+        # different text wrapping, "options:" vs "optional arguments:".
+        # Normalize by removing metavar after short option.
+        text = re.sub(r"(-\w) \w+, (--[\w-]+ \w+)", r"\1, \2", text)
+        text = text.replace("optional arguments:", "options:")
+        # Collapse all whitespace (spaces, newlines) to single space for comparison
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
     def _assert_out_err(expected_out, expected_err):
         out_err = capsys.readouterr()
-        # In Python 3.10 ArgParse renamed the 'optional arguments' section in the helper to 'option'
-        expected_out_alternative = expected_out.replace("options", "optional arguments")
         with soft_assertions():
-            assert_that(out_err.out.strip()).is_in(expected_out, expected_out_alternative)
-            assert_that(out_err.err.strip()).contains(expected_err)
+            assert_that(_normalize_argparse_output(out_err.out.strip())).is_equal_to(
+                _normalize_argparse_output(expected_out)
+            )
+            assert_that(_normalize_argparse_output(out_err.err.strip())).contains(
+                _normalize_argparse_output(expected_err)
+            )
 
     return _assert_out_err
 

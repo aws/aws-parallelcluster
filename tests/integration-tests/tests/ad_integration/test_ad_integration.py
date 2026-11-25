@@ -18,6 +18,7 @@ import random
 import string
 import time
 import zipfile
+from functools import partial
 from pathlib import Path
 
 import boto3
@@ -35,8 +36,9 @@ from xdist import get_xdist_worker_id
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.utils import run_system_analyzer
 
-NUM_USERS_TO_CREATE = 5
+NUM_USERS_TO_CREATE = 1000
 NUM_USERS_TO_TEST = 3
+USER_NAME_PREFIX = "PclusterUser"
 
 
 def get_infra_stack_outputs(stack_name):
@@ -101,6 +103,24 @@ def get_ad_config_param_vals(
     }
 
 
+def setup_directory_certificate(
+    cluster,
+    ldap_tls_ca_cert,
+    certificate_path,
+    directory_certificate_verification,
+):
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor.run_remote_command(
+        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
+        additional_files=[certificate_path],
+    )
+    if directory_certificate_verification:
+        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
+        time.sleep(600)
+        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
+        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+
+
 def _add_file_to_zip(zip_file, path, arcname):
     """
     Add the file at path under the name arcname to the archive represented by zip_file.
@@ -159,9 +179,10 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
     private_subnets = vpc_stack.get_all_private_subnets().copy()
     private_subnets.remove(private_subnet)
 
-    users = ""
-    for i in range(NUM_USERS_TO_CREATE):
-        users += f"PclusterUser{i},"
+    # Compact generator (stays under CFN's 4096-char param limit): create NUM_USERS_TO_CREATE users
+    # but only activate the first NUM_USERS_TO_TEST (the ones the test logs in with) to keep the
+    # password-reset step under the custom-resource Lambda timeout.
+    users = f"prefix:{USER_NAME_PREFIX};num:{NUM_USERS_TO_CREATE};active:{NUM_USERS_TO_TEST}"
 
     stack_parameters = [
         {
@@ -176,7 +197,7 @@ def _get_stack_parameters(directory_type, vpc_stack, keypair):
             "ParameterKey": "ReadOnlyPassword",
             "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
         },
-        {"ParameterKey": "UserNames", "ParameterValue": users[:-1]},
+        {"ParameterKey": "UserNames", "ParameterValue": users},
         {
             "ParameterKey": "UserPassword",
             "ParameterValue": "".join(random.choices(string.ascii_letters + string.digits, k=60)),
@@ -426,8 +447,8 @@ def _check_ssh_key_generation(user, remote_command_executor, scheduler_commands,
 
     # Switch User - Interactive
     switch_user_commands = [
-        f"sudo su {user.alias} --command='ls {ssh_key_path}'",
-        f"sudo su - {user.alias} --command='ls {ssh_key_path}'",
+        f"sudo su {user.alias} --command='sleep 3 && ls {ssh_key_path}'",
+        f"sudo su - {user.alias} --command='sleep 3 && ls {ssh_key_path}'",
         # TODO: Checks for below commands are failing, even if a manual check on the same cluster succeeds.
         # We need to double check these failures, but we can consider them as not blocking.
         # f"sudo -u {user.alias} ls {ssh_key_path}",
@@ -604,24 +625,22 @@ def test_ad_integration(  # noqa: C901
     vpc = directory_stack_outputs.get("VpcId")
     config_params.update(get_vpc_public_subnet(vpc))
 
-    cluster_config = pcluster_config_reader(**config_params)
-    cluster = clusters_factory(cluster_config)
-
     certificate_secret_arn = directory_stack_outputs.get("DomainCertificateSecretArn")
     certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
     with open(test_datadir / "certificate.crt", "w") as f:
         f.write(certificate)
 
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    remote_command_executor.run_remote_command(
-        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i systemctl restart sssd",
-        additional_files=[test_datadir / "certificate.crt"],
+    cluster_config = pcluster_config_reader(**config_params)
+    cluster = clusters_factory(
+        cluster_config,
+        post_cluster_setup=partial(
+            setup_directory_certificate,
+            ldap_tls_ca_cert=ldap_tls_ca_cert,
+            certificate_path=test_datadir / "certificate.crt",
+            directory_certificate_verification=directory_certificate_verification,
+        ),
     )
-    if directory_certificate_verification:
-        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-        time.sleep(600)
-        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
+    remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = scheduler_commands_factory(remote_command_executor)
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
@@ -729,25 +748,21 @@ def test_ad_integration_on_login_nodes(
         directory_certificate_verification,
     )
     config_params.update(get_vpc_public_subnet(directory_stack_outputs.get("VpcId")))
-    cluster_config = pcluster_config_reader(**config_params)
-    cluster = clusters_factory(cluster_config)
-
     certificate_secret_arn = directory_stack_outputs.get("DomainCertificateSecretArn")
     certificate = boto3.client("secretsmanager").get_secret_value(SecretId=certificate_secret_arn)["SecretString"]
     with open(test_datadir / "certificate.crt", "w") as f:
         f.write(certificate)
 
-    # Publish compute node count metric every minute via cron job
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    remote_command_executor.run_remote_command(
-        f"sudo cp certificate.crt {ldap_tls_ca_cert} && sudo -i service sssd restart",
-        additional_files=[test_datadir / "certificate.crt"],
+    cluster_config = pcluster_config_reader(**config_params)
+    cluster = clusters_factory(
+        cluster_config,
+        post_cluster_setup=partial(
+            setup_directory_certificate,
+            ldap_tls_ca_cert=ldap_tls_ca_cert,
+            certificate_path=test_datadir / "certificate.crt",
+            directory_certificate_verification=directory_certificate_verification,
+        ),
     )
-    if directory_certificate_verification:
-        logging.info("Sleeping 10 minutes to wait for the SSSD agent use the certificate.")
-        time.sleep(600)
-        # TODO: we have to sleep for 10 minutes to wait for the SSSD agent use the newly placed certificate.
-        #  We should look for other methods to let the SSSD agent use the new certificate more quickly
 
     login_node_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
     scheduler_commands = scheduler_commands_factory(login_node_command_executor)

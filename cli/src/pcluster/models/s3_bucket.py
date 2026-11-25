@@ -478,8 +478,11 @@ class S3BucketFactory:
             try:
                 bucket.create_bucket()
             except AWSClientError as error:
-                LOGGER.error("Unable to create S3 bucket %s.", bucket.name)
-                raise error
+                if error.error_code == "BucketAlreadyOwnedByYou":
+                    LOGGER.info("S3 bucket %s was created shortly before by another process. Proceeding.", bucket.name)
+                else:
+                    LOGGER.error("Unable to create S3 bucket %s.", bucket.name)
+                    raise error
         else:
             LOGGER.error("Unable to check S3 bucket %s existence.", bucket.name)
             raise e

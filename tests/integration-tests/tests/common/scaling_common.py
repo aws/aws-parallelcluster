@@ -25,6 +25,9 @@ from time_utils import seconds
 from utils import get_compute_nodes_instance_count
 
 SCALING_COMMON_DATADIR = pathlib.Path(__file__).parent / "scaling"
+# Gate file created by overrides.sh that gates the emulated CreateFleet ICE. It must match the
+# path used in scaling/overrides.sh; removing it recovers the iced compute resource.
+CREATE_FLEET_ICE_GATE_PATH = "/opt/slurm/etc/pcluster/.emulate_create_fleet_ice"
 
 
 def validate_and_get_scaling_test_config(scaling_test_config_file):
@@ -364,3 +367,13 @@ def setup_ec2_launch_override_to_emulate_ice(
         run_as_root=True,
     )
     # fmt: on
+
+
+def recover_create_fleet_override_from_ice(remote_command_executor):
+    """Recover from the emulated CreateFleet ICE."""
+
+    logging.info("Recovering from emulated CreateFleet ICE: removing gate %s", CREATE_FLEET_ICE_GATE_PATH)
+    remote_command_executor.run_remote_command(
+        f"sudo rm -f {CREATE_FLEET_ICE_GATE_PATH}",
+        raise_on_error=True,
+    )

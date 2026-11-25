@@ -19,7 +19,12 @@ from aws_cdk.core import Construct, Duration, Stack
 
 from pcluster.config.cluster_config import BaseClusterConfig, ExistingFileCache, SharedFsxLustre
 from pcluster.config.common import SharedStorageType
-from pcluster.constants import Feature
+from pcluster.constants import (
+    CW_METRICS_CLUSTERMGTD_HEARTBEAT,
+    CW_METRICS_DIMENSION_CLUSTER_NAME,
+    CW_METRICS_NAMESPACE,
+    Feature,
+)
 from pcluster.utils import is_feature_supported
 
 MAX_WIDTH = 24
@@ -159,7 +164,7 @@ class CWDashboardConstruct(Construct):
 
         # Head Node logs add custom metrics if cw_log and metrics are enabled
         if self.config.is_cw_logging_enabled:
-            if self.config.scheduling.scheduler == "slurm" and is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
+            if is_feature_supported(Feature.CLUSTER_HEALTH_METRICS):
                 self._add_custom_health_metrics()
             self._add_cw_log()
 
@@ -567,9 +572,21 @@ class CWDashboardConstruct(Construct):
             new_pcluster_metric(title="Memory Used Percent", metrics=["mem_used_percent"], namespace="CWAgent"),
         ]
 
+        # Custom Metrics
+        pcluster_metrics = []
+        if self.config.is_cw_logging_enabled:
+            pcluster_metrics.append(
+                new_pcluster_metric(
+                    title="Daemons Heartbeats",
+                    metrics=[CW_METRICS_CLUSTERMGTD_HEARTBEAT],
+                    namespace=CW_METRICS_NAMESPACE,
+                    additional_dimensions={CW_METRICS_DIMENSION_CLUSTER_NAME: self.config.cluster_name},
+                )
+            )
+
         # Create graphs for EC2 metrics and CW Agent metrics and update coordinates
         widgets_list = []
-        for metrics_param in ec2_metrics + cwagent_metrics:
+        for metrics_param in ec2_metrics + cwagent_metrics + pcluster_metrics:
             metrics_list = self._generate_metrics_list(metrics_param)
             graph_widget = self._generate_graph_widget(metrics_param.title, metrics_list)
             widgets_list.append(graph_widget)
@@ -651,7 +668,6 @@ class CWDashboardConstruct(Construct):
         self._add_text_widget("# Head Node Logs")
 
         dcv_enabled = self.config.is_dcv_enabled
-        scheduler = self.config.scheduling.scheduler
         base_os = self.config.image.os
         head_private_ip = self.head_node_instance.attr_private_ip
 
@@ -664,17 +680,14 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="clustermgtd",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*clustermgtd")],
                     ),
                     self._new_cw_log_widget(
                         title="slurm_resume",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*slurm_resume")],
                     ),
                     self._new_cw_log_widget(
                         title="slurm_suspend",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*slurm_suspend")],
                     ),
                 ],
@@ -684,7 +697,6 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="slurmctld",
-                        conditions=[Condition(["slurm"], scheduler)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*slurmctld")],
                     ),
                 ],
@@ -734,14 +746,12 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="system-messages",
-                        conditions=[
-                            Condition(["alinux2", "alinux2023", "rhel8", "rocky8", "rhel9", "rocky9"], base_os)
-                        ],
+                        conditions=[Condition(["alinux2023", "rhel8", "rocky8", "rhel9", "rocky9"], base_os)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*system-messages")],
                     ),
                     self._new_cw_log_widget(
                         title="syslog",
-                        conditions=[Condition(["ubuntu2204", "ubuntu2404"], base_os)],
+                        conditions=[Condition(["ubuntu2204", "ubuntu2404", "ubuntu2604"], base_os)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*syslog")],
                     ),
                     self._new_cw_log_widget(

@@ -41,6 +41,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
+    PCLUSTER_TMP_DIR,
     PCLUSTER_VERSION_TAG,
 )
 from pcluster.imagebuilder_utils import (
@@ -191,6 +192,13 @@ class ImageBuilderCdkStack(Stack):
             self, "CfnParamCincInstaller", type="String", default=custom_cinc_installer_url, description="CincInstaller"
         )
 
+        custom_cinc_version = (
+            self.config.dev_settings.cinc_version
+            if self.config.dev_settings and self.config.dev_settings.cinc_version
+            else ""
+        )
+        CfnParameter(self, "CfnParamCincVersion", type="String", default=custom_cinc_version, description="CincVersion")
+
         CfnParameter(
             self,
             "CfnParamChefDnaJson",
@@ -340,6 +348,7 @@ class ImageBuilderCdkStack(Stack):
             version=utils.get_installed_version(base_version_only=True),
             tags=build_tags,
             parent_image=self.config.build.parent_image,
+            working_directory=PCLUSTER_TMP_DIR,
             components=components,
             block_device_mappings=[
                 imagebuilder.CfnImageRecipe.InstanceBlockDeviceMappingProperty(
@@ -496,7 +505,7 @@ class ImageBuilderCdkStack(Stack):
             handler="delete_image_stack.handler",
             memory_size=128,
             role=execution_role,
-            runtime="python3.12",
+            runtime="python3.14",
             timeout=900,
             environment=lambda_env,
             tags=build_tags,

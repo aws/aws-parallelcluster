@@ -13,24 +13,17 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
       Iam:
         S3Access:
           - BucketName: {{ bucket_name }}
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 1
-          DesiredvCpus: 1
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
           MaxCount: 30
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}

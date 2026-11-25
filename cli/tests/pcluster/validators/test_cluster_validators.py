@@ -17,10 +17,10 @@ from munch import DefaultMunch
 from pcluster.aws.aws_resources import InstanceTypeInfo, NetworkCardInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import (
-    AwsBatchScheduling,
     BaseQueue,
     CapacityReservationTarget,
     Database,
+    Efa,
     ExternalSlurmdbd,
     RootVolume,
     SharedEbs,
@@ -31,7 +31,7 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Tag,
 )
-from pcluster.config.common import CapacityType
+from pcluster.config.common import CapacityType, merge_tags
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -51,14 +51,16 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     ExistingFsxNetworkingValidator,
     FsxArchitectureOsValidator,
-    HeadNodeImdsValidator,
     HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    ManagedFsxCrossAzValidator,
     ManagedFsxMultiAzValidator,
     MaxCountValidator,
     MixedSecurityGroupOverwriteValidator,
+    MountDirPermissionsFsxOpenZfsValidator,
+    MountDirPermissionsValidator,
     MultiNetworkInterfacesInstancesValidator,
     NameValidator,
     NumberOfStorageValidator,
@@ -68,8 +70,6 @@ from pcluster.validators.cluster_validators import (
     RootVolumeEncryptionConsistencyValidator,
     RootVolumeSizeValidator,
     SchedulableMemoryValidator,
-    SchedulerDisableSudoAccessForDefaultUserValidator,
-    SchedulerOsValidator,
     SharedFileCacheNotHomeValidator,
     SharedStorageEfsSettingsValidator,
     SharedStorageMountDirValidator,
@@ -118,11 +118,6 @@ def boto3_stubber_path():
         ("2AClusterCanNotBeginByANumber", SlurmScheduling(queues=None), True),
         ("ClusterCanNotContainUnderscores_LikeThis", SlurmScheduling(queues=None), True),
         ("ClusterCanNotContainSpaces LikeThis", SlurmScheduling(queues=None), True),
-        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", AwsBatchScheduling(queues=None), False),
-        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", AwsBatchScheduling(queues=None), True),
-        ("2AClusterCanNotBeginByANumber", AwsBatchScheduling(queues=None), True),
-        ("ClusterCanNotContainUnderscores_LikeThis", AwsBatchScheduling(queues=None), True),
-        ("ClusterCanNotContainSpaces LikeThis", AwsBatchScheduling(queues=None), True),
     ],
 )
 def test_cluster_name_validator(cluster_name, scheduling, should_trigger_error):
@@ -191,6 +186,26 @@ def test_cluster_name_validator(cluster_name, scheduling, should_trigger_error):
                 ),
             ),
             False,
+        ),
+        (
+            "ClusterNameWith40------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    external_slurmdbd=ExternalSlurmdbd(host="test.slurmdbd.host", port=6819),
+                ),
+            ),
+            False,
+        ),
+        (
+            "ClusterNameWith41-------------------Chars",
+            SlurmScheduling(
+                queues=None,
+                settings=SlurmSettings(
+                    external_slurmdbd=ExternalSlurmdbd(host="test.slurmdbd.host", port=6819),
+                ),
+            ),
+            True,
         ),
     ],
 )
@@ -546,42 +561,6 @@ def test_region_validator(region, expected_message):
 
 
 @pytest.mark.parametrize(
-    "os, scheduler, expected_message",
-    [
-        ("ubuntu2404", "slurm", None),
-        ("alinux2", "slurm", None),
-        ("rhel8", "slurm", None),
-        ("rocky8", "slurm", None),
-        ("awsbatch", "awsbatch", "scheduler supports the following operating systems"),
-        ("rhel8", "awsbatch", "scheduler supports the following operating systems"),
-        ("rocky8", "awsbatch", "scheduler supports the following operating systems"),
-        ("ubuntu2204", "awsbatch", "scheduler supports the following operating systems"),
-        ("alinux2", "awsbatch", None),
-    ],
-)
-def test_scheduler_os_validator(os, scheduler, expected_message):
-    actual_failures = SchedulerOsValidator().execute(os, scheduler)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-@pytest.mark.parametrize(
-    "scheduler, expected_message, expected_failure_level",
-    [
-        ("slurm", None, None),
-        (
-            "awsbatch",
-            "DisableSudoAccessForDefaultUser is not supported when using AWS Batch as scheduler.",
-            FailureLevel.ERROR,
-        ),
-    ],
-)
-def test_scheduler_disable_sudo_access_for_default_user_validator(scheduler, expected_message, expected_failure_level):
-    actual_failures = SchedulerDisableSudoAccessForDefaultUserValidator().execute(scheduler)
-    assert_failure_messages(actual_failures, expected_message)
-    assert_failure_level(actual_failures, expected_failure_level)
-
-
-@pytest.mark.parametrize(
     "min_count, max_count, capacity_type, expected_messages",
     [
         (0, 0, None, None),
@@ -748,14 +727,15 @@ def test_efa_validator(
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, capacity_type, expected_message",
+    "efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, capacity_type, "
+    "queue_name, expected_message",
     [
         # Efa disabled
-        (False, "test", False, False, CapacityType.ONDEMAND, None),
-        (False, "test", True, False, CapacityType.ONDEMAND, None),
-        (False, None, False, False, CapacityType.ONDEMAND, None),
-        (False, None, True, False, CapacityType.ONDEMAND, None),
-        (False, "test", False, False, CapacityType.CAPACITY_BLOCK, None),
+        (False, "test", False, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, "test", True, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, None, False, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, None, True, False, CapacityType.ONDEMAND, "queue1", None),
+        (False, "test", False, False, CapacityType.CAPACITY_BLOCK, "queue1", None),
         # Efa enabled
         (
             True,
@@ -763,10 +743,11 @@ def test_efa_validator(
             False,
             False,
             CapacityType.ONDEMAND,
-            "The placement group for EFA-enabled compute resources must be explicit. "
-            "You may see better performance using a placement group, "
-            "but if you don't wish to use one please add "
-            "'Enabled: false' to the compute resource's configuration section.",
+            "queue1",
+            "The placement group for EFA-enabled compute resources in queue 'queue1' must be explicit. "
+            "You may see better performance using a placement group, but if you don't wish to use one or "
+            "the compute resources in the queue use a capacity reservation with its own placement group, "
+            "please add 'Enabled: false' to the compute resource's configuration section.",
         ),
         (
             True,
@@ -774,16 +755,22 @@ def test_efa_validator(
             True,
             False,
             CapacityType.ONDEMAND,
-            "You may see better performance using a placement group for the queue.",
+            "queue1",
+            "Placement group is disabled for queue 'queue1'. "
+            "This is expected when using a capacity reservation with its own placement group. "
+            "Otherwise, enabling a placement group may improve network performance.",
         ),
-        (True, "test", False, False, CapacityType.ONDEMAND, None),
+        (True, "test", False, False, CapacityType.ONDEMAND, "queue1", None),
         (
             True,
             "test",
             True,
             False,
             CapacityType.ONDEMAND,
-            "You may see better performance using a placement group for the queue.",
+            "queue1",
+            "Placement group is disabled for queue 'queue1'. "
+            "This is expected when using a capacity reservation with its own placement group. "
+            "Otherwise, enabling a placement group may improve network performance.",
         ),
         (
             True,
@@ -791,16 +778,23 @@ def test_efa_validator(
             False,
             False,
             CapacityType.CAPACITY_BLOCK,
+            "queue1",
             None,
         ),
         # EFA and MultiAZ enabled
-        (True, "test", False, True, CapacityType.ONDEMAND, None),
-        (True, "test", True, True, CapacityType.ONDEMAND, None),
-        (True, "test", True, True, CapacityType.CAPACITY_BLOCK, None),
+        (True, "test", False, True, CapacityType.ONDEMAND, "queue1", None),
+        (True, "test", True, True, CapacityType.ONDEMAND, "queue1", None),
+        (True, "test", True, True, CapacityType.CAPACITY_BLOCK, "queue1", None),
     ],
 )
 def test_efa_placement_group_validator(
-    efa_enabled, placement_group_key, placement_group_disabled, multi_az_enabled, capacity_type, expected_message
+    efa_enabled,
+    placement_group_key,
+    placement_group_disabled,
+    multi_az_enabled,
+    capacity_type,
+    queue_name,
+    expected_message,
 ):
     actual_failures = EfaPlacementGroupValidator().execute(
         efa_enabled,
@@ -808,6 +802,7 @@ def test_efa_placement_group_validator(
         placement_group_disabled,
         multi_az_enabled,
         capacity_type,
+        queue_name,
     )
 
     assert_failure_messages(actual_failures, expected_message)
@@ -959,9 +954,8 @@ def test_efa_security_group_validator(
 @pytest.mark.parametrize(
     "efa_enabled, os, architecture, expected_message",
     [
-        (True, "alinux2", "x86_64", None),
-        (True, "alinux2", "arm64", None),
         (True, "alinux2023", "x86_64", None),
+        (True, "alinux2023", "arm64", None),
         (True, "ubuntu2204", "arm64", None),
         (True, "ubuntu2404", "x86_64", None),
         (True, "rocky9", "arm64", None),
@@ -998,8 +992,8 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
     "os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux2", "x86_64", None),
-        ("alinux2", "x86_64", None),
+        ("alinux2023", "x86_64", None),
+        ("alinux2023", "x86_64", None),
         ("rhel8", "x86_64", None),
         ("rhel8", "x86_64", None),
         (
@@ -1008,15 +1002,25 @@ def test_efa_multi_az_validator(multi_az_enabled, efa_enabled, expected_message)
             "The architecture x86_64 is only supported for the following operating systems",
         ),
         ("ubuntu2404", "x86_64", None),
+        (
+            "ubuntu2604",
+            "x86_64",
+            "The architecture x86_64 is only supported for the following operating systems",
+        ),
         # All OSes supported for ARM
-        ("alinux2", "arm64", None),
-        ("alinux2", "arm64", None),
+        ("alinux2023", "arm64", None),
+        ("alinux2023", "arm64", None),
         (
             "ubuntu04",
             "arm64",
             "The architecture arm64 is only supported for the following operating systems",
         ),
         ("ubuntu2204", "arm64", None),
+        (
+            "ubuntu2604",
+            "arm64",
+            "The architecture arm64 is only supported for the following operating systems",
+        ),
         ("rhel8", "arm64", None),
         ("rhel8", "arm64", None),
     ],
@@ -1591,12 +1595,12 @@ def test_fsx_network_validator(
     "architecture, os, expected_message",
     [
         # Supported combinations
-        ("x86_64", "alinux2", None),
+        ("x86_64", "alinux2023", None),
         ("x86_64", "rhel8", None),
         ("x86_64", "ubuntu2204", None),
         ("arm64", "ubuntu2404", None),
         ("arm64", "rhel8", None),
-        ("arm64", "alinux2", None),
+        ("arm64", "alinux2023", None),
         # Unsupported combinations
         (
             "x86_64",
@@ -1610,13 +1614,6 @@ def test_fsx_network_validator(
             "ubuntu1804",
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "UnsupportedArchitecture",
-            "alinux2",
-            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
-                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
             ),
         ),
     ],
@@ -1775,6 +1772,39 @@ def test_shared_storage_mount_dir_validator(mount_dir, expected_message):
 
 
 @pytest.mark.parametrize(
+    "set_permissions, permissions, expected_message",
+    [
+        (True, None, None),
+        (True, "0755", None),
+        (False, None, None),
+        (
+            False,
+            "0755",
+            "MountDirPermissions/Permissions cannot be set for the shared storage 'storage' when "
+            "MountDirPermissions/SetPermissions is false",
+        ),
+    ],
+)
+def test_mount_dir_permissions_validator(set_permissions, permissions, expected_message):
+    actual_failures = MountDirPermissionsValidator().execute(set_permissions, permissions, "storage")
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "set_permissions, expected_message",
+    [
+        (False, None),
+        (True, "MountDirPermissions has no effect on the FSx for OpenZFS storage 'storage'"),
+    ],
+)
+def test_mount_dir_permissions_fsx_open_zfs_validator(set_permissions, expected_message):
+    actual_failures = MountDirPermissionsFsxOpenZfsValidator().execute(set_permissions, "storage")
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_message:
+        assert_failure_level(actual_failures, FailureLevel.WARNING)
+
+
+@pytest.mark.parametrize(
     "mount_dir, expected_message",
     [
         ("my_dir", None),
@@ -1804,13 +1834,12 @@ def test_shared_filecache_not_home_validator(mount_dir, expected_message):
         (True, "rhel8", "t3.medium", None, None, 1, None),
         (True, "ubuntu1804", "t3.medium", None, "1.2.3.4/32", 1, "Please double check the os configuration"),
         (True, "ubuntu2404", "t3.medium", None, None, 1, None),
-        (True, "alinux2", "t3.medium", None, None, 1, None),
-        (True, "alinux2", "t3.nano", None, None, 1, "is recommended to use an instance type with at least"),
-        (True, "alinux2", "t3.micro", None, None, 1, "is recommended to use an instance type with at least"),
-        (False, "alinux2", "t3.micro", None, None, 1, None),  # doesn't fail because DCV is disabled
-        (True, "alinux2", "m6g.xlarge", None, None, 1, None),
-        (True, "rhel8", "m6g.xlarge", None, None, 1, None),
+        (True, "alinux2023", "t3.medium", None, None, 1, None),
+        (True, "alinux2023", "t3.nano", None, None, 1, "is recommended to use an instance type with at least"),
+        (True, "alinux2023", "t3.micro", None, None, 1, "is recommended to use an instance type with at least"),
+        (False, "alinux2023", "t3.micro", None, None, 1, None),  # doesn't fail because DCV is disabled
         (True, "alinux2023", "m6g.xlarge", None, None, 1, None),
+        (True, "rhel8", "m6g.xlarge", None, None, 1, None),
         (False, "rhel9", "m6g.xlarge", None, None, 0, None),
         (
             True,
@@ -1872,41 +1901,14 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
 @pytest.mark.parametrize(
     "os, expected_message",
     [
-        ("centos7", None),
-        ("alinux2", "the operating system is required to be set"),
+        ("alinux2023", "the operating system is required to be set"),
         ("ubuntu2204", "the operating system is required to be set"),
         ("ubuntu2404", "the operating system is required to be set"),
         ("rhel8", "the operating system is required to be set"),
-        # TODO migrate the parametrization below to unit test for the whole model
-        # intel hpc disabled, you can use any os
-        # ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
     ],
 )
 def test_intel_hpc_os_validator(os, expected_message):
     actual_failures = IntelHpcOsValidator().execute(os)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-@pytest.mark.parametrize(
-    "imds_secured, scheduler, expected_message",
-    [
-        (None, "slurm", "Cannot validate IMDS configuration if IMDS Secured is not set."),
-        (True, "slurm", None),
-        (False, "slurm", None),
-        (None, "awsbatch", "Cannot validate IMDS configuration if IMDS Secured is not set."),
-        (False, "awsbatch", None),
-        (
-            True,
-            "awsbatch",
-            "IMDS Secured cannot be enabled when using scheduler awsbatch. Please, disable IMDS Secured.",
-        ),
-        (None, None, "Cannot validate IMDS configuration if scheduler is not set."),
-        (True, None, "Cannot validate IMDS configuration if scheduler is not set."),
-        (False, None, "Cannot validate IMDS configuration if scheduler is not set."),
-    ],
-)
-def test_head_node_imds_validator(imds_secured, scheduler, expected_message):
-    actual_failures = HeadNodeImdsValidator().execute(imds_secured=imds_secured, scheduler=scheduler)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -1980,6 +1982,38 @@ def test_generate_tag_specifications(input_tags):
     else:
         expected_output_tags = []
     assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)
+
+
+@pytest.mark.parametrize(
+    "tag_lists, expected",
+    [
+        # No tags at all
+        ([], []),
+        ([None, None], []),
+        # Single source
+        ([[{"key": "A", "value": "1"}]], [("A", "1")]),
+        # Distinct keys across sources are all kept
+        (
+            [[{"key": "A", "value": "1"}], [{"key": "B", "value": "2"}], [{"key": "C", "value": "3"}]],
+            [("A", "1"), ("B", "2"), ("C", "3")],
+        ),
+        # Duplicate keys: later sources (queue, compute resource) override earlier (cluster)
+        (
+            [[{"key": "A", "value": "cluster"}], [{"key": "A", "value": "queue"}], [{"key": "A", "value": "cr"}]],
+            [("A", "cr")],
+        ),
+        # None sources are skipped without affecting precedence
+        (
+            [[{"key": "A", "value": "cluster"}], None, [{"key": "A", "value": "cr"}]],
+            [("A", "cr")],
+        ),
+    ],
+)
+def test_merge_tags(tag_lists, expected):
+    """Verify tag merging deduplicates by key with later sources taking precedence."""
+    tag_lists = [[Tag(tag["key"], tag["value"]) for tag in tags] if tags is not None else None for tags in tag_lists]
+    merged = merge_tags(*tag_lists)
+    assert_that([(tag.key, tag.value) for tag in merged]).is_equal_to(expected)
 
 
 def get_network_card_list(index_list):
@@ -2910,6 +2944,43 @@ def test_unmanaged_fsx_multiple_az_validator(
 
 
 @pytest.mark.parametrize(
+    "fsx_subnet_ids, compute_subnet_ids, expected_message",
+    [
+        pytest.param(["subnet-a1"], ["subnet-a1"], None, id="compute nodes in the same subnet"),
+        pytest.param(["subnet-a1"], ["subnet-a2"], None, id="compute nodes in another subnet of the same AZ"),
+        pytest.param(
+            ["subnet-a1"],
+            ["subnet-b1"],
+            "The managed FSx for Lustre file system 'fsx' is kept in its current Availability Zone (us-east-1a) "
+            "because changing its subnet would replace the file system and delete its data, but the compute nodes "
+            "are in a different Availability Zone (us-east-1b). Accessing a shared storage from different AZs can "
+            "lead to increased storage networking latency and added inter-AZ data transfer costs.",
+            id="compute nodes moved to another AZ",
+        ),
+        # The file system and then its subnet have been deleted out of band: the update must not be blocked
+        pytest.param(["subnet-x1"], ["subnet-b1"], None, id="subnet of the file system deleted out of band"),
+    ],
+)
+def test_managed_fsx_cross_az_validator(mocker, fsx_subnet_ids, compute_subnet_ids, expected_message):
+    mock_aws_api(mocker)
+
+    def _get_subnet_avail_zone(subnet_id):
+        # The AZ is encoded in the test subnet id, e.g. subnet-b1 is in us-east-1b, subnet-x1 does not exist
+        if subnet_id.startswith("subnet-x"):
+            raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
+        return f"us-east-1{subnet_id[len('subnet-')]}"
+
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", side_effect=_get_subnet_avail_zone)
+
+    actual_failures = ManagedFsxCrossAzValidator().execute("fsx", fsx_subnet_ids, compute_subnet_ids)
+    if expected_message:
+        assert_failure_messages(actual_failures, expected_message)
+        assert_failure_level(actual_failures, FailureLevel.INFO)
+    else:
+        assert_that(actual_failures).is_empty()
+
+
+@pytest.mark.parametrize(
     "storage_parameters, is_managed, availability_zone, volume_description",
     [
         (
@@ -3365,7 +3436,7 @@ class TestDictLaunchTemplateBuilder:
                         "Ebs": {
                             "Encrypted": True,
                             "VolumeType": "mockVolumeType",
-                            "VolumeSize": 45,
+                            "VolumeSize": 50,
                             "Iops": 15,
                             "Throughput": 20,
                             "DeleteOnTermination": True,
@@ -3532,107 +3603,224 @@ def test_root_volume_encryption_consistency_validator(
         assert_that(actual_failures).is_empty()
 
 
+PUBLIC_IP_LIMITATION = "AWS can't auto-assign a public IP to instances launched with more than one network interface."
+NAT_FIX = "Use a private subnet with a NAT gateway to provide internet access to the compute nodes."
+ASSIGN_PUBLIC_IP_FIX = (
+    "Set AssignPublicIp to false and use a private subnet with a NAT gateway to provide internet access to the "
+    "compute nodes."
+)
+MULTI_CARD_REASON = "The queue queue_1 contains the instance types instance_type with multiple network interfaces"
+EFA_REASON = (
+    "The queue queue_1 has EFA enabled on the single-network-card instance types instance_type, so its compute "
+    "nodes are launched with multiple network interfaces (a primary interface plus a dedicated efa-only interface)"
+)
+# Multi-network-card instances (e.g. p4d, hpc6id).
+MULTI_CARD_ASSIGN_PUBLIC_IP_FAILURE = (
+    f"{MULTI_CARD_REASON}, but AssignPublicIp is set to true. {PUBLIC_IP_LIMITATION} {ASSIGN_PUBLIC_IP_FIX}"
+)
+MULTI_CARD_PUBLIC_IP_SUBNET_FAILURE = (
+    f"{MULTI_CARD_REASON}, but the subnets ['subnet_1'] auto-assign public IPs. {PUBLIC_IP_LIMITATION} {NAT_FIX}"
+)
+# Single-network-card instances with EFA enabled (e.g. hpc6a, c5n).
+EFA_ASSIGN_PUBLIC_IP_FAILURE = (
+    f"{EFA_REASON}, but AssignPublicIp is set to true. {PUBLIC_IP_LIMITATION} {ASSIGN_PUBLIC_IP_FIX}"
+)
+EFA_PUBLIC_IP_SUBNET_FAILURE = (
+    f"{EFA_REASON}, but the subnets ['subnet_1'] auto-assign public IPs. {PUBLIC_IP_LIMITATION} {NAT_FIX}"
+)
+
+
 @pytest.mark.parametrize(
-    "num_cards, assign_public_ip, public_ip_subnets, expected_error_messages",
+    "num_cards, max_efa_interfaces, card0_max_enis, efa_enabled, efa_interface_type, "
+    "assign_public_ip, public_ip_subnets, expected_error_messages",
     [
         pytest.param(
             1,
+            1,
+            2,
+            False,
+            None,
             True,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             None,
-            id="Test with single nic queue with assigned public ip and subnet with public ip",
+            id="Single-card, EFA disabled, public ip -> single ENI, no failure",
         ),
         pytest.param(
             1,
+            1,
+            2,
+            False,
+            None,
             False,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             None,
-            id="Test with single nic queue with not assigned public ip and subnet with public ip",
+            id="Single-card, EFA disabled, no assigned public ip -> single ENI, no failure",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             False,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
             None,
-            id="Test with multi nic queue with neither assigned public ip nor subnet with public ip",
+            id="Multi-card, neither assigned public ip nor subnet with public ip, no failure",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             True,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
-            [
-                "The queue queue_1 contains an instance type with multiple network interfaces however the "
-                "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
-                "launched with a single network interface."
-            ],
-            id="Test with multi nic queue with assigned public ip and no subnet with public ip",
+            [MULTI_CARD_ASSIGN_PUBLIC_IP_FAILURE],
+            id="Multi-card, assigned public ip and no subnet with public ip",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             False,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
-            [
-                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
-                "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
-                "to instances launched with a single network interface."
-            ],
-            id="Test with multi nic queue with no assigned public ip and subnet with public ip",
+            [MULTI_CARD_PUBLIC_IP_SUBNET_FAILURE],
+            id="Multi-card, no assigned public ip and subnet with public ip",
         ),
         pytest.param(
             2,
+            2,
+            2,
+            False,
+            None,
             True,
             [
                 {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
                 {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
+            [MULTI_CARD_ASSIGN_PUBLIC_IP_FAILURE, MULTI_CARD_PUBLIC_IP_SUBNET_FAILURE],
+            id="Multi-card, assigned public ip and subnet with public ip",
+        ),
+        # Single-network-card EFA instances (e.g. hpc6a, c5n) launch a 2nd efa-only ENI in PC 3.15+.
+        pytest.param(
+            1,
+            1,
+            2,
+            True,
+            None,
+            True,
             [
-                "The queue queue_1 contains an instance type with multiple network interfaces however the "
-                + "AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances "
-                + "launched with a single network interface.",
-                "The queue queue_1 contains an instance type with multiple network interfaces however the subnets "
-                + "['subnet_1'] is configured to automatically assign public IPs. AWS public IPs can only be assigned "
-                + "to instances launched with a single network interface.",
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
             ],
-            id="Test with multi nic queue with assigned public ip and subnet with public ip",
+            [EFA_ASSIGN_PUBLIC_IP_FAILURE],
+            id="Single-card EFA, 2nd efa-only ENI, assigned public ip -> failure",
+        ),
+        pytest.param(
+            1,
+            1,
+            2,
+            True,
+            None,
+            False,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            [EFA_PUBLIC_IP_SUBNET_FAILURE],
+            id="Single-card EFA, 2nd efa-only ENI, subnet with public ip -> failure",
+        ),
+        pytest.param(
+            1,
+            1,
+            2,
+            True,
+            "efa",
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Single-card EFA with EfaInterfaceType=efa opt-out -> single ENI, no failure",
+        ),
+        pytest.param(
+            1,
+            1,
+            1,
+            True,
+            None,
+            True,
+            [
+                {"SubnetId": "subnet_1", "MapPublicIpOnLaunch": True},
+                {"SubnetId": "subnet_2", "MapPublicIpOnLaunch": False},
+            ],
+            None,
+            id="Single-card EFA where card0 cannot hold 2 ENIs -> single combined efa ENI, no failure",
         ),
     ],
 )
 @pytest.mark.usefixtures("get_region")
 def test_multi_network_interfaces_instances_validator(
-    aws_api_mock, num_cards, assign_public_ip, public_ip_subnets, expected_error_messages
+    aws_api_mock,
+    num_cards,
+    max_efa_interfaces,
+    card0_max_enis,
+    efa_enabled,
+    efa_interface_type,
+    assign_public_ip,
+    public_ip_subnets,
+    expected_error_messages,
 ):
     network_cards_list = []
     for card in range(num_cards):
-        network_cards_list.append({"NetworkCardIndex": card})
+        network_cards_list.append(
+            {"NetworkCardIndex": card, "MaximumNetworkInterfaces": card0_max_enis if card == 0 else 1}
+        )
     aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
-        {"NetworkInfo": {"MaximumNetworkCards": num_cards, "NetworkCards": network_cards_list}}
+        {
+            "NetworkInfo": {
+                "MaximumNetworkCards": num_cards,
+                "NetworkCards": network_cards_list,
+                "EfaSupported": efa_enabled,
+                "EfaInfo": {"MaximumEfaInterfaces": max_efa_interfaces},
+            }
+        }
     )
     aws_api_mock.ec2.describe_subnets.return_value = public_ip_subnets
 
     queues = [
         SlurmQueue(
             name="queue_1",
-            compute_resources=[SlurmComputeResource(name="compute_resource_1", instance_type="instance_type")],
+            compute_resources=[
+                SlurmComputeResource(
+                    name="compute_resource_1",
+                    instance_type="instance_type",
+                    efa=Efa(enabled=efa_enabled),
+                )
+            ],
             networking=SlurmQueueNetworking(subnet_ids=["subnet_1", "subnet_2"], assign_public_ip=assign_public_ip),
         ),
     ]
 
-    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues)
+    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues, efa_interface_type=efa_interface_type)
 
     if expected_error_messages:
         assert_failure_messages(actual_failures, expected_error_messages)
@@ -3641,11 +3829,68 @@ def test_multi_network_interfaces_instances_validator(
         assert_that(actual_failures).is_empty()
 
 
+@pytest.mark.usefixtures("get_region")
+def test_multi_network_interfaces_instances_validator_mixed_queue(aws_api_mock):
+    """A queue with both a multi-network-card and a single-card EFA compute resource reports both reasons."""
+    instance_type_info = {
+        # Multi-network-card instance (e.g. p4d): launched with one interface per card.
+        "multi_card.instance": InstanceTypeInfo(
+            {
+                "NetworkInfo": {
+                    "MaximumNetworkCards": 2,
+                    "NetworkCards": [
+                        {"NetworkCardIndex": 0, "MaximumNetworkInterfaces": 1},
+                        {"NetworkCardIndex": 1, "MaximumNetworkInterfaces": 1},
+                    ],
+                    "EfaSupported": True,
+                    "EfaInfo": {"MaximumEfaInterfaces": 2},
+                }
+            }
+        ),
+        # Single-network-card EFA instance (e.g. c5n): launched with a primary + an efa-only interface.
+        "efa.instance": InstanceTypeInfo(
+            {
+                "NetworkInfo": {
+                    "MaximumNetworkCards": 1,
+                    "NetworkCards": [{"NetworkCardIndex": 0, "MaximumNetworkInterfaces": 2}],
+                    "EfaSupported": True,
+                    "EfaInfo": {"MaximumEfaInterfaces": 1},
+                }
+            }
+        ),
+    }
+    aws_api_mock.ec2.get_instance_type_info.side_effect = lambda instance_type: instance_type_info[instance_type]
+    aws_api_mock.ec2.describe_subnets.return_value = [{"SubnetId": "subnet_1", "MapPublicIpOnLaunch": False}]
+
+    queues = [
+        SlurmQueue(
+            name="queue_1",
+            compute_resources=[
+                SlurmComputeResource(name="multi_card_cr", instance_type="multi_card.instance"),
+                SlurmComputeResource(name="efa_cr", instance_type="efa.instance", efa=Efa(enabled=True)),
+            ],
+            networking=SlurmQueueNetworking(subnet_ids=["subnet_1"], assign_public_ip=True),
+        ),
+    ]
+
+    actual_failures = MultiNetworkInterfacesInstancesValidator().execute(queues)
+
+    # Exactly one failure (queue is reported once, not once per compute resource) that names both reasons.
+    assert_that(actual_failures).is_length(1)
+    assert_that(actual_failures[0].message).is_equal_to(
+        "The queue queue_1 contains the instance types multi_card.instance with multiple network interfaces and "
+        "has EFA enabled on the single-network-card instance types efa.instance, so its compute nodes are launched "
+        "with multiple network interfaces (a primary interface plus a dedicated efa-only interface), but "
+        f"AssignPublicIp is set to true. {PUBLIC_IP_LIMITATION} {ASSIGN_PUBLIC_IP_FIX}"
+    )
+    assert_failure_level(actual_failures, FailureLevel.ERROR)
+
+
 @pytest.mark.parametrize(
     "custom_ami_id, os, expected_message, expected_failure_level",
     [
         ("ami-000000000000", "rocky8", None, None),
-        ("ami-000000000000", "alinux2", None, None),
+        ("ami-000000000000", "alinux2023", None, None),
         ("ami-000000000000", "rhel8", None, None),
         ("ami-000000000000", "ubuntu2204", None, None),
         ("ami-000000000000", "ubuntu2404", None, None),
@@ -3658,7 +3903,7 @@ def test_multi_network_interfaces_instances_validator(
             "https://docs.aws.amazon.com/parallelcluster/latest/ug/building-custom-ami-v3.html",
             FailureLevel.ERROR,
         ),
-        (None, "alinux2", None, None),
+        (None, "alinux2023", None, None),
         (None, "rhel8", None, None),
         (None, "ubuntu2204", None, None),
         (None, "ubuntu2404", None, None),

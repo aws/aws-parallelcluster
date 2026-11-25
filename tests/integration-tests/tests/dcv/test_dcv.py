@@ -9,6 +9,9 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import contextlib
+import fcntl
+import json
 import logging
 import os as operating_system
 import re
@@ -34,6 +37,31 @@ from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificClou
 
 SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
+
+# Crashes matching any of these patterns are never tolerated, regardless of TOLERATED_CRASH_PATTERNS.
+UNTOLERATED_CRASH_PATTERNS = [
+    re.compile(r"dcv|nvidia", re.IGNORECASE),
+]
+
+# Crashes matching these patterns are always tolerated, overriding UNTOLERATED_CRASH_PATTERNS.
+# Nested as {os_pattern: {instance_type_pattern: [regex, ...]}} so a toleration can be scoped to a
+# specific OS and/or instance type. Use "*" for either key to match any OS or any instance type.
+# Both keys are matched via str.startswith (e.g. "ubuntu" matches ubuntu2204/ubuntu2404, "g5g"
+# matches g5g.2xlarge).
+TOLERATED_CRASH_PATTERNS = {
+    "*": {  # any OS
+        "*": [  # any instance type
+            # nvidia-settings crash is a known issue https://github.com/NVIDIA/nvidia-settings/issues/118
+            re.compile(r"nvidia-settings", re.IGNORECASE),
+            # dcvsessionlauncher SEGV: intermittent crash caused by a known issue in DCV.
+            # We can tolerate this crash because it only impacts intermittently the first DCV connection
+            # and when it does the test already fails the check specific to the connectivity.
+            re.compile(r".*dcvsession.*g_subprocess_send_signal.*libgio", re.DOTALL),
+        ],
+    },
+}
+
+DIAGNOSIS_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "common" / "diagnosis"
 
 
 def test_dcv_configuration(region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
@@ -78,36 +106,67 @@ def _test_dcv_configuration(
     head_node_remote_command_executor = RemoteCommandExecutor(cluster)
     login_node_remote_command_executor = RemoteCommandExecutor(cluster, use_login_node=True)
 
-    # check configuration parameters of the head and login nodes
-    check_node_security_group(region, cluster, dcv_port, expected_cidr=access_from)
-    check_node_security_group(region, cluster, dcv_port, expected_cidr=access_from, login_pool_name="pool")
-
     shared_dir = f"/home/{get_username_for_os(os)}"
 
-    # test dcv connect show url for head and login node
-    _test_show_url(cluster, region, dcv_port, access_from)
-    _test_show_url(cluster, region, dcv_port, access_from, use_login_node=True)
+    checks = [
+        (
+            "check_node_security_group (head node)",
+            lambda: check_node_security_group(region, cluster, dcv_port, expected_cidr=access_from),
+        ),
+        (
+            "check_node_security_group (login node)",
+            lambda: check_node_security_group(
+                region, cluster, dcv_port, expected_cidr=access_from, login_pool_name="pool"
+            ),
+        ),
+        ("dcv connect show url (head node)", lambda: _test_show_url(cluster, region, dcv_port, access_from)),
+        (
+            "dcv connect show url (login node)",
+            lambda: _test_show_url(cluster, region, dcv_port, access_from, use_login_node=True),
+        ),
+        (
+            "authenticator (head node)",
+            lambda: _test_authenticator(head_node_remote_command_executor, dcv_authenticator_port, shared_dir, os),
+        ),
+        (
+            "authenticator (login node)",
+            lambda: _test_authenticator(login_node_remote_command_executor, dcv_authenticator_port, shared_dir, os),
+        ),
+        (
+            "error cases (head node)",
+            lambda: _check_error_cases(head_node_remote_command_executor, dcv_authenticator_port),
+        ),
+        (
+            "error cases (login node)",
+            lambda: _check_error_cases(login_node_remote_command_executor, dcv_authenticator_port),
+        ),
+        ("shared dir (head node)", lambda: _check_shared_dir(head_node_remote_command_executor, shared_dir)),
+        ("shared dir (login node)", lambda: _check_shared_dir(login_node_remote_command_executor, shared_dir)),
+        ("no crashes (head node)", lambda: _assert_no_crashes(head_node_remote_command_executor, os, instance)),
+        ("no crashes (login node)", lambda: _assert_no_crashes(login_node_remote_command_executor, os, instance)),
+        (
+            "cloudwatch logs",
+            lambda: FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
+                cluster, scheduler, os, "dcv_enabled", region, shared_dir
+            ),
+        ),
+    ]
 
-    # launch a session and verify the authenticator works
-    _test_authenticator(head_node_remote_command_executor, dcv_authenticator_port, shared_dir, os)
-    _test_authenticator(login_node_remote_command_executor, dcv_authenticator_port, shared_dir, os)
+    failures = []
+    for check_name, check_fn in checks:
+        try:
+            check_fn()
+        except Exception as e:
+            logging.error("Soft assertion failed for '%s': %s", check_name, e)
+            failures.append(f"{check_name}: {e}")
 
-    # check error cases
-    _check_error_cases(head_node_remote_command_executor, dcv_authenticator_port)
-    _check_error_cases(login_node_remote_command_executor, dcv_authenticator_port)
-
-    # check shared dir configuration
-    _check_shared_dir(head_node_remote_command_executor, shared_dir)
-    _check_shared_dir(login_node_remote_command_executor, shared_dir)
-
-    # Ensure no system programs crashed
-    _check_no_crashes(head_node_remote_command_executor, test_datadir)
-    _check_no_crashes(login_node_remote_command_executor, test_datadir)
-
-    # Check that logs are stored in CloudWatch as expected
-    FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
-        cluster, scheduler, os, "dcv_enabled", region, shared_dir
-    )
+    if failures:
+        formatted = []
+        for i, f in enumerate(failures):
+            # Unescape literal \n and \t sequences so the output is human-readable
+            readable = f.replace("\\n", "\n").replace("\\t", "\t")
+            formatted.append(f"  [{i + 1}] {readable}")
+        pytest.fail(f"{len(failures)} DCV configuration check(s) failed:\n" + "\n".join(formatted))
 
 
 def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
@@ -138,9 +197,68 @@ def _check_auth_ok(remote_command_executor, external_authenticator_port, session
     ).is_equal_to('<auth result="yes"><username>{0}</username></auth>'.format(username))
 
 
-def _check_no_crashes(remote_command_executor, test_datadir):
-    """Verify no core files in /var/crash, which on ubuntu18 causes a popup when logging into the 1st session."""
-    remote_command_executor.run_remote_script(str(test_datadir / "verify_no_core_files.sh"))
+def _get_crash_report(remote_command_executor):
+    """Check for crash files on the node and return a crash report dictionary.
+
+    Runs a script that scans crash locations across all pcluster-supported OSes
+    (Ubuntu, AL2, AL2023, RHEL8/9, Rocky8/9) and returns a JSON dictionary
+    mapping crash file paths to their human-readable content.
+
+    Returns an empty dict if no crashes found.
+    Raises ValueError if the script output could not be parsed.
+    """
+    result = remote_command_executor.run_remote_script(str(DIAGNOSIS_SCRIPT_DIR / "get_crash_report.sh"), pty=False)
+    try:
+        return json.loads(result.stdout)
+    except Exception as e:
+        raise ValueError(
+            f"Failed to parse crash report JSON: {e}\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        ) from e
+
+
+def _key_matches(key, value):
+    """A TOLERATED_CRASH_PATTERNS key element matches if it is the "*" wildcard or a prefix of value."""
+    return key == "*" or (value is not None and value.startswith(key))
+
+
+def _is_tolerated_crash(content, os=None, instance=None):
+    """A crash is tolerated unless it matches an UNTOLERATED pattern.
+
+    TOLERATED_CRASH_PATTERNS is nested as {os_pattern: {instance_type_pattern: [regex, ...]}} and
+    takes precedence over UNTOLERATED_CRASH_PATTERNS for the matching OS/instance ("*" matches
+    anything).
+    """
+    # Check tolerated patterns whose os/instance keys match — these override UNTOLERATED patterns.
+    for os_key, instance_patterns in TOLERATED_CRASH_PATTERNS.items():
+        if not _key_matches(os_key, os):
+            continue
+        for instance_key, patterns in instance_patterns.items():
+            if not _key_matches(instance_key, instance):
+                continue
+            for pattern in patterns:
+                if pattern.search(content):
+                    return True
+    for pattern in UNTOLERATED_CRASH_PATTERNS:
+        if pattern.search(content):
+            return False
+    return True
+
+
+def _assert_no_crashes(remote_command_executor, os=None, instance=None):
+    """Get crash report, log all crashes, and fail only on non-tolerated ones."""
+    try:
+        crash_report = _get_crash_report(remote_command_executor)
+    except Exception as e:
+        raise AssertionError(f"Crash report could not be determined: {e}") from e
+    if crash_report:
+        logging.warning("Crash report for %s:\n%s", remote_command_executor.target, json.dumps(crash_report, indent=2))
+    tolerated = {path: content for path, content in crash_report.items() if _is_tolerated_crash(content, os, instance)}
+    untolerated = {
+        path: content for path, content in crash_report.items() if not _is_tolerated_crash(content, os, instance)
+    }
+    if tolerated:
+        logging.warning("Tolerated crashes on %s:\n%s", remote_command_executor.target, json.dumps(tolerated, indent=2))
+    assert_that(untolerated).is_empty()
 
 
 def _get_known_hosts_content(host_keys_file):
@@ -153,6 +271,7 @@ def _get_known_hosts_content(host_keys_file):
 
 def _check_error_cases(remote_command_executor, dcv_authenticator_port):
     """Check DCV errors for both head and login nodes."""
+    logging.info("Checking expected authentication failure on %s", remote_command_executor.target)
     _check_auth_ko(
         remote_command_executor,
         dcv_authenticator_port,
@@ -165,6 +284,20 @@ def _check_error_cases(remote_command_executor, dcv_authenticator_port):
     _check_auth_ko(
         remote_command_executor, dcv_authenticator_port, "-d action=requestToken -d authUser=centos", "Wrong parameters"
     )
+    logging.info("Completed checks for authentication failure on %s", remote_command_executor.target)
+
+
+@contextlib.contextmanager
+def _temporary_known_host(hostname, host_keys_file, env):
+    """Add SSH host keys for hostname, yield, then remove them. Serialized via file lock across processes."""
+    lock_file = host_keys_file + ".lock"
+    with open(lock_file, "w") as lf:
+        fcntl.flock(lf, fcntl.LOCK_EX)
+        try:
+            add_keys_to_known_hosts(hostname, host_keys_file)
+            yield
+        finally:
+            remove_keys_from_known_hosts(hostname, host_keys_file, env=env)
 
 
 def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False):  # noqa: C901
@@ -174,7 +307,6 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
 
     node_ip = cluster.get_login_node_public_ip() if use_login_node else cluster.head_node_ip
 
-    # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
     # Ensure known_hosts path exists to avoid `cat` command returning non-zero exit when testing in ADC region.
     host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
     host_keys_path = Path(host_keys_file)
@@ -184,26 +316,28 @@ def _test_show_url(cluster, region, dcv_port, access_from, use_login_node=False)
             host_keys_path.touch()
             host_keys_path.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0600
     except Exception as e:
-        logging.warning(f"Failed to prepare known_hosts file {host_keys_file}: {e}")
+        logging.warning("Failed to prepare known_hosts file %s: %s", host_keys_file, e)
 
-    before_content = _get_known_hosts_content(host_keys_file)
-    logging.info(f"Original content of known hosts file {host_keys_file}: {before_content}")
-
-    add_keys_to_known_hosts(node_ip, host_keys_file)
-
-    after_content = _get_known_hosts_content(host_keys_file)
-    logging.info(f"New content of known hosts file {host_keys_file}: {after_content}")
-
-    dcv_connect_args = ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"]
+    dcv_connect_args = [
+        "pcluster",
+        "dcv-connect",
+        "--cluster-name",
+        cluster.name,
+        "--key-path",
+        cluster.ssh_key,
+        "--show-url",
+    ]
 
     if use_login_node:
         dcv_connect_args.extend(["--login-node-ip", node_ip])
 
-    try:
-        result = run_pcluster_command(dcv_connect_args, env=env)
-    finally:
-        # remove ssh key from jenkins user known hosts file
-        remove_keys_from_known_hosts(node_ip, host_keys_file, env=env)
+    with _temporary_known_host(node_ip, host_keys_file, env):
+        try:
+            result = run_pcluster_command(dcv_connect_args, env=env)
+        except subprocess.CalledProcessError as e:
+            raise AssertionError(
+                f"Command {e.cmd} failed (exit {e.returncode}).\nstderr: {e.stderr}\nstdout: {e.stdout}"
+            ) from e
 
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
@@ -227,9 +361,8 @@ def _test_authenticator(remote_command_executor, dcv_authenticator_port, shared_
         dcv_session_token = dcv_parameters.group(3)
         _check_auth_ok(remote_command_executor, dcv_authenticator_port, dcv_session_id, dcv_session_token, os)
     else:
-        print(
+        assert_that(dcv_parameters).described_as(
             "Command '{0} {1}' fails, output: {2}, error: {3}".format(
                 DCV_CONNECT_SCRIPT, shared_dir, command_execution.stdout, command_execution.stderr
             )
-        )
-        raise AssertionError
+        ).is_not_none()

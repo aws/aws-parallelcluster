@@ -1,5 +1,0 @@
-jobId                                     jobName           status     startedAt                  stoppedAt                  exitCode
-----------------------------------------  ----------------  ---------  -------------------------  -------------------------  ----------
-3286a19c-68a9-47c9-8000-427d23ffc7ca [2]  array-succeeded   SUCCEEDED  -                          -                          -
-ab2cd019-1d84-43c7-a016-9772dd963f3b      simple-succeeded  SUCCEEDED  2018-11-28T09:16:18+00:00  2018-11-28T09:16:49+00:00  0
-3ec00225-8b85-48ba-a321-f61d005bec46 *2   mnp-succeeded     SUCCEEDED  2018-11-28T09:17:46+00:00  2018-11-28T09:19:03+00:00  -

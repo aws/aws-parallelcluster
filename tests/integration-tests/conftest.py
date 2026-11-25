@@ -13,6 +13,7 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
+import base64
 import copy
 import json
 import logging
@@ -21,11 +22,14 @@ import re
 import time
 from functools import partial
 from itertools import product
+from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 import boto3
+import cfn_tools
 import pytest
 import yaml
 from _pytest.fixtures import FixtureDef, SubRequest
@@ -41,8 +45,14 @@ from conftest_markers import (
 )
 from conftest_networking import unmarshal_az_override
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
-from conftest_utils import add_filename_markers, get_reporting_region
-from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED, NodeType
+from conftest_utils import (
+    add_filename_markers,
+    get_reporting_region,
+    is_region_retained,
+    register_retained_stack,
+    retain_resources_on_teardown,
+)
+from constants import NodeType
 from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.fixture_utils import xdist_session_fixture
@@ -53,6 +63,7 @@ from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
 from jinja2 import FileSystemLoader
 from jinja2.sandbox import SandboxedEnvironment
+from remote_command_executor import RemoteCommandExecutor
 from troposphere import Ref, Sub, Template, ec2, resourcegroups
 from troposphere.ec2 import PlacementGroup
 from troposphere.efs import AccessPoint as EFSAccessPoint
@@ -77,6 +88,7 @@ from utils import (
     get_architecture_supported_by_instance_type,
     get_arn_partition,
     get_instance_info,
+    get_instance_public_ip_by_private_ip,
     get_metadata,
     get_network_interfaces_count,
     get_similar_instance_types,
@@ -86,6 +98,7 @@ from utils import (
 )
 from xdist import get_xdist_worker_id
 
+from tests.common.capacity_helpers import get_efa_instance_types, resolve_instance_with_capacity
 from tests.common.osu_common import PRIVATE_OSES, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.storage.constants import StorageType
@@ -95,6 +108,7 @@ from tests.common.storage.fsx_utils import delete_fsx_filesystem
 from tests.common.utils import (
     fetch_instance_slots,
     get_installed_parallelcluster_version,
+    installed_parallelcluster_version_is_at_least,
     retrieve_latest_ami,
     retrieve_pcluster_ami_without_standard_naming,
 )
@@ -116,6 +130,9 @@ def pytest_addoption(parser):
     parser.addoption("--key-name", help="key to use for EC2 instances", type=str)
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
+    parser.addoption(
+        "--extra-chef-attributes", help="Base64-encoded ExtraChefAttributes JSON to inject into the cluster config"
+    )
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the build-image command"
     )
@@ -139,7 +156,6 @@ def pytest_addoption(parser):
     parser.addoption("--createami-custom-node-package", help="url to a custom node package for the build-image command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
-    parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--pcluster-installer-path", help="Path to ParallelCluster installer")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
@@ -168,6 +184,12 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
+    )
+    parser.addoption(
+        "--retain-on-failure",
+        type=int,
+        default=0,
+        help="Retain cluster, VPC, IAM, and S3 bucket stacks for up to N failing tests (0=disabled, max 5).",
     )
     parser.addoption(
         "--retain-ad-stack", action="store_true", default=False, help="Retain AD stack and corresponding VPC stack."
@@ -229,6 +251,11 @@ def pytest_addoption(parser):
         help="Name of CFN stack providing a Proxy environment.",
     )
     parser.addoption(
+        "--patch-ami-stack",
+        help="Name of an existing CFN stack that builds the patched AMI (cloudformation/patching/ami-patching.yaml). "
+        "When provided, the patching tests reuse this stack instead of creating and deleting a new one.",
+    )
+    parser.addoption(
         "--build-image-roles-stack",
         help="Name of CFN stack providing the build image permissions.",
     )
@@ -239,6 +266,12 @@ def pytest_addoption(parser):
     parser.addoption(
         "--capacity-reservation-id",
         help="Use an existing capacity reservation.",
+    )
+    parser.addoption(
+        "--skip-ddb-metadata",
+        action="store_true",
+        default=False,
+        help="Skip the setup and push of DDB metadata.",
     )
 
 
@@ -255,6 +288,11 @@ def pytest_generate_tests(metafunc):
 
 def pytest_configure(config):
     """This hook is called for every plugin and initial conftest file after command line options have been parsed."""
+    # Validate --retain-on-failure range
+    retain_on_failure = config.getoption("retain_on_failure", default=0)
+    if retain_on_failure < 0 or retain_on_failure > 5:
+        raise pytest.UsageError("--retain-on-failure must be between 0 and 5")
+
     # read tests config file if used
     if config.getoption("tests_config_file", None):
         config.option.tests_config = read_config_file(config.getoption("tests_config_file"), config=config)
@@ -329,6 +367,9 @@ def pytest_collection_modifyitems(session: pytest.Session, config: pytest.Config
 
 
 def pytest_collection_finish(session):
+    if session.config.getoption("skip_ddb_metadata", default=False):
+        logging.info("Skipping DDB metadata due to --skip-ddb-metadata flag")
+        return
     _log_collected_tests(session)
     # Create the metadata table after the regions are collected
     try:
@@ -399,7 +440,6 @@ def _setup_custom_logger(log_file):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_credentials")
 def clusters_factory(request, region):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -408,7 +448,9 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, **kwargs):
+    def _cluster_factory(
+        cluster_config, upper_case_cluster_name=False, custom_cli_credentials=None, post_cluster_setup=None, **kwargs
+    ):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster_name = (
             request.config.getoption("cluster")
@@ -429,15 +471,22 @@ def clusters_factory(request, region):
         )
         if not request.config.getoption("cluster"):
             cluster.creation_response = factory.create_cluster(cluster, request, **kwargs)
+        if cluster.create_complete and post_cluster_setup:
+            post_cluster_setup(cluster)
+        # Run pcluster-diag after every successful cluster creation
+        _run_pcluster_diag(request, cluster)
         return cluster
 
     yield _cluster_factory
-    if not request.config.getoption("no_delete"):
+    if not retain_resources_on_teardown(request, scope="class"):
         try:
             test_passed = request.node.rep_call.passed
         except AttributeError:
             test_passed = False
         factory.destroy_all_clusters(test_passed=test_passed)
+    else:
+        for cluster in factory._ClustersFactory__created_clusters.values():
+            register_retained_stack(request, cluster.cfn_stack_arn)
 
 
 @pytest.fixture(scope="class")
@@ -512,7 +561,6 @@ def api_client(region, api_server_factory, api_uri):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_credentials")
 def images_factory(request):
     """
     Define a fixture to manage the creation and destruction of images.
@@ -544,28 +592,96 @@ def images_factory(request):
         factory.destroy_all_images()
     else:
         logging.warning("Skipping deletion of CFN image stacks because --no-delete option is set")
+        for image in factory.created_images.values():
+            logging.info("Retaining built EC2 AMI %s (pcluster image %s)", image.ec2_image_id, image.image_id)
 
 
 def _write_config_to_outdir(request, config, config_dir):
+    config_dst = _get_outdir_path(request, config_dir, "config")
+    copyfile(config, config_dst)
+    return config_dst
+
+
+def _get_outdir_path(request, output_subdir, extension):
+    """Generate an output file path following the standard test artifact naming convention."""
     out_dir = request.config.getoption("output_dir")
 
-    # Sanitize config file name to make it Windows compatible
+    # Sanitize file name to make it Windows compatible
     # request.node.nodeid example:
     # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
     test_file, test_name = request.node.nodeid.split("::", 1)
-    config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
+    file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
 
     os.makedirs(
-        "{out_dir}/{config_dir}/{test_dir}".format(
-            out_dir=out_dir, config_dir=config_dir, test_dir=os.path.dirname(test_file)
+        "{out_dir}/{output_subdir}/{test_dir}".format(
+            out_dir=out_dir, output_subdir=output_subdir, test_dir=os.path.dirname(test_file)
         ),
         exist_ok=True,
     )
-    config_dst = "{out_dir}/{config_dir}/{config_file_name}.config".format(
-        out_dir=out_dir, config_dir=config_dir, config_file_name=config_file_name
+
+    return "{out_dir}/{output_subdir}/{file_name}.{extension}".format(
+        out_dir=out_dir, output_subdir=output_subdir, file_name=file_name, extension=extension
     )
-    copyfile(config, config_dst)
-    return config_dst
+
+
+def _run_pcluster_diag(request, cluster):
+    """Run pcluster-diag on the cluster and save the report to the test output directory."""
+    if not cluster.create_complete:
+        return
+    # pcluster-diag is only installed in the AMIs of ParallelCluster 3.16.0 and later.
+    if not installed_parallelcluster_version_is_at_least("3.16.0"):
+        logging.info(
+            "Skipping pcluster-diag on cluster %s: it requires ParallelCluster 3.16.0 or later, but %s is installed",
+            cluster.name,
+            get_installed_parallelcluster_version(),
+        )
+        return
+    bastion = _get_bastion(request, cluster)
+    rce = RemoteCommandExecutor(cluster, bastion=bastion)
+    diag_result = rce.run_remote_command("sudo pcluster-diag run --yes", timeout=120)
+    logging.info("pcluster-diag output for cluster %s:\n%s", cluster.name, diag_result.stdout)
+    remote_report_path = rce.run_remote_command(
+        'ls -t "$HOME"/pcluster-diag-output/pcluster-diag-report-*.json | head -1',
+        timeout=10,
+    ).stdout.strip()
+    if remote_report_path:
+        report_dst = _get_outdir_path(request, "pcluster_diag_reports", "json")
+        rce.get_remote_files(remote_report_path, report_dst)
+        logging.info("pcluster-diag report saved to %s", report_dst)
+
+
+def _get_bastion(request, cluster):
+    """Return the SSH endpoint pcluster-diag must use to reach the cluster head node.
+
+    Returns None when the head node is directly reachable (it has a public IP), otherwise the
+    "user@ip" SSH bastion to tunnel through.
+    """
+    # 1. Head node directly reachable from the test runner.
+    if cluster.head_node_public_ip:
+        return None
+
+    # 2. Head node behind an HTTP proxy declared in the cluster config.
+    proxy_address = cluster.config.get("HeadNode", {}).get("Networking", {}).get("Proxy", {}).get("HttpProxyAddress")
+    proxy_private_ip = urlparse(proxy_address).hostname if proxy_address else None
+    if proxy_private_ip:
+        proxy_public_ip = get_instance_public_ip_by_private_ip(proxy_private_ip, cluster.region)
+        if proxy_public_ip:
+            # The proxy instance runs Ubuntu, so pcluster-diag tunnels through it as the "ubuntu" user.
+            return f"ubuntu@{proxy_public_ip}"
+
+    # 3. Head node in a private/no-internet subnet reachable through the VPC-stack bastion. Try the
+    #    endpoints VPC (used by no-internet tests) before the base VPC.
+    for fixture_name in ("vpc_stack_with_endpoints", "vpc_stack"):
+        if fixture_name in request.fixturenames:
+            bastion = getattr(request.getfixturevalue(fixture_name), "bastion", None)
+            if bastion:
+                return bastion
+
+    # 4. No reachable path to the head node.
+    raise RuntimeError(
+        f"Cannot run pcluster-diag on cluster {cluster.name}: the head node has no public IP, the cluster "
+        "config declares no HTTP proxy, and the test exposes no VPC-stack bastion to reach it."
+    )
 
 
 @pytest.fixture()
@@ -611,7 +727,7 @@ def file_reader(test_datadir, request, vpc_stack):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, architecture):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, architecture, ami_type):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -626,6 +742,8 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
+    # Pick up any capacity-fallback substitution applied by resolve_default_instance.
+    instance = request.node.funcargs.get("instance", instance)
 
     def _config_renderer(config_file="pcluster.config.yaml", benchmarks=None, output_file=None, **kwargs):
         config_file_path = test_datadir / config_file
@@ -634,14 +752,14 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region, instance, a
         output_file_path = test_datadir / output_file if output_file else config_file_path
         default_values = _get_default_template_values(vpc_stack, request)
         inject_internal_storage_settings(kwargs)
-        inject_placement_group_settings(vpc_stack, instance, kwargs)
+        inject_placement_group_settings(vpc_stack, instance, region, kwargs)
         inject_flexible_instance_types_settings(instance, region, kwargs)
         file_loader = FileSystemLoader(str(test_datadir))
         env = SandboxedEnvironment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         output_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
-            inject_additional_config_settings(output_file_path, request, region, architecture, benchmarks)
+            inject_additional_config_settings(output_file_path, request, region, architecture, ami_type, benchmarks)
         else:
             inject_additional_image_configs_settings(output_file_path, request)
         return output_file_path
@@ -654,13 +772,34 @@ def inject_internal_storage_settings(kwargs):
         kwargs["shared_headnode_storage_type"] = "Efs"
 
 
-def inject_placement_group_settings(vpc_stack, instance, kwargs):
-    if vpc_stack.az_override:
-        kwargs["capacity_reservation_framework_placement_group"] = f"{instance}_placement_group_{vpc_stack.az_override}"
+def inject_placement_group_settings(vpc_stack, instance, region, kwargs):
+    az = vpc_stack.az_override or vpc_stack.default_az_id
+    if az:
+        placement_group_name = f"{instance}_placement_group_{az}"
+        try:
+            ec2_client = boto3.client("ec2", region_name=region)
+            ec2_client.describe_placement_groups(GroupNames=[placement_group_name])
+            kwargs["capacity_reservation_framework_placement_group"] = placement_group_name
+        except Exception:
+            logging.info("Placement group %s not found, skipping placement group setting", placement_group_name)
+            kwargs["capacity_reservation_framework_placement_group"] = ""
+    else:
+        kwargs["capacity_reservation_framework_placement_group"] = ""
 
 
 def inject_flexible_instance_types_settings(instance, region, kwargs):
-    kwargs["flexible_instance_types"] = list({instance, *get_similar_instance_types(instance, region, 5)})
+    flexible_instance_types = [instance]
+    try:
+        flexible_instance_types.extend(it for it in get_similar_instance_types(instance, region, 5) if it != instance)
+    except Exception:
+        logging.warning(
+            "Failed to retrieve instance types equivalent to %s in region %s. "
+            "Falling back to using only the original instance type %s.",
+            instance,
+            region,
+            instance,
+        )
+    kwargs["flexible_instance_types"] = flexible_instance_types
 
 
 def inject_additional_image_configs_settings(image_config, request):
@@ -677,7 +816,6 @@ def inject_additional_image_configs_settings(image_config, request):
         )
 
     for option, config_param in [
-        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
         ("createami_custom_node_package", "NodePackage"),
     ]:
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
@@ -685,6 +823,22 @@ def inject_additional_image_configs_settings(image_config, request):
 
     with open(image_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
+
+
+def _deep_merge_dicts(base, override):
+    """Recursively merge override into base.
+
+    Branch keys present in both are merged (so disjoint children on a shared
+    parent are preserved); on a leaf-value conflict the value from `override`
+    wins. Callers choose the winner by argument order.
+    """
+    result = copy.deepcopy(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge_dicts(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
 
 
 def _inject_additional_iam_policies(node_config, additional_iam_policies):
@@ -722,7 +876,30 @@ def _inject_additional_iam_policies_for_nodes(
             _inject_additional_iam_policies(pool, policies)
 
 
-def inject_additional_config_settings(cluster_config, request, region, architecture, benchmarks=None):  # noqa C901
+def _build_private_os_ami_filters(request):
+    """Build DescribeImages tag filters that pin a PRIVATE_OSES AMI to the git refs under test.
+
+    PRIVATE_OSES bypass AmiSearchFilters (CustomAmi wins), so without these filters
+    retrieve_latest_ami returns the newest pcluster AMI regardless of the refs under test.
+    Returns an empty list when no git refs are provided (released-version runs).
+    """
+    filters = []
+    for git_ref_option, tag_key in (
+        ("pcluster_git_ref", "build:parallelcluster:cli_ref"),
+        ("cookbook_git_ref", "build:parallelcluster:cookbook_ref"),
+        ("node_git_ref", "build:parallelcluster:node_ref"),
+    ):
+        git_ref = request.config.getoption(git_ref_option)
+        if git_ref:
+            filters.append({"Name": f"tag:{tag_key}", "Values": [git_ref]})
+    if filters:
+        filters.append({"Name": "tag:parallelcluster:build_status", "Values": ["available"]})
+    return filters
+
+
+def inject_additional_config_settings(  # noqa C901
+    cluster_config, request, region, architecture, ami_type, benchmarks=None
+):
     with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
@@ -746,6 +923,23 @@ def inject_additional_config_settings(cluster_config, request, region, architect
             ("DevSettings", "Cookbook", "ChefCookbook"),
         )
 
+    if request.config.getoption("extra_chef_attributes"):
+        # Deep-merge our ExtraChefAttributes into any already set on the cluster
+        # config (e.g. a test feature like gb200 sets its own). Without merging,
+        # the existing value would shadow the dependency-upgrade attributes
+        # (python-version, etc.) and cluster init would use the cookbook default
+        # python, failing with ENOENT on the venv path baked into the AMI.
+        injected = json.loads(base64.b64decode(request.config.getoption("extra_chef_attributes")).decode("utf-8"))
+        if dict_has_nested_key(config_content, ("DevSettings", "Cookbook", "ExtraChefAttributes")):
+            existing = config_content["DevSettings"]["Cookbook"]["ExtraChefAttributes"]
+            existing = json.loads(existing) if isinstance(existing, str) else existing
+            # Test-specific attributes win on conflict; the injected dependency
+            # attributes (e.g. python-version) fill in the rest.
+            merged = _deep_merge_dicts(injected, existing)
+        else:
+            merged = injected
+        dict_add_nested_key(config_content, json.dumps(merged), ("DevSettings", "Cookbook", "ExtraChefAttributes"))
+
     if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
     # Adding Internal AMI we create for integration testing of those OSses which we do not publicly publish/release
@@ -759,6 +953,8 @@ def inject_additional_config_settings(cluster_config, request, region, architect
                 config_content["Image"]["Os"],
                 ami_type="pcluster",
                 architecture=architecture,
+                additional_filters=_build_private_os_ami_filters(request),
+                request=request,
             ),
             ("Image", "CustomAmi"),
         )
@@ -788,6 +984,8 @@ def inject_additional_config_settings(cluster_config, request, region, architect
             dict_add_nested_key(
                 config_content, request.config.getoption("ami_owner"), ("DevSettings", "AmiSearchFilters", "Owner")
             )
+        if ami_type == "DLAMI":
+            dict_add_nested_key(config_content, "dlami-", ("DevSettings", "AmiSearchFilters", "NamePrefix"))
 
     # Additional instance types data is copied it into config files to make it available at cluster creation
     instance_types_data = request.config.getoption("instance_types_data", None)
@@ -815,7 +1013,6 @@ def inject_additional_config_settings(cluster_config, request, region, architect
                         _add_policy_for_pre_post_install(queue, option, request, region)
 
     for option, config_param in [
-        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
         ("custom_node_package", "NodePackage"),
     ]:
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
@@ -903,7 +1100,7 @@ def _get_default_template_values(vpc_stack: CfnVpcStack, request):
     default_values["partition"] = get_arn_partition(default_values["region"])
     default_values["key_name"] = request.config.getoption("key_name")
 
-    default_values["imds_secured"] = default_values.get("scheduler") in SCHEDULERS_SUPPORTING_IMDS_SECURED
+    default_values["imds_secured"] = True
     default_values["scheduler_prefix"] = {"slurm": "Slurm", "awsbatch": "AwsBatch"}.get(default_values.get("scheduler"))
     return default_values
 
@@ -913,18 +1110,23 @@ def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
-    if not request.config.getoption("no_delete"):
-        excluded_stacks = []
-        if request.config.getoption("retain_ad_stack"):
-            excluded_stacks.extend(["vpc", "SimpleAD", "MicrosoftAD"])
-            logging.warning("Skipping deletion of AD and VPC stacks because --retain-ad-stack option is set")
-        factory.delete_all_stacks(excluded_stacks)
-    else:
+    if request.config.getoption("no_delete"):
         logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+        return
+    excluded_stacks = []
+    if request.config.getoption("retain_ad_stack"):
+        excluded_stacks.extend(["vpc", "SimpleAD", "MicrosoftAD"])
+        logging.warning("Skipping deletion of AD and VPC stacks because --retain-ad-stack option is set")
+    if request.config.getoption("retain_on_failure"):
+        for stack in factory._CfnStacksFactory__created_stacks.values():
+            if is_region_retained(request, stack.region):
+                excluded_stacks.append(stack.name)
+                register_retained_stack(request, stack.cfn_stack_id)
+                logging.warning("Retaining stack %s because a test in region %s was retained", stack.name, stack.region)
+    factory.delete_all_stacks(excluded_stacks)
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("setup_credentials")
 def parameterized_cfn_stacks_factory(request):
     """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
@@ -969,6 +1171,77 @@ def setup_env_variable(region):
     del os.environ["AWS_DEFAULT_REGION"]
 
 
+def _build_cli_creds_template():
+    """
+    Build the single CloudFormation template deployed by ``initialize_cli_creds``.
+
+    Merges two sources into one template body so the common test path deploys a SINGLE stack
+    (no separate policy stack, no cross-stack outputs):
+
+      1. cloudformation/policies/parallelcluster-policies.yaml (official, customer-facing) - the real
+         cluster/image/log/admin managed policies, read verbatim so tests catch policy drift.
+      2. tests/iam_policies/integ-tests-deploy-role.cfn.yaml - the assumable ParallelClusterUserRole
+         plus the test-only IntegTestsPolicy (S3/EC2/KMS/CloudWatch) attached to it.
+
+    The parallelcluster-policies.yaml managed policies are attached to ParallelClusterUserRole via
+    ManagedPolicyArns: within one stack, !Ref <ManagedPolicy> resolves to that policy's ARN. Returns a
+    YAML string.
+    """
+
+    def _load(*path_parts):
+        path = os.path.join(*path_parts)
+        assert os.path.exists(path), f"CLI-creds template source not found: {path}"
+        with open(path, encoding="utf-8") as f:
+            return cfn_tools.load_yaml(f.read())
+
+    official_template = _load("..", "..", "cloudformation", "policies", "parallelcluster-policies.yaml")
+    integ_test_role_template = _load("..", "iam_policies", "integ-tests-deploy-role.cfn.yaml")
+
+    # Drop ParallelClusterLambdaRole (the API's Lambda execution role): the integ-test stack never
+    # assumes it. Remove the resource + its output up front (can't mutate Resources while iterating);
+    # the loop detaches it from Roles lists. On-disk template is untouched; only this copy is pruned.
+    lambda_role = "ParallelClusterLambdaRole"
+    official_template["Resources"].pop(lambda_role, None)
+    official_template.get("Outputs", {}).pop(f"{lambda_role}Arn", None)
+
+    # Single pass over the official policies to attach them to ParallelClusterUserRole (scanned
+    # dynamically so new ones are picked up) and detach the removed Lambda role from any Roles list:
+    #   - ManagedPolicy -> role ManagedPolicyArns via intra-stack !Ref -> ARN; conditional policies are
+    #     wrapped in Fn::If -> AWS::NoValue so they attach only when created.
+    #   - Policy (inline, e.g. FSxS3AccessPolicy) -> not ARN-referenceable, so attach via its Roles.
+    # AWS-managed ARNs the Lambda role referenced (XRay, LambdaBasicExecution) are not resources here.
+    official_policy_refs = []
+    for name, resource in official_template["Resources"].items():
+        properties = resource.get("Properties", {})
+        if resource.get("Type") == "AWS::IAM::ManagedPolicy":
+            condition = resource.get("Condition")
+            ref = {"Ref": name}
+            official_policy_refs.append({"Fn::If": [condition, ref, {"Ref": "AWS::NoValue"}]} if condition else ref)
+        elif resource.get("Type") == "AWS::IAM::Policy":
+            # Inline policies attach via their own Roles list.
+            properties.setdefault("Roles", []).append({"Ref": "ParallelClusterUserRole"})
+
+        # Detach the removed Lambda role; drop Roles entirely if nothing remains (empty Roles is invalid).
+        roles = [r for r in properties.get("Roles", []) if not (isinstance(r, dict) and r.get("Ref") == lambda_role)]
+        if roles:
+            properties["Roles"] = roles
+        else:
+            properties.pop("Roles", None)
+    assert official_policy_refs, "No AWS::IAM::ManagedPolicy resources found in parallelcluster-policies.yaml"
+
+    # Merge the integ-test role/policy into the official template, failing loudly on any name collision.
+    for section in ("Parameters", "Conditions", "Resources", "Outputs"):
+        for key, value in integ_test_role_template.get(section, {}).items():
+            existing = official_template.setdefault(section, {})
+            assert (
+                key not in existing
+            ), f"Merge collision in {section}: '{key}' already exists in parallelcluster-policies.yaml"
+            existing[key] = value
+
+    official_template["Resources"]["ParallelClusterUserRole"]["Properties"]["ManagedPolicyArns"] = official_policy_refs
+    return cfn_tools.dump_yaml(official_template)
+
+
 @xdist_session_fixture(autouse=True)
 def initialize_cli_creds(request):
     if request.config.getoption("use_default_iam_credentials"):
@@ -978,27 +1251,38 @@ def initialize_cli_creds(request):
         stack_factory = CfnStacksFactory(request.config.getoption("credential"))
 
         regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
-        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-        with open(stack_template_path, encoding="utf-8") as stack_template_file:
-            stack_template_data = stack_template_file.read()
+        # Single merged template: assumable role + test-infra policy + the official customer-facing
+        # parallelcluster-policies.yaml, deployed as ONE stack. The official policies are read verbatim
+        # so the common test path exercises the real policy and catches drift. Only needed when we
+        # create the stack; the reuse path (iam_user_role_stack_name) just reads a pre-existing one.
+        reuse_stack_name = request.config.getoption("iam_user_role_stack_name")
+        stack_template_data = None if reuse_stack_name else _build_cli_creds_template()
         cli_creds = {}
         for region in regions:
             # region may contain an az_id if an override was specified
             # here we ensure that we are using the region
             region = unmarshal_az_override(region)
-            if request.config.getoption("iam_user_role_stack_name"):
-                stack_name = request.config.getoption("iam_user_role_stack_name")
-                logging.info(f"Using stack {stack_name} in region {region}")
-                stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
-                )
+            if reuse_stack_name:
+                # Reuse path: read the ParallelClusterUserRole output from the operator's pre-existing
+                # stack; so no template is passed or deployed.
+                logging.info(f"Using stack {reuse_stack_name} in region {region}")
+                stack = CfnStack(name=reuse_stack_name, region=region, template=None)
             else:
-                logging.info("Creating IAM roles for pcluster CLI")
+                logging.info("Creating IAM deploy role and policies for pcluster CLI")
                 stack_name = generate_stack_name(
                     "integ-tests-iam-user-role", request.config.getoption("stackname_suffix")
                 )
                 stack = CfnStack(
-                    name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+                    name=stack_name,
+                    region=region,
+                    # CAPABILITY_NAMED_IAM is a superset of CAPABILITY_IAM; the merged template creates
+                    # named IAM resources (RoleName/ManagedPolicyName) from parallelcluster-policies.yaml, so the
+                    # named capability is required and covers the unnamed case on its own.
+                    capabilities=["CAPABILITY_NAMED_IAM"],
+                    template=stack_template_data,
+                    parameters=[
+                        {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
+                    ],
                 )
 
                 stack_factory.create_stack(stack)
@@ -1006,10 +1290,19 @@ def initialize_cli_creds(request):
 
         yield cli_creds
 
-        if not request.config.getoption("no_delete"):
-            stack_factory.delete_all_stacks()
-        else:
+        if request.config.getoption("no_delete"):
             logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
+        elif request.config.getoption("retain_on_failure"):
+            for stack in stack_factory._CfnStacksFactory__created_stacks.values():
+                if is_region_retained(request, stack.region):
+                    register_retained_stack(request, stack.cfn_stack_id)
+                    logging.warning(
+                        "Retaining IAM stack %s because a test in region %s was retained", stack.name, stack.region
+                    )
+                else:
+                    stack_factory.delete_stack(stack.name, stack.region)
+        else:
+            stack_factory.delete_all_stacks()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -1020,7 +1313,6 @@ def register_cli_credentials(initialize_cli_creds):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("clusters_factory", "images_factory")
 def create_roles_stack(request, region):
     """Define a fixture that returns a stack factory for IAM roles."""
     logging.info("Creating IAM roles stack")
@@ -1114,6 +1406,8 @@ def s3_bucket_factory(request, region):
     for bucket in created_buckets:
         if request.config.getoption("no_delete"):
             logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        elif request.config.getoption("retain_on_failure") and is_region_retained(request, bucket[1]):
+            logging.info(f"Not deleting S3 bucket {bucket[0]} because a test in region {bucket[1]} was retained")
         else:
             logging.info(f"Deleting S3 bucket {bucket[0]}")
             try:
@@ -1157,6 +1451,8 @@ def s3_bucket_factory_shared(request):
     for bucket in created_buckets:
         if request.config.getoption("no_delete"):
             logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        elif request.config.getoption("retain_on_failure") and is_region_retained(request, bucket[1]):
+            logging.info(f"Not deleting S3 bucket {bucket[0]} because a test in region {bucket[1]} was retained")
         else:
             logging.info(f"Deleting S3 bucket {bucket[0]}")
             try:
@@ -1196,9 +1492,56 @@ def serial_execution_by_instance(request, instance, region, os_platform):
         yield
 
 
+@pytest.fixture(autouse=True)
+def resolve_default_instance(request):
+    """Reserve capacity for the test instance, substituting a same-spec alternative on ICE.
+
+    Dedups against existing reservations for instances larger than ``.xlarge`` and reserves
+    EFA-capable instances with a placement group.
+    When a substitute is found, ``request.node.funcargs["instance"]`` is updated so that downstream
+    fixtures (architecture, pcluster_config_reader, etc.) and the test itself see the resolved value.
+
+    Skips silently for tests that do not use instance, region, os, or vpc_stack fixtures.
+    """
+    required = ("instance", "region", "os", "vpc_stack", "architecture")
+    if not all(name in request.fixturenames for name in required):
+        return
+
+    instance = request.getfixturevalue("instance")
+    region = request.getfixturevalue("region")
+    os_name = request.getfixturevalue("os")
+    vpc_stack = request.getfixturevalue("vpc_stack")
+    flags = request.getfixturevalue("flags")
+    architecture = request.getfixturevalue("architecture")
+    alternative_instance_types = []
+    if instance.startswith("p"):
+        # Don't change p-series instance types, because the test is usually intended for a specific p instance type.
+        return
+
+    if flags and "any-efa-instances" in flags:
+        alternative_instance_types = get_efa_instance_types(region, architecture)
+
+    az_id = vpc_stack.az_override or vpc_stack.default_az_id
+    resolved = resolve_instance_with_capacity(
+        region,
+        az_id,
+        instance,
+        os_name,
+        alternative_instance_types=alternative_instance_types,
+        # An AZ pinned by the tests config usually comes from a CAPACITY_RESERVATION placeholder, whose reservation
+        # is sized for the test and has the placement group setting chosen by the config: reuse it.
+        ignore_placement_group=bool(vpc_stack.az_override),
+    )
+    if resolved != instance:
+        logging.info("Substituted default instance %s -> %s (capacity fallback)", instance, resolved)
+        request.node.funcargs["instance"] = resolved
+
+
 @pytest.fixture()
 def architecture(request, instance, region):
     """Return a string describing the architecture supported by the given instance type."""
+    # Pick up any capacity-fallback substitution applied by resolve_default_instance.
+    instance = request.node.funcargs.get("instance", instance)
     supported_architecture = request.config.cache.get(f"{instance}/architecture", None)
     if supported_architecture is None:
         logging.info(f"Getting supported architecture for instance type {instance}")
@@ -1587,6 +1930,116 @@ def ami_copy(region):
             logging.error("Delete copied AMI snapshot failed due to %s", e)
 
 
+def _log_ami_patching_build_output(region, stack_name):
+    """Log the EC2 Image Builder execution logs for the patched-AMI build.
+
+    Image Builder streams the output of every recipe step (including the patch script
+    output) to the CloudWatch log group
+    /aws/imagebuilder/pcluster-ami-patching-recipe-<stack_name>. Logging it surfaces the
+    patch output (and, on failure, the root cause) in the test logs. Any failure to
+    retrieve the logs is swallowed so it never fails the test.
+    """
+    log_group_name = f"/aws/imagebuilder/pcluster-ami-patching-recipe-{stack_name}"
+    logging.info("Retrieving AMI patching Image Builder logs from log group %s", log_group_name)
+    logs_client = boto3.client("logs", region_name=region)
+    try:
+        messages = []
+        for page in logs_client.get_paginator("filter_log_events").paginate(logGroupName=log_group_name):
+            messages.extend(event["message"] for event in page.get("events", []))
+        if messages:
+            logging.info("AMI patching Image Builder logs:\n%s", "\n".join(messages))
+        else:
+            logging.info("No AMI patching Image Builder logs found in log group %s", log_group_name)
+    except Exception as e:  # noqa: BLE001
+        logging.warning("Could not retrieve AMI patching Image Builder logs from log group %s: %s", log_group_name, e)
+
+
+@pytest.fixture()
+def patched_ami_factory(region, vpc_stack, test_datadir, request, cfn_stacks_factory, s3_bucket_factory):
+    """
+    Factory fixture that builds a security-patched AMI from a given base AMI.
+
+    The whole AMI-build infrastructure lives in a CloudFormation stack
+    (cloudformation/patching/ami-patching.yaml) that uses EC2 Image Builder: the
+    build instance downloads and runs the patch script, reboots, runs the AMI
+    cleanup, and Image Builder captures the patched AMI. The patched AMI is named
+    after the source AMI (with a -patched-<buildDate> suffix) and tagged with
+    parallelcluster:source-ami and parallelcluster:ami-patching-stack. The stack's
+    AmiId output is returned.
+
+    The returned callable takes the base AMI id, the builder instance type and an
+    optional patching flavour ('minimal' for security-only errata, 'full' for all
+    available package updates; defaults to 'minimal').
+    On teardown the stack is deleted, which deregisters the produced AMI and its
+    snapshots (deleting an Image Builder image does not remove the produced AMI).
+    """
+    # Path is relative to the integration-tests working directory, matching the
+    # convention used by other tests that load templates from cloudformation/.
+    with open("../../cloudformation/patching/ami-patching.yaml", encoding="utf-8") as template_file:
+        template_body = template_file.read()
+    reuse_stack_name = request.config.getoption("patch_ami_stack")
+    built = []  # list of (ami_id, stack_name) for stacks created (and to be deleted) by this fixture
+
+    def _build(base_ami, builder_instance, flavour="minimal"):
+        # Reuse an already-deployed patch-infra stack when requested: just read its
+        # AmiId output and skip creation/deletion.
+        if reuse_stack_name:
+            logging.info("Reusing existing patch-infra stack %s", reuse_stack_name)
+            stack = CfnStack(name=reuse_stack_name, region=region, template=template_body)
+            return stack.cfn_outputs["AmiId"]
+
+        logging.info(
+            'Starting patching of AMI %s using a %s builder instance with patching flavour "%s"',
+            base_ami,
+            builder_instance,
+            flavour,
+        )
+        bucket_name = s3_bucket_factory()
+        boto3.resource("s3", region_name=region).Bucket(bucket_name).upload_file(
+            str(test_datadir / "patch_node.sh"), "scripts/patch_node.sh"
+        )
+        stack_name = generate_stack_name("integ-tests-patching-builder", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(
+            name=stack_name,
+            region=region,
+            template=template_body,
+            parameters=[
+                {"ParameterKey": "ParentImage", "ParameterValue": base_ami},
+                {"ParameterKey": "InstanceType", "ParameterValue": builder_instance},
+                {"ParameterKey": "SubnetId", "ParameterValue": vpc_stack.get_public_subnet()},
+                {"ParameterKey": "VpcId", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+                {"ParameterKey": "PatchScriptS3Uri", "ParameterValue": f"s3://{bucket_name}/scripts/patch_node.sh"},
+                {"ParameterKey": "PatchFlavour", "ParameterValue": flavour},
+            ],
+            capabilities=["CAPABILITY_IAM"],
+        )
+        # create_stack blocks until CREATE_COMPLETE, i.e. until Image Builder has
+        # finished building the patched AMI.
+        try:
+            cfn_stacks_factory.create_stack(stack)
+        except BaseException:  # noqa: BLE001
+            # create_stack raises StackSetupError, which extends BaseException.
+            _log_ami_patching_build_output(region, stack_name)
+            raise
+        ami_id = stack.cfn_outputs["AmiId"]
+        built.append((ami_id, stack_name))
+        logging.info("Patched AMI %s is available", ami_id)
+        _log_ami_patching_build_output(region, stack_name)
+        return ami_id
+
+    yield _build
+
+    # Leave everything in place when --no-delete is set, and never tear down a
+    # reused stack. Otherwise just delete the stack: it owns the cleanup of the
+    # patched AMI and its snapshots (via the AmiHelper custom resource on delete).
+    if request.config.getoption("no_delete"):
+        logging.info("--no-delete specified: retaining patched AMI(s) and stack(s): %s", built)
+        return
+    for ami_id, stack_name in built:
+        logging.info("Deleting patch-infra stack %s (removes patched AMI %s)", stack_name, ami_id)
+        cfn_stacks_factory.delete_stack(stack_name, region)
+
+
 @pytest.fixture()
 def mpi_variants(architecture):
     variants = ["openmpi"]
@@ -1656,6 +2109,18 @@ def test_custom_config(request):
 @pytest.fixture()
 def scheduler_commands_factory(scheduler):
     return partial(get_scheduler_commands, scheduler=scheduler)
+
+
+@pytest.fixture()
+def flags():
+    """
+    Return the list of flags enabled for the test.
+
+    This is the default value used when the 'flags' dimension is not specified in the tests config file.
+    When the 'flags' dimension is specified, this fixture is overridden by the parametrization performed in
+    conftest_tests_config.parametrize_from_config.
+    """
+    return []
 
 
 @pytest.fixture(scope="class")
@@ -2030,3 +2495,43 @@ def store_secret_in_secret_manager(request, cfn_stacks_factory):
             for secret_arn in secrets:
                 logging.info("Deleting secret %s", secret_arn)
                 secrets_manager_client.delete_secret(SecretId=secret_arn)
+
+
+@pytest.fixture()
+def noexec_tmp_ami_factory(region, vpc_stack, request, cfn_stacks_factory):
+    """Build temporary AMIs whose /tmp mount is noexec from early boot."""
+    template_path = Path(__file__).resolve().parents[2] / "cloudformation" / "patching" / "ami-patching.yaml"
+    template_body = template_path.read_text(encoding="utf-8")
+    built = []
+
+    def _build(parent_image, builder_instance):
+        stack_name = generate_stack_name("integ-tests-tmp-noexec-ami", request.config.getoption("stackname_suffix"))
+        stack = CfnStack(
+            name=stack_name,
+            region=region,
+            template=template_body,
+            parameters=[
+                {"ParameterKey": "ParentImage", "ParameterValue": parent_image},
+                {"ParameterKey": "InstanceType", "ParameterValue": builder_instance},
+                {"ParameterKey": "SubnetId", "ParameterValue": vpc_stack.get_public_subnet()},
+                {"ParameterKey": "VpcId", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+                {"ParameterKey": "EnableNoExecTmp", "ParameterValue": "true"},
+            ],
+            capabilities=["CAPABILITY_IAM"],
+        )
+        logging.info("Building a temporary /tmp-noexec AMI from %s", parent_image)
+        cfn_stacks_factory.create_stack(stack)
+        ami_id = stack.cfn_outputs["AmiId"]
+        boto3.client("ec2", region_name=region).get_waiter("image_available").wait(ImageIds=[ami_id])
+        built.append((ami_id, stack_name))
+        logging.info("Temporary /tmp-noexec AMI %s is available", ami_id)
+        return ami_id
+
+    yield _build
+    if request.config.getoption("no_delete"):
+        logging.info("--no-delete specified: retaining temporary /tmp-noexec AMI(s) and stack(s): %s", built)
+        return
+
+    for ami_id, stack_name in reversed(built):
+        logging.info("Deleting stack %s and temporary /tmp-noexec AMI %s", stack_name, ami_id)
+        cfn_stacks_factory.delete_stack(stack_name, region)

@@ -27,6 +27,7 @@ from troposphere.fsx import LustreConfiguration
 from utils import is_fsx_lustre_deployment_type_supported
 
 from tests.storage.storage_common import (
+    assert_client_lockd_uses_port,
     assert_fsx_lustre_correctly_mounted,
     check_dra,
     check_fsx,
@@ -368,6 +369,9 @@ def test_multiple_fsx(
         fsx_lustre_mount_dirs + fsx_open_zfs_mount_dirs + fsx_ontap_mount_dirs,
         bucket_name,
     )
+
+    if fsx_on_tap_volume_ids:
+        assert_client_lockd_uses_port(RemoteCommandExecutor(cluster), fsx_on_tap_volume_ids[0])
 
 
 @pytest.mark.usefixtures("instance")

@@ -22,7 +22,7 @@ from pykwalify.core import Core
 
 package_directory = os.path.dirname(os.path.abspath(__file__))
 CONFIG_SCHEMA = f"{package_directory}/config_schema.yaml"
-PCLUSTER_SCHEDULERS = {"slurm", "awsbatch"}
+PCLUSTER_SCHEDULERS = {"slurm"}
 
 
 def assert_valid_config(config, tests_root_dir):

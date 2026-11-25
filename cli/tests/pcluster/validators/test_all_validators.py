@@ -15,7 +15,7 @@ from assertpy import assert_that
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.config.common import CapacityType
 from pcluster.schemas.cluster_schema import ClusterSchema
-from pcluster.utils import load_yaml_dict
+from pcluster.utils import create_hash_suffix, load_yaml_dict
 from pcluster.validators import (
     cluster_validators,
     database_validators,
@@ -104,9 +104,12 @@ def _mock_all_validators(mocker, additional_modules=None):
     return mockers, async_mockers
 
 
-def _load_and_validate(config_path):
+def _load_and_validate(config_path, existing_fsx_file_system_subnets=None):
     input_yaml = load_yaml_dict(config_path)
     cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
+    if existing_fsx_file_system_subnets:
+        # Simulate an update, where the subnets of the deployed managed FSx are set by the Cluster model
+        cluster.existing_fsx_file_system_subnets = existing_fsx_file_system_subnets
     failures = cluster.validate(context=ValidatorContext())
     assert_that(failures).is_empty()
 
@@ -158,13 +161,19 @@ def test_slurm_all_validators_are_called(test_datadir, mocker):
         return_value=("p6e-gb200.36xlarge", "capacity-block"),
     )
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.
-    _load_and_validate(test_datadir / "slurm_1.yaml")
+    _load_and_validate(
+        test_datadir / "slurm_1.yaml",
+        existing_fsx_file_system_subnets={f"FSX{create_hash_suffix('name3')}": ["subnet-12345678"]},
+    )
     _load_and_validate(test_datadir / "slurm_2.yaml")
 
     # Assert validators are called
     for m in mockers:
         if m["name"] in ["TagKeyValidator", "ClusterNameValidator", "InstanceProfileValidator", "RoleValidator"]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
+            continue
+        if m["name"] in ["CliAttributeOverridesValidator"]:
+            # Image-builder-only validator (DevSettings/CliAttributeOverrides); not run on cluster config.
             continue
         print(f"Checking validator of class \"{m['name']}\" is called")
         m["mocker"].assert_called()
@@ -187,7 +196,6 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     cluster_validators = validators_path + ".cluster_validators"
     feature_validators = validators_path + ".feature_validators"
     feature_region_validator = mocker.patch(feature_validators + ".FeatureRegionValidator._validate", return_value=[])
-    scheduler_os_validator = mocker.patch(cluster_validators + ".SchedulerOsValidator._validate", return_value=[])
     compute_resource_size_validator = mocker.patch(
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
     )
@@ -310,7 +318,6 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     _load_and_validate(test_datadir / "slurm.yaml")
 
     # Assert validators are called
-    scheduler_os_validator.assert_has_calls([call(os="alinux2", scheduler="slurm")])
     compute_resource_size_validator.assert_has_calls(
         [
             # Defaults of min_count=0, max_count=10
@@ -334,7 +341,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
         ],
         any_order=True,
     )
-    key_pair_validator.assert_has_calls([call(key_name="ec2-key-name", os="alinux2")])
+    key_pair_validator.assert_has_calls([call(key_name="ec2-key-name", os="alinux2023")])
     instance_type_validator.assert_has_calls([call(instance_type="c5d.xlarge")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
@@ -358,7 +365,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     security_groups_validator.assert_has_calls(
         [call(security_group_ids=None), call(security_group_ids=None)], any_order=True
     )
-    architecture_os_validator.assert_has_calls([call(os="alinux2", architecture="x86_64")])
+    architecture_os_validator.assert_has_calls([call(os="alinux2023", architecture="x86_64")])
     _assert_instance_architecture(
         expected_instance_architecture_validator_input=[
             {"instance_types": ["t3.large"], "architecture": "x86_64"},
@@ -380,7 +387,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
     kms_key_id_encrypted_validator.assert_has_calls(
         [call(kms_key_id="1234abcd-12ab-34cd-56ef-1234567890ab", encrypted=True)]
     )
-    fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2")])
+    fsx_architecture_os_validator.assert_has_calls([call(architecture="x86_64", os="alinux2023")])
     # Scratch mount directories are retrieved from a set. So the order of them is not guaranteed.
     # The first item in call_args is regular args, the second item is keyword args.
     shared_storage_name_mount_dir_tuple_list = duplicate_mount_dir_validator.call_args[1][
@@ -417,7 +424,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(
                 capacity_reservation_id="cr-34567",
                 instance_types=["t3.large"],
-                os="alinux2",
+                os="alinux2023",
                 is_flexible=True,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.ONDEMAND,
@@ -425,7 +432,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(
                 capacity_reservation_id="cr-12345",
                 instance_types=["t3.xlarge"],
-                os="alinux2",
+                os="alinux2023",
                 is_flexible=True,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.CAPACITY_BLOCK,
@@ -433,7 +440,7 @@ def test_slurm_validators_are_called_with_correct_argument(test_datadir, mocker)
             call(
                 capacity_reservation_id="cr-23456",
                 instance_types=["t3.xlarge"],
-                os="alinux2",
+                os="alinux2023",
                 is_flexible=False,
                 subnet="subnet-23456789",
                 capacity_type=CapacityType.CAPACITY_BLOCK,

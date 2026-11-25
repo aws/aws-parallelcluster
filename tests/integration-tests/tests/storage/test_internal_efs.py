@@ -33,7 +33,20 @@ def test_internal_efs(
     scheduler_commands_factory,
 ):
     """Verify that the internal shared efs is correctly encrypted"""
-    cluster_config = pcluster_config_reader()
+    # With 2 AZs: head node and compute nodes uses the same AZ, while login nodes use a different one.
+    # With 3+ AZs: head node, compute nodes and login nodes use different AZs.
+    public_subnet_ids, private_subnet_ids = vpc_stack.get_all_public_subnets(), vpc_stack.get_all_private_subnets()
+    num_azs = len(public_subnet_ids)
+    compute_index, login_nodes_index = (0, 1) if num_azs <= 2 else (1, 2)
+    head_node_subnet_id = public_subnet_ids[0]
+    compute_subnet_id = private_subnet_ids[compute_index]
+    login_nodes_subnet_id = public_subnet_ids[login_nodes_index]
+
+    cluster_config = pcluster_config_reader(
+        head_node_subnet_id=head_node_subnet_id,
+        compute_subnet_id=compute_subnet_id,
+        login_nodes_subnet_id=login_nodes_subnet_id,
+    )
     cluster = clusters_factory(cluster_config)
     managed_efs_filesystem_ids = [efs_id for efs_id in cluster.cfn_outputs["EFSIds"].split(",")]
     test_efs_correctly_encrypted(region, managed_efs_filesystem_ids[0], encrypted=True)

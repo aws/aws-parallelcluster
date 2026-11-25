@@ -19,22 +19,11 @@ test-suites:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
+          schedulers: ["slurm"]
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
-  schedulers:
-    test_awsbatch.py::test_awsbatch:
-      dimensions:
-        - regions: {{ NEW_REGION }}
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
-        - regions: {{ NEW_REGION }}
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["alinux2"]
-          schedulers: ["awsbatch"]
+          schedulers: ["slurm"]
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
@@ -48,7 +37,7 @@ test-suites:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_ONE_PER_DISTRO }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
+          schedulers: ["slurm"]
   cli_commands:
     test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
@@ -61,7 +50,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
   monitoring:
     test_monitoring.py::test_monitoring:
       dimensions:
@@ -80,28 +69,28 @@ test-suites:
         # DCV om non GPU enabled instance
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   efa:
     test_efa.py::test_efa:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   iam:
     test_iam.py::test_iam_policies:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:
@@ -120,7 +109,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   spot:
     test_spot.py::test_spot_default:
@@ -134,24 +123,24 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_efs.py::test_efs_compute_az:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
     test_ebs.py::test_ebs_multiple:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]
   resource_bucket:
     test_resource_bucket.py::test_resource_bucket:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2"]
+          oss: ["alinux2023"]
           schedulers: ["slurm"]

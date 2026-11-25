@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import click
-import matplotlib.pyplot as plt
 
 from ..common import METRICS
 
@@ -17,6 +16,8 @@ def generate(datadir, outdir, configurations, nodes):
 
 
 def generate_plots(datadir, outdir, configurations, nodes):
+    import matplotlib.pyplot as plt
+
     # Load samples
     samples = {}
     for configuration in configurations:

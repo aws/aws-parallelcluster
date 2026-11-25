@@ -1,5 +1,5 @@
 Image:
-  Os: alinux2
+  Os: alinux2023
 Iam:
   PermissionsBoundary: "arn:aws:iam:123456789:policy/APolicy"
 HeadNode:

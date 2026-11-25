@@ -15,6 +15,14 @@ from utils import run_command
 
 cli_credentials = {}
 
+# A pcluster command that never returns must not eat the whole pytest budget (6 hours) and, through the shared
+# fixtures the worker holds, fail the tests of the other workers too. Commands that wait on a stack or an export
+# legitimately run for hours; everything else answers in seconds. Values are in seconds, as subprocess.run expects
+# (the time_utils helpers return milliseconds for the retrying library).
+LONG_PCLUSTER_COMMAND_MARKERS = ("--wait", "export-cluster-logs", "export-image-logs")
+LONG_PCLUSTER_COMMAND_TIMEOUT = 3 * 60 * 60
+PCLUSTER_COMMAND_TIMEOUT = 60 * 60
+
 
 def register_cli_credentials_for_region(region, iam_role):
     """Register a IAM role to be used for the CLI commands in a given region."""
@@ -25,6 +33,12 @@ def register_cli_credentials_for_region(region, iam_role):
 
 def run_pcluster_command(*args, custom_cli_credentials=None, **kwargs):
     """Run a command after assuming the role configured through register_cli_credentials_for_region."""
+
+    if kwargs.get("timeout") is None:
+        command = args[0] if args else kwargs.get("command", [])
+        command_tokens = command.split() if isinstance(command, str) else [str(token) for token in command]
+        is_long_running = any(marker in command_tokens for marker in LONG_PCLUSTER_COMMAND_MARKERS)
+        kwargs["timeout"] = LONG_PCLUSTER_COMMAND_TIMEOUT if is_long_running else PCLUSTER_COMMAND_TIMEOUT
 
     region = kwargs.get("region")
     if not region:

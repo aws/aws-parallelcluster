@@ -1,5 +1,5 @@
 Image:
-  Os: alinux2
+  Os: alinux2023
 Iam:
   ResourcePrefix: /path-prefix/
 HeadNode:

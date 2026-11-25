@@ -48,14 +48,6 @@ Parameters:
     ConstraintDescription: "The value must be a valid ARN in the format: arn:{AWS::Partition}:iam::{AWS::AccountId}:policy/PolicyNameParameter"
     AllowedPattern: "^(arn:.*:iam::.*:policy\\/([a-zA-Z0-9_-]+))|()$"
 
-  EnableBatchAccess:
-    Description: |
-      When set to true the ParallelCluster ParallelClusterClusterPolicyBatch is created which can access Batch actions and resources.
-    Type: String
-    Default: false
-    AllowedValues:
-      - true
-      - false
   IAMRoleAndPolicyPrefix:
     Type: String
     Description: 'Prefix for IAM roles and policies'
@@ -94,16 +86,11 @@ Outputs:
     Condition: EnableIamPolicy
     Value: !Ref DefaultParallelClusterIamAdminPolicy
 
-  ParallelClusterClusterPolicyBatch:
-    Condition: EnableBatchAccessCondition
-    Value: !Ref ParallelClusterClusterPolicyBatch
-
 
 
 Conditions:
   IsMultiRegion: !Equals [!Ref Region, '*']
   EnableFSxS3AccessCondition: !Equals [!Ref EnableFSxS3Access, true]
-  EnableBatchAccessCondition: !Equals [!Ref EnableBatchAccess, true]
   EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UseAdditionalPolicies: !Not [!Equals [!Ref AdditionalPolicies, '']]
   UseAllBucketsForFSxS3: !Equals [!Ref FsxS3Buckets, "*"]
@@ -117,16 +104,20 @@ Conditions:
 Resources:
   ### IAM POLICIES
 
-  # Every policy name comes with a suffix derived from the Stack ID to avoid name collisions.
-  # Given a stack id arn:aws:cloudformation:REGION:ACCOUNT:stack/STACK_NAME/8131d980-7fb5-11ee-9589-0a6424944f95,
-  # the resulting StackIdSuffix will be 8131d980.
+  # Every policy and role name includes a suffix derived from the Stack ID to avoid account-global IAM name collisions.
+  # Given a stack ID arn:aws:cloudformation:REGION:ACCOUNT:stack/STACK_NAME/8131d980-7fb5-11ee-9589-0a6424944f95,
+  # the resulting StackIdSuffix is 8131d98095890a6424944f95 (time_low + clock_seq + node).
   DefaultParallelClusterIamAdminPolicy:
     Type: AWS::IAM::ManagedPolicy
     Condition: EnableIamPolicy
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}DefaultParallelClusterIamAdminPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       Roles:
         - !Ref ParallelClusterLambdaRole
       PolicyDocument:
@@ -136,6 +127,7 @@ Resources:
               - iam:CreateServiceLinkedRole
               - iam:DeleteRole
               - iam:TagRole
+              - iam:UntagRole
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
@@ -165,9 +157,7 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
-                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonS3ReadOnlyAccess
-                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
@@ -188,7 +178,11 @@ Resources:
       PermissionsBoundary: !If [EnablePermissionsBoundary, !Ref PermissionsBoundaryPolicy, !Ref 'AWS::NoValue']
       RoleName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterLambdaRole-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId']]]] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -205,101 +199,12 @@ Resources:
         # Required to run ParallelCluster functionalities
         - !Ref ParallelClusterClusterPolicy1
         - !Ref ParallelClusterClusterPolicy2
-        - !If
-          - EnableBatchAccessCondition
-          - !Ref ParallelClusterClusterPolicyBatch
-          - !Ref AWS::NoValue
         - !Ref ParallelClusterImageManagedPolicy
         - !Ref ParallelClusterLogRetrievalPolicy
         - !If
           - UseAdditionalPolicies
           - !Ref AdditionalPolicies
           - !Ref AWS::NoValue
-
-  ### CLUSTER ACTIONS POLICIES
-
-  ParallelClusterClusterPolicyBatch:
-    Type: AWS::IAM::ManagedPolicy
-    Condition: EnableBatchAccessCondition
-    Properties:
-      ManagedPolicyName: !Sub
-        - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicyBatch-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Action:
-              - iam:PassRole
-            Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-            Effect: Allow
-            Condition:
-              StringEqualsIfExists:
-                iam:PassedToService:
-                  - ecs-tasks.amazonaws.com
-                  - batch.amazonaws.com
-                  - codebuild.amazonaws.com
-            Sid: IamPassRole
-          - Action:
-              - iam:CreateServiceLinkedRole
-              - iam:DeleteServiceLinkedRole
-            Resource:
-              # AWS Batch creates a service linked role automatically for the ComputeEnvironment
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/*
-            Effect: Allow
-            Condition:
-              StringEquals:
-                iam:AWSServiceName:
-                  - batch.amazonaws.com
-          - Action:
-              - codebuild:*
-            Resource: !Sub arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/pcluster-*
-            Effect: Allow
-          - Action:
-              - ecr:*
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: ECR
-          - Action:
-              - batch:*
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: Batch
-          - Action:
-              - events:*
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Resource: '*'
-            Sid: AmazonCloudWatchEvents
-          - Action:
-              - ecs:DescribeContainerInstances
-              - ecs:ListContainerInstances
-            Resource: '*'
-            Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
-            Sid: ECS
 
   ParallelClusterFSxS3AccessPolicy:
     Type: AWS::IAM::Policy
@@ -336,7 +241,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy1-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -391,6 +300,7 @@ Resources:
               - dynamodb:UpdateItem
               - dynamodb:Query
               - dynamodb:TagResource
+              - dynamodb:UntagResource
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
             Effect: Allow
             Sid: DynamoDB
@@ -414,8 +324,8 @@ Resources:
               - RequestedRegion: !If [IsMultiRegion, '*', !Ref Region]
             Effect: Allow
             Condition:
-              ForAnyValue:StringEquals:
-                aws:TagKeys: ["parallelcluster:cluster-name"]
+              "Null":
+                "aws:RequestTag/parallelcluster:cluster-name": "false"
             Sid: CloudFormationCreateAndUpdate
           - Action:
               - cloudformation:DeleteStack
@@ -438,6 +348,8 @@ Resources:
               - cloudwatch:DeleteAlarms
               - cloudwatch:DescribeAlarms
               - cloudwatch:PutCompositeAlarm
+              - cloudwatch:TagResource
+              - cloudwatch:UntagResource
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -453,7 +365,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterClusterPolicy2-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -568,6 +484,7 @@ Resources:
               - logs:DescribeMetricFilters
               - logs:PutMetricFilter
               - logs:deleteMetricFilter
+              - logs:ListTagsForResource
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -584,6 +501,11 @@ Resources:
             Effect: Allow
             Sid: ResourceGroupRead
           - Action:
+              - tag:GetResources
+            Resource: '*'
+            Effect: Allow
+            Sid: ResourceGroupsTaggingApiRead
+          - Action:
               - autoscaling:DeleteAutoScalingGroup
               - autoscaling:DeleteLifecycleHook
               - autoscaling:DescribeAutoScalingGroups
@@ -591,8 +513,6 @@ Resources:
               - autoscaling:DescribeScalingActivities
               - autoscaling:PutLifecycleHook
               - autoscaling:UpdateAutoScalingGroup
-              - elasticloadbalancing:CreateListener
-              - elasticloadbalancing:CreateTargetGroup
               - elasticloadbalancing:DescribeTags
               - elasticloadbalancing:DeleteListener
               - elasticloadbalancing:DeleteLoadBalancer
@@ -609,8 +529,21 @@ Resources:
             Effect: Allow
             Sid: LoginNodesFunctionalities
           - Action:
+              - elasticloadbalancing:CreateListener
+              - elasticloadbalancing:CreateTargetGroup
+            Resource: '*'
+            Condition:
+              "Null":
+                "aws:RequestTag/parallelcluster:cluster-name": "false"
+            Effect: Allow
+            Sid: LoginNodesFunctionalitiesCondition2
+          - Action:
               - autoscaling:CreateAutoScalingGroup
+              - autoscaling:DeleteTags
+              - autoscaling:CreateOrUpdateTags
               - elasticloadbalancing:AddTags
+              - elasticloadbalancing:RemoveTags
+              - elasticloadbalancing:ModifyTargetGroup
               - elasticloadbalancing:CreateLoadBalancer
             Resource: '*'
             Effect: Allow
@@ -624,7 +557,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterImageManagedPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       Description: Managed policy to execute pcluster build-image, delete-image, list-images and describe-image commands
       PolicyDocument:
         Version: '2012-10-17'
@@ -780,7 +717,11 @@ Resources:
     Properties:
       ManagedPolicyName: !Sub
         - ${IAMRoleAndPolicyPrefix}ParallelClusterLogRetrievalPolicy-${StackIdSuffix}
-        - { StackIdSuffix: !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ] }
+        - StackIdSuffix: !Join
+          - ''
+          - - !Select [ 0, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 3, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
+            - !Select [ 4, !Split [ '-', !Select [ 2, !Split [ '/', !Ref 'AWS::StackId' ] ] ] ]
       Description: Policies needed to retrieve cluster and images logs
       PolicyDocument:
         Version: '2012-10-17'

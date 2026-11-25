@@ -1,10 +1,17 @@
 Imds:
   ImdsSupport: v2.0
 Tags:
-  - Key: inside_configuration_key
-    Value: overridden
+{{ tags }}
 Image:
   Os: {{ os }}
+LoginNodes:
+  Pools:
+    - Count: 1
+      InstanceType:  {{ instance }}
+      Name: pool
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -16,7 +23,6 @@ Scheduling:
     ComputeResources:
     - Name: queue0-cr0
       InstanceType: {{ instance }}
-      MaxCount: {{ max_count }}
     Networking:
       SubnetIds:
       - {{ private_subnet_id }}

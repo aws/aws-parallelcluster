@@ -28,9 +28,16 @@ class CDKTemplateBuilder:
 
     @staticmethod
     def build_cluster_template(
-        cluster_config: BaseClusterConfig, bucket: S3Bucket, stack_name: str, log_group_name: str = None
+        cluster_config: BaseClusterConfig,
+        bucket: S3Bucket,
+        stack_name: str,
+        log_group_name: str = None,
+        upload_assets: bool = True,
     ):
-        """Build template for the given cluster and return as output in Yaml format."""
+        """Build template for the given cluster and return as output in Yaml format.
+
+        With ``upload_assets`` False, the templates of the nested stacks are not uploaded to the bucket.
+        """
         LOGGER.info("Importing CDK...")
         from aws_cdk.core import App  # pylint: disable=C0415
 
@@ -49,7 +56,7 @@ class CDKTemplateBuilder:
             LOGGER.info("CDK template generation completed successfully")
 
             cdk_artifacts_manager = CDKArtifactsManager(cloud_assembly)
-            assets_metadata = cdk_artifacts_manager.upload_assets(bucket=bucket)
+            assets_metadata = cdk_artifacts_manager.upload_assets(bucket=bucket, upload=upload_assets)
             generated_template = cdk_artifacts_manager.get_template_body()
 
         return generated_template, assets_metadata

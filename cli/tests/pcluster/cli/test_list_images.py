@@ -59,13 +59,13 @@ class TestListImagesCommand:
         response_dict = {
             "images": [
                 {
-                    "imageId": "aws-parallelcluster-3-0-0-amzn2-hvm-x86-64-202107121836",
+                    "imageId": "aws-parallelcluster-3-0-0-amzn2023-hvm-x86-64-202107121836",
                     "imageBuildStatus": "BUILD_COMPLETE",
                     "region": "us-east-2",
                     "version": "3.0.0",
                 },
                 {
-                    # "imageId": "dlami-aws-parallelcluster-3-0-0-amzn2-hvm-x86-64-202106181651",
+                    # "imageId": "dlami-aws-parallelcluster-3-0-0-amzn2023-hvm-x86-64-202106181651",
                     "imageId": "dlami-aws-parallelcluster-3-0-0-truncated",
                     "imageBuildStatus": "BUILD_COMPLETE",
                     "region": "us-east-2",

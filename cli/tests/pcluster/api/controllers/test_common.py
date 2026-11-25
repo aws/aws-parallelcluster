@@ -9,6 +9,7 @@ import os
 
 import pytest
 from assertpy import assert_that, fail
+from botocore.exceptions import ProfileNotFound
 
 from pcluster.api.controllers.common import (
     assert_supported_operation,
@@ -116,3 +117,68 @@ def test_assert_supported_operation(mocker, operation, region, expected_support)
             assert_that(str(exc.value)).is_equal_to(
                 f"The operation '{operation.value}' is not supported in region '{region}'."
             )
+
+
+class TestProfileNotFound:
+    """Test that ProfileNotFound is handled gracefully instead of causing a fatal exception."""
+
+    @pytest.mark.parametrize(
+        "mock_target, call_func, call_kwargs, expected_profile",
+        [
+            # No region provided, boto3.Session() raises ProfileNotFound in decorator
+            (
+                "pcluster.api.controllers.common.boto3.Session",
+                "configure_aws_region_decorator",
+                {"region": None},
+                "invalid",
+            ),
+            # Region provided, retrieve_supported_regions raises ProfileNotFound in _set_region
+            (
+                "pcluster.api.controllers.common.retrieve_supported_regions",
+                "configure_aws_region_decorator",
+                {"region": "us-east-1"},
+                "invalid",
+            ),
+            # No region in config or param, boto3.Session() raises ProfileNotFound in configure_aws_region_from_config
+            (
+                "pcluster.api.controllers.common.boto3.Session",
+                "configure_aws_region_from_config",
+                {"region": None, "config_str": "Test: asdf"},
+                "badprofile",
+            ),
+            # Region in config, retrieve_supported_regions raises ProfileNotFound in _set_region
+            (
+                "pcluster.api.controllers.common.retrieve_supported_regions",
+                "configure_aws_region_from_config",
+                {"region": None, "config_str": "Region: us-east-1"},
+                "invalid",
+            ),
+        ],
+    )
+    def test_invalid_profile_raises_bad_request(self, mocker, mock_target, call_func, call_kwargs, expected_profile):
+        mocker.patch(mock_target, side_effect=ProfileNotFound(profile=expected_profile))
+
+        with pytest.raises(BadRequestException) as e:
+            if call_func == "configure_aws_region_decorator":
+
+                @configure_aws_region()
+                def _decorated_func(region=None):
+                    pass
+
+                _decorated_func(**call_kwargs)
+            else:
+                configure_aws_region_from_config(call_kwargs["region"], call_kwargs["config_str"])
+
+        assert_that(str(e.value.content)).contains(expected_profile)
+        assert_that(str(e.value.content)).contains("could not be found")
+
+    def test_valid_profile_works(self):
+        """When profile is valid, the decorator works normally."""
+
+        @configure_aws_region()
+        def _decorated_func(region=None):
+            return "success"
+
+        result = _decorated_func(region="eu-west-1")
+        assert_that(result).is_equal_to("success")
+        assert_that(os.environ["AWS_DEFAULT_REGION"]).is_equal_to("eu-west-1")

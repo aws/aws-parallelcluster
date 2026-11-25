@@ -10,24 +10,17 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: compute
       ComputeResources:
         - Name: compute-i1
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
-          {% endif %}
-          {% if scheduler == "awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
+          MinCount: {{ queue_size }}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-          {% if scheduler == "slurm" %}
           - {{ private_subnet_ids[1] }}
-          {% endif %}
 Monitoring:
   Logs:
     CloudWatch:

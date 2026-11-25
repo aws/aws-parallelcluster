@@ -30,12 +30,18 @@ from utils import (
 )
 
 from tests.common.scaling_common import get_compute_nodes_allocation
-from tests.common.utils import get_ddb_item, read_remote_file
+from tests.common.utils import get_ddb_item, installed_parallelcluster_version_is_at_least, read_remote_file
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(6))
 def wait_instance_replaced_or_terminating(instance_id, region):
     assert_instance_replaced_or_terminating(instance_id, region)
+
+
+def assert_instance_type(instance_id, region, expected_instance_type):
+    """Assert that a given instance has the expected instance type."""
+    ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
+    assert_that(ec2_response["Reservations"][0]["Instances"][0]["InstanceType"]).is_equal_to(expected_instance_type)
 
 
 def assert_instance_replaced_or_terminating(instance_id, region):
@@ -54,30 +60,91 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler, skip_ice=False,
         "Our system will be working on provisioning additional capacity",
     ]
 
+    # EC2 error codes that the node daemons treat as Insufficient Capacity Errors (ICE).
+    # Mirrors SlurmNode.EC2_ICE_ERROR_CODES from aws-parallelcluster-node, plus the
+    # "LimitedInstanceCapacity" code used for partial all-or-nothing/best-effort launches.
+    ice_error_codes = {
+        "InsufficientInstanceCapacity",
+        "InsufficientHostCapacity",
+        "InsufficientReservedInstanceCapacity",
+        "MaxSpotInstanceCountExceeded",
+        "Unsupported",
+        "SpotMaxPriceTooLow",
+        "UnfulfillableCapacity",
+        "InsufficientCapacity",
+        "LimitedInstanceCapacity",
+    }
+    # Emitted by the resume program (resume.py) when one or more nodes fail to launch. The line
+    # itself carries no EC2 error code, so the line-level ice_patterns filter cannot match it.
+    # The code only appears on the companion "(Code:<error_code>)Failure when resuming nodes"
+    # line written by _handle_failed_nodes.
+    setting_nodes_down_pattern = "Failed to launch following nodes, setting nodes to DOWN"
+
     patterns_to_ignore = []
     if skip_ice:
         patterns_to_ignore += ice_patterns
     if ignore_patterns:
         patterns_to_ignore += ignore_patterns
-    if scheduler == "slurm":
-        log_files = [
-            "/var/log/parallelcluster/clustermgtd",
-            "/var/log/parallelcluster/clusterstatusmgtd",
-            "/var/log/parallelcluster/slurm_resume.log",
-            "/var/log/parallelcluster/slurm_suspend.log",
-            "/var/log/parallelcluster/slurm_fleet_status_manager.log",
-        ]
-    else:
-        log_files = []
+    log_files = [
+        "/var/log/parallelcluster/clustermgtd",
+        "/var/log/parallelcluster/clusterstatusmgtd",
+        "/var/log/parallelcluster/slurm_resume.log",
+        "/var/log/parallelcluster/slurm_suspend.log",
+        "/var/log/parallelcluster/slurm_fleet_status_manager.log",
+    ]
 
     for log_file in log_files:
         log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
         log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
-        log = "\n".join(
-            [line for line in log.splitlines() if not any(pattern in line for pattern in patterns_to_ignore)]
-        )
+        lines = log.splitlines()
+
+        if skip_ice:
+            # Pair the untagged "setting nodes to DOWN" ERROR line with the "(Code:<error_code>)"
+            # reasons in the same log file. Ignore the line only when every error code found in
+            # this file is an ICE code, otherwise keep it so genuine non-ICE failures still fail.
+            error_codes = set(re.findall(r"\(Code:(\w+)\)", log))
+            if error_codes and error_codes.issubset(ice_error_codes):
+                lines = [line for line in lines if setting_nodes_down_pattern not in line]
+
+        log = "\n".join(line for line in lines if not any(pattern in line for pattern in patterns_to_ignore))
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
+
+
+def known_defunct_slurm_config_params():
+    if installed_parallelcluster_version_is_at_least("3.16.0"):
+        return []
+    return ["AccountingStorageUser"]
+
+
+def known_harmless_slurm_daemon_errors():
+    patterns = known_defunct_slurm_config_params()
+    if not installed_parallelcluster_version_is_at_least("3.14.0"):
+        patterns.append("UnkillableStepTimeout must be at least")
+    return patterns
+
+
+def assert_no_errors_in_service_log(
+    remote_command_executor: RemoteCommandExecutor, service_name: str, ignore_patterns=None, since=None
+):
+    """Assert that the systemd journal for a given service contains no error-level entries.
+
+    Lines containing any of ignore_patterns are excluded, to allow known-harmless messages such as the defunct
+    slurm.conf parameters reported by known_defunct_slurm_config_params.
+
+    The journal is cumulative, so pass since (any journalctl timestamp) to scope the check to the entries written
+    after a given point, for example to check what a service logged after an upgrade rather than since boot.
+    """
+    __tracebackhide__ = True
+    logging.info("Checking %s journal for error-level entries", service_name)
+    since_option = f" --since '{since}'" if since else ""
+    log = remote_command_executor.run_remote_command(
+        f"sudo journalctl -u {service_name} --no-pager{since_option}", hide=True
+    ).stdout
+    error_lines = [line for line in log.splitlines() if re.search(r"fail|error|critical", line, re.IGNORECASE)]
+    if ignore_patterns:
+        error_lines = [line for line in error_lines if not any(pattern in line for pattern in ignore_patterns)]
+    assert_that(error_lines).described_as(f"Found error-level entries in {service_name} journal logs").is_empty()
 
 
 def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_files: List[str], log_msg: List[str]):
@@ -91,12 +158,62 @@ def assert_no_msg_in_logs(remote_command_executor: RemoteCommandExecutor, log_fi
         assert_that(log).does_not_contain(message)
 
 
+def assert_no_defunct_slurm_config_params(remote_command_executor: RemoteCommandExecutor, ignore_patterns=None):
+    """
+    Assert slurmctld.log has no warnings about defunct or obsolete slurm.conf parameters.
+
+    Slurm logs messages like "Ignoring obsolete <Param>=<Value> option" when it encounters
+    configuration parameters that have been removed in the running Slurm version.
+    This catches cases where our generated slurm.conf contains settings that are no longer
+    recognized by the installed Slurm version.
+    """
+    __tracebackhide__ = True
+    log_file = "/var/log/slurmctld.log"
+    log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+    log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
+
+    defunct_patterns = [
+        "Ignoring obsolete",
+        "Ignoring defunct",
+        "is defunct",
+    ]
+
+    offending_lines = []
+    for line in log.splitlines():
+        if any(pattern in line for pattern in defunct_patterns):
+            if ignore_patterns and any(ip in line for ip in ignore_patterns):
+                continue
+            offending_lines.append(line.strip())
+
+    if offending_lines:
+        pytest.fail(
+            "slurmctld.log contains warnings about defunct/obsolete slurm.conf parameters:\n"
+            + "\n".join(offending_lines)
+        )
+
+
 def assert_msg_in_log(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str):
     """Assert message is in log_file."""
     __tracebackhide__ = True
     log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
     log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
     assert_that(log).contains(message)
+
+
+def assert_msg_in_log_at_least(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str, count: int):
+    """Assert message appears at least count times in log_file."""
+    __tracebackhide__ = True
+    log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+    log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
+    assert_that(log.count(message)).described_as(f"occurrences of '{message}'").is_greater_than_or_equal_to(count)
+
+
+def assert_msg_in_log_at_most(remote_command_executor: RemoteCommandExecutor, log_file: str, message: str, count: int):
+    """Assert message appears at most count times in log_file."""
+    __tracebackhide__ = True
+    log_file_user = remote_command_executor.get_user_to_operate_on_file(log_file)
+    log = remote_command_executor.run_remote_command(f"sudo -u {log_file_user} cat {log_file}", hide=True).stdout
+    assert_that(log.count(message)).described_as(f"occurrences of '{message}'").is_less_than_or_equal_to(count)
 
 
 def assert_lines_in_logs(remote_command_executor: RemoteCommandExecutor, log_files, expected_errors):
@@ -298,6 +415,8 @@ def assert_default_user_has_desired_sudo_access(
     node_type,
     region,
     disable_sudo_access_default_user,
+    retries=6,
+    retry_delay=15,
 ):
     remote_command_executors = []
     logging.info(
@@ -314,12 +433,28 @@ def assert_default_user_has_desired_sudo_access(
 
     command = "sudo -n cat /etc/sudoers.d/90-cloud-init-users"
     for node_index, remote_command_executor in enumerate(remote_command_executors):
-        result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
-        logging.info(f"Default user in {node_type} number {node_index} and result.failed={result.failed}")
-        logging.info(f"Default user in {node_type}  number {node_index} and result.stdout={result.stdout}")
-        if disable_sudo_access_default_user:
-            assert_that(result.stdout).contains("a password is required")
-        assert_that(result.failed).is_equal_to(disable_sudo_access_default_user)
+        for attempt in range(retries):
+            result = remote_command_executor.run_remote_command(command, raise_on_error=False, timeout=300)
+            logging.info(
+                f"Default user in {node_type} number {node_index} attempt {attempt} "
+                f"result.failed={result.failed} result.stdout={result.stdout}"
+            )
+            if disable_sudo_access_default_user:
+                if "a password is required" in result.stdout and result.failed:
+                    logging.info(f"Sudo access correctly disabled on {node_type} number {node_index}")
+                    break
+                if attempt < retries - 1:
+                    logging.info(
+                        f"Sudo not yet disabled on {node_type} number {node_index}, "
+                        f"retrying in {retry_delay}s (attempt {attempt + 1}/{retries})..."
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    assert_that(result.stdout).contains("a password is required")
+                    assert_that(result.failed).is_equal_to(True)
+            else:
+                assert_that(result.failed).is_equal_to(False)
+                break
 
 
 def assert_lambda_vpc_settings_are_correct(stack_name, region, security_group_ids, subnet_ids):
@@ -443,3 +578,17 @@ def assert_regex_in_file(rce: RemoteCommandExecutor, file_name: str, pattern: st
     file_content = read_remote_file(rce, file_name)
     assertion = assert_that(bool(re.search(pattern, file_content, re.IGNORECASE)))
     assertion.is_false() if negate else assertion.is_true()
+
+
+def assert_systemd_service_running(remote_command_executor: RemoteCommandExecutor, service_name: str):
+    """Assert that a systemd service is in the 'running' sub-state."""
+    logging.info("Checking that %s systemd service is running", service_name)
+    result = remote_command_executor.run_remote_command(
+        f"sudo systemctl show {service_name} --property=SubState | cut -d= -f2",
+        raise_on_error=False,
+        pty=False,  # Disable PTY to avoid ANSI escape codes in the output
+    )
+    assert_that(result.return_code).is_equal_to(0)
+    assert_that(result.stdout.strip()).described_as(
+        f"Expected systemd service {service_name} to be running"
+    ).is_equal_to("running")

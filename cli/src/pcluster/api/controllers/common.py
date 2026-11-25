@@ -17,6 +17,7 @@ import os
 from typing import List, Optional, Set, Union
 
 import boto3
+from botocore.exceptions import ProfileNotFound
 from packaging import version as packaging_version
 
 from pcluster.api.errors import (
@@ -43,12 +44,21 @@ def _set_region(region):
     region_backup = os.environ.get("AWS_DEFAULT_REGION")
     LOGGER.info("Setting AWS Region to %s", region)
     os.environ["AWS_DEFAULT_REGION"] = region
-    if region not in retrieve_supported_regions():
-        if region_backup:
-            os.environ["AWS_DEFAULT_REGION"] = region_backup
-        else:
-            del os.environ["AWS_DEFAULT_REGION"]
+    try:
+        supported_regions = retrieve_supported_regions()
+    except ProfileNotFound as e:
+        _restore_region(region_backup)
+        raise BadRequestException(str(e))
+    if region not in supported_regions:
+        _restore_region(region_backup)
         raise BadRequestException(f"invalid or unsupported region '{region}'")
+
+
+def _restore_region(region_backup):
+    if region_backup:
+        os.environ["AWS_DEFAULT_REGION"] = region_backup
+    else:
+        del os.environ["AWS_DEFAULT_REGION"]
 
 
 def configure_aws_region_from_config(region: Union[None, str], config_str: str):
@@ -62,7 +72,10 @@ def configure_aws_region_from_config(region: Union[None, str], config_str: str):
     if region and config_region and region != config_region:
         raise BadRequestException("region is set in both parameter and configuration and conflicts.")
 
-    _set_region(region or config_region or boto3.Session().region_name)
+    try:
+        _set_region(region or config_region or boto3.Session().region_name)
+    except ProfileNotFound as e:
+        raise BadRequestException(str(e))
 
 
 def configure_aws_region():
@@ -77,7 +90,10 @@ def configure_aws_region():
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            _set_region(kwargs.get("region") or boto3.Session().region_name)
+            try:
+                _set_region(kwargs.get("region") or boto3.Session().region_name)
+            except ProfileNotFound as e:
+                raise BadRequestException(str(e))
             return func(*args, **kwargs)
 
         return _wrapper_validate_region

@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-VERSION = "3.15.0"
+VERSION = "3.17.0"
 CDK_VERSION = "1.164"
 REQUIRES = [
     "setuptools",
@@ -66,10 +66,10 @@ setup(
     description="AWS ParallelCluster is an AWS supported Open Source cluster management tool to deploy "
     "and manage HPC clusters in the AWS cloud.",
     url="https://github.com/aws/aws-parallelcluster",
-    license="Apache License 2.0",
+    license="Apache-2.0",
     package_dir={"": "src"},
     packages=find_namespace_packages("src"),
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     install_requires=REQUIRES,
     extras_require={
         "awslambda": LAMBDA_REQUIRES,
@@ -88,12 +88,12 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering",
-        "License :: OSI Approved :: Apache Software License",
     ],
     project_urls={
         "Changelog": "https://github.com/aws/aws-parallelcluster/blob/develop/CHANGELOG.md",

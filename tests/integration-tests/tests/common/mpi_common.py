@@ -45,8 +45,10 @@ def _test_mpi(
         interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} ring"
         remote_command_executor.run_remote_command(interactive_command)
 
-    # Historically, we assumed a timeout of 20 seconds with 48 slots per instance.
-    timeout = max(math.ceil((20.0 / 48.0) * slots_per_instance), 20)
+    # Historically, we assumed a timeout of 20 seconds with 48 slots per instance. Doubled since the
+    # first MPI launch on freshly booted nodes pays cold page cache and EBS first-touch costs that on
+    # their own can outlast the historical value.
+    timeout = max(math.ceil((40.0 / 48.0) * slots_per_instance), 40)
 
     if partition:
         # submit script using additional files

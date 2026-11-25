@@ -13,8 +13,11 @@ from assertpy import assert_that
 from marshmallow import ValidationError
 
 from pcluster.config.common import BaseTag
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_PREFIX
 from pcluster.schemas.common_schema import (
+    BaseDevSettingsSchema,
+    CookbookSchema,
     ImdsSchema,
     LambdaFunctionsVpcConfigSchema,
     validate_json_format,
@@ -138,3 +141,32 @@ def test_validate_no_duplicate_tag(tags, failure_message):
             validate_no_duplicate_tag(tags)
     else:
         validate_no_duplicate_tag(tags)
+
+
+@pytest.mark.parametrize(
+    "schema_class, field_name, expected_update_policy",
+    [
+        pytest.param(
+            BaseDevSettingsSchema,
+            "cookbook",
+            UpdatePolicy.IGNORED,
+            id="Cookbook field in BaseDevSettingsSchema has IGNORED update policy",
+        ),
+        pytest.param(
+            CookbookSchema,
+            "extra_chef_attributes",
+            UpdatePolicy.EXTRA_CHEF_ATTRIBUTES,
+            id="ExtraChefAttributes field in CookbookSchema has EXTRA_CHEF_ATTRIBUTES update policy",
+        ),
+    ],
+)
+def test_cookbook_update_policy(schema_class, field_name, expected_update_policy):
+    """Test that Cookbook and ExtraChefAttributes fields have the correct update policies.
+
+    The Cookbook field update policy was changed from UNSUPPORTED to IGNORED to allow
+    the update policy to be determined by nested fields (e.g., ExtraChefAttributes).
+    """
+    schema = schema_class()
+    field = schema.fields[field_name]
+    actual_update_policy = field.metadata.get("update_policy")
+    assert_that(actual_update_policy).is_equal_to(expected_update_policy)

@@ -94,12 +94,12 @@ def test_overwrite_sg(region, scheduler, custom_security_groups, pcluster_config
     ec2_client = boto3.client("ec2", region_name=region)
     instances = _get_instances_by_security_group(ec2_client, custom_security_group_id)
     logging.info("Asserting that head node and compute node has and only has the custom security group")
-    assert_that(instances).is_length(3 if scheduler == "slurm" else 2)
+    assert_that(instances).is_length(3)
     for instance in instances:
         assert_that(instance["SecurityGroups"]).is_length(1)
 
     # FSx is not supported in US isolated regions or when using AWS Batch as a scheduler
-    if "us-iso" not in region and scheduler != "awsbatch":
+    if "us-iso" not in region:
         logging.info("Collecting security groups of the FSx")
         fsx_id = cluster.cfn_resources[f"FSX{create_hash_suffix(fsx_name)}"]
         fsx_client = boto3.client("fsx", region_name=region)
@@ -146,22 +146,21 @@ def test_overwrite_sg(region, scheduler, custom_security_groups, pcluster_config
             [mount_target_security_group_id, custom_security_group_id],
         )
 
-    if scheduler == "slurm":
-        logging.info("Checking SSH connection between cluster nodes before cluster update")
-        _check_connections_between_head_node_and_compute_nodes(cluster)
-        # Update the cluster by removing the custom security group from head node.
-        # As a result, head node uses pcluster created security group while compute nodes use custom security group.
-        # The aim is to test that the pcluster creates proper inbound rules in the head node security group to allow
-        # access from compute security groups.
-        updated_config_file = pcluster_config_reader(
-            config_file="pcluster.config.update.yaml",
-            vpc_security_group_id=custom_security_group_id,
-            fsx_name=fsx_name,
-            efs_name=efs_name,
-        )
-        cluster.update(str(updated_config_file), force_update="true")
-        logging.info("Checking SSH connection between cluster nodes after cluster update")
-        _check_connections_between_head_node_and_compute_nodes(cluster)
+    logging.info("Checking SSH connection between cluster nodes before cluster update")
+    _check_connections_between_head_node_and_compute_nodes(cluster)
+    # Update the cluster by removing the custom security group from head node.
+    # As a result, head node uses pcluster created security group while compute nodes use custom security group.
+    # The aim is to test that the pcluster creates proper inbound rules in the head node security group to allow
+    # access from compute security groups.
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml",
+        vpc_security_group_id=custom_security_group_id,
+        fsx_name=fsx_name,
+        efs_name=efs_name,
+    )
+    cluster.update(str(updated_config_file), force_update="true")
+    logging.info("Checking SSH connection between cluster nodes after cluster update")
+    _check_connections_between_head_node_and_compute_nodes(cluster)
 
 
 @pytest.mark.usefixtures("os", "instance")

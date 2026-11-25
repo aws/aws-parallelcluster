@@ -20,8 +20,9 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.cli.commands.dcv_util import get_supported_dcv_os
-from pcluster.config.common import CapacityType, SharedStorageType
+from pcluster.config.common import CapacityType, SharedStorageType, merge_tags
 from pcluster.constants import (
+    ACCEPTED_OSES,
     CIDR_ALL_IPS,
     DELETE_POLICY,
     EFS_PORT,
@@ -34,15 +35,12 @@ from pcluster.constants import (
     PCLUSTER_VERSION_TAG,
     PRIVATE_OSES,
     RETAIN_POLICY,
-    SCHEDULERS_SUPPORTING_IMDS_SECURED,
-    SUPPORTED_OSES,
     SUPPORTED_SCHEDULERS,
 )
 from pcluster.launch_template_utils import _LaunchTemplateBuilder
 from pcluster.utils import (
     get_installed_version,
     get_supported_os_for_architecture,
-    get_supported_os_for_scheduler,
     remove_none_values,
     retrieve_supported_regions,
 )
@@ -62,8 +60,8 @@ EFS_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": SUPPORTED_OSES,
-    "arm64": SUPPORTED_OSES,
+    "x86_64": ACCEPTED_OSES,
+    "arm64": ACCEPTED_OSES,
 }
 
 FSX_MESSAGES = {
@@ -89,7 +87,7 @@ class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
     def _validate(self, name, scheduling):
-        if scheduling.scheduler == "slurm" and scheduling.settings.database is not None:
+        if scheduling.settings.database is not None or scheduling.settings.external_slurmdbd is not None:
             if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH_SLURM_ACCOUNTING - 1), name):
                 self._add_failure(
                     (
@@ -120,36 +118,6 @@ class RegionValidator(Validator):
         if region not in retrieve_supported_regions():
             self._add_failure(
                 f"Region '{region}' is not yet officially supported by ParallelCluster", FailureLevel.ERROR
-            )
-
-
-class SchedulerDisableSudoAccessForDefaultUserValidator(Validator):
-    """
-    Validator for DisableSudoAccessForDefaultUser and AWS Batch Scheduler.
-
-    Fail if using AWS Batch and DisableSudoAccessForDefaultUser is not supported.
-    """
-
-    def _validate(self, scheduler):
-        if scheduler == "awsbatch":
-            self._add_failure(
-                "DisableSudoAccessForDefaultUser is not supported when using AWS Batch as scheduler.",
-                FailureLevel.ERROR,
-            )
-
-
-class SchedulerOsValidator(Validator):
-    """
-    scheduler - os validator.
-
-    Validate os and scheduler combination.
-    """
-
-    def _validate(self, os, scheduler):
-        supported_os = get_supported_os_for_scheduler(scheduler)
-        if os not in supported_os:
-            self._add_failure(
-                f"{scheduler} scheduler supports the following operating systems: {supported_os}.", FailureLevel.ERROR
             )
 
 
@@ -379,6 +347,7 @@ class EfaPlacementGroupValidator(Validator):
         placement_group_disabled: bool,
         multi_az_enabled: bool,
         capacity_type: str,
+        queue_name: str,
     ):
         # Capacity Blocks do not require the configuration of a Placement Group
         if capacity_type == CapacityType.CAPACITY_BLOCK:
@@ -386,13 +355,17 @@ class EfaPlacementGroupValidator(Validator):
         # if multi_az is enabled suggestions about PlacementGroups will be suppressed
         if efa_enabled and placement_group_disabled and not multi_az_enabled:
             self._add_failure(
-                "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
+                f"Placement group is disabled for queue '{queue_name}'. "
+                "This is expected when using a capacity reservation with its own placement group. "
+                "Otherwise, enabling a placement group may improve network performance.",
+                FailureLevel.WARNING,
             )
         elif efa_enabled and placement_group_key is None and not multi_az_enabled:
             self._add_failure(
-                "The placement group for EFA-enabled compute resources must be explicit. "
-                "You may see better performance using a placement group, but if you don't wish to use one please add "
-                "'Enabled: false' to the compute resource's configuration section.",
+                f"The placement group for EFA-enabled compute resources in queue '{queue_name}' must be explicit. "
+                "You may see better performance using a placement group, but if you don't wish to use one or "
+                "the compute resources in the queue use a capacity reservation with its own placement group, "
+                "please add 'Enabled: false' to the compute resource's configuration section.",
                 FailureLevel.ERROR,
             )
 
@@ -845,6 +818,33 @@ class ManagedFsxMultiAzValidator(Validator):
             )
 
 
+class ManagedFsxCrossAzValidator(Validator):
+    """
+    Managed FSx Storage Vs Compute Subnets AZ validator.
+
+    During update, the managed FSx is kept in its current subnets to not replace it, even if the compute subnets
+    are moved to a different AZ. In these cases we notify customers that they may incur in increased latency and costs.
+    """
+
+    def _validate(self, fsx_name, fsx_subnet_ids, compute_subnet_ids):
+        try:
+            fsx_az_set = set(AWSApi.instance().ec2.get_subnets_az_mapping(fsx_subnet_ids).values())
+        except AWSClientError:
+            # The subnets of the deployed file system may no longer exist, e.g. if the file system and then its subnet
+            # have been deleted out of band. The message is not relevant in this case and must not block the update.
+            return
+        compute_az_set = set(AWSApi.instance().ec2.get_subnets_az_mapping(compute_subnet_ids).values())
+        if not compute_az_set.issubset(fsx_az_set):
+            self._add_failure(
+                f"The managed FSx for Lustre file system '{fsx_name}' is kept in its current Availability Zone "
+                f"({', '.join(sorted(fsx_az_set))}) because changing its subnet would replace the file system "
+                f"and delete its data, but the compute nodes are in a different Availability Zone "
+                f"({', '.join(sorted(compute_az_set - fsx_az_set))}). Accessing a shared storage from different AZs "
+                "can lead to increased storage networking latency and added inter-AZ data transfer costs.",
+                FailureLevel.INFO,
+            )
+
+
 class UnmanagedFsxMultiAzValidator(Validator):
     """
     Unmanaged FSx Storage Vs Multiple Subnets validator.
@@ -986,6 +986,42 @@ class SharedStorageMountDirValidator(Validator):
             self._add_failure(
                 f"Error: The shared storage mount directory {mount_dir} is reserved. Please use another directory",
                 FailureLevel.ERROR,
+            )
+
+
+class MountDirPermissionsValidator(Validator):
+    """
+    Mount directory permissions validator.
+
+    Make sure Permissions is not set when SetPermissions is false, because ParallelCluster would not apply it.
+    """
+
+    def _validate(self, set_permissions: bool, permissions: str, name: str):
+        if not set_permissions and permissions is not None:
+            self._add_failure(
+                f"MountDirPermissions/Permissions cannot be set for the shared storage '{name}' when "
+                "MountDirPermissions/SetPermissions is false. Remove Permissions to keep the permissions of the file "
+                "system, or set SetPermissions to true to apply them.",
+                FailureLevel.ERROR,
+            )
+
+
+class MountDirPermissionsFsxOpenZfsValidator(Validator):
+    """
+    Mount directory permissions validator for FSx for OpenZFS.
+
+    Warn that MountDirPermissions has no effect on FSx for OpenZFS, because ParallelCluster does not change the
+    permissions of the root of the volume: with the default NFS export of the volume (root_squash), the root user of
+    the cluster nodes is mapped to the anonymous user.
+    """
+
+    def _validate(self, set_permissions: bool, name: str):
+        if set_permissions:
+            self._add_failure(
+                f"MountDirPermissions has no effect on the FSx for OpenZFS storage '{name}': ParallelCluster does not "
+                "change the permissions of the root of the volume. Set them from a client that the NFS exports of the "
+                "volume allow to act as root (no_root_squash).",
+                FailureLevel.WARNING,
             )
 
 
@@ -1302,26 +1338,6 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
 
-class HeadNodeImdsValidator(Validator):
-    """
-    Head Node IMDS configuration validator.
-
-    Verify if the Head Node IMDs configuration is compatible with other configurations.
-    """
-
-    def _validate(self, imds_secured: bool, scheduler: str):
-        if scheduler is None:
-            self._add_failure("Cannot validate IMDS configuration if scheduler is not set.", FailureLevel.ERROR)
-        elif imds_secured is None:
-            self._add_failure("Cannot validate IMDS configuration if IMDS Secured is not set.", FailureLevel.ERROR)
-        elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
-            # TODO move validation for Imds parameter in the schema
-            self._add_failure(
-                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
-                FailureLevel.ERROR,
-            )
-
-
 class HeadNodeMemorySizeValidator(Validator):
     """
     Head Node Memory Size Validator.
@@ -1401,6 +1417,9 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
             placement_group_name = compute_resource_placement_group.assignment
+            # Merge cluster, queue, and compute resource tags to mirror the tags applied at launch time,
+            # so the dry run reflects the tags an actual RunInstances would carry.
+            merged_tags = merge_tags(tags, queue.get_tags(), dry_run_compute_resource.get_tags())
             # For SlurmFlexibleComputeResource test only the first InstanceType through a RunInstances
             self._test_compute_resource(
                 queue=queue,
@@ -1411,7 +1430,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,
                 placement_group={"GroupName": placement_group_name} if placement_group_name else {},
-                tags=tags,
+                tags=merged_tags,
                 imds_support=imds_support,
             )
         except Exception as e:
@@ -1585,14 +1604,73 @@ class RootVolumeEncryptionConsistencyValidator(Validator):
 
 
 class MultiNetworkInterfacesInstancesValidator(Validator):
-    """Verify that queues with multi nic compute resources don't auto-assign public IPs or contain subnets that do."""
+    """Verify that queues launching multiple network interfaces don't auto-assign public IPs or use subnets that do."""
 
-    def _validate(self, queues):
+    # Shared statement of the underlying AWS limitation.
+    _PUBLIC_IP_LIMITATION = (
+        "AWS can't auto-assign a public IP to instances launched with more than one network interface."
+    )
+
+    @staticmethod
+    def _multiple_network_interfaces_reason(compute_resource, efa_interface_type):
+        """Return why the compute resource is launched with more than one network interface, or None.
+
+        Two cases produce more than one network interface, which must be kept in sync with
+        templates/queues_stack.py::add_network_interfaces:
+        - "multi_card": multi-network-card instances (e.g. p4d, hpc6id) attach a network interface per network card.
+        - "efa": single-network-card instances with EFA enabled (e.g. hpc6a, c5n), for which ParallelCluster attaches
+          a primary interface plus a dedicated efa-only interface (unless the EfaInterfaceType: efa opt-out is set or
+          the primary network card cannot hold 2 network interfaces).
+        """
+        if compute_resource.max_network_cards > 1:
+            return "multi_card"
+
+        efa_enabled = compute_resource.efa and compute_resource.efa.enabled
+        use_legacy_efa = efa_interface_type == "efa"
+        nci0_supports_efa = compute_resource.max_efa_interfaces == compute_resource.max_network_cards
+        nci0_max_enis = (
+            compute_resource.network_cards_list[0].maximum_network_interfaces()
+            if compute_resource.network_cards_list
+            else 1
+        )
+        if efa_enabled and not use_legacy_efa and nci0_supports_efa and nci0_max_enis >= 2:
+            return "efa"
+        return None
+
+    def _reason_clause(self, queue, efa_interface_type):
+        """Return a queue-level clause explaining why the queue's instances launch multiple network interfaces.
+
+        A queue may contain both kinds of compute resources, so include every applicable reason along with the
+        instance types responsible for it.
+        """
+        instance_types_by_reason = {"multi_card": [], "efa": []}
+        for compute_resource in queue.compute_resources:
+            reason = self._multiple_network_interfaces_reason(compute_resource, efa_interface_type)
+            if reason:
+                instance_types_by_reason[reason].extend(compute_resource.instance_types)
+
+        clauses = []
+        if instance_types_by_reason["multi_card"]:
+            # Instance types with multiple network cards are launched with one network interface per card.
+            types = ", ".join(sorted(set(instance_types_by_reason["multi_card"])))
+            clauses.append(f"contains the instance types {types} with multiple network interfaces")
+        if instance_types_by_reason["efa"]:
+            # Single-network-card instances launched with a primary interface plus an efa-only interface (EFA enabled).
+            types = ", ".join(sorted(set(instance_types_by_reason["efa"])))
+            clauses.append(
+                f"has EFA enabled on the single-network-card instance types {types}, so its compute nodes are "
+                f"launched with multiple network interfaces (a primary interface plus a dedicated efa-only interface)"
+            )
+        return " and ".join(clauses)
+
+    def _validate(self, queues, efa_interface_type=None):
         multi_nic_queues = [
             queue
             for queue in queues
-            for compute_resource in queue.compute_resources
-            if compute_resource.max_network_cards > 1
+            if any(
+                self._multiple_network_interfaces_reason(compute_resource, efa_interface_type)
+                for compute_resource in queue.compute_resources
+            )
         ]
 
         all_subnets_with_public_ips = {
@@ -1604,11 +1682,12 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
         }
 
         for queue in multi_nic_queues:
+            reason_clause = self._reason_clause(queue, efa_interface_type)
             if queue.networking.assign_public_ip:
                 self._add_failure(
-                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
-                    f"AssignPublicIp value is set to true. AWS public IPs can only be assigned to instances launched "
-                    f"with a single network interface.",
+                    f"The queue {queue.name} {reason_clause}, but AssignPublicIp is set to true. "
+                    f"{self._PUBLIC_IP_LIMITATION} Set AssignPublicIp to false and use a private subnet with a NAT "
+                    f"gateway to provide internet access to the compute nodes.",
                     FailureLevel.ERROR,
                 )
 
@@ -1617,20 +1696,8 @@ class MultiNetworkInterfacesInstancesValidator(Validator):
             )
             if queue_subnets_with_public_ips:
                 self._add_failure(
-                    f"The queue {queue.name} contains an instance type with multiple network interfaces however the "
-                    f"subnets {queue_subnets_with_public_ips} is configured to automatically assign public IPs. AWS "
-                    f"public IPs can only be assigned to instances launched with a single network interface.",
+                    f"The queue {queue.name} {reason_clause}, but the subnets {queue_subnets_with_public_ips} "
+                    f"auto-assign public IPs. {self._PUBLIC_IP_LIMITATION} Use a private subnet with a NAT gateway to "
+                    f"provide internet access to the compute nodes.",
                     FailureLevel.ERROR,
                 )
-
-
-class LoginNodesSchedulerValidator(Validator):
-    """Verify that when using LoginNodes, the scheduler must be slurm."""
-
-    def _validate(self, scheduler):
-        if scheduler != "slurm":
-            self._add_failure(
-                "When using LoginNodes, the configured scheduler must be set to Slurm. "
-                "Please set the scheduler to Slurm.",
-                FailureLevel.ERROR,
-            )

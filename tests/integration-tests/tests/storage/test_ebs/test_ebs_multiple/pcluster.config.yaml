@@ -1,6 +1,5 @@
 Image:
   Os: {{ os }}
-{% if scheduler == "slurm" %}
 LoginNodes:
   Pools:
     - Name: login-node-pool-0
@@ -10,7 +9,6 @@ LoginNodes:
         SubnetIds:
           - {{ public_subnet_id }}
       GracetimePeriod: 10
-{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -27,9 +25,8 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: queue-0
-      {% if scheduler == "slurm" %}
       ComputeSettings:
         LocalStorage:
           RootVolume:
@@ -37,23 +34,14 @@ Scheduling:
             VolumeType: gp3
             Throughput: 130
             Iops: 3200
-      {% endif %}
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 4
-          DesiredvCpus: 4
-          {% else %}
           Instances:
             - InstanceType: {{ instance }}
           MinCount: 1
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[0] }}
-    {% if scheduler == "slurm" %}
     - Name: queue-1
       ComputeSettings:
         LocalStorage:
@@ -71,7 +59,6 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_ids[1] }}
-    {% endif %}
 SharedStorage:
   - MountDir: {{ mount_dirs[0] }}
     Name: ebs1

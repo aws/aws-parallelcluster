@@ -3,7 +3,7 @@
 #SBATCH --exclusive
 
 module load openmpi
-NCCL_VERSION='2.28.3-1'
+NCCL_VERSION='2.28.9-1'
 NCCL_BENCHMARKS_VERSION='2.17.1'
 
 . /etc/os-release

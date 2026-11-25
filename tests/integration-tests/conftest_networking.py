@@ -34,60 +34,55 @@ from tests.common.utils import retrieve_latest_ami
 AVAILABLE_AVAILABILITY_ZONE = {
     # c5.xlarge is not supported in use1-az3
     "us-east-1": ["use1-az1", "use1-az2", "use1-az4", "use1-az6", "use1-az5"],
-    # c5.xlarge is not supported in apse2-az3
-    "ap-southeast-2": ["apse2-az1", "apse2-az2"],
-    # FSx for Luster is not supported in apne1-az1
-    "ap-northeast-1": ["apne1-az4", "apne1-az2"],
-    # c5.xlarge is not supported in apse1-az3
-    "ap-southeast-1": ["apse1-az2", "apse1-az1"],
-    # NAT Gateway not available in sae1-az2 , c5n.18xlarge is not supported in sae1-az3
-    "sa-east-1": ["sae1-az1"],
-    # m6g.xlarge instances not available in euw1-az3
-    "eu-west-1": ["euw1-az1", "euw1-az2"],
-    # io2 EBS volumes not available in cac1-az4
+    "ap-southeast-2": ["apse2-az1", "apse2-az2", "apse2-az3"],
+    "ap-northeast-1": ["apne1-az4", "apne1-az2", "apne1-az1"],
+    "ap-southeast-1": ["apse1-az2", "apse1-az1", "apse1-az3"],
+    "sa-east-1": ["sae1-az1", "sae1-az2", "sae1-az3"],
+    "eu-west-1": ["euw1-az1", "euw1-az2", "euw1-az3"],
+    # c5.xlarge is not supported in eu-west-2d (euw2-az4)
+    "eu-west-2": ["euw2-az1", "euw2-az2", "euw2-az3"],
+    # g4dn/g5 are not supported in ca-central-1d (cac1-az4)
     "ca-central-1": ["cac1-az1", "cac1-az2"],
-    # instance can only be launch in placement group in eun1-az2
-    "eu-north-1": ["eun1-az2"],
-    # g3.8xlarge is not supported in euc1-az1
-    "eu-central-1": ["euc1-az2", "euc1-az3"],
-    # FSx not available in cnn1-az4
-    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
+    "eu-north-1": ["eun1-az1", "eun1-az2", "eun1-az3"],
+    "eu-central-1": ["euc1-az2", "euc1-az3", "euc1-az1"],
+    "cn-north-1": ["cnn1-az1", "cnn1-az2", "cnn1-az4"],
     # Should only consider supported AZs
     "us-isob-east-1": ["usibe1-az2", "usibe1-az3"],
+    "us-iso-east-1": ["usie1-az1", "usie1-az2"],
 }
 
 # used to map a ZoneId to the corresponding region
 # Nice-To-Have: a python script that creates this mapping by invoking aws describe-regions / subnets
 # and then read it from a file
 ZONE_ID_MAPPING = {
-    "af-south-1": "^afs1-az[0-9]",
-    "ap-east-1": "^ape1-az[0-9]",
-    "ap-northeast-1": "^apne1-az[0-9]",
-    "ap-northeast-2": "^apne2-az[0-9]",
-    "ap-northeast-3": "^apne3-az[0-9]",
-    "ap-south-1": "^aps1-az[0-9]",
-    "ap-southeast-1": "^apse1-az[0-9]",
-    "ap-southeast-2": "^apse2-az[0-9]",
-    "ap-southeast-3": "^apse3-az[0-9]",
-    "ap-southeast-5": "^apse5-az[0-9]",
-    "ap-southeast-7": "^apse7-az[0-9]",
-    "ca-central-1": "^cac1-az[0-9]",
-    "cn-north-1": "^cnn1-az[0-9]",
-    "cn-northwest-1": "^cnnw1-az[0-9]",
-    "eu-central-1": "^euc1-az[0-9]",
-    "eu-north-1": "^eun1-az[0-9]",
-    "eu-west-1": "^euw1-az[0-9]",
-    "eu-west-2": "^euw2-az[0-9]",
-    "eu-west-3": "^euw3-az[0-9]",
-    "eu-south-1": "^eus1-az[0-9]",
-    "me-south-1": "^mes1-az[0-9]",
-    "sa-east-1": "^sae1-az[0-9]",
-    "us-east-1": "^use1-az[0-9]",
-    "us-east-2": "^use2-az[0-9]",
-    "us-west-1": "^usw1-az[0-9]",
-    "us-west-2": "^usw2-az[0-9]",
-    "us-gov-east-1": "^usge1-az[0-9]",
-    "us-gov-west-1": "^usgw1-az[0-9]",
+    "af-south-1": "^afs1-([a-z0-9]+-)?az[0-9]",
+    "ap-east-1": "^ape1-([a-z0-9]+-)?az[0-9]",
+    "ap-northeast-1": "^apne1-([a-z0-9]+-)?az[0-9]",
+    "ap-northeast-2": "^apne2-([a-z0-9]+-)?az[0-9]",
+    "ap-northeast-3": "^apne3-([a-z0-9]+-)?az[0-9]",
+    "ap-south-1": "^aps1-([a-z0-9]+-)?az[0-9]",
+    "ap-southeast-1": "^apse1-([a-z0-9]+-)?az[0-9]",
+    "ap-southeast-2": "^apse2-([a-z0-9]+-)?az[0-9]",
+    "ap-southeast-3": "^apse3-([a-z0-9]+-)?az[0-9]",
+    "ap-southeast-5": "^apse5-([a-z0-9]+-)?az[0-9]",
+    "ap-southeast-7": "^apse7-([a-z0-9]+-)?az[0-9]",
+    "ca-central-1": "^cac1-([a-z0-9]+-)?az[0-9]",
+    "cn-north-1": "^cnn1-([a-z0-9]+-)?az[0-9]",
+    "cn-northwest-1": "^cnnw1-([a-z0-9]+-)?az[0-9]",
+    "eu-central-1": "^euc1-([a-z0-9]+-)?az[0-9]",
+    "eu-north-1": "^eun1-([a-z0-9]+-)?az[0-9]",
+    "eu-west-1": "^euw1-([a-z0-9]+-)?az[0-9]",
+    "eu-west-2": "^euw2-([a-z0-9]+-)?az[0-9]",
+    "eu-west-3": "^euw3-([a-z0-9]+-)?az[0-9]",
+    "eu-south-1": "^eus1-([a-z0-9]+-)?az[0-9]",
+    "me-south-1": "^mes1-([a-z0-9]+-)?az[0-9]",
+    "sa-east-1": "^sae1-([a-z0-9]+-)?az[0-9]",
+    "us-east-1": "^use1-([a-z0-9]+-)?az[0-9]",
+    "us-east-2": "^use2-([a-z0-9]+-)?az[0-9]",
+    "us-west-1": "^usw1-([a-z0-9]+-)?az[0-9]",
+    "us-west-2": "^usw2-([a-z0-9]+-)?az[0-9]",
+    "us-gov-east-1": "^usge1-([a-z0-9]+-)?az[0-9]",
+    "us-gov-west-1": "^usgw1-([a-z0-9]+-)?az[0-9]",
 }
 
 
@@ -133,6 +128,12 @@ def az_id():
     pass
 
 
+@pytest.fixture(autouse=True)
+def ami_type():
+    """Removes the need to declare the fixture in all tests even if not needed."""
+    pass
+
+
 def unmarshal_az_override(az_override):
     for region, regex in ZONE_ID_MAPPING.items():
         pattern = re.compile(regex)
@@ -145,6 +146,36 @@ def unmarshal_az_override(az_override):
     # This will fail while trying to make an AZ override for a region without a proper mapping.
     # In this case add the mapping to the list above before attempting the override.
     return az_override
+
+
+DLAMI_PREFIX = "DLAMI_"
+
+
+def unmarshal_os_params(argvalues, argnames):
+    """
+    Extract ami_type from os values with DLAMI_ prefix.
+
+    E.g. "DLAMI_ubuntu2204" -> os="ubuntu2204", ami_type="DLAMI"
+    """
+    if "os" not in argnames:
+        return argvalues, argnames
+
+    os_index = argnames.index("os")
+    unmarshalled = []
+    for params in argvalues:
+        param_list = list(params)
+        os_value = param_list[os_index]
+
+        if os_value and os_value.startswith(DLAMI_PREFIX):
+            # strip prefix
+            param_list[os_index] = os_value[len(DLAMI_PREFIX) :]  # noqa: E203
+            param_list.append("DLAMI")
+        else:
+            param_list.append("official")
+
+        unmarshalled.append(tuple(param_list))
+
+    return unmarshalled, argnames + ["ami_type"]
 
 
 def unmarshal_az_params(argvalues, argnames):
@@ -211,8 +242,16 @@ def get_az_setup_for_region(region: str, credential: list):
     if "us-isob-east-1" in region:
         # Removing One of the Az's from Isolated regions
         az_id_to_az_name_map.pop("usibe1-az1", "")
+    # By default all the region's AZs are usable; if the region is in AVAILABLE_AVAILABILITY_ZONE,
+    # keep only the allowlisted AZs.
+    allowlisted_az_ids = AVAILABLE_AVAILABILITY_ZONE.get(region)
+    if allowlisted_az_ids:
+        for az_id in list(az_id_to_az_name_map):
+            if az_id not in allowlisted_az_ids:
+                az_id_to_az_name_map.pop(az_id)
+
     az_ids = list(az_id_to_az_name_map)  # cannot be a dict_keys
-    default_az_id = random.choice(AVAILABLE_AVAILABILITY_ZONE.get(region, az_ids))
+    default_az_id = random.choice(az_ids)
     default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     return default_az_id, default_az_name, az_id_to_az_name_map
@@ -373,7 +412,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
         )
 
         with aws_credential_provider(region, credential):
-            bastion_image_id = retrieve_latest_ami(region, "alinux2")
+            bastion_image_id = retrieve_latest_ami(region, "alinux2023")
         template = NetworkTemplateBuilder(
             vpc_configuration=vpc_config,
             default_availability_zone=default_az_name,
@@ -390,7 +429,7 @@ def vpc_stacks_shared(cfn_stacks_factory, request, key_name):
 
 
 @pytest.fixture(scope="class")
-def vpc_stack_with_endpoints(region, request, key_name):
+def vpc_stack_with_endpoints(region, request, key_name, vpc_stack):
     """
     Create a VPC stack with VPC endpoints.
     Since VPC endpoints modify DNS at VPC level, all the subnets in that VPC will be affected.
@@ -413,8 +452,11 @@ def vpc_stack_with_endpoints(region, request, key_name):
         stack_factory.create_stack(stack)
         return stack
 
-    # tests with VPC endpoints are not using multi-AZ
-    default_az_id, default_az_name, _ = get_az_setup_for_region(region, credential)
+    # Reuse the AZ from vpc_stack so that resolve_default_instance's capacity probe
+    # targets the same AZ where this VPC's subnet will be created.
+    default_az_id = vpc_stack.az_override or vpc_stack.default_az_id
+    az_id_to_az_name_map = get_az_id_to_az_name_map(region, credential)
+    default_az_name = az_id_to_az_name_map.get(default_az_id)
 
     bastion_subnet = SubnetConfig(
         name=subnet_name(visibility="Public", az_id=default_az_id),
@@ -444,7 +486,7 @@ def vpc_stack_with_endpoints(region, request, key_name):
     )
 
     with aws_credential_provider(region, credential):
-        bastion_image_id = retrieve_latest_ami(region, "alinux2")
+        bastion_image_id = retrieve_latest_ami(region, "alinux2023")
 
     template = NetworkTemplateBuilder(
         vpc_configuration=vpc_config,

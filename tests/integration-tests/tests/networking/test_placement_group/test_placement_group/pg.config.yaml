@@ -1,6 +1,6 @@
 Region: us-west-2
 Image:
-  Os: alinux2
+  Os: alinux2023
 HeadNode:
   InstanceType: c7g.4xlarge
   Networking:

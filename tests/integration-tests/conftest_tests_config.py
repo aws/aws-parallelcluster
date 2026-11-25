@@ -3,7 +3,7 @@ import os
 from itertools import product
 
 from conftest_markers import DIMENSIONS_MARKER_ARGS
-from conftest_networking import unmarshal_az_override, unmarshal_az_params
+from conftest_networking import unmarshal_az_override, unmarshal_az_params, unmarshal_os_params
 from framework.tests_configuration.config_utils import get_enabled_tests
 from xdist import get_xdist_worker_id
 
@@ -45,6 +45,10 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
     has_benchmarks = _has_benchmarks(configured_dimensions_items)
     if has_benchmarks:
         argnames.append("benchmarks")
+    # Add and only add flags parametrization when necessary.
+    has_flags = _has_flags(configured_dimensions_items)
+    if has_flags:
+        argnames.append("flags")
     argvalues = []
     for item in configured_dimensions_items:
         dimensions_values = []
@@ -57,9 +61,13 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
         if has_benchmarks:
             benchmarks_value = [item.get("benchmarks")]  # the benchmarks list is treated as a single item in a list
             dimensions_values.append(benchmarks_value)
+        if has_flags:
+            flags_value = [item.get("flags") or []]  # the flags list is treated as a single item in a list
+            dimensions_values.append(flags_value)
         argvalues.extend(list(product(*dimensions_values)))
 
     argvalues, argnames = unmarshal_az_params(argvalues, argnames)  # adds 'az_id' extra fixture
+    argvalues, argnames = unmarshal_os_params(argvalues, argnames)  # adds 'ami_type' extra fixture
 
     return argnames, argvalues
 
@@ -67,6 +75,13 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
 def _has_benchmarks(configured_dimensions_items):
     for item in configured_dimensions_items:
         if item.get("benchmarks"):
+            return True
+    return False
+
+
+def _has_flags(configured_dimensions_items):
+    for item in configured_dimensions_items:
+        if item.get("flags"):
             return True
     return False
 

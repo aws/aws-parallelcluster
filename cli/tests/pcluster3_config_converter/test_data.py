@@ -31,24 +31,24 @@ region_test = [(region_input_0, region_output_0), (region_input_1, region_output
 
 image_input_0 = """
 [cluster default]
-base_os = alinux2
+base_os = alinux2023
 custom_ami = ami-123
 """
 
 image_output_0 = """
 Image:
   CustomAmi: ami-123
-  Os: alinux2
+  Os: alinux2023
 """
 
 image_input_1 = """
 [cluster default]
-base_os = alinux2
+base_os = alinux2023
 """
 
 image_output_1 = """
 Image:
-  Os: alinux2
+  Os: alinux2023
 """
 
 image_input_2 = """
@@ -846,8 +846,6 @@ HeadNode:
     SubnetId: subnet-0bfad12f6b586686c
   Ssh:
     KeyName: key1
-  Imds:
-    Secured: False
 """
 
 headnode_test = [
@@ -1170,120 +1168,11 @@ Scheduling:
           - subnet-12345
 """
 
-awsabtch_input_0 = """
-[cluster default]
-vpc_settings = default
-key_name = key1
-scheduler = awsbatch
-min_vcpus = 0
-desired_vcpus = 4
-max_vcpus = 20
-spot_bid_percentage = 85
-cluster_type = ondemand
-compute_instance_type = optimal
-
-[vpc default]
-vpc_id = vpc-0e0f223cc35256b9a
-master_subnet_id = subnet-0bfad12f6b
-"""
-
-awsabtch_output_0 = """
-Scheduling:
-  AwsBatchQueues:
-    - CapacityType: ONDEMAND
-      ComputeResources:
-        - DesiredvCpus: 4
-          InstanceTypes:
-            - optimal
-          MaxvCpus: 20
-          MinvCpus: 0
-          Name: batch-compute
-          SpotBidPercentage: 85.0
-      Networking:
-        SubnetIds:
-          - subnet-0bfad12f6b
-      Name: batch-queue
-  Scheduler: awsbatch
-"""
-
-awsabtch_input_1 = """
-[cluster default]
-vpc_settings = default
-key_name = key1
-scheduler = awsbatch
-min_vcpus = 0
-desired_vcpus = 4
-max_vcpus = 20
-spot_bid_percentage = 85
-cluster_type = ondemand
-compute_instance_type = t3.micro,optimal
-
-[vpc default]
-vpc_id = vpc-0e0f223cc35256b9a
-master_subnet_id = subnet-0bfad12f6b586686c
-vpc_security_group_id = sg-xxxxxx
-additional_sg = sg-xxxxxx
-compute_subnet_id = subnet-12345
-"""
-
-awsabtch_output_1 = """
-Scheduling:
-  AwsBatchQueues:
-    - CapacityType: ONDEMAND
-      ComputeResources:
-        - DesiredvCpus: 4
-          InstanceTypes:
-            - t3.micro
-            - optimal
-          MaxvCpus: 20
-          MinvCpus: 0
-          Name: batch-compute
-          SpotBidPercentage: 85.0
-      Networking:
-        AdditionalSecurityGroups:
-          - sg-xxxxxx
-        SecurityGroups:
-          - sg-xxxxxx
-        SubnetIds:
-          - subnet-12345
-      Name: batch-queue
-  Scheduler: awsbatch
-"""
-
-awsabtch_input_2 = """
-[cluster default]
-vpc_settings = default
-key_name = key1
-scheduler = awsbatch
-cluster_type = spot
-compute_instance_type = t3.micro
-
-[vpc default]
-vpc_id = vpc-0e0f223cc35256b9a
-master_subnet_id = subnet-0bfad12f6b586686c
-compute_subnet_id = subnet-12345
-"""
-
-awsabtch_output_2 = """
-Scheduling:
-  AwsBatchQueues:
-    - CapacityType: SPOT
-      ComputeResources:
-        - InstanceTypes:
-            - t3.micro
-          Name: batch-compute
-      Networking:
-        SubnetIds:
-          - subnet-12345
-      Name: batch-queue
-  Scheduler: awsbatch
-"""
-
 sit_input_0 = """
 [cluster default]
 key_name = lab-3-your-key
 vpc_settings = public
-base_os = alinux2
+base_os = alinux2023
 scheduler = slurm
 cluster_type = spot
 s3_read_resource = arn:aws:s3:::testbucket/*
@@ -1350,7 +1239,7 @@ sit_input_1 = """
 [cluster default]
 key_name = lab-3-your-key
 vpc_settings = public
-base_os = alinux2
+base_os = alinux2023
 scheduler = slurm
 cluster_type = ondemand
 s3_read_resource = arn:aws:s3:::testbucket/*
@@ -1413,9 +1302,6 @@ scheduling_test = [
     (slurm_input_0, slurm_output_0, None),
     (slurm_input_1, slurm_output_1, None),
     (slurm_input_2, slurm_output_2, None),
-    (awsabtch_input_0, awsabtch_output_0, None),
-    (awsabtch_input_1, awsabtch_output_1, None),
-    (awsabtch_input_2, awsabtch_output_2, None),
     (sit_input_0, sit_output_0, None),
     (sit_input_1, sit_output_1, None),
 ]

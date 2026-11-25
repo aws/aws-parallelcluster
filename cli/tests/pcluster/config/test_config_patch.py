@@ -36,6 +36,45 @@ default_cluster_params = {
 }
 
 
+def test_shared_storage_mount_dir_update_with_running_compute_fleet(mocker):
+    cluster = dummy_cluster()
+    mocker.patch.object(cluster, "has_running_capacity", return_value=True)
+    mocker.patch.object(cluster, "has_running_login_nodes", return_value=False)
+    storage = {
+        "Name": "fsx-lustre",
+        "MountDir": "/fsx",
+        "StorageType": "FsxLustre",
+        "FsxLustreSettings": {"StorageCapacity": 1200},
+    }
+    patch = ConfigPatch(
+        cluster,
+        base_config={"Scheduling": {"Scheduler": "slurm"}, "SharedStorage": [storage]},
+        target_config={"Scheduling": {"Scheduler": "slurm"}, "SharedStorage": [dict(storage, MountDir="/fsx1")]},
+    )
+
+    try:
+        patch_allowed, rows = patch.check()
+    except AttributeError as error:
+        raise AssertionError("MountDir updates must return a validation result") from error
+
+    assert_that(patch_allowed).is_false()
+    assert_that(rows[1:]).is_equal_to(
+        [
+            [
+                ["SharedStorage[fsx-lustre]"],
+                "MountDir",
+                "/fsx",
+                "/fsx1",
+                "ACTION NEEDED",
+                "All compute nodes must be stopped or QueueUpdateStrategy must be set.",
+                "Stop the compute fleet with the pcluster update-compute-fleet command"
+                ", or set QueueUpdateStrategy in the configuration used for the 'update-cluster' operation.",
+                UpdatePolicy.SHARED_STORAGE_UPDATE_POLICY.name,
+            ]
+        ]
+    )
+
+
 def _duplicate_config_file(dst_config_file, test_datadir):
     """
     Make a copy of the src template to the target file.
@@ -86,12 +125,7 @@ def _compare_changes(changes, expected_changes):
     def _sorting_func(change):
         if change.is_list:
             if isinstance(change.new_value, dict):
-                if "Key" in change.new_value:
-                    return change.new_value["Key"]
-                elif "Name" in change.new_value:
-                    return change.new_value["Name"]
-                else:
-                    return "-"
+                return change.new_value.get("Name") or change.new_value.get("Key", "")
             else:
                 return "-"
         else:
@@ -837,6 +871,50 @@ def _test_incompatible_ebs_sections(base_conf, target_conf):
     )
 
 
+def _test_add_mount_dir_permissions(base_conf, target_conf):
+    # Add MountDirPermissions to a mounted storage in target conf
+    _get_storage_by_name(target_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0750"}
+
+    # The permissions of a mounted storage are changed without mounting it again
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["SharedStorage[ebs1]"],
+                "MountDirPermissions",
+                None,
+                {"Permissions": "0750"},
+                UpdatePolicy(UpdatePolicy.SUPPORTED),
+                is_list=False,
+            )
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
+def _test_change_mount_dir_permissions(base_conf, target_conf):
+    # Change the value of MountDirPermissions of a mounted storage in target conf
+    _get_storage_by_name(base_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0750"}
+    _get_storage_by_name(target_conf, "ebs1")["MountDirPermissions"] = {"Permissions": "0700"}
+
+    _check_patch(
+        base_conf,
+        target_conf,
+        [
+            Change(
+                ["SharedStorage[ebs1]", "MountDirPermissions"],
+                "Permissions",
+                "0750",
+                "0700",
+                UpdatePolicy(UpdatePolicy.SUPPORTED),
+                is_list=False,
+            )
+        ],
+        UpdatePolicy.SUPPORTED,
+    )
+
+
 def _test_different_names(base_conf, target_conf):
     # First make sure sections are present with original names
     base_ebs_1_section = _get_storage_by_name(base_conf, "ebs1")
@@ -1029,6 +1107,8 @@ def _test_iam(base_conf, target_conf):
         _test_less_target_sections,
         _test_more_target_sections,
         _test_incompatible_ebs_sections,
+        _test_add_mount_dir_permissions,
+        _test_change_mount_dir_permissions,
         _test_equal_configs,
         _test_different_names,
         _test_compute_resources,
@@ -1146,17 +1226,8 @@ def test_patch_check_cluster_resource_bucket(
         pytest.param(
             [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
             [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
-            [
-                Change(
-                    [],
-                    "Tags",
-                    [{"Key": "test1", "Value": "val1"}, {"Key": "test2", "Value": "val2"}],
-                    [{"Key": "test2", "Value": "val2"}, {"Key": "test1", "Value": "val1"}],
-                    UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
-                    is_list=True,
-                )
-            ],
-            UpdatePolicy.UNSUPPORTED_ORDER_CHANGE,
+            [],
+            UpdatePolicy.SUPPORTED,
             id="order_only_change",
         ),
         pytest.param(
@@ -1168,11 +1239,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     None,
                     {"Key": "test3", "Value": "val3"},
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="tag_addition",
         ),
         pytest.param(
@@ -1184,11 +1255,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     {"Key": "test2", "Value": "val2"},
                     None,
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="tag_removal",
         ),
         pytest.param(
@@ -1200,11 +1271,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Value",
                     "old_value",
                     "new_value",
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=False,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="tag_value_modification",
         ),
         pytest.param(
@@ -1216,11 +1287,11 @@ def test_patch_check_cluster_resource_bucket(
                     "Tags",
                     None,
                     {"Key": "test3", "Value": "val3"},
-                    UpdatePolicy.UNSUPPORTED,
+                    UpdatePolicy.SUPPORTED_UNLESS_ADC,
                     is_list=True,
                 )
             ],
-            UpdatePolicy.UNSUPPORTED,
+            UpdatePolicy.SUPPORTED_UNLESS_ADC,
             id="order_change_plus_addition",
         ),
         pytest.param(

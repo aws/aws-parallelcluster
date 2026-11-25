@@ -1,0 +1,24 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ice-cr
+          Instances:
+            - InstanceType: t3.medium
+            - InstanceType: c5.large
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

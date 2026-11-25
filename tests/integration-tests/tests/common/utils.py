@@ -8,22 +8,33 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
+import inspect
 import json
 import logging
 import os
 import pathlib
 import random
+import re
 import string
+import tempfile
 import time
+import uuid
+from importlib.metadata import version as get_package_version
 
 import boto3
-import pkg_resources
+import pytest
+import yaml
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from filelock import FileLock
+from framework.framework_constants import METADATA_DEFAULT_REGION, PERFORMANCE_METADATA_TABLE
+from framework.metadata_table_manager import MetadataTableManager
+from packaging import version as packaging_version
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
-from time_utils import seconds
-from utils import get_instance_info, run_command
+from time_utils import minutes, seconds
+from utils import get_instance_info, get_username_for_os, run_command
 
 from tests.common.osu_common import PRIVATE_OSES
 
@@ -31,7 +42,71 @@ LOGGER = logging.getLogger(__name__)
 
 SYSTEM_ANALYZER_SCRIPT = pathlib.Path(__file__).parent / "data/system-analyzer.sh"
 
+# Cluster node types exercised by the integration tests.
+HEAD_NODE = "HeadNode"
+COMPUTE_NODE = "ComputeNode"
+LOGIN_NODE = "LoginNode"
+NODE_TYPES = (HEAD_NODE, COMPUTE_NODE, LOGIN_NODE)
+
+# Shared Slurm job script that builds and runs a single CUDA sample on a GPU
+# compute node. Used by multiple tests to validate GPU workloads.
+GPU_JOB_SCRIPT = pathlib.Path(__file__).parent / "data/gpu_job.sh"
+
+# Default CUDA samples run by run_gpu_workload: deviceQuery validates driver/GPU visibility,
+# matrixMulCUBLAS exercises the CUDA libraries.
+GPU_WORKLOAD_SAMPLES = ["1_Utilities/deviceQuery", "4_CUDA_Libraries/matrixMulCUBLAS"]
+
+
+def run_gpu_workload(scheduler_commands, partition=None, samples=None, timeout=20):
+    """
+    Build and run CUDA samples on a GPU compute node and assert they succeed.
+
+    Submits one job per sample through the scheduler using the shared GPU job script
+    (tests/common/data/gpu_job.sh), which compiles the sample from the /usr/local/cuda-samples-*
+    tree installed on the AMI and runs it on a GPU node. All jobs are submitted upfront, then
+    awaited and asserted successful.
+
+    :param scheduler_commands: SchedulerCommands instance used to submit and check the jobs.
+    :param partition: optional scheduler partition to submit the jobs to.
+    :param samples: CUDA samples to run, as <category>/<sample>. Defaults to GPU_WORKLOAD_SAMPLES.
+    :param timeout: per-job completion timeout, in minutes.
+    :return: the list of completed job ids.
+    """
+    if samples is None:
+        samples = GPU_WORKLOAD_SAMPLES
+    job_ids = []
+    for sample in samples:
+        logging.info("Submitting CUDA sample job for %s", sample)
+        result = scheduler_commands.submit_script(
+            str(GPU_JOB_SCRIPT),
+            script_args=[sample],
+            partition=partition,
+            nodes=1,
+            slots=1,
+        )
+        job_ids.append(scheduler_commands.assert_job_submitted(result.stdout))
+
+    for job_id in job_ids:
+        scheduler_commands.wait_job_completed(job_id, timeout=timeout)
+        scheduler_commands.assert_job_succeeded(job_id)
+    return job_ids
+
+
 RHEL_OWNERS = ["309956199498", "841258680906", "219670896067"]
+
+# Regexes to extract a version from an AMI name, keyed by the name prefix that identifies the naming
+# convention. Within a single query the distro release is fixed, so a trailing build/serial is enough
+# to order candidates and pick the latest.
+#   RHEL:   "RHEL-<major>.<minor>[.<patch>]"                    e.g. RHEL-9.6.0_HVM-...
+#   AL2023: "al2023-ami-<year>.<minor>.<build>.<revision>"      e.g. al2023-ami-2023.12.20260817.0-kernel-6.1-x86_64
+#   Ubuntu: "ubuntu-<codename>-<release>-<arch>-server-<serial>" e.g. ubuntu-noble-24.04-amd64-server-20260904
+#   Rocky:  "Rocky-<major>-EC2-Base-<major>.<minor>-<serial>"   e.g. Rocky-9-EC2-Base-9.6-20250601.0.x86_64
+AMI_NAME_PREFIX_TO_VERSION_REGEX = {
+    "RHEL-": re.compile(r"RHEL-(\d+)\.(\d+)(?:\.(\d+))?"),
+    "al2023-ami-": re.compile(r"al2023-ami-(\d+)\.(\d+)\.(\d+)\.(\d+)"),
+    "ubuntu/": re.compile(r"ubuntu-\w+-(\d+)\.(\d+)-\w+-server-(\d+)(?:\.(\d+))?"),
+    "Rocky-": re.compile(r"Rocky-\d+-EC2-Base-(\d+)\.(\d+)-(\d+)(?:\.(\d+))?"),
+}
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-kernel-5.10-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
@@ -49,7 +124,12 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
     # the kernel released in 20231127 RHEL 8.8 AMI
     "rhel8": {"name": "RHEL-8.10*", "owners": RHEL_OWNERS},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rocky8": {
+        "name": "Rocky-8-EC2-Base-8.10*",
+        "owners": ["792107900819"],
+        "includeDeprecated": True,  # Latest official Rocky8 AMI is deprecated:
+        # https://forums.rockylinux.org/t/rocky-8-10-amis-missing-from-aws-eu-west-1-region/20558
+    },  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
@@ -58,24 +138,43 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
+    # Using a patched DLAMI which has uninstalled openssl11-devel, openssl11-libs and openssl11-pkcs
+    # so that it will not conflict with pcluster build image.
+    "alinux2": {
+        "name": "Deep Learning OSS Nvidia Driver AMI (Amazon Linux 2) Version 83.9 for ParallelCluster*",
+        # If you are running in your personal account, then you must have this patched AMI
+        "owners": ["self"],
+    },
+    "alinux2023": {
+        "name": {
+            "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
+            "arm64": "Deep Learning ARM64 Base OSS Nvidia Driver GPU AMI (Amazon Linux 2023)*",
+        },
+        "owners": ["amazon"],
+    },
+    "ubuntu2204": {
+        "name": {
+            "x86_64": "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
+            "arm64": "Deep Learning ARM64 Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*",
+        },
+        "owners": ["amazon"],
+    },
     "ubuntu2404": {
         "name": "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*-server-*",
         "owners": ["099720109477"],
     },
     # Simple redhat8 to be able to build in remarkable test
-    # FIXME: when fixed upstream, unpin the timestamp introduced because the `kernel-devel` package was missing for
-    # the kernel released in 20231127 RHEL 8.8 AMI
-    "rhel8": {"name": "RHEL-8.8*_HVM-202309*", "owners": RHEL_OWNERS},
-    "rocky8": {"name": "Rocky-8-EC2-Base-8.10*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
+    "rhel8": {"name": "RHEL-8.8*_HVM-*", "owners": RHEL_OWNERS},
+    "rocky8": {
+        "name": "Rocky-8-EC2-Base-8.10*",
+        "owners": ["792107900819"],
+        "includeDeprecated": True,  # Latest official Rocky8 AMI is deprecated:
+        # https://forums.rockylinux.org/t/rocky-8-10-amis-missing-from-aws-eu-west-1-region/20558
+    },  # TODO add china and govcloud accounts
     "rhel8.9": {"name": "RHEL-8.9*_HVM-*", "owners": RHEL_OWNERS},
     "rocky8.9": {"name": "Rocky-8-EC2-Base-8.9*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
     "rhel9": {"name": "RHEL-9.*_HVM*", "owners": RHEL_OWNERS},
     "rocky9": {"name": "Rocky-9-EC2-Base-9.*", "owners": ["792107900819"]},  # TODO add china and govcloud accounts
-}
-
-OS_TO_KERNEL4_AMI_NAME_OWNER_MAP = {
-    "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
 }
 
 # Get official pcluster AMIs or get from dev account
@@ -108,7 +207,6 @@ AMI_TYPE_DICT = {
     "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
     "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
     "pcluster": OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP,
-    "kernel4": OS_TO_KERNEL4_AMI_NAME_OWNER_MAP,
     "first_stage": OS_TO_FIRST_STAGE_AMI_NAME_MAP,
 }
 
@@ -122,39 +220,54 @@ def retrieve_latest_ami(
     request=None,
     allow_private_ami=False,
 ):
+    logging.info(
+        "Retrieving AMI with ami_type=%s os=%s architecture=%s allow_private_ami=%s"
+        % (ami_type, os, architecture, allow_private_ami)
+    )
     if additional_filters is None:
         additional_filters = []
     try:
         if ami_type == "pcluster":
             ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
                 version=get_installed_parallelcluster_version(),
-                ami_name=_get_ami_for_os(ami_type, os).get("name"),
+                ami_name=_get_ami_for_os(ami_type, os, architecture).get("name"),
             )
             if (
                 request
                 and not request.config.getoption("pcluster_git_ref")
                 and not request.config.getoption("cookbook_git_ref")
                 and not request.config.getoption("node_git_ref")
+                and not request.config.getoption("ami_owner")
                 and not allow_private_ami
                 and os not in PRIVATE_OSES
             ):  # If none of Git refs is provided, the test is running against released version.
                 # Then retrieve public pcluster AMIs
                 additional_filters.append({"Name": "is-public", "Values": ["true"]})
         else:
-            ami_name = _get_ami_for_os(ami_type, os).get("name")
-        logging.info("Parent image name %s" % ami_name)
-        paginator = boto3.client("ec2", region_name=region).get_paginator("describe_images")
-        page_iterator = paginator.paginate(
-            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
+            ami_name = _get_ami_for_os(ami_type, os, architecture).get("name")
+        if request and request.config.getoption("ami_owner") and ami_type == "pcluster":
+            owners = [
+                request.config.getoption("ami_owner")
+            ]  # ami owner should take effect only when getting pcluster AMI
+        else:
+            owners = _get_ami_for_os(ami_type, os, architecture).get("owners")
+        describe_images_args = {
+            "Filters": [{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
-            Owners=_get_ami_for_os(ami_type, os).get("owners"),
-            IncludeDeprecated=_get_ami_for_os(ami_type, os).get("includeDeprecated", False),
-        )
+            "Owners": owners,
+            "IncludeDeprecated": _get_ami_for_os(ami_type, os, architecture).get("includeDeprecated", False),
+        }
+        logging.info("Retrieving AMI with DescribeImages arguments: %s" % describe_images_args)
+        paginator = boto3.client("ec2", region_name=region).get_paginator("describe_images")
+        page_iterator = paginator.paginate(**describe_images_args)
         images = []
         for page in page_iterator:
             images.extend(page["Images"])
-        # Sort on Creation date Desc
-        return sorted(images, key=lambda x: x["CreationDate"], reverse=True)[0]["ImageId"]
+        image = _select_latest_image(images)
+        image_id = image["ImageId"]
+        image_name = image["Name"]
+        logging.info("Retrieved AMI: %s (%s)" % (image_id, image_name))
+        return image_id
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         raise
@@ -166,13 +279,51 @@ def retrieve_latest_ami(
         raise
 
 
-def _get_ami_for_os(ami_type, os):
+def _select_latest_image(images: list):
+    """Return the latest image from the provided list.
+
+    Prefers the highest version parsed from the AMI name, then the newest publish date within it.
+    Falls back to newest publish date alone when any AMI name cannot be parsed into a version.
+
+    We prioritize the latest minor version not only because we want to use fresh software, but also because
+    there are cases where using the latest minor is mandatory. For example, on RHEL older minors require to enable
+    the paid Extended Update Support (EUS) repo.
+    """
+    LOGGER.info("Selecting latest AMI among: %s", [(image["ImageId"], image["Name"]) for image in images])
+    # If the version cannot be parsed from the AMI name, the sorting falls back to creation date only.
+    return sorted(
+        images,
+        key=lambda image: (_parse_ami_version(image["Name"]) or (), image["CreationDate"]),
+        reverse=True,
+    )[0]
+
+
+def _parse_ami_version(ami_name: str):
+    """Extract the version tuple (e.g. (9, 6, 0)) from an AMI name, or None if it cannot be parsed."""
+    for prefix, regex in AMI_NAME_PREFIX_TO_VERSION_REGEX.items():
+        if ami_name.startswith(prefix):
+            match = regex.search(ami_name)
+            if match:
+                version = tuple(int(part) for part in match.groups() if part is not None)
+                LOGGER.info("Parsed version from AMI name %s: %s", version, ami_name)
+                return version
+    LOGGER.warning("Could not parse version from AMI name %r", ami_name)
+    return None
+
+
+def _get_ami_for_os(ami_type, os, architecture="x86_64"):
     ami_dict = AMI_TYPE_DICT.get(ami_type)
     if not ami_dict:
         raise Exception(f"'{ami_type}' not found in the dict 'AMI_TYPE_DICT'")
     os_ami = ami_dict.get(os)
     if not os_ami:
         raise Exception(f"'{os}' not found in the '{ami_type}' mapping referenced in the 'AMI_TYPE_DICT'")
+
+    # Get correct AMI names as per architecture
+    if isinstance(os_ami.get("name"), dict):
+        name = os_ami["name"].get(architecture)
+        return {"name": name, "owners": os_ami["owners"]}
+
     return os_ami
 
 
@@ -239,14 +390,83 @@ def _assert_ami_is_available(region, ami_id):
 def get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
     try:
-        return pkg_resources.get_distribution("aws-parallelcluster").version
+        return get_package_version("aws-parallelcluster")
     except Exception:
         logging.info("aws-parallelcluster is not installed through Python. Getting version from `pcluster version`.")
         return json.loads(run_command(["pcluster", "version"]).stdout.strip())["version"]
 
 
 def get_installed_parallelcluster_base_version():
-    return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
+    return packaging_version.parse(get_installed_parallelcluster_version()).base_version
+
+
+def installed_parallelcluster_version_is_at_least(min_version):
+    installed = packaging_version.parse(get_installed_parallelcluster_base_version())
+    return installed >= packaging_version.parse(min_version)
+
+
+def skip_if_parallelcluster_version_below(min_version, feature):
+    if not installed_parallelcluster_version_is_at_least(min_version):
+        pytest.skip(
+            f"{feature} requires ParallelCluster {min_version} or later, "
+            f"but {get_installed_parallelcluster_version()} is installed"
+        )
+
+
+@retry(
+    retry_on_result=lambda status: status is None,
+    wait_fixed=seconds(300),
+    # Ubuntu builds on GPU instances can take ~155 min just to reach the Image Builder test phase
+    # (build up to ~100 min + CreateImage up to ~75 min), so 150 min was not enough.
+    stop_max_delay=minutes(210),  # 3.5 hours
+)
+def wait_for_image_build_status(image, statuses: list):
+    """Poll the image until its build status is one of ``statuses``; return that status."""
+    logging.info(image.describe())
+    return image.image_status if image.image_status in statuses else None
+
+
+def wait_for_build_image_complete(image, output_dir):
+    """Poll a build-image until it stops progressing and assert it reached BUILD_COMPLETE.
+
+    Save the full build-log archive to the test output directory whatever the outcome (build logs are
+    useful for troubleshooting post-build assertions too), and tail the most recent log lines to the
+    console on any non-complete outcome.
+    """
+    logging.info("Waiting for build of image %s to complete", image.image_id)
+    image_status = wait_for_image_build_status(image, ["BUILD_COMPLETE", "BUILD_FAILED"])
+    export_image_logs(image, output_dir)
+    if image_status != "BUILD_COMPLETE":
+        keep_recent_image_logs(image)
+    assert_that(image_status).is_equal_to("BUILD_COMPLETE")
+
+
+def export_image_logs(image, output_dir):
+    """Export the full image build log archive to the test output directory using export-image-logs."""
+    log_dir = os.path.join(output_dir, "image_build_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    output_file = os.path.join(log_dir, f"{image.image_id}-logs.tar.gz")
+    try:
+        ret = image.export_logs(output_file=output_file)
+        logging.info("Full image build log exported to %s", ret.get("path", output_file))
+    except Exception as e:  # noqa: BLE001
+        logging.error("Failed to export image build logs for %s: %s", image.image_id, e)
+
+
+def keep_recent_image_logs(image, nlines=200):
+    """Log the most recent lines of the image build log to the console for troubleshooting."""
+    log_stream_name = f"{get_installed_parallelcluster_base_version()}/1"
+    try:
+        log_events = image.get_log_events(log_stream_name, start_from_head=False, query="events[*]", limit=nlines)
+        log_messages = [event["message"] for event in log_events]
+        logging.info(
+            "Image build failed for %s, the last %d lines of the log are:\n%s",
+            image.image_id,
+            nlines,
+            "\n".join(log_messages),
+        )
+    except Exception as e:  # noqa: BLE001
+        logging.error("Could not retrieve build log events for image %s: %s", image.image_id, e)
 
 
 CLASSIC_AWS_DOMAIN = "amazonaws.com"
@@ -272,6 +492,11 @@ def get_sts_endpoint(region):
     return "https://sts.{0}.{1}".format(region, get_aws_domain(region))
 
 
+def is_blank(value):
+    """Return True if the value is None or an empty/whitespace-only string."""
+    return value is None or value.strip() == ""
+
+
 def generate_random_string():
     """
     Generate a random prefix that is 16 characters long.
@@ -292,6 +517,20 @@ def restart_head_node(cluster):
     ec2_client.get_waiter("instance_status_ok").wait(InstanceIds=head_node_instance)
     time.sleep(120)  # Wait time is required for the head node to complete the reboot
     logging.info(f"Restarted head node for cluster: {cluster.name}")
+
+
+def change_head_node_instance_type(cluster, instance_type):
+    """Stop the head node, change its instance type and start it again."""
+    logging.info(f"Changing head node instance type to {instance_type} for cluster: {cluster.name}")
+    head_node_instance = cluster.get_cluster_instance_ids(node_type="HeadNode")
+    ec2_client = boto3.client("ec2", region_name=cluster.region)
+    ec2_client.stop_instances(InstanceIds=head_node_instance)
+    ec2_client.get_waiter("instance_stopped").wait(InstanceIds=head_node_instance)
+    ec2_client.modify_instance_attribute(InstanceId=head_node_instance[0], InstanceType={"Value": instance_type})
+    ec2_client.start_instances(InstanceIds=head_node_instance)
+    wait_head_node_running(cluster)
+    ec2_client.get_waiter("instance_status_ok").wait(InstanceIds=head_node_instance)
+    logging.info(f"Changed head node instance type to {instance_type} for cluster: {cluster.name}")
 
 
 def reboot_head_node(cluster, remote_command_executor=None):
@@ -346,6 +585,38 @@ def wait_login_node_status_ok(cluster):
         InstanceIds=cluster.get_cluster_instance_ids(node_type="LoginNode"),
         WaiterConfig={"Delay": 60, "MaxAttempts": 5},
     )
+
+
+@retry(stop_max_delay=minutes(3), wait_fixed=seconds(15))
+def wait_node_reachable(cluster, node_ip):
+    """Wait until the node at the given IP is reachable over SSH.
+
+    Retried every 15 seconds for up to 3 minutes to absorb a reboot window, and
+    confirms the node is healthy by reading its running kernel.
+    """
+    username = get_username_for_os(cluster.os)
+    ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10"
+    command = f"ssh {ssh_opts} -i {cluster.ssh_key} {username}@{node_ip} uname -r"
+    kernel = run_command(command, timeout=30, shell=True).stdout.strip()
+    logging.info("Node %s reachable over SSH; running kernel: %s", node_ip, kernel)
+
+
+@retry(stop_max_delay=minutes(5), wait_fixed=seconds(10), retry_on_result=lambda ami: ami is None)
+def retrieve_cluster_head_node_ami(cluster, region):
+    """Return the AMI id the cluster uses, read from the cluster stack template.
+
+    The AMI is read from the head node launch template (HeadNodeLaunchTemplate) in the
+    cluster CloudFormation stack template, which is available as soon as the stack is
+    created and avoids waiting for the head node instance to come up.
+    """
+    template = (
+        boto3.client("cloudformation", region_name=region).get_template(StackName=cluster.cfn_name).get("TemplateBody")
+    )
+    if isinstance(template, str):
+        template = yaml.safe_load(template)
+    if not template:
+        return None
+    return template["Resources"]["HeadNodeLaunchTemplate"]["Properties"]["LaunchTemplateData"]["ImageId"]
 
 
 def get_default_vpc_security_group(vpc_id, region):
@@ -447,27 +718,33 @@ def wait_process_completion(remote_command_executor, pid):
         return result.stdout.strip()
 
 
-def get_deployed_config_version(cluster, compute_node_ip: str = None):
-    """Retrieves the cluster config version deployed on the cluster node from its dna.json
-    If 'compute_node_ip' is specified, the config version will be retrieved from the compute node;
-    otherwise, it will be retrieved from the head node.
+def get_deployed_config_version(cluster, compute_node_ip: str = None, login_node_ip: str = None, bastion: str = None):
+    """Retrieves the cluster config version deployed on a cluster node from its dna.json.
+
+    If 'compute_node_ip' is specified, the config version is retrieved from that compute node.
+    If 'login_node_ip' and 'bastion' are specified, it is retrieved from that login node via the bastion.
+    Otherwise, it is retrieved from the head node.
     """
-    dna_json = get_deployed_dna_json(cluster, compute_node_ip)
+    dna_json = get_deployed_dna_json(cluster, compute_node_ip, login_node_ip, bastion)
 
     return dna_json["cluster"]["cluster_config_version"]
 
 
-def get_deployed_dna_json(cluster, compute_node_ip: str = None):
-    """Retrieves the dna.json from the cluster node
-    If 'compute_node_ip' is specified, it will be retrieved from the compute node;
-    otherwise, it will be retrieved from the head node.
+def get_deployed_dna_json(cluster, compute_node_ip: str = None, login_node_ip: str = None, bastion: str = None):
+    """Retrieve the dna.json deployed on a cluster node via SSH.
+
+    By default the dna.json is retrieved from the head node.
+    If 'compute_node_ip' is specified, it will be retrieved from that compute node.
+    If 'login_node_ip' is specified, it will be retrieved from that login node.
+
+    Returns the parsed dna.json as a dict.
+
+    Raises:
+        RuntimeError: if the remote command fails (e.g. node is unreachable).
+        ValueError: if the response is not valid JSON or does not contain the expected 'cluster' key.
     """
     command = "sudo cat /etc/chef/dna.json"
-    rce = (
-        RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip)
-        if compute_node_ip
-        else RemoteCommandExecutor(cluster)
-    )
+    rce = RemoteCommandExecutor(cluster, compute_node_ip=compute_node_ip, login_node_ip=login_node_ip, bastion=bastion)
 
     try:
         result = rce.run_remote_command(command).stdout
@@ -490,6 +767,21 @@ def get_ddb_item(region_name: str, table_name: str, item_key: dict):
     """
     table = boto3.resource("dynamodb", region_name=region_name).Table(table_name)
     return table.get_item(Key=item_key).get("Item")
+
+
+def get_config_version_from_ddb(region, cluster_name, instance_id):
+    """Get the current cluster config version from DynamoDB."""
+    dynamodb = boto3.client("dynamodb", region_name=region)
+    table_name = f"parallelcluster-{cluster_name}"
+    ddb_key = f"CLUSTER_CONFIG.{instance_id}"
+
+    response = dynamodb.get_item(TableName=table_name, Key={"Id": {"S": ddb_key}})
+
+    if "Item" in response:
+        data = response["Item"].get("Data", {}).get("M", {})
+        return data.get("cluster_config_version", {}).get("S", "")
+
+    raise ValueError(f"No DynamoDB record found for instance {instance_id}")
 
 
 def get_compute_ip_to_num_files(remote_command_executor, slurm_commands):
@@ -599,3 +891,162 @@ def get_capacity_reservation_id(request, instance_type, region, count, os):
                         }
                     )
     return reservations_ids
+
+
+def push_result_to_dynamodb(name, result, instance, os, mpi_variation=None, num_instances=None):
+    reporting_region = METADATA_DEFAULT_REGION
+    logging.info(f"Metadata reporting region {reporting_region}")
+    # Create the metadata table in case it doesn't exist
+    MetadataTableManager(reporting_region, PERFORMANCE_METADATA_TABLE).create_metadata_table()
+    try:
+        # Create DynamoDB resource
+        dynamodb = boto3.resource("dynamodb", region_name=reporting_region)
+        table = dynamodb.Table(PERFORMANCE_METADATA_TABLE)
+
+        # Prepare item to be inserted
+        item = {
+            "id": str(uuid.uuid4().hex),
+            "name": name,
+            "instance": instance,
+            "os": os,
+            "timestamp": int(time.time()),
+            "result": str(result),
+            "pcluster_version": f"v{get_installed_parallelcluster_version()}",
+            "mpi_variation": str(mpi_variation),
+            "num_instances": num_instances,
+        }
+
+        # Put item in the table
+        table.put_item(Item=item)
+        logging.info(f"Successfully pushed result to DynamoDB with id: {item['id']}")
+
+    except Exception as e:
+        logging.error(f"Failed to push result to DynamoDB: {str(e)}")
+        raise
+
+
+@retry(stop_max_attempt_number=3, wait_fixed=seconds(10))
+def _download_and_upload_to_s3(url, bucket_name, s3_key, s3_client):
+    """Download a file from a URL and upload it to S3, with retries for transient network failures."""
+    import tempfile
+    import urllib.request
+
+    with tempfile.NamedTemporaryFile(suffix=".tgz") as tmp:
+        urllib.request.urlretrieve(url, tmp.name)
+        s3_client.upload_file(tmp.name, bucket_name, s3_key)
+
+
+def upload_github_artifacts_to_s3(bucket_name, region, request):
+    """Upload GitHub repository tarballs to S3 for use in isolated network environments.
+
+    Downloads packages from GitHub URLs specified in test config options and uploads
+    them to S3 so build instances can access them via S3 VPC endpoints instead of
+    requiring direct internet access to GitHub.
+
+    Returns a dict with S3 URLs keyed by package type.
+    """
+    s3_client = boto3.client("s3", region_name=region)
+    result = {}
+
+    option_to_s3_key = {
+        "createami_custom_chef_cookbook": ("chef_cookbook", "packages/aws-parallelcluster-cookbook.tgz"),
+        "createami_custom_node_package": ("node_package", "packages/aws-parallelcluster-node.tgz"),
+    }
+
+    for option_name, (result_key, s3_key) in option_to_s3_key.items():
+        url = request.config.getoption(option_name, default=None)
+        if url:
+            logging.info("Downloading %s from %s", option_name, url)
+            _download_and_upload_to_s3(url, bucket_name, s3_key, s3_client)
+            result[result_key] = f"s3://{bucket_name}/{s3_key}"
+            logging.info("Uploaded %s to s3://%s/%s", option_name, bucket_name, s3_key)
+        else:
+            result[result_key] = ""
+
+    return result
+
+
+def wait_for_no_active_export_tasks(region):
+    """Wait until there are no active CloudWatch Logs export tasks in the region.
+
+    Each account can only have one active (RUNNING or PENDING) export task per region at a time.
+    This function uses the statusCode filter to query only active tasks server-side,
+    preventing conflicts with subsequent export calls and avoiding pagination through
+    years of completed historical tasks.
+    See: https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateExportTask.html
+    """
+    logging.info("Starting the check for active export tasks in region %s", region)
+    active_statuses = ("RUNNING", "PENDING")
+    logs_client = boto3.client("logs", region_name=region)
+    max_wait = 300  # 5 minutes
+    poll_interval = random.randint(10, 20)
+    elapsed = 0
+    while elapsed < max_wait:
+        active_tasks = []
+        for status_code in active_statuses:
+            response = logs_client.describe_export_tasks(statusCode=status_code)
+            active_tasks.extend(response.get("exportTasks", []))
+        if not active_tasks:
+            logging.info("No active export tasks in region %s", region)
+            return
+        logging.info(
+            "Waiting for %d active export task(s) to complete in region %s (%ds elapsed): %s",
+            len(active_tasks),
+            region,
+            elapsed,
+            [
+                {
+                    "taskId": t.get("taskId"),
+                    "status": t.get("status", {}).get("code"),
+                    "logGroup": t.get("logGroupName"),
+                }
+                for t in active_tasks
+            ],
+        )
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+    logging.warning("Timed out waiting for export tasks to complete after %ds", max_wait)
+
+
+REGION_LOCK_TIMEOUT = 12000  # seconds, matches the serial_execution_by_instance file lock
+
+
+def region_lock(name, region):
+    """Return a FileLock, shared by all xdist workers on the host, serializing on (name, region).
+
+    ``name`` scopes the lock so that unrelated operations serialize independently within the same
+    region, while operations sharing a name serialize against each other.
+    """
+    lock_file = os.path.join(tempfile.gettempdir(), f"pcluster-integ-{name}-{region}.lock")
+    return FileLock(lock_file=lock_file)
+
+
+def serialize_by_region(name):
+    """Return a decorator that serializes calls to a function per region on the ``name`` lock.
+
+    The lock (a host-wide file lock shared by all xdist workers) is scoped by ``name``, so pass the
+    same ``name`` to serialize operations against each other and different names to serialize them
+    independently within the same region.
+
+    The region is read from a ``region`` argument when the function declares one, otherwise from the
+    ``region`` attribute of the first positional argument (e.g. ``self`` for an instance method).
+
+    Useful for operations that AWS allows only one of at a time per account per region, such as
+    CloudWatch Logs export tasks (only one active export task per region; see #2042).
+    """
+
+    def decorator(func):
+        signature = inspect.signature(func)
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            bound = signature.bind(*args, **kwargs)
+            region = bound.arguments.get("region") or getattr(args[0] if args else None, "region", None)
+            logging.info("Attempting to acquire lock '%s' for region %s", name, region)
+            with region_lock(name, region).acquire(poll_interval=15, timeout=REGION_LOCK_TIMEOUT):
+                logging.info("Acquired lock '%s' for region %s", name, region)
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

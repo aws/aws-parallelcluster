@@ -1,12 +1,27 @@
 Image:
   Os: {{ os }}
 Tags:
+{% if "us-iso" in region %}
+  # In ADC regions a CloudFormation bug causes HeadNodeLaunchTemplate to not be
+  # updated when UpdateStack includes a Tags change together with a metadata-only
+  # change on the resource, so we avoid adding a tag here (see SUPPORTED_UNLESS_ADC
+  # update policy). Tags must match pcluster.config.yaml exactly to avoid a diff.
   - Key: ConfigFileTag
     Value: ConfigFileTagValue
   - Key: QueueOverrideTag
     Value: ClusterLevelValue
   - Key: ComputeOverrideTag
     Value: ClusterLevelValue
+{% else %}
+  - Key: ComputeOverrideTag
+    Value: ClusterLevelValue
+  - Key: ConfigFileTag
+    Value: ConfigFileTagValue
+  - Key: QueueOverrideTag
+    Value: ClusterLevelValue
+  - Key: AdditionalConfigTag
+    Value: AdditionalConfigTagValue
+{% endif %}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -17,19 +32,6 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}
-  AwsBatchQueues:
-    - Name: queue-0
-      ComputeResources:
-        - Name: compute-resource-1
-          InstanceTypes:
-            - {{ instance }}
-          MinvCpus: 4
-          DesiredvCpus: 4
-      Networking:
-        SubnetIds:
-          - {{ private_subnet_id }}
-  {% else %}
   SlurmQueues:
     - Name: queue-0
       ComputeResources:
@@ -52,7 +54,6 @@ Scheduling:
           Value: QueueLevelValue
         - Key: ComputeOverrideTag
           Value: QueueLevelValue
-  {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: {{ volume_name }}
