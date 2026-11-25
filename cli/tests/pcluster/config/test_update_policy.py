@@ -3085,3 +3085,84 @@ def test_supported_unless_adc_fail_reason_mentions_adc(mocker):
     assert_that(fail_reason).contains("ADC")
     assert_that(fail_reason).contains("Tags")
     assert_that(action_needed).contains("Tags")
+
+
+def test_queue_nodes_replacement_checker():
+    """Only the policies relying on the QueueUpdateStrategy can require the replacement of the queue nodes."""
+    policies = {name: policy for name, policy in vars(UpdatePolicy).items() if isinstance(policy, UpdatePolicy)}
+    queue_update_strategy_policies = ["QUEUE_UPDATE_STRATEGY", "MANAGED_FSX", "MANAGED_PLACEMENT_GROUP"]
+    assert_that(policies).contains_key(*queue_update_strategy_policies)
+    for name, policy in policies.items():
+        assert_that(policy.queue_nodes_replacement_checker is not None).described_as(name).is_equal_to(
+            name in queue_update_strategy_policies
+        )
+
+    # The checker is inherited from the base policy
+    policy = UpdatePolicy(base_policy=UpdatePolicy.MANAGED_FSX)
+    assert_that(policy.queue_nodes_replacement_checker).is_equal_to(
+        UpdatePolicy.MANAGED_FSX.queue_nodes_replacement_checker
+    )
+
+
+@pytest.mark.parametrize(
+    "update_policy, path, key, old_value, new_value, expected_result",
+    [
+        pytest.param(
+            UpdatePolicy.QUEUE_UPDATE_STRATEGY,
+            ["Scheduling", "SlurmQueues[queue1]", "Image"],
+            "CustomAmi",
+            "ami-1",
+            "ami-2",
+            True,
+            id="queue change with QUEUE_UPDATE_STRATEGY",
+        ),
+        pytest.param(
+            UpdatePolicy.MANAGED_PLACEMENT_GROUP,
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[cr1]", "Networking", "PlacementGroup"],
+            "Enabled",
+            False,
+            True,
+            True,
+            id="queue change with MANAGED_PLACEMENT_GROUP",
+        ),
+        pytest.param(
+            UpdatePolicy.MANAGED_FSX,
+            ["Scheduling", "SlurmQueues[queue1]", "Networking"],
+            "SubnetIds",
+            ["subnet-1", "subnet-2"],
+            ["subnet-2", "subnet-3"],
+            True,
+            id="subnets removed from a queue",
+        ),
+        pytest.param(
+            UpdatePolicy.MANAGED_FSX,
+            ["Scheduling", "SlurmQueues[queue1]", "Networking"],
+            "SubnetIds",
+            ["subnet-1"],
+            ["subnet-1", "subnet-2"],
+            False,
+            id="subnets only added to a queue",
+        ),
+        pytest.param(
+            UpdatePolicy.QUEUE_UPDATE_STRATEGY,
+            ["DevSettings"],
+            "EfaInterfaceType",
+            "efa",
+            "interface",
+            False,
+            id="change outside the SlurmQueues section",
+        ),
+        pytest.param(
+            UpdatePolicy.RESIZE_UPDATE_STRATEGY_ON_REMOVE,
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[cr1]"],
+            "MaxCount",
+            1,
+            2,
+            False,
+            id="queue change with policy not relying on QueueUpdateStrategy",
+        ),
+    ],
+)
+def test_requires_queue_nodes_replacement(mocker, update_policy, path, key, old_value, new_value, expected_result):
+    change = Change(path, key, old_value, new_value, update_policy, is_list=False)
+    assert_that(update_policy.requires_queue_nodes_replacement(change, mocker.MagicMock())).is_equal_to(expected_result)

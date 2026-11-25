@@ -15,6 +15,8 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix `update-cluster` failing with an unhandled exception when changing a shared storage `MountDir` with running nodes.
+- Fix compute nodes not being replaced according to `QueueUpdateStrategy` when updating the `SubnetIds`
+  or the `PlacementGroup` of a queue.
 
 3.16.3
 ------
