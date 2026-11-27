@@ -150,7 +150,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2023 }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_1_INSTANCES_2_HOURS_NOPG_alinux2023__c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_2_HOURS_YESPG_alinux2023 }}] # 1 head node (no placement group) + 2 compute nodes (placement group)
           instances: [ "c5n.18xlarge" ]
           oss: ["alinux2023"]
           schedulers: ["slurm"]
