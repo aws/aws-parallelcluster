@@ -118,10 +118,7 @@ phases:
                       sed -i 's|^#baseurl=https://dl.rockylinux.org/$contentdir|baseurl=https://dl.rockylinux.org/vault/rocky|g' /etc/yum.repos.d/*.repo
                       yum install -y ${!PACKAGE}
                     } || {
-                      # Download package from vault. Sometimes simply enabling vault is not enough if repodata index is not in vault
-                      # Using the hard-coded links to download rpm is the last safety net.
-                      # Although the following code only deal with individual packages, and doesn't have the global impact of enabling vault.
-                      # We will figure out a global safety net when needed (build failure happens again)
+                      # Last resort: download the rpm from vault, as enabling vault is not enough if its repodata index lacks it
                       yum install -y wget
                       wget https://dl.rockylinux.org/vault/rocky/${!VERSION_ID}/${!Repository}/$(uname -m)/os/Packages/k/${!PACKAGE}.rpm
                       yum install -y ./${!PACKAGE}.rpm
@@ -144,7 +141,7 @@ phases:
                 # reference package versions already rotated out of the pool, which fails the fetch.
                 apt-get -y update
                 # Kernel 7.0+ has no linux-modules-extra package. Hold the linux-modules-extra-aws* meta packages that exist
-                apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r))
+                apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r) | grep "$(uname -r)$")
                 apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws $(apt-cache pkgnames linux-modules-extra-aws)
               fi
               echo "Kernel version is $(uname -a)"
@@ -199,6 +196,7 @@ phases:
             - |
               set -euxo pipefail
               . /opt/parallelcluster/system_info
+              echo "Kernel version after reboot is $(uname -a)"
               
               # Update CA certificates and install Cinc
               if [[ ${!PLATFORM} == RHEL ]]; then
