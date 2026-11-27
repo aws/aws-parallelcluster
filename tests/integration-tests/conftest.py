@@ -914,6 +914,19 @@ def inject_additional_config_settings(  # noqa C901
         else:
             logging.info("Skipping AllowedIps rule because unable to find local and public IP for the instance.")
 
+    if (
+        dict_has_nested_key(config_content, ("HeadNode", "Dcv", "Enabled"))
+        and config_content["HeadNode"]["Dcv"]["Enabled"]
+        and not dict_has_nested_key(config_content, ("HeadNode", "Dcv", "AllowedIps"))
+    ):
+        # If the test is running in an EC2 instance limit DCV connection access from instance running the test
+        instance_ip = get_metadata("public-ipv4", raise_error=False) or get_metadata("local-ipv4", raise_error=False)
+        if instance_ip:
+            logging.info(f"Limiting DCV AllowedIps rule to IP: {instance_ip}")
+            dict_add_nested_key(config_content, f"{instance_ip}/32", ("HeadNode", "Dcv", "AllowedIps"))
+        else:
+            logging.info("Skipping DCV AllowedIps rule because unable to find local and public IP for the instance.")
+
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
     ):
