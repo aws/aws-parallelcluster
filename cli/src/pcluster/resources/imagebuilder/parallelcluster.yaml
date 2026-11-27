@@ -144,7 +144,7 @@ phases:
                 # reference package versions already rotated out of the pool, which fails the fetch.
                 apt-get -y update
                 # Kernel 7.0+ has no linux-modules-extra package. Hold the linux-modules-extra-aws* meta packages that exist
-                apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r))
+                apt-get -y install linux-headers-$(uname -r) $(apt-cache pkgnames linux-modules-extra-$(uname -r) | grep "$(uname -r)$")
                 apt-mark hold linux-aws linux-base linux-headers-aws linux-image-aws $(apt-cache pkgnames linux-modules-extra-aws)
               fi
               echo "Kernel version is $(uname -a)"
