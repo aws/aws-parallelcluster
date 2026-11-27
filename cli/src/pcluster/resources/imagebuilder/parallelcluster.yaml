@@ -196,6 +196,7 @@ phases:
             - |
               set -euxo pipefail
               . /opt/parallelcluster/system_info
+              echo "Kernel version after reboot is $(uname -a)"
               
               # Update CA certificates and install Cinc
               if [[ ${!PLATFORM} == RHEL ]]; then
