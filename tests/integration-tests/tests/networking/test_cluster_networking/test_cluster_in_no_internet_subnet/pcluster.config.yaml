@@ -42,8 +42,6 @@ Scheduling:
         - {{ no_internet_subnet_id }}
       AdditionalSecurityGroups:
         - {{ vpc_default_security_group_id }}
-      PlacementGroup:
-        Enabled: true
     CustomActions:
       OnNodeStart:
         Script: s3://{{ bucket_name }}/scripts/pre_install.sh

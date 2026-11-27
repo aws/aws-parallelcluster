@@ -245,9 +245,9 @@ test-suites:
           oss: [{{ DCV_OS_X86_1 }}]
           schedulers: ["slurm"]
         # DCV on ARM + GPU
-        - regions: [{{ g5g_2xlarge_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_DCV_OS_X86_3 }}] # 1 head node + 1 login node + 1 compute node
+        - regions: [{{ g5g_2xlarge_CAPACITY_RESERVATION_3_INSTANCES_1_HOURS_NOPG_DCV_OS_ARM_3 }}] # 1 head node + 1 login node + 1 compute node
           instances: ["g5g.2xlarge"]
-          oss: [{{ DCV_OS_X86_3 }}]
+          oss: [{{ DCV_OS_ARM_3 }}]
           schedulers: ["slurm"]
         # DCV in cn regions and non GPU enabled instance
         - regions: ["cn-northwest-1"]
@@ -281,7 +281,7 @@ test-suites:
   efa:
     test_efa.py::test_efa:
       dimensions:
-        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_0 }}]
+        - regions: [{{ c5n_18xlarge_CAPACITY_RESERVATION_1_INSTANCES_1_HOURS_NOPG_OS_X86_0__c5n_18xlarge_CAPACITY_RESERVATION_2_INSTANCES_1_HOURS_YESPG_OS_X86_0 }}] # 1 head node (no placement group) + 2 compute nodes (placement group)
           instances: ["c5n.18xlarge"]
           oss: [{{ OS_X86_0 }}]
           schedulers: ["slurm"]
@@ -405,8 +405,8 @@ test-suites:
         - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
     test_cluster_networking.py::test_cluster_in_no_internet_subnet:
       dimensions:
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        - regions: [{{ m6g_xlarge_CAPACITY_RESERVATION_3_INSTANCES_2_HOURS_NOPG_DCV_OS_ARM_3 }}] # 1 head node + 2 compute nodes
+          instances: ["m6g.xlarge"]
           oss: [{{ DCV_OS_ARM_3 }}]
           schedulers: ["slurm"]
         - regions: ["cnn1-az1"]
@@ -939,7 +939,8 @@ test-suites:
 #          schedulers: [ "slurm" ]
     test_startup_time.py::test_startup_time:
       dimensions:
-        - regions: [ "us-east-1" ]
+        # 1 head node (c5n.xlarge) + 1 static node per queue (c5.large, g4dn.xlarge, m5.12xlarge)
+        - regions: [ {{ c5n_xlarge_CAPACITY_RESERVATION_1_INSTANCES_2_HOURS_NOPG_OS_X86_0__c5_large_CAPACITY_RESERVATION_1_INSTANCES_2_HOURS_NOPG_OS_X86_0__g4dn_xlarge_CAPACITY_RESERVATION_1_INSTANCES_2_HOURS_NOPG_OS_X86_0__m5_12xlarge_CAPACITY_RESERVATION_1_INSTANCES_2_HOURS_NOPG_OS_X86_0 }} ]
           oss: [{{ OS_X86_0 }}]
           schedulers: [ "slurm" ]
           instances: [ "t3.micro" ] #This is a placeholder, we do not use this instance in the test
